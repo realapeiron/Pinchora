@@ -294,6 +294,12 @@ async fn custom_commands_are_written_in_forms_and_run_with_tag() {
         "the description counts"
     );
     assert_eq!(suggest(&sim, member, "tag", None, "").await.len(), 3);
+    assert!(
+        suggest(&sim, member, "customcommand", Some("edit"), "pet")
+            .await
+            .is_empty()
+    );
+    sim.permissions = MANAGE_GUILD;
     assert_eq!(
         suggest(&sim, manager, "customcommand", Some("edit"), "pet").await,
         ["pets"]

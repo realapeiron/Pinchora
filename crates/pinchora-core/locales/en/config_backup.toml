@@ -1,4 +1,5 @@
 [config_backup]
+"rate_limited" = "Please wait a minute before another backup operation."
 "too_large_discord" = "This backup exceeds Discord’s attachment limit. Download the complete JSON from Backup: {url}"
 "invalid" = "This is not a valid Pinchora configuration backup."
 "incomplete" = "The backup is incomplete or uses an unsupported schema. Export a fresh backup."
@@ -8,7 +9,7 @@
 "ui.title" = "Backup"
 "ui.lead" = "Keep a copy of your server configuration, move it to another server, or restore an earlier setup."
 "ui.export" = "Export JSON"
-"ui.export_hint" = "Configuration only. Member records, activity, credentials and message history are excluded."
+"ui.export_hint" = "Configuration only. Member records, activity, credentials and message history are excluded. Feed URL credentials are redacted and those subscriptions are disabled in the backup; re-enter credentials after restoring."
 "ui.import" = "Import configuration"
 "ui.file" = "Choose a JSON backup"
 "ui.policy" = "Conflict policy"

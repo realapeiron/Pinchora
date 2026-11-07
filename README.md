@@ -535,7 +535,8 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 The **Commands** dashboard searches the full registered command tree, edits access and reply behavior in a drawer,
 and shows Discord integration permission rows when available. Discord's integration permissions and all server-side
-Manage Server checks remain authoritative. Command policies use the guild cache and invalidation bus.
+Manage Server checks remain authoritative. Autocomplete applies the same access restrictions without consuming a
+command cooldown. Command policies use the guild cache and invalidation bus.
 The `command_control` Server module and recovery commands always remain available.
 Aliases retain the target command's prefix support; private-panel commands such as Wordle still direct members to slash.
 Reply deletion supports 1–840 seconds; prefix invocation deletion supports up to 24 hours.
@@ -543,12 +544,17 @@ Reply deletion supports 1–840 seconds; prefix invocation deletion supports up 
 **Backup** exports version 1 JSON from an explicit configuration allowlist, including modules, command rules, aliases,
 welcome designs and uploaded backgrounds, moderation, AutoMod, role panels, tickets, feeds, starboards, counters,
 invites, verification/raid, leveling, store, temporary voice, custom commands and responders. Member data, activity,
-transcripts, author ids, user exemption lists and runtime state are excluded. Merge overwrites matching natural keys;
+transcripts, author ids, user exemption lists and runtime state are excluded. Credential query parameters in feed URLs
+are redacted and those exported subscriptions are disabled; re-enter their credentials after restoring. Merge overwrites matching natural keys;
 replace also removes absent entries. Preview does not write. Apply validates again and atomically saves a restore point
 before importing, retaining ten points per server. Cross-server imports remap role/channel ids by unique names and report
 missing or ambiguous matches; resolve those before applying. Posted panel messages are not copied to another server.
 Responders may share names: same-server imports match their ids; cross-server merges append them as separate records.
 Files support up to 32 MiB including card uploads. Exports over Discord's attachment limit use the dashboard download.
+Backup operations share per-server budgets across Discord and web: ten previews/exports and five applies, reset after
+60 seconds without another attempt of that operation. Imports check current Discord ownership, role permissions and
+channel types; AutoMod role actions and escalation grants use the shared role-safety rules. Noncanonical custom command
+and responder values must be corrected before import. Switching dashboard servers clears drafts and backup previews.
 New configuration tables: `command_control`, `config_restore_points` (migration `0064`). Recovery buttons use `cf:`;
 `kc:` handles command-control interactions.
 

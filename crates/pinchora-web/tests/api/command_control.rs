@@ -64,3 +64,80 @@ async fn command_control_backup_preview_import_restore_and_permissions() {
         );
     }
 }
+
+#[tokio::test]
+async fn backup_routes_require_csrf_scope_restore_points_and_revalidate_dangerous_payloads() {
+    let Some(h) = Harness::new("backup_security_boundaries").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/backup");
+    let backup = browser.get(&format!("{path}/export")).await.json();
+    let csrf = browser.csrf.take();
+    for endpoint in ["preview", "import"] {
+        let response = browser
+            .write(
+                Method::POST,
+                &format!("{path}/{endpoint}"),
+                json!({"backup":backup,"policy":"replace"}),
+            )
+            .await;
+        assert_eq!(response.status, StatusCode::FORBIDDEN);
+        assert_eq!(response.code(), "csrf");
+    }
+    browser.csrf = csrf;
+    for (section, field, value) in [
+        ("guilds", "owner_id", json!("123")),
+        ("guilds", "webhook_token", json!("secret")),
+    ] {
+        let mut bad = backup.clone();
+        bad["sections"][section][0][field] = value;
+        let result = browser
+            .write(
+                Method::POST,
+                &format!("{path}/import"),
+                json!({"backup":bad,"policy":"replace"}),
+            )
+            .await;
+        assert!(!result.status.is_success());
+    }
+    let mut version = backup.clone();
+    version["version"] = json!(999);
+    assert!(
+        !browser
+            .write(
+                Method::POST,
+                &format!("{path}/preview"),
+                json!({"backup":version,"policy":"merge"})
+            )
+            .await
+            .status
+            .is_success()
+    );
+    assert!(h.state.app.db.config_restore_points(guild).await.unwrap().is_empty());
+    assert_eq!(browser.get(&format!("{path}/export")).await.json(), backup);
+    let foreign = guild + 1;
+    let foreign_backup = h
+        .state
+        .app
+        .db
+        .export_config(foreign, pinchora_core::config_backup::Names::default())
+        .await
+        .unwrap();
+    let point = h
+        .state
+        .app
+        .db
+        .import_config(
+            foreign,
+            &foreign_backup,
+            pinchora_core::config_backup::Policy::Merge,
+            pinchora_core::config_backup::Names::default(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        browser.get(&format!("{path}/restore/{point}")).await.status,
+        StatusCode::NOT_FOUND
+    );
+}

@@ -22,7 +22,7 @@ export function CommandControl() {
   const { query } = useCommandControl(guild.id);
   if (query.isPending) return <Loading />;
   if (query.isError) return <Problem error={query.error} />;
-  return <CommandEditor guild={guild.id} data={query.data} />;
+  return <CommandEditor key={guild.id} guild={guild.id} data={query.data} />;
 }
 function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
   const t = words(data.strings);

@@ -43,3 +43,39 @@ test("command controls and backup preview work on desktop and phone", async ({ p
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: "../output/playwright/backup-desktop.png", fullPage: true });
 });
+
+test("switching cached guilds clears backup previews and command drafts", async ({ page }) => {
+  const first = `${Date.now()}71`;
+  const second = `${Date.now()}72`;
+  await devLogin(page, `${Date.now()}73`, [
+    { id: first, name: "First reef", owner: true, permissions: "0" },
+    { id: second, name: "Second reef", owner: true, permissions: "0" },
+  ]);
+  const navigate = async (path: string) => {
+    await page.evaluate((url) => {
+      history.pushState({}, "", url);
+      dispatchEvent(new PopStateEvent("popstate"));
+    }, path);
+  };
+  await page.goto(`/g/${second}/backup`);
+  await expect(page.getByRole("heading", { name: "Backup", exact: true })).toBeVisible();
+  await navigate(`/g/${first}/backup`);
+  const exported = await page.request.get(`/api/guilds/${first}/backup/export`);
+  expect(exported.ok()).toBeTruthy();
+  await page.getByLabel("Choose a JSON backup").setInputFiles({
+    name: "first-guild-only.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(await exported.text()),
+  });
+  await page.getByRole("button", { name: "Preview changes", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Import these changes", exact: true })).toBeEnabled();
+  await navigate(`/g/${second}/backup`);
+  await expect(page.getByText("first-guild-only.json", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Import these changes", exact: true })).toHaveCount(0);
+  await navigate(`/g/${second}/command-control`);
+  await expect(page.getByLabel("Alias", { exact: true })).toBeVisible();
+  await navigate(`/g/${first}/command-control`);
+  await page.getByLabel("Alias", { exact: true }).fill("firstguild");
+  await navigate(`/g/${second}/command-control`);
+  await expect(page.getByLabel("Alias", { exact: true })).toHaveValue("");
+});

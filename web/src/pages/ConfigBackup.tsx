@@ -14,7 +14,7 @@ export function ConfigBackup() {
   const { query } = useBackup(guild.id);
   if (query.isPending) return <Loading />;
   if (query.isError) return <Problem error={query.error} />;
-  return <BackupEditor guild={guild.id} data={query.data} />;
+  return <BackupEditor key={guild.id} guild={guild.id} data={query.data} />;
 }
 function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
   const t = words(data.strings);

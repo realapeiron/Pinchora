@@ -231,6 +231,7 @@ impl BackupCommand {
         };
         match self {
             Self::Export(_) => {
+                crate::backup_rate_limit(&cx.app, guild, "export", 10, cx.lang()).await?;
                 let names = crate::backup_names(&cx.app, guild).await?;
                 let backup = cx.app.db.export_config(guild, names).await?;
                 let bytes = serde_json::to_vec_pretty(&backup)?;
@@ -343,7 +344,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) 
     let Some(backup) = cx.app.db.config_restore_point(guild, id).await? else {
         return cx.reply_ephemeral(t!(cx.lang(), "config_backup.invalid")).await;
     };
-    crate::backup_apply(
+    let saved = crate::backup_apply(
         &cx.app,
         guild,
         &Import {
@@ -354,6 +355,20 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) 
         cx.author()?.id.get(),
     )
     .await?;
+    let after = serde_json::json!({"restore_point": saved.to_string(), "restored_from": id.to_string()}).to_string();
+    cx.app
+        .db
+        .audit(&pinchora_db::NewAudit {
+            guild,
+            actor: cx.author()?.id.get(),
+            actor_name: &cx.author_display_name(),
+            source: pinchora_db::AuditSource::Discord,
+            action: "backup.restore",
+            target: None,
+            before: None,
+            after: Some(&after),
+        })
+        .await?;
     cx.update(InteractionResponseData {
         content: Some(t!(cx.lang(), "config_backup.saved")),
         components: Some(vec![]),

@@ -1,4 +1,5 @@
 [config_backup]
+"rate_limited" = "Yeni bir yedekleme işlemi için bir dakika bekleyin."
 "too_large_discord" = "Bu yedek Discord’un dosya sınırını aşıyor. JSON dosyasının tamamını Yedek sayfasından indirin: {url}"
 "invalid" = "Bu dosya geçerli bir Pinchora ayar yedeği değil."
 "incomplete" = "Yedek eksik veya desteklenmeyen bir şemaya sahip. Yeni bir yedek dışa aktarın."
@@ -8,7 +9,7 @@
 "ui.title" = "Yedekleme"
 "ui.lead" = "Sunucu ayarlarınızı saklayın, başka sunucuya taşıyın veya önceki ayarlara geri dönün."
 "ui.export" = "JSON dışa aktar"
-"ui.export_hint" = "Yalnızca ayarlar aktarılır. Üye kayıtları, etkinlikler, kimlik bilgileri ve mesaj geçmişi dahil edilmez."
+"ui.export_hint" = "Yalnızca ayarlar aktarılır. Üye kayıtları, etkinlikler, kimlik bilgileri ve mesaj geçmişi dahil edilmez. Akış adreslerindeki kimlik bilgileri gizlenir ve bu abonelikler yedekte kapatılır; geri yükledikten sonra bilgileri yeniden girin."
 "ui.import" = "Ayarları içe aktar"
 "ui.file" = "JSON yedeği seçin"
 "ui.policy" = "Çakışma yöntemi"

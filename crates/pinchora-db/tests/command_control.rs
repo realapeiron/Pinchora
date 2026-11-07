@@ -198,3 +198,46 @@ async fn import_remaps_roles_channels_and_local_panel_ids() {
         imported.sections["role_panels"][0]["id"]
     );
 }
+
+#[tokio::test]
+async fn exports_and_restore_downloads_redact_feed_credentials_without_mutating_the_source() {
+    let Some(db) = db().await else { return };
+    let guild = unique();
+    db.guild_settings(guild).await.unwrap();
+    let source = format!("https://example.com/{guild}/rss?access_token=private-feed-token&format=atom");
+    sqlx::query("INSERT INTO feed_sources(kind,source) VALUES('rss',$1)")
+        .bind(&source)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO feeds(guild_id,kind,source,channel_id) VALUES($1,'rss',$2,42)")
+        .bind(guild as i64)
+        .bind(&source)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let exported = db.export_config(guild, Names::default()).await.unwrap();
+    assert!(!serde_json::to_string(&exported).unwrap().contains("private-feed-token"));
+    assert_eq!(exported.sections["feeds"][0]["enabled"], false);
+    assert!(
+        exported.sections["feeds"][0]["source"]
+            .as_str()
+            .unwrap()
+            .contains("format=atom")
+    );
+    let stored: String = sqlx::query_scalar("SELECT source FROM feeds WHERE guild_id=$1")
+        .bind(guild as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(stored, source, "redaction must not mutate the live subscription");
+    // An unrelated merge creates an automatic snapshot; downloading it uses the same redaction.
+    let mut incoming = exported;
+    incoming.sections.get_mut("feeds").unwrap().clear();
+    let point = db
+        .import_config(guild, &incoming, Policy::Merge, Names::default())
+        .await
+        .unwrap();
+    let restore = db.config_restore_point(guild, point).await.unwrap().unwrap();
+    assert!(!serde_json::to_string(&restore).unwrap().contains("private-feed-token"));
+}

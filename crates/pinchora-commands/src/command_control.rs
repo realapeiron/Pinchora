@@ -211,14 +211,34 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
     Ok(path)
 }
 
-pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Result<bool> {
-    let Some(guild) = cx.guild_id() else {
+/// Autocomplete must not disclose suggestions for a denied command or consume its cooldown.
+pub(crate) async fn autocomplete_allowed(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
+    use pinchora_core::modules::{Access, Module};
+    let Some(guild) = cx.guild_id() else { return Ok(true) };
+    if data.name == "customcommand" && !cx.can_manage_guild() {
         return Ok(false);
-    };
-    if PROTECTED.contains(&path.split(' ').next().unwrap_or_default()) {
+    }
+    let path = path(data);
+    let sub = path.split(' ').nth(1);
+    if let Some(module) = Module::of_command(&data.name, sub)
+        && cx
+            .app
+            .module_access(guild, cx.interaction.channel.as_ref().map(|c| c.id.get()), module)
+            .await?
+            != Access::Allowed
+    {
         return Ok(false);
     }
     let config = cx.app.command_control(guild).await?;
+    Ok(policy_check(cx, &path, &config).await.is_ok())
+}
+
+async fn policy_check(
+    cx: &Cx,
+    path: &str,
+    config: &pinchora_core::command_control::Config,
+) -> Result<(), pinchora_core::command_control::Denial> {
+    let guild = cx.guild_id().unwrap_or_default();
     let mut roles: Vec<String> = cx
         .interaction
         .member
@@ -239,7 +259,18 @@ pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Re
             .collect(),
         _ => vec![],
     };
-    if let Err(reason) = config.check(path, &roles, &lineage) {
+    config.check(path, &roles, &lineage)
+}
+
+pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Result<bool> {
+    let Some(guild) = cx.guild_id() else {
+        return Ok(false);
+    };
+    if PROTECTED.contains(&path.split(' ').next().unwrap_or_default()) {
+        return Ok(false);
+    }
+    let config = cx.app.command_control(guild).await?;
+    if let Err(reason) = policy_check(cx, path, &config).await {
         cx.reply_ephemeral(reason.message(cx.lang())).await?;
         return Ok(true);
     }

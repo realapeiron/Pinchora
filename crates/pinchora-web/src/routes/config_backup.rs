@@ -33,6 +33,10 @@ async fn show(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult
     ))
 }
 async fn export(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<(HeaderMap, Json<Value>)> {
+    let lang = state.app.guild_lang(managed.id).await;
+    pinchora_commands::backup_rate_limit(&state.app, managed.id, "export", 10, lang)
+        .await
+        .map_err(|e| ApiError::blocked(e.to_string()))?;
     let names = pinchora_commands::backup_names(&state.app, managed.id).await?;
     let backup = state.app.db.export_config(managed.id, names).await?;
     let mut headers = HeaderMap::new();

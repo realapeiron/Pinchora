@@ -204,6 +204,43 @@ pub struct Preview {
     pub errors: Vec<String>,
     pub can_import: bool,
 }
+/// Feed sources may carry private RSS credentials even though no token column is exported.
+/// Keep the subscription recoverable, but require fresh credentials before it can run again.
+pub fn redact_feed_credentials(backup: &mut Backup) {
+    for row in backup.sections.get_mut("feeds").into_iter().flatten() {
+        let Some(source) = row["source"].as_str() else { continue };
+        let Ok(mut url) = url::Url::parse(source) else { continue };
+        let mut sensitive = !url.username().is_empty() || url.password().is_some();
+        let query: Vec<(String, String)> = url
+            .query_pairs()
+            .map(|(key, value)| {
+                let name = key.to_ascii_lowercase().replace('-', "_");
+                let secret = name.contains("token")
+                    || name.contains("secret")
+                    || name.contains("password")
+                    || matches!(
+                        name.as_str(),
+                        "key" | "api_key" | "apikey" | "auth" | "authorization" | "signature" | "sig"
+                    );
+                sensitive |= secret;
+                (
+                    key.into_owned(),
+                    if secret { "REDACTED".into() } else { value.into_owned() },
+                )
+            })
+            .collect();
+        if sensitive {
+            let _ = url.set_username("");
+            let _ = url.set_password(None);
+            if url.query().is_some() {
+                url.query_pairs_mut().clear().extend_pairs(query);
+            }
+            row["source"] = Value::String(url.into());
+            row["enabled"] = Value::Bool(false);
+        }
+    }
+}
+
 pub fn row_key(section: &Section, row: &Value) -> String {
     section
         .key
@@ -367,7 +404,8 @@ fn reference_kind(field: &str) -> Option<bool> {
         || field.ends_with("_role_id")
         || matches!(
             field,
-            "required_role"
+            "role"
+                | "required_role"
                 | "allowed_roles"
                 | "denied_roles"
                 | "allow_roles"
@@ -665,6 +703,39 @@ mod tests {
             "unmapped restrictions are never emptied"
         );
     }
+    #[test]
+    fn automod_rule_and_escalation_roles_are_remapped_and_checked() {
+        let mut backup = Backup {
+            version: VERSION,
+            source_guild: "10".into(),
+            names: Names {
+                roles: BTreeMap::from([("1".into(), "Muted".into())]),
+                channels: BTreeMap::new(),
+            },
+            sections: BTreeMap::from([
+                (
+                    "automod_rules".into(),
+                    vec![json!({"actions":[{"kind":"add_role","role":"1"}]})],
+                ),
+                (
+                    "automod_settings".into(),
+                    vec![json!({"escalation":[{"action":{"kind":"add_role","role":"1"}}]})],
+                ),
+            ]),
+        };
+        assert_eq!(references(&backup), vec![(true, "1".into())]);
+        let names = Names {
+            roles: BTreeMap::from([("2".into(), "Muted".into())]),
+            channels: BTreeMap::new(),
+        };
+        assert!(remap(&mut backup, 20, &names).is_empty());
+        assert_eq!(references(&backup), vec![(true, "2".into())]);
+        assert_eq!(
+            backup.sections["automod_settings"][0]["escalation"][0]["action"]["role"],
+            "2"
+        );
+    }
+
     #[test]
     fn member_tables_and_unknown_fields_are_never_accepted() {
         let mut backup = Backup {

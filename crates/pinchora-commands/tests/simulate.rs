@@ -442,6 +442,9 @@ async fn discord(
     if let Some(answer) = roles::mock(&mock, &method, &uri, &parts, &body) {
         return answer;
     }
+    if let Some(answer) = command_control::mock(&mock, &method, &parts) {
+        return answer;
+    }
     match (&method, parts.as_slice()) {
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];

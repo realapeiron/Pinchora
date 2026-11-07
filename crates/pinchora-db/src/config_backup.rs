@@ -134,7 +134,15 @@ impl Db {
         Ok(())
     }
 
+    /// Public backup document: credentials embedded in feed URLs never leave the server.
     pub async fn export_config(&self, guild: u64, names: Names) -> anyhow::Result<Backup> {
+        let mut backup = self.snapshot_config(guild, names).await?;
+        config_backup::redact_feed_credentials(&mut backup);
+        Ok(backup)
+    }
+
+    /// Internal comparison state. Keep live values intact so previews report redaction as a change.
+    pub async fn snapshot_config(&self, guild: u64, names: Names) -> anyhow::Result<Backup> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
             .execute(&mut *tx)
@@ -154,7 +162,11 @@ impl Db {
                 .bind(id)
                 .fetch_optional(self.pool())
                 .await?;
-        Ok(value.map(serde_json::from_value).transpose()?)
+        let mut backup: Option<Backup> = value.map(serde_json::from_value).transpose()?;
+        if let Some(backup) = &mut backup {
+            config_backup::redact_feed_credentials(backup);
+        }
+        Ok(backup)
     }
     /// The caller validates with editor validators first. The lock serializes imports and the restore
     /// point and writes commit together. No transaction writes are used by dry runs.

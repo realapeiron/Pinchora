@@ -19,6 +19,19 @@ pub async fn backup_names(app: &App, guild: u64) -> anyhow::Result<Names> {
             .collect(),
     })
 }
+/// Expensive backup operations share a guild-wide budget across Discord and the dashboard.
+pub async fn backup_rate_limit(app: &App, guild: u64, operation: &str, limit: i64, lang: Lang) -> anyhow::Result<()> {
+    let hits = app
+        .cache
+        .incr(
+            &format!("backup:{guild}:{operation}"),
+            std::time::Duration::from_secs(60),
+        )
+        .await?;
+    anyhow::ensure!(hits <= limit, "{}", t!(lang, "config_backup.rate_limited"));
+    Ok(())
+}
+
 pub async fn backup_preview(
     app: &App,
     guild: u64,
@@ -26,9 +39,10 @@ pub async fn backup_preview(
     lang: Lang,
     actor: u64,
 ) -> anyhow::Result<(Backup, Preview)> {
+    backup_rate_limit(app, guild, "preview", 10, lang).await?;
     config_backup::validate_shape(&request.backup, lang).map_err(anyhow::Error::msg)?;
     let names = backup_names(app, guild).await?;
-    let before = app.db.export_config(guild, names.clone()).await?;
+    let before = app.db.snapshot_config(guild, names.clone()).await?;
     let mut backup = request.backup.clone();
     let unmapped: Vec<String> = config_backup::remap(&mut backup, guild, &names)
         .into_iter()
@@ -139,6 +153,7 @@ fn replace_string(value: &mut Value, old: &str, new: &str) {
     }
 }
 pub async fn backup_apply(app: &App, guild: u64, request: &Import, lang: Lang, actor: u64) -> anyhow::Result<i64> {
+    backup_rate_limit(app, guild, "apply", 5, lang).await?;
     let (backup, preview) = backup_preview(app, guild, request, lang, actor).await?;
     anyhow::ensure!(preview.can_import, "{}", t!(lang, "config_backup.blocked"));
     let id = app
@@ -162,11 +177,12 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
     };
     let get = |table: &str| backup.sections.get(table).map(Vec::as_slice).unwrap_or_default();
     for (table, max) in [
-        ("guild_modules", 42),
+        ("guild_modules", pinchora_core::modules::Module::ALL.len()),
         ("card_uploads", pinchora_core::card_design::MAX_UPLOADS),
         ("card_designs", 2),
         ("auto_roles", pinchora_core::roles_pack::MAX_AUTO_ROLES),
         ("color_roles", pinchora_core::roles_pack::MAX_COLOR_ROLES),
+        ("voice_creators", pinchora_core::temp_voice::MAX_CREATORS),
         ("ticket_panels", pinchora_core::tickets::MAX_PANELS),
         ("ticket_forms", 10),
         ("automod_rules", pinchora_core::automod::MAX_RULES),
@@ -209,6 +225,9 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
         modules::check_channels(module, mode, &ids).map_err(|e| e.text(lang))?;
     }
     for row in get("guilds") {
+        if !row["welcome_accent"].is_null() && !(0..=0xffffff).contains(&n(row, "welcome_accent")?) {
+            return Err(invalid());
+        }
         for (key, kind) in [
             ("welcome_message", settings::MessageKind::Welcome),
             ("goodbye_message", settings::MessageKind::Goodbye),
@@ -356,6 +375,34 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
         check_open_limit(n(row, "max_open_per_user")?, lang).map_err(|e| e.text(lang))?;
         Mode::parse(&s(row, "mode")?).ok_or_else(invalid)?;
     }
+    // Ticket models accept omitted defaults, but their deserializers ignore unknown fields.
+    // The raw JSON is persisted, so reject extra keys instead of silently carrying member data.
+    for (table, field, keys) in [
+        (
+            "ticket_forms",
+            "questions",
+            &["label", "placeholder", "long", "required"][..],
+        ),
+        (
+            "ticket_panels",
+            "buttons",
+            &["label", "emoji", "description", "tone"][..],
+        ),
+    ] {
+        for row in get(table) {
+            let entries = row[field].as_array().ok_or_else(invalid)?;
+            for entry in entries {
+                if entry
+                    .as_object()
+                    .ok_or_else(invalid)?
+                    .keys()
+                    .any(|key| !keys.contains(&key.as_str()))
+                {
+                    return Err(invalid());
+                }
+            }
+        }
+    }
     for row in get("ticket_forms") {
         let questions = serde_json::from_value::<Vec<pinchora_core::tickets::Question>>(row["questions"].clone())
             .map_err(|_| invalid())?;
@@ -377,6 +424,9 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
             serde_json::from_value(form["questions"].clone()).map_err(|_| invalid())?
         };
         let name = s(row, "name")?;
+        if !(0..=0xffffff).contains(&n(row, "color")?) {
+            return Err(invalid());
+        }
         let title = s(row, "title")?;
         let description = s(row, "description")?;
         let welcome = s(row, "welcome_text")?;
@@ -458,6 +508,13 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
             return Err(invalid());
         }
     }
+    for row in get("vote_channels") {
+        let up = s(row, "up_emoji")?;
+        let down = s(row, "down_emoji")?;
+        if up.trim().is_empty() || down.trim().is_empty() || up == down || up.len() > 64 || down.len() > 64 {
+            return Err(invalid());
+        }
+    }
     for row in get("log_channels") {
         pinchora_core::logging::LogCategory::parse(&s(row, "category")?).ok_or_else(invalid)?;
     }
@@ -505,12 +562,18 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
         }
     }
     for row in get("panel_reactions") {
-        if !get("role_panels").iter().any(|p| p["id"] == row["panel_id"]) {
+        if !get("role_panel_roles")
+            .iter()
+            .any(|p| p["panel_id"] == row["panel_id"] && p["role_id"] == row["role_id"])
+        {
             return Err(invalid());
         }
     }
     for row in get("counter_channels") {
-        pinchora_core::server_stats::CounterKind::parse(&s(row, "kind")?).ok_or_else(invalid)?;
+        let kind = pinchora_core::server_stats::CounterKind::parse(&s(row, "kind")?).ok_or_else(invalid)?;
+        if kind.needs_role() && row["role_id"].is_null() {
+            return Err(invalid());
+        }
         pinchora_core::server_stats::check_template(&s(row, "template")?).map_err(|e| e.text(lang))?;
     }
     for row in get("voice_creators") {
@@ -524,15 +587,36 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
             row.as_object_mut().unwrap().remove("id");
             if table == "custom_commands" {
                 let def: pinchora_core::tags::CommandDef = serde_json::from_value(row).map_err(|_| invalid())?;
-                def.clean(&crate::control_catalog().into_iter().map(|c| c.path).collect::<Vec<_>>())
+                let clean = def
+                    .clone()
+                    .clean(&crate::control_catalog().into_iter().map(|c| c.path).collect::<Vec<_>>())
                     .map_err(fields)?;
+                if clean != def {
+                    return Err(invalid());
+                }
             } else {
                 let def: pinchora_core::tags::ResponderDef = serde_json::from_value(row).map_err(|_| invalid())?;
-                def.clean().map_err(fields)?;
+                if def.clone().clean().map_err(fields)? != def {
+                    return Err(invalid());
+                }
             }
         }
     }
     Ok(())
+}
+
+fn discord_id(value: &Value, lang: Lang) -> anyhow::Result<Option<u64>> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    let id = value
+        .as_str()
+        .and_then(|s| s.parse::<u64>().ok())
+        .or_else(|| value.as_u64());
+    Ok(Some(
+        id.filter(|id| *id > 0 && *id <= i64::MAX as u64)
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "config_backup.invalid")))?,
+    ))
 }
 
 async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: Lang) -> anyhow::Result<()> {
@@ -546,24 +630,35 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
         ("auto_roles", "role_id"),
         ("color_roles", "role_id"),
         ("role_panel_roles", "role_id"),
+        ("panel_reactions", "role_id"),
         ("invite_rewards", "role_id"),
         ("guilds", "join_role_id"),
         ("verification", "verified_role_id"),
         ("verification", "unverified_role_id"),
     ] {
         for row in &backup.sections[table] {
-            if let Some(id) = row[field].as_str() {
-                grants.push((id.parse::<u64>()?, false));
+            if let Some(id) = discord_id(&row[field], lang)? {
+                grants.push((id, false));
             }
         }
     }
-    for table in ["custom_commands", "custom_responders"] {
+    for table in ["custom_commands", "custom_responders", "automod_rules"] {
         for row in &backup.sections[table] {
             if let Some(actions) = row["actions"].as_array() {
                 for action in actions {
-                    if let Some(id) = action["role_id"].as_str() {
-                        grants.push((id.parse()?, true));
+                    let field = if table == "automod_rules" { "role" } else { "role_id" };
+                    if let Some(id) = discord_id(&action[field], lang)? {
+                        grants.push((id, true));
                     }
+                }
+            }
+        }
+    }
+    for row in &backup.sections["automod_settings"] {
+        if let Some(escalation) = row["escalation"].as_array() {
+            for step in escalation {
+                if let Some(id) = discord_id(&step["action"]["role"], lang)? {
+                    grants.push((id, true));
                 }
             }
         }
@@ -580,6 +675,12 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
             ][..],
         ),
         ("feeds", &["channel_id"][..]),
+        ("vote_channels", &["channel_id"][..]),
+        ("suggestion_settings", &["channel_id"][..]),
+        ("collection_settings", &["channel_id"][..]),
+        ("party_settings", &["surge_channel_id"][..]),
+        ("ticket_settings", &["log_channel_id"][..]),
+        ("invite_settings", &["log_channel_id", "temp_channel_id"][..]),
         ("starboards", &["channel_id"][..]),
         ("ticket_panels", &["channel_id", "log_channel_id"][..]),
         ("log_channels", &["channel_id"][..]),
@@ -588,9 +689,9 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
     ] {
         for row in &backup.sections[table] {
             for field in fields {
-                if let Some(id) = row[field].as_str() {
+                if let Some(id) = discord_id(&row[field], lang)? {
                     anyhow::ensure!(
-                        channels.iter().any(|c| c.id.to_string() == id
+                        channels.iter().any(|c| c.id.get() == id
                             && matches!(
                                 c.kind,
                                 twilight_model::channel::ChannelType::GuildText
@@ -603,10 +704,41 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
             }
         }
     }
+    use twilight_model::channel::ChannelType::{GuildAnnouncement, GuildCategory, GuildText, GuildVoice};
+    for (table, field, kinds) in [
+        ("voice_creators", "channel_id", &[GuildVoice][..]),
+        ("voice_creators", "category_id", &[GuildCategory][..]),
+        (
+            "voice_creators",
+            "panel_channel_id",
+            &[GuildText, GuildAnnouncement][..],
+        ),
+        ("ticket_settings", "open_category_id", &[GuildCategory][..]),
+        ("ticket_settings", "closed_category_id", &[GuildCategory][..]),
+        ("ticket_panels", "open_category_id", &[GuildCategory][..]),
+        ("role_panels", "channel_id", &[GuildText, GuildAnnouncement][..]),
+        (
+            "counter_channels",
+            "channel_id",
+            &[GuildVoice, GuildText, GuildAnnouncement, GuildCategory][..],
+        ),
+    ] {
+        for row in &backup.sections[table] {
+            if let Some(id) = discord_id(&row[field], lang)? {
+                anyhow::ensure!(
+                    channels.iter().any(|c| c.id.get() == id && kinds.contains(&c.kind)),
+                    "{}",
+                    t!(lang, "config_backup.invalid")
+                );
+            }
+        }
+    }
     if grants.is_empty() {
         return Ok(());
     }
-    let facts = app.permission_facts(guild).await?;
+    // Ownership and permissions may have changed since the guild permission cache was populated.
+    let owner = app.http.guild(Id::new(guild)).await?.model().await?.owner_id.get();
+    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
     let member = app
         .http
         .guild_member(Id::new(guild), Id::new(actor))
@@ -619,27 +751,24 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
         .await?
         .model()
         .await?;
-    let top = |roles: &[twilight_model::id::Id<twilight_model::id::marker::RoleMarker>]| {
-        facts
-            .roles
+    let top = |held: &[twilight_model::id::Id<twilight_model::id::marker::RoleMarker>]| {
+        roles
             .iter()
-            .filter(|r| roles.contains(&r.id))
+            .filter(|r| held.contains(&r.id))
             .map(|r| r.position)
             .max()
             .unwrap_or(0)
     };
-    let administrator = facts
-        .roles
+    let administrator = roles
         .iter()
         .any(|r| member.roles.contains(&r.id) && r.permissions.contains(Permissions::ADMINISTRATOR));
     let grantor = Grantor {
-        owner: facts.owner == actor,
+        owner: owner == actor,
         administrator,
         top_role: Some(top(&member.roles)),
     };
     for (id, action) in grants {
-        let role = facts
-            .roles
+        let role = roles
             .iter()
             .find(|r| r.id.get() == id)
             .ok_or_else(|| anyhow::anyhow!("{}", t!(lang, "config_backup.invalid")))?;
