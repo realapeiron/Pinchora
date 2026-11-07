@@ -1175,6 +1175,7 @@
       "starboard",
       "counters",
       "ticket",
+      "event",
       "tickets",
       "automod",
       "verify",
@@ -1188,7 +1189,10 @@
       "invites",
       "inviteadmin",
       "birthday",
-      "birthdays"
+      "birthdays",
+      "afk",
+      "sticky",
+      "schedule"
     ],
     "responder_placeholders": {
       "keyword": [
