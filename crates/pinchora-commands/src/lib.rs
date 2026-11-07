@@ -27,6 +27,7 @@ mod server_events;
 mod server_log;
 mod starboard;
 mod stats;
+pub mod status;
 mod text;
 mod tickets;
 mod util;
@@ -165,6 +166,9 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
             }
         }
         return;
+    }
+    if cx.interaction.kind == InteractionType::ApplicationCommand {
+        status::record_interaction(&cx.app.cache).await;
     }
     // The handler futures are large (every command's state in one enum); on the heap they
     // cannot overflow a worker thread's stack.

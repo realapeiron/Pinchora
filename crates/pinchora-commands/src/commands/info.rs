@@ -3,6 +3,7 @@
 use pinchora_core::{leveling, t};
 use pinchora_render::{InfoCard, InfoRow, Theme};
 use serde_json::Value;
+use std::{sync::LazyLock, time::Duration};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
     application::interaction::InteractionChannel,
@@ -21,6 +22,13 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{Cx, commands::customize, util::BRAND};
 
+static BOT_CARD: LazyLock<moka::future::Cache<String, Vec<u8>>> = LazyLock::new(|| {
+    moka::future::Cache::builder()
+        .time_to_live(Duration::from_secs(30))
+        .max_capacity(256)
+        .build()
+});
+
 #[derive(CommandModel, CreateCommand)]
 #[command(
     name = "info",
@@ -32,6 +40,8 @@ pub enum Info {
     User(InfoUser),
     #[command(name = "server")]
     Server(InfoServer),
+    #[command(name = "bot")]
+    Bot(InfoBot),
     #[command(name = "avatar")]
     Avatar(InfoAvatar),
     #[command(name = "banner")]
@@ -57,6 +67,9 @@ pub struct InfoUser {
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "server", desc = "Show server details")]
 pub struct InfoServer;
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "bot", desc = "Show Pinchora's live status")]
+pub struct InfoBot;
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "avatar", desc = "Show a user's avatar")]
 pub struct InfoAvatar {
@@ -192,6 +205,125 @@ async fn send(
     }
 }
 
+async fn bot_card(cx: &Cx) -> anyhow::Result<()> {
+    use crate::status::{format_number, snapshot};
+    let s = snapshot(
+        &cx.app.db,
+        &cx.app.cache,
+        cx.app.application_id.get(),
+        &cx.app.public_url,
+    )
+    .await;
+    let tr = cx.lang() == pinchora_core::i18n::Lang::Tr;
+    let number = |n| format_number(n, tr);
+    let duration = format!("{}h {}m", s.uptime_seconds / 3600, s.uptime_seconds / 60 % 60);
+    let this_shard = cx.guild_id().and_then(|guild| {
+        let total = s.shards.first()?.total.max(1);
+        s.shards.iter().find(|shard| shard.id == (guild >> 22) as u32 % total)
+    });
+    let latency = this_shard
+        .and_then(|shard| shard.latency_ms)
+        .map_or_else(|| "—".into(), |ms| format!("{ms} ms"));
+    let rows = vec![
+        row(t!(cx.lang(), "info.bot-servers"), number(s.servers)),
+        row(t!(cx.lang(), "info.bot-members"), number(s.approximate_members)),
+        row(t!(cx.lang(), "info.bot-players"), number(s.players)),
+        row(t!(cx.lang(), "info.bot-channels"), number(s.channels)),
+        row(t!(cx.lang(), "info.bot-shards"), number(s.shards.len() as u64)),
+        row(
+            t!(cx.lang(), "info.bot-this-shard"),
+            this_shard.map_or_else(|| "—".into(), |shard| shard.id.to_string()),
+        ),
+        row(t!(cx.lang(), "info.bot-latency"), latency),
+        row(t!(cx.lang(), "info.bot-uptime"), duration),
+        row(t!(cx.lang(), "info.bot-version"), s.version.clone()),
+        row(t!(cx.lang(), "info.bot-rust"), s.rust_version.clone()),
+        row(t!(cx.lang(), "info.bot-memory"), format!("{} MB", number(s.rss_mb))),
+        row(
+            t!(cx.lang(), "info.bot-postgres"),
+            format!("{} MB", number(s.postgres_mb)),
+        ),
+        row(t!(cx.lang(), "info.bot-redis"), format!("{} MB", number(s.redis_mb))),
+        row(t!(cx.lang(), "info.bot-commands-24h"), number(s.commands_24h)),
+        row(t!(cx.lang(), "info.bot-commands-total"), number(s.commands_total)),
+        row(
+            t!(cx.lang(), "info.bot-interactions"),
+            number(s.interactions_per_minute),
+        ),
+        row(t!(cx.lang(), "info.bot-games"), number(s.active_games)),
+        row(t!(cx.lang(), "info.bot-tickets"), number(s.open_tickets)),
+    ];
+    let lang = cx.lang();
+    let icon = pinchora_render::prepare_avatar(include_bytes!("../../../../assets/brand/icon-256.png"), 160, Some(40))?;
+    let key = format!("{tr}:{}", this_shard.map_or(u32::MAX, |shard| shard.id));
+    let png = if let Some(png) = BOT_CARD.get(&key).await {
+        png
+    } else {
+        let png = cx
+            .app
+            .render(move |r| {
+                r.svg_to_png(
+                    &InfoCard {
+                        lang,
+                        title: "Pinchora".into(),
+                        subtitle: t!(lang, "info.bot"),
+                        rows,
+                        image: Some(icon),
+                        theme: Theme::reef(),
+                    }
+                    .to_svg(),
+                )
+            })
+            .await?;
+        BOT_CARD.insert(key, png.clone()).await;
+        png
+    };
+    let mut links = format!(
+        "[{}]({}) · [{}]({}) · [{}]({})",
+        t!(cx.lang(), "info.bot-invite"),
+        s.invite_url,
+        t!(cx.lang(), "info.bot-website"),
+        s.website_url,
+        t!(cx.lang(), "info.bot-status"),
+        s.status_url
+    );
+    if !s.support_url.is_empty() {
+        links.push_str(&format!(
+            " · [{}]({})",
+            t!(cx.lang(), "info.bot-support"),
+            s.support_url
+        ));
+    }
+    if !s.shards.is_empty() {
+        links.push_str(&format!("\n{}: ", t!(cx.lang(), "info.bot-latency")));
+        links.push_str(
+            &s.shards
+                .iter()
+                .take(64)
+                .map(|shard| {
+                    format!(
+                        "#{} {}",
+                        shard.id,
+                        shard.latency_ms.map_or_else(|| "—".into(), |ms| format!("{ms}ms"))
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" · "),
+        );
+        if s.shards.len() > 64 {
+            links.push_str(&format!(" · +{}", s.shards.len() - 64));
+        }
+    }
+    cx.reply(Cx::card(
+        EmbedBuilder::new().color(BRAND).description(links),
+        "bot-info.png",
+        png,
+        vec![],
+        false,
+    ))
+    .await
+}
+
 async fn user_card(cx: &Cx, guild: u64, user: User, member: Value, page: usize, update: bool) -> anyhow::Result<()> {
     let id = user.id.get();
     let name = member
@@ -323,6 +455,10 @@ async fn visible_channel(cx: &Cx, guild: u64, channel: &twilight_model::channel:
 
 impl Info {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        if matches!(self, Self::Bot(_)) {
+            cx.responder.defer(false).await?;
+            return bot_card(cx).await;
+        }
         let Some(guild) = cx.guild_id() else {
             return cx.reply_ephemeral(t!(cx.lang(), "error.guild-only")).await;
         };
@@ -331,6 +467,7 @@ impl Info {
             .await?;
         let gid = Id::<GuildMarker>::new(guild);
         match self {
+            Self::Bot(_) => unreachable!("bot status handled before guild lookup"),
             Self::User(c) => {
                 let user = c.user.map_or_else(|| cx.author().cloned(), |r| Ok(r.resolved))?;
                 let member = cx.app.http.guild_member(gid, user.id).await?.model().await?;

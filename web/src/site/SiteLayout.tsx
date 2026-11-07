@@ -115,6 +115,9 @@ export function SiteLayout() {
                 <Link to="/commands">Commands</Link>
               </li>
               <li>
+                <Link to="/status">Status</Link>
+              </li>
+              <li>
                 <Link to="/#faq">FAQ</Link>
               </li>
             </ul>

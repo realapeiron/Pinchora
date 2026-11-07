@@ -66,6 +66,7 @@ pub fn router(state: WebState) -> Router {
         ));
     let public = Router::new()
         .route("/api/public/landing", get(site::landing))
+        .route("/api/public/status", get(site::status))
         .nest("/api/public/stats", stats::public_router())
         .route_layer(middleware::from_fn_with_state(
             state.clone(),

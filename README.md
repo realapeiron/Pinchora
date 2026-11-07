@@ -1283,6 +1283,7 @@ of the six areas, `/privacy` and `/terms` are plain-language drafts to review be
 |---|---|
 | `/invite` | Redirects to Discord's page for adding the bot, with the `bot applications.commands` scopes and the permissions it uses; every **Add to Discord** button points here |
 | `/api/public/landing` | `{ stats, viewer }`: servers, players, houses and pets counted in the database (cached in Redis for ten minutes, one refresh at a time), and the logged-in visitor's name and avatar, or `null`. Rate limited per address |
+| `/api/public/status` | Public bot status from live gateway shard heartbeats and database counters, cached in Redis for 30 seconds |
 | `/robots.txt`, `/sitemap.xml`, `/og.png`, the favicon set, `/site.webmanifest` | Written by the build or generated (below); `__ORIGIN__` in them becomes `PINCHORA_WEB__PUBLIC_URL` when served, so one build serves any domain |
 
 Search engines and link previews do not run scripts, so the build writes each public page's own title, description,
@@ -1290,7 +1291,8 @@ canonical link and Open Graph / Twitter tags into its HTML (`commands/index.html
 from `web/src/site/routes.ts`; the Vite plugin in `web/vite.config.ts` does it) and the server answers
 `/commands` with that file. The dashboard's pages get the shell with `X-Robots-Tag: noindex`. The public pages work
 before login is set up; only the dashboard shows the setup page. The support server link in the footer is a placeholder:
-build with `VITE_SUPPORT_URL=https://discord.gg/<invite>` to set it.
+build with `VITE_SUPPORT_URL=https://discord.gg/<invite>` to set it. Set
+`PINCHORA_SUPPORT_URL` to the same Discord invite for the `/info bot` card and `/status` page.
 
 The showcase cards and rooms are drawn by the bot's own renderer from sample data
 (`crates/pinchora-commands/src/landing_assets.rs`: the profile card with real backgrounds, badges, showcase tiles and

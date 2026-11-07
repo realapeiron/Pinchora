@@ -800,6 +800,11 @@
     "slice": 0
   },
   {
+    "legacy": "info bot",
+    "canonical": "info bot",
+    "slice": 0
+  },
+  {
     "legacy": "info channel",
     "canonical": "info channel",
     "slice": 0

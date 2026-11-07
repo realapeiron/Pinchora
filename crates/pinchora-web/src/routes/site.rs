@@ -84,6 +84,19 @@ pub async fn landing(State(state): State<WebState>, headers: HeaderMap) -> Json<
     Json(json!({ "stats": stats, "viewer": viewer }))
 }
 
+/// Public 30-second snapshot shared with `/info bot`.
+pub async fn status(State(state): State<WebState>) -> Json<pinchora_commands::status::PublicStatus> {
+    Json(
+        pinchora_commands::status::snapshot(
+            &state.app.db,
+            &state.app.cache,
+            state.app.application_id.get(),
+            &state.app.public_url,
+        )
+        .await,
+    )
+}
+
 /// `GET /invite`: sends the visitor to Discord's page for adding the bot, with the commands scope
 /// and the permissions it uses. A link on the site and in the README never goes stale.
 pub async fn invite(State(state): State<WebState>) -> Response {

@@ -932,3 +932,15 @@ async fn legacy_paths_and_server_aliases_redirect_with_localized_daily_notices()
     let (_, english) = sim.text(user, &[], "p!feeds list", &[]).await;
     assert!(english[0].content().contains("moved to `/setup feeds list`"));
 }
+
+#[tokio::test]
+async fn bot_status_text_aliases_use_info_card() {
+    let Some(mut sim) = Sim::new("bot_status_text_aliases_use_info_card").await else {
+        return;
+    };
+    let user = unique();
+    for command in ["p!botinfo", "p!stats bot", "p!status"] {
+        let reply = sim.text_one(user, &[], command, &[]).await;
+        assert_eq!(reply.files.len(), 1, "{command}: {reply}");
+    }
+}

@@ -137,6 +137,12 @@ pub(crate) fn usage(prefix: &str, path: &str, options: &[CommandOption], lang: L
 
 /// Whether the first word of `text` names one of the commands in `tree` (in any case, or by an alias).
 pub(crate) fn is_command(tree: &[Command], text: &str) -> bool {
+    if matches!(
+        text.trim().to_ascii_lowercase().as_str(),
+        "botinfo" | "status" | "stats bot"
+    ) {
+        return tree.iter().any(|command| command.name == "info");
+    }
     tokens(text)
         .first()
         .is_some_and(|first| command(tree, &first.text).is_some())
@@ -376,6 +382,12 @@ fn leaf<'a>(
 /// Reads `text` (the message after the prefix) as one of the commands in `tree`. `prefix` is only
 /// for the usage line, and `lang` for what is said when the call is wrong.
 pub(crate) fn parse<'a>(tree: &'a [Command], prefix: &str, text: &str, lang: Lang) -> Result<Parsed<'a>, Refusal> {
+    if matches!(
+        text.trim().to_ascii_lowercase().as_str(),
+        "botinfo" | "status" | "stats bot"
+    ) {
+        return parse(tree, prefix, "info bot", lang);
+    }
     let words = tokens(text);
     let Some(first) = words.first() else {
         return Err(Refusal::Unknown);
