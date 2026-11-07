@@ -449,3 +449,21 @@ async fn info_private_threads_apply_parent_permission_denials() {
         "{denied}"
     );
 }
+
+#[tokio::test]
+async fn bot_info_card_renders_in_english_and_turkish() {
+    let Some(mut sim) = Sim::new("bot_info_card_renders_in_english_and_turkish").await else {
+        return;
+    };
+    let user = unique();
+    let english = sim.command(user, "info", json!([sub("bot", vec![])])).await;
+    assert_eq!(english.files.len(), 1, "{english}");
+    assert_eq!(image::load_from_memory(&english.files[0].1).unwrap().width(), 900);
+    sim.app
+        .set_user_lang(user, Some(pinchora_core::i18n::Lang::Tr))
+        .await
+        .unwrap();
+    let turkish = sim.command(user, "info", json!([sub("bot", vec![])])).await;
+    assert_eq!(turkish.files.len(), 1, "{turkish}");
+    assert_ne!(english.files[0].1, turkish.files[0].1);
+}

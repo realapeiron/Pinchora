@@ -158,6 +158,7 @@ house visit
 hug
 info avatar
 info banner
+info bot
 info channel
 info emoji
 info invite

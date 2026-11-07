@@ -26,7 +26,7 @@ pub struct InfoCard {
 
 impl InfoCard {
     pub fn to_svg(&self) -> String {
-        let count = self.rows.len().min(9);
+        let count = self.rows.len().min(18);
         let columns = if count <= 4 { 2 } else { 3 };
         let lines = count.div_ceil(columns);
         let (w, h) = (900.0, 248.0 + lines as f32 * 112.0);
@@ -97,7 +97,7 @@ impl InfoCard {
             "start",
             "PINCHORA / DISCORD",
         );
-        for (index, row) in self.rows.iter().take(9).enumerate() {
+        for (index, row) in self.rows.iter().take(18).enumerate() {
             let row_columns = (count - (index / columns) * columns).min(columns);
             let tile_w = (836.0 - (row_columns - 1) as f32 * 12.0) / row_columns as f32;
             let x = 32.0 + (index % columns) as f32 * (tile_w + 12.0);

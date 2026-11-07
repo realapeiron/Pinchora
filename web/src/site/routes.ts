@@ -40,6 +40,14 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.8,
   },
   {
+    path: "/status",
+    title: "Bot status | Pinchora",
+    description:
+      "Live Pinchora bot status across Discord, including server reach, players, uptime and gateway shard latency.",
+    changefreq: "weekly",
+    priority: 0.5,
+  },
+  {
     path: "/stats",
     title: "Pinchora in numbers | Pinchora",
     description:

@@ -28,6 +28,7 @@ import { WelcomeImage } from "./pages/WelcomeImage";
 import { Landing } from "./site/Landing";
 import { SiteLayout } from "./site/SiteLayout";
 import { SiteNotFound } from "./site/SiteNotFound";
+import { StatusPage } from "./site/Status";
 
 // The public site (landing, commands, features, legal) sits under one layout, and the landing page is
 // the front door for everyone; the dashboard keeps its own paths. The rarer pages load on demand.
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
     element: <SiteLayout />,
     children: [
       { path: "/", element: <Landing /> },
+      { path: "/status", element: <StatusPage /> },
       {
         path: "/commands",
         lazy: async () => ({ Component: (await import("./site/Commands")).Commands }),

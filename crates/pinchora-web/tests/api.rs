@@ -3870,3 +3870,33 @@ async fn case_reason_edits_require_the_author_or_a_higher_moderator() {
 
 #[path = "api/command_control.rs"]
 mod command_control;
+
+#[tokio::test]
+async fn public_bot_status_has_safe_cached_numbers() {
+    let Some(h) = Harness::new("public_bot_status").await else {
+        return;
+    };
+    h.state.app.cache.forget("public:status:v1").await.unwrap();
+    let mut browser = h.browser();
+    let first = browser.get("/api/public/status").await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.text());
+    let body = first.json();
+    for key in [
+        "servers",
+        "approximate_members",
+        "players",
+        "rss_mb",
+        "postgres_mb",
+        "redis_mb",
+        "commands_24h",
+        "active_games",
+        "open_tickets",
+    ] {
+        assert!(body[key].as_u64().is_some(), "{key}: {body}");
+    }
+    assert!(body["shards"].is_array());
+    assert!(body["status_url"].as_str().unwrap().ends_with("/status"));
+    let raw = body.to_string().to_ascii_lowercase();
+    assert!(!raw.contains("postgres://") && !raw.contains("redis://") && !raw.contains("token"));
+    assert_eq!(browser.get("/api/public/status").await.json(), body);
+}

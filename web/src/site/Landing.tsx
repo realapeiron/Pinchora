@@ -15,12 +15,14 @@ import { PixelIcon } from "./PixelIcon";
 import { useCountUp, useInView } from "./motion";
 import { Reveal } from "./Reveal";
 import { useLanding } from "./useLanding";
+import { StatusTeaser } from "./Status";
 
 export function Landing() {
   return (
     <>
       <Hero />
       <Stats />
+      <StatusTeaser />
       <Reveal as="section" className="band" id="showcase">
         <div className="wrap">
           <SectionHead

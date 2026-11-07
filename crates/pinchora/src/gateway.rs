@@ -1,4 +1,8 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
@@ -148,6 +152,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
 
     let (stop, stopped) = watch::channel(false);
     let mut tasks = Vec::with_capacity(ids.len());
+    let process_shard_id = ids.first().map(|first| first.number());
     for id in ids {
         let mut builder = ConfigBuilder::from(base.clone());
         match app.cache.take_session(id.number()).await {
@@ -165,7 +170,13 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
             Err(error) => tracing::warn!(shard = id.number(), %error, "could not load saved session"),
         }
         let shard = Shard::with_config(id, builder.build());
-        tasks.push(tokio::spawn(run_shard(shard, app.clone(), stopped.clone())));
+        tasks.push(tokio::spawn(run_shard(
+            shard,
+            app.clone(),
+            stopped.clone(),
+            process_shard_id == Some(id.number()),
+            total,
+        )));
     }
     ready.set(true);
 
@@ -195,12 +206,32 @@ async fn run_shard(
     mut shard: Shard<RedisQueue>,
     app: Arc<App>,
     mut stopped: watch::Receiver<bool>,
+    process_shard: bool,
+    total: u32,
 ) -> (u32, Option<StoredSession>) {
     let id = shard.id().number();
     let flags = wanted_events();
     let mut closing = false;
+    let started = Instant::now();
+    let mut guilds: HashMap<u64, (u64, u64)> = HashMap::new();
+    let mut heartbeat = tokio::time::interval(Duration::from_secs(30));
     loop {
         tokio::select! {
+            _ = heartbeat.tick() => {
+                let health = pinchora_commands::status::ShardHealth {
+                    id,
+                    total,
+                    latency_ms: shard.latency().recent().first().map(|d| d.as_millis() as u64),
+                    guilds: guilds.len() as u64,
+                    members: guilds.values().map(|(members, _)| members).sum(),
+                    channels: guilds.values().map(|(_, channels)| channels).sum(),
+                    rss_mb: if process_shard { pinchora_commands::status::process_rss_mb() } else { 0 },
+                    uptime_seconds: started.elapsed().as_secs(),
+                };
+                if let Err(error) = pinchora_commands::status::publish_shard(&app.cache, &health).await {
+                    tracing::debug!(shard = id, %error, "status heartbeat failed");
+                }
+            }
             changed = stopped.changed(), if !closing => {
                 if changed.is_err() || *stopped.borrow() {
                     shard.close(CloseFrame::RESUME);
@@ -210,7 +241,18 @@ async fn run_shard(
             item = shard.next_event(flags) => match item {
                 None => break,
                 Some(Ok(Event::GatewayClose(_))) if closing => break,
-                Some(Ok(event)) => dispatch(&app, id, event),
+                Some(Ok(event)) => {
+                    match &event {
+                        Event::GuildCreate(event) => {
+                            if let twilight_model::gateway::payload::incoming::GuildCreate::Available(guild) = &**event {
+                                guilds.insert(guild.id.get(), (guild.approximate_member_count.or(guild.member_count).unwrap_or(0), guild.channels.len() as u64));
+                            }
+                        }
+                        Event::GuildDelete(event) => { guilds.remove(&event.id.get()); }
+                        _ => {}
+                    }
+                    dispatch(&app, id, event);
+                },
                 Some(Err(error)) => tracing::warn!(shard = id, %error, "gateway receive error"),
             },
         }

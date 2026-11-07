@@ -13,7 +13,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
     assert_eq!(tree.len(), 95);
-    assert_eq!(paths.len(), 330);
+    assert_eq!(paths.len(), 331);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     let actual: BTreeSet<_> = crate::commands::help::leaves(&registered, Lang::En)

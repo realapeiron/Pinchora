@@ -137,3 +137,62 @@ fn info_cards_match_goldens() {
         );
     }
 }
+
+#[test]
+fn bot_status_cards_match_goldens() {
+    for lang in [Lang::En, Lang::Tr] {
+        let tr = lang == Lang::Tr;
+        let rows = [
+            ("bot-servers", if tr { "1.234" } else { "1,234" }),
+            ("bot-members", if tr { "54.321" } else { "54,321" }),
+            ("bot-players", if tr { "28.456" } else { "28,456" }),
+            ("bot-channels", if tr { "8.390" } else { "8,390" }),
+            ("bot-shards", "8"),
+            ("bot-this-shard", "3"),
+            ("bot-latency", "42 ms"),
+            ("bot-uptime", "72h 14m"),
+            ("bot-version", "e814163 · 2026-11-07"),
+            ("bot-rust", "rustc 1.91.0"),
+            ("bot-memory", "480 MB"),
+            ("bot-postgres", if tr { "1.240 MB" } else { "1,240 MB" }),
+            ("bot-redis", "56 MB"),
+            ("bot-commands-24h", if tr { "12.345" } else { "12,345" }),
+            ("bot-commands-total", if tr { "3.456.789" } else { "3,456,789" }),
+            ("bot-interactions", "21"),
+            ("bot-games", "17"),
+            ("bot-tickets", "9"),
+        ];
+        let icon = pinchora_render::prepare_avatar(include_bytes!("../../../assets/brand/icon-256.png"), 160, Some(40))
+            .unwrap();
+        let card = InfoCard {
+            lang,
+            title: "Pinchora".into(),
+            subtitle: t!(lang, "info.bot"),
+            rows: rows
+                .iter()
+                .map(|(label, value)| row(&t!(lang, &format!("info.{label}")), value))
+                .collect(),
+            image: Some(icon),
+            theme: Theme::reef(),
+        };
+        let png = Renderer::new().svg_to_png(&card.to_svg()).unwrap();
+        let full = image::load_from_memory(&png).unwrap().to_rgba8();
+        let small = image::imageops::resize(&full, full.width() / 2, full.height() / 2, FilterType::Triangle);
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden").join(if tr {
+            "info-bot-tr.png"
+        } else {
+            "info-bot.png"
+        });
+        if std::env::var_os("PINCHORA_UPDATE_INFO_GOLDENS").is_some() {
+            small.save(&path).unwrap();
+        } else {
+            let golden = image::open(&path).unwrap().to_rgba8();
+            let off = differing(&golden, &small);
+            assert!(
+                off * 200 <= (small.width() * small.height()) as usize,
+                "{}: {off} pixels differ",
+                path.display()
+            );
+        }
+    }
+}
