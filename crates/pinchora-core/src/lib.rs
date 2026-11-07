@@ -21,6 +21,7 @@ pub mod tags;
 pub mod telemetry;
 pub mod temp_voice;
 pub mod tickets;
+pub mod utility;
 pub mod wrapped;
 
 pub use config::Config;

@@ -64,6 +64,7 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     crate::commands::achievements::on_message(app, msg.guild_id.expect("guild message").get(), msg.author.id.get())
         .await;
     // F19 AFK and sticky messages come after F1.
+    crate::utility::after_message(app, msg).await;
     // F15 AI characters answer mentions.
     Verdict::Continue
 }

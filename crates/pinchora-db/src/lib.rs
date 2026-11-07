@@ -49,6 +49,7 @@ mod tags;
 mod temp_voice;
 mod tickets;
 mod users;
+mod utility;
 mod xp;
 mod xp_admin;
 
@@ -128,6 +129,7 @@ pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
 pub use temp_voice::{CreatorSave, NewTempRoom, RoomMake, TempRoom, VoiceCreator};
 pub use tickets::*;
 pub use users::UserRow;
+pub use utility::{AfkRow, ScheduledRow, UtilityStickyRow};
 pub use xp::{MAX_XP_RULES, XpTarget};
 pub use xp_admin::XpEdit;
 

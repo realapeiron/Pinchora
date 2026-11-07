@@ -132,11 +132,12 @@ pub enum Module {
     AntiNuke,
     Birthdays,
     Achievements,
+    Utility,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 44] = [
+    pub const ALL: [Self; 45] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -181,6 +182,7 @@ impl Module {
         Self::AntiNuke,
         Self::Birthdays,
         Self::Achievements,
+        Self::Utility,
     ];
 
     /// The key stored in the database and used in the API.
@@ -230,6 +232,7 @@ impl Module {
             Self::AntiNuke => "anti_nuke",
             Self::Birthdays => "birthdays",
             Self::Achievements => "achievements",
+            Self::Utility => "utility",
         }
     }
 
@@ -283,6 +286,7 @@ impl Module {
             Self::AntiNuke => "Anti-nuke",
             Self::Birthdays => "Birthdays",
             Self::Achievements => "Achievements",
+            Self::Utility => "Messages",
         }
     }
 
@@ -353,6 +357,7 @@ impl Module {
             Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
             Self::AntiNuke => "Protect server structure, staff and VIP members.",
             Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",
+            Self::Utility => "AFK notices, sticky posts and scheduled messages.",
         }
     }
 
@@ -392,6 +397,7 @@ impl Module {
             Self::AntiNuke => Group::Safety,
             Self::Birthdays => Group::Community,
             Self::Achievements => Group::Players,
+            Self::Utility => Group::Server,
         }
     }
 
@@ -458,6 +464,7 @@ impl Module {
             "ticket" | "tickets" => Self::Tickets,
             "starboard" => Self::Starboard,
             "invites" | "inviteadmin" => Self::Invites,
+            "afk" | "sticky" | "schedule" => Self::Utility,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -520,6 +527,7 @@ impl Module {
             "sr" => Self::Starboard,
             "in" | "tl" => Self::Invites,
             "bd" => Self::Birthdays,
+            "af" | "sk" | "sm" => Self::Utility,
             _ => return None,
         })
     }

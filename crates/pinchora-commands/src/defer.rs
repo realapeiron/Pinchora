@@ -102,6 +102,9 @@ const PRIVATE: &[&str] = &[
     "verify",
     "verification",
     "raid",
+    "afk",
+    "sticky",
+    "schedule",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.
@@ -111,7 +114,7 @@ const OPENS_FORM: &[&str] = &["customcommand create", "customcommand edit"];
 /// checks that every modal it sees opened comes from one of these.
 const OPENS_MODAL: &[&str] = &[
     "ca:hex", "ca:name", "gb:s", "pz:m", "wo:g", "cs:h", "hl:w", "ac:w", "cn:w", "wx:g", "tk:o", "tk:s", "vc:lm",
-    "vc:rn", "cq:a",
+    "vc:rn", "cq:a", "sk:e", "sm:c",
 ];
 
 impl Deferral {

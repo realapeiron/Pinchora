@@ -72,6 +72,7 @@ pub(crate) mod tickets;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
+pub(crate) mod utility;
 pub(crate) mod verification;
 pub(crate) mod wordle;
 mod wrapped;
@@ -197,4 +198,7 @@ commands!(
     invites::InviteAdmin,
     birthdays::BirthdayCommand,
     birthdays::BirthdaysAdmin,
+    utility::AfkCommand,
+    utility::StickyCommand,
+    utility::ScheduleCommand,
 );

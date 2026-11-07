@@ -87,6 +87,8 @@ mod anti_nuke;
 mod automod;
 #[path = "simulate/moderation.rs"]
 mod moderation;
+#[path = "simulate/utility.rs"]
+mod utility;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
 #[path = "simulate/w9a.rs"]
 mod w9a;
@@ -12653,6 +12655,35 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        (
+            "sticky set",
+            json!([sub(
+                "set",
+                vec![channel_option("channel", channel), text_option("text", "note")]
+            )]),
+        ),
+        (
+            "sticky remove",
+            json!([sub("remove", vec![channel_option("channel", channel)])]),
+        ),
+        ("sticky show", json!([sub("show", vec![])])),
+        (
+            "schedule add",
+            json!([sub(
+                "add",
+                vec![
+                    channel_option("channel", channel),
+                    text_option("text", "note"),
+                    text_option("when", "2028-01-01T00:00:00Z")
+                ]
+            )]),
+        ),
+        ("schedule list", json!([sub("list", vec![])])),
+        ("schedule remove", json!([sub("remove", vec![int_option("id", 1)])])),
+        ("schedule pause", json!([sub("pause", vec![int_option("id", 1)])])),
+        ("schedule resume", json!([sub("resume", vec![int_option("id", 1)])])),
+        ("schedule run-now", json!([sub("run-now", vec![int_option("id", 1)])])),
+        ("schedule preview", json!([sub("preview", vec![int_option("id", 1)])])),
         ("birthdays settings", json!([sub("settings", vec![])])),
         ("birthdays preview", json!([sub("preview", vec![])])),
         (

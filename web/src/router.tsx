@@ -97,6 +97,7 @@ export const router = createBrowserRouter([
       { path: "starboard", lazy: async () => ({ Component: (await import("./pages/Starboard")).Starboard }) },
       { path: "invites", lazy: async () => ({ Component: (await import("./pages/Invites")).Invites }) },
       { path: "stats", lazy: async () => ({ Component: (await import("./pages/Stats")).Stats }) },
+      { path: "utility", lazy: async () => ({ Component: (await import("./pages/Utility")).Utility }) },
       {
         path: "achievements",
         lazy: async () => ({ Component: (await import("./pages/Achievements")).Achievements }),

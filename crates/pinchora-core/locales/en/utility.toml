@@ -1,0 +1,73 @@
+[module]
+utility = "Messages"
+[module-blurb]
+utility = "AFK notices, sticky posts and scheduled messages."
+[utility]
+pause-channel = "Paused: the channel was deleted."
+pause-permissions = "Paused: Pinchora no longer has the required channel permissions."
+pause-invalid = "Paused: edit the invalid recurrence."
+pause-uncertain = "Paused: delivery could not be confirmed. Check the channel before resuming to avoid a duplicate."
+timezone-notice = "IANA time zones follow daylight saving changes automatically."
+delivery-paused = "Paused: delivery failed or is uncertain. Check the channel and the dashboard before resuming."
+afk-member = "Member"
+afk-unsafe = "Use a reason without links, mentions or offensive language."
+guild-only = "Use this command in a server."
+manage-needed = "You need Manage Server to change messages."
+invalid = "Check the content, time and IANA time zone."
+saved = "Saved."
+removed = "Removed."
+missing = "That item no longer exists."
+full = "This server has 20/20 scheduled messages. Remove one first."
+paused = "Paused."
+resumed = "Resumed."
+empty = "There are no messages yet."
+afk-set = "You're now AFK: {reason}"
+afk-back = "Welcome back! Your AFK notice is off."
+afk-mention = "{names} {verb} AFK: {reasons}"
+afk-is = "is"
+afk-are = "are"
+afk-default = "Away"
+sticky-line = "{channel} · every {messages} messages / {seconds}s · {content}"
+schedule-line = "#{id} · {channel} · next <t:{when}:F> · {state} · {content}"
+on = "active"
+off = "paused"
+schedule-added = "Scheduled message #{id} saved."
+schedule-preview = "Next runs: {runs}"
+permission-send = "Pinchora needs Send Messages in that channel."
+permission-manage = "Pinchora needs Manage Messages in that channel."
+permission-mention = "You need Mention Everyone to save a message with broad pings."
+sticky-form-button = "Write a long sticky"
+schedule-form-button = "Create with form"
+sticky-form-title = "Sticky message"
+schedule-form-title = "Scheduled message"
+form-channel = "Channel ID"
+form-content = "Message text"
+form-messages = "After how many messages?"
+form-gap = "Minimum seconds between posts"
+form-when = "First run (RFC3339)"
+form-every = "once, daily, weekly, every:seconds or cron:…"
+form-tz = "IANA time zone, for example Europe/Istanbul"
+
+id-invalid = "Choose a valid Discord ID."
+
+permissions-unreadable = "Pinchora cannot read this channel's permissions."
+
+send-needed = "Pinchora needs Send Messages in this channel."
+
+manage-messages-needed = "Pinchora needs Manage Messages in this channel."
+
+timezone-invalid = "Use an IANA time zone such as Europe/Istanbul."
+
+content-empty = "Write a message or add an embed."
+
+sticky-limits = "Use up to 1000 characters, 1–1000 messages and a gap of 5–86400 seconds."
+
+schedule-invalid = "Choose a future time, valid recurrence and IANA time zone."
+
+content-limit = "Use up to 2000 characters."
+
+ping-permissions = "You and Pinchora need Mention Everyone to save broad pings."
+
+recurrence-invalid = "Invalid recurrence."
+
+preview-invalid = "Choose a valid recurrence and IANA time zone."

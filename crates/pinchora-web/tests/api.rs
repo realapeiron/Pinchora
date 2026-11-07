@@ -72,6 +72,8 @@ mod anti_nuke;
 mod birthdays;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
+#[path = "api/utility.rs"]
+mod utility;
 #[path = "api/verification.rs"]
 mod verification;
 mod xp_admin;

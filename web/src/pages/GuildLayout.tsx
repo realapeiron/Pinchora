@@ -25,6 +25,7 @@ export const NAV: NavGroup[] = [
       { to: "audit", label: "Audit log" },
       { to: "stats", label: "Stats" },
       { to: "invites", label: "Invites" },
+      { to: "utility", label: "Messages" },
     ],
   },
   {

@@ -153,6 +153,9 @@ pub(crate) const AREAS: &[Area] = &[
             "starboard",
             "invites",
             "inviteadmin",
+            "afk",
+            "sticky",
+            "schedule",
         ],
     },
     Area {
