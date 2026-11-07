@@ -755,8 +755,12 @@ async fn joining_a_creator_makes_a_room_and_the_last_one_out_deletes_it() {
         .execute(v.app.db.pool())
         .await
         .unwrap();
+    // The database is persistent and the sweep covers every guild, including earlier runs.
+    // Assert every deletion belonging to this mock guild, without counting unrelated rooms.
+    let ours: std::collections::BTreeSet<_> = v.world.lock().unwrap().channels.keys().copied().collect();
     pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
-    assert_eq!(v.deleted(), [room], "the empty room is removed by the fenced sweep");
+    let deleted: Vec<_> = v.deleted().into_iter().filter(|id| ours.contains(id)).collect();
+    assert_eq!(deleted, [room], "the empty room is removed by the fenced sweep");
     assert!(v.app.db.temp_room(room).await.unwrap().is_none());
     assert!(pinchora_commands::temp_voice_members(&v.app, room).await == 0);
 }
@@ -1420,7 +1424,7 @@ async fn voice_xp_is_still_paid_in_a_temp_room() {
     v.manage = true;
     let on = v
         .run(
-            "/config xp voice".into(),
+            "/setup leveling xp-voice".into(),
             admin,
             2,
             json!({ "id": unique().to_string(), "name": "config", "type": 1,

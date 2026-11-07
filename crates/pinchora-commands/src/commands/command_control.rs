@@ -122,7 +122,9 @@ impl CommandControl {
             Self::Set(c) => {
                 let rule = config
                     .rules
-                    .entry(c.command.trim().trim_start_matches('/').to_lowercase())
+                    .entry(
+                        crate::routing::canonical(&c.command.trim().trim_start_matches('/').to_lowercase()).to_owned(),
+                    )
                     .or_default();
                 if let Some(v) = c.enabled {
                     rule.enabled = v;
@@ -153,20 +155,28 @@ impl CommandControl {
                 }
             }
             Self::Reset(c) => {
-                config.rules.remove(c.command.trim().trim_start_matches('/'));
+                let path = c.command.trim().trim_start_matches('/').to_lowercase();
+                config.rules.remove(crate::routing::canonical(&path));
+                config.rules.remove(crate::routing::legacy(&path));
             }
             Self::Alias(c) => {
                 let name = c.name.trim().to_lowercase();
                 if let Some(path) = c.command {
-                    config
-                        .aliases
-                        .insert(name, path.trim().trim_start_matches('/').to_lowercase());
+                    config.aliases.insert(
+                        name,
+                        crate::routing::canonical(&path.trim().trim_start_matches('/').to_lowercase()).to_owned(),
+                    );
                 } else {
                     config.aliases.remove(&name);
                 }
             }
         }
-        if let Err(error) = config.validate(&crate::control_catalog(), &crate::command_reserved_aliases(), cx.lang()) {
+        if let Err(error) = config.validate_update(
+            &cx.app.db.command_control(guild).await?,
+            &crate::command_control::control_validation_catalog(),
+            &crate::command_reserved_aliases(),
+            cx.lang(),
+        ) {
             return cx.reply_ephemeral(error).await;
         }
         cx.app.db.set_command_control(guild, &config).await?;

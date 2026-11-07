@@ -1,4 +1,4 @@
-# /leaderboard and /wrapped: the replies, the board titles, and the words drawn on their cards.
+# /leaderboard and /info wrapped: the replies, the board titles, and the words drawn on their cards.
 # Card labels are drawn in capitals in a pixel font: keep them short.
 
 [leaderboard]

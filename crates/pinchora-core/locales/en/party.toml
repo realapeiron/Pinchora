@@ -1,6 +1,6 @@
 # The word and prompt party games (/party): the lobby they share, Hot Pearl, Acronym Tide, Caption the
 # Postcard, Wordle Race, Would You Rather and Truth or Dare, the cards they draw, /party stop and the
-# party settings in /config. Fixed card labels are in capitals where the card draws them as written.
+# party settings in /setup. Fixed card labels are in capitals where the card draws them as written.
 
 [party]
 expired-button = "This button has expired."
@@ -81,7 +81,7 @@ kept-changing = "The game kept changing. Try stopping it again in a moment!"
 
 [party.filter]
 strict = "**strict** · mild words and name-calling are blocked too"
-normal = "**normal** · strong words and slurs are blocked · `/config partygames strict:true` blocks more"
+normal = "**normal** · strong words and slurs are blocked · `/setup economy partygames strict:true` blocks more"
 says = "Party games filter: {summary}"
 
 [party.refused]
@@ -90,7 +90,7 @@ profane = "Let's keep it friendly: that one has a word this table doesn't allow.
 
 [party.gambling]
 denied = "Only members with Manage Server can switch gambling-style games."
-on = "🎲 Gambling-style games are **on**. Members can stake shells at the table with `/play shells` and on crabs with `/play derby bet`; there are daily limits on plays, wins and losses. Turn them off again with `/config gambling enabled:false`."
+on = "🎲 Gambling-style games are **on**. Members can stake shells at the table with `/play shells` and on crabs with `/play derby bet`; there are daily limits on plays, wins and losses. Turn them off again with `/setup economy gambling enabled:false`."
 off = "🎲 Gambling-style games are **off**. Nobody can stake shells on games of chance here."
 
 [party.vote]

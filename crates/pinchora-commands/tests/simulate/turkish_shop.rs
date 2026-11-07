@@ -406,7 +406,7 @@ async fn turkish_gifts_stalls_and_the_plaza() {
             && news
                 .content()
                 .contains(&format!("<@{member}>, meydana **{}** bağışladı", name_of(&donation)))
-            && news.content().contains("`/plaza edit`"),
+            && news.content().contains("`/setup community plaza-edit`"),
         "{}",
         news.content()
     );
@@ -421,7 +421,7 @@ async fn turkish_gifts_stalls_and_the_plaza() {
     let refused = sim.command(member, "plaza", json!([sub("edit", vec![])])).await;
     assert_eq!(
         refused.content(),
-        "Meydanı yalnızca sunucu yöneticileri düzenleyebilir."
+        pinchora_core::t!(pinchora_core::i18n::Lang::Tr, "config.needs-manage-server")
     );
     sim.permissions = MANAGE_GUILD;
     let editor = sim.command(manager, "plaza", json!([sub("edit", vec![])])).await;
@@ -540,7 +540,10 @@ async fn turkish_quests_points_and_the_store() {
     let denied = sim
         .command_resolved(buyer, "points", give(buyer, 100), resolved(&[buyer], &[]))
         .await;
-    assert_eq!(denied.content(), "Puan vermek için Sunucuyu Yönet iznin olmalı.");
+    assert_eq!(
+        denied.content(),
+        pinchora_core::t!(pinchora_core::i18n::Lang::Tr, "config.needs-manage-server")
+    );
     sim.permissions = MANAGE_GUILD;
     let given = sim
         .command_resolved(admin, "points", give(buyer, 100), resolved(&[buyer], &[]))
@@ -588,7 +591,7 @@ async fn turkish_quests_points_and_the_store() {
     );
     assert!(footer(&shown).contains(". sırada"), "{}", footer(&shown));
 
-    // The store: setup with /config store, the public listing, a refused purchase and a real one.
+    // The store: setup with /setup economy, the public listing, a refused purchase and a real one.
     let (vip_id, pricey_id) = (unique(), unique());
     let vip = sim.guild_role(vip_id, "VIP", 2);
     let pricey = sim.guild_role(pricey_id, "Whale", 3);

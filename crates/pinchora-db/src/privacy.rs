@@ -218,6 +218,7 @@ pub const OTHER_TABLES: &[&str] = &[
     "event_settings",
     "events",
     "command_control",
+    "command_permission_snapshots",
     "config_restore_points",
     "verification",
     "raid_settings",

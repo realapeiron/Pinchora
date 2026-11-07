@@ -11,7 +11,7 @@ invalid = "Check the emoji, colour, channel IDs and role weights. Weights must b
 saved = "Starboard #{id} now posts in {channel}."
 changed = "Starboard settings saved."
 removed = "Starboard removed."
-empty = "No starboards yet. Use /starboard setup."
+empty = "No starboards yet. Use /setup starboard setup."
 list-line = "#{id} · {emoji} **{name}** → {channel} · {threshold} stars"
 [starboard.post]
 title = "{board}"

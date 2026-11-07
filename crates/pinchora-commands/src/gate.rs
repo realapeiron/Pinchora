@@ -71,7 +71,7 @@ mod tests {
     /// Every `(command, subcommand)` a member can run, the subcommand being the first level below the command.
     fn runnable() -> Vec<(String, Option<String>)> {
         let mut found = Vec::new();
-        for Command { name, options, .. } in crate::command_definitions() {
+        for Command { name, options, .. } in crate::commands::legacy_definitions() {
             let subs: Vec<&CommandOption> = options
                 .iter()
                 .filter(|o| {
@@ -110,7 +110,10 @@ mod tests {
                 sub.as_deref().unwrap_or("")
             );
         }
-        let names: Vec<String> = crate::command_definitions().into_iter().map(|c| c.name).collect();
+        let names: Vec<String> = crate::commands::legacy_definitions()
+            .into_iter()
+            .map(|c| c.name)
+            .collect();
         for never in NEVER_GATED {
             assert!(names.iter().any(|n| n == never), "/{never} is not a command any more");
         }

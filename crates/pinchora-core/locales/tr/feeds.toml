@@ -1,4 +1,4 @@
-# Sosyal akışlar: /feeds, akış denetçisinin gönderdiği paylaşımlar ve panelin gösterdiği sorunlar.
+# Sosyal akışlar: /setup feeds, akış denetçisinin gönderdiği paylaşımlar ve panelin gösterdiği sorunlar.
 
 [module]
 feeds = "Sosyal akışlar"
@@ -8,13 +8,13 @@ name = "**#{id}** · {kind} · **{account}**"
 no-everyone = "Bir akış @everyone'ı etiketleyemez. Bir rol seç ya da rolü boş bırak."
 cannot-read = "Bunu takip edemiyorum: {why}"
 test-cannot-read = "Kaynağı şu an okuyamadım: {why}"
-full = "Bu sunucu zaten {max} akışı takip ediyor. Önce `/feeds remove` ile birini kaldır."
+full = "Bu sunucu zaten {max} akışı takip ediyor. Önce `/setup feeds remove` ile birini kaldır."
 duplicate = "Bu kaynak zaten {channel} kanalına gönderiliyor."
-added = "{name} artık {channel} kanalında takipte. {latest}\nYeni paylaşımlara yaklaşık {minutes} dakikada bir bakıyorum. Şimdi bir örnek görmek için `/feeds test {id}`, mesajı, kartı ya da süzgeçleri değiştirmek için `/feeds edit {id}` yaz."
+added = "{name} artık {channel} kanalında takipte. {latest}\nYeni paylaşımlara yaklaşık {minutes} dakikada bir bakıyorum. Şimdi bir örnek görmek için `/setup feeds test {id}`, mesajı, kartı ya da süzgeçleri değiştirmek için `/setup feeds edit {id}` yaz."
 added-latest = "Son paylaşımı: “{title}”."
 added-empty = "Henüz hiçbir şey paylaşmamış."
 list-title = "Akışlar ({count}/{max})"
-list-empty = "Bu sunucu henüz hiçbir akışı takip etmiyor. `/feeds add` ile ya da paneldeki Akışlar sayfasından ekleyebilirsin."
+list-empty = "Bu sunucu henüz hiçbir akışı takip etmiyor. `/setup feeds add` ile ya da paneldeki Akışlar sayfasından ekleyebilirsin."
 list-footer = "Sayfa {page} / {pages}"
 list-pings = " · {role} etiketlenir"
 previous = "Önceki"
@@ -22,7 +22,7 @@ next = "Sonraki"
 expired = "Bu düğmenin süresi doldu."
 slow-down = "Bir dakikada epey sorgu yapıldı. Biraz sonra yeniden dene."
 edit-nothing = "Değiştirilecek en az bir şey seç: kanal, mesaj, rol, kart, süzgeçler ya da açma/kapama."
-no-such = "Bu sunucuda #{id} numaralı bir akış yok. Numaraları `/feeds list` gösterir."
+no-such = "Bu sunucuda #{id} numaralı bir akış yok. Numaraları `/setup feeds list` gösterir."
 edited = "{name} kaydedildi. Yeni paylaşımlar {channel} kanalına gidecek."
 removed = "{name} artık takip edilmiyor."
 test-empty = "Kaynakta henüz gösterilecek bir şey yok, bu yüzden deneyemiyorum."
@@ -103,33 +103,6 @@ post-down = "Discord'a ulaşılamadı."
 
 # Discord'un listelediği komutlar için Türkçe açıklamalar (en fazla 100 karakter).
 [cmd]
-"feeds" = "Yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin"
-"feeds add" = "Bir kaynağı takip et ve yeni paylaşımları bir kanala gönder"
-"feeds add kind" = "Paylaşımlar nereden geliyor"
-"feeds add kind=YouTube" = "YouTube"
-"feeds add kind=RSS or podcast" = "RSS ya da podcast"
-"feeds add kind=Reddit" = "Reddit"
-"feeds add kind=Bluesky" = "Bluesky"
-"feeds add kind=X, Instagram or TikTok (bridge)" = "X, Instagram ya da TikTok (köprü)"
-"feeds add source" = "Kanal bağlantısı, @kullanıcıadı ya da kimlik; akış adresi; r/subreddit; Bluesky kullanıcı adı"
-"feeds add channel" = "Yeni paylaşımlar nereye gitsin"
-"feeds add message" = "Mesaj: {title} {url} {author} {account} {published} (varsayılan: her tür için bir tane)"
-"feeds add role" = "Her yeni paylaşımda etiketlenecek rol"
-"feeds list" = "Bu sunucunun takip ettiği akışlar ve durumları"
-"feeds edit" = "Bir akışın kanalını, mesajını, rolünü, kartını ya da süzgeçlerini değiştir"
-"feeds edit id" = "Akışın numarası (/feeds list'te yazar)"
-"feeds edit channel" = "Bundan sonra bu kanala gönder"
-"feeds edit message" = "Yeni mesaj; - yazarsan varsayılana döner"
-"feeds edit role" = "Her yeni paylaşımda bu rolü etiketle"
-"feeds edit no_role" = "Artık rol etiketleme"
-"feeds edit embed" = "Mesajın altına Pinchora kartını (başlık, resim, özet) ekle"
-"feeds edit include" = "Yalnızca bu kelimelerden biri geçen başlıklar, virgülle ayır; - temizler"
-"feeds edit exclude" = "Bu kelimeler geçen başlıkları hiç gönderme, virgülle ayır; - temizler"
-"feeds edit enabled" = "Akışı aç ya da kapat"
-"feeds test" = "Kaynağın son paylaşımını şimdi akışın kanalına gönder"
-"feeds test id" = "Akışın numarası (/feeds list'te yazar)"
-"feeds remove" = "Bir kaynağı takip etmeyi bırak"
-"feeds remove id" = "Akışın numarası (/feeds list'te yazar)"
 
 [feeds.api]
 off = "Kapalı."
@@ -157,7 +130,7 @@ ping-role = "Her yeni paylaşımda @{role} rolünü etiketler (denemede kimse et
 role = "rol"
 
 [module-blurb]
-feeds = "/feeds: yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin."
+feeds = "/setup feeds: yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin."
 
 [feeds.ui]
 social-feeds = "SOSYAL AKIŞLAR"

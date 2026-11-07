@@ -1,4 +1,4 @@
-# /tag, /customcommand and the checks on a custom command's text.
+# /tag, /setup commands and the checks on a custom command's text.
 
 [settings-error]
 tag-no-reply = "Write at least one reply."
@@ -26,8 +26,8 @@ role-needed = "That command is for members with a particular role."
 this-server = "this server"
 guild-only = "Custom commands live in servers."
 needs-manage = "You need the Manage Server permission to manage custom commands."
-none = "There is no custom command called `{name}`. See them with `/customcommand list`."
-exists = "`/tag {name}` already exists. Change it with `/customcommand edit`."
+none = "There is no custom command called `{name}`. See them with `/setup commands custom-list`."
+exists = "`/tag {name}` already exists. Change it with `/setup commands custom-edit`."
 full = "This server has {max} custom commands already, the most there can be. Remove one first."
 new-title = "New /tag {name}"
 edit-title = "Edit /tag {name}"
@@ -46,7 +46,7 @@ saved = "Saved `/tag {name}`."
 deleted = "Removed `/tag {name}`."
 list-used = " · used {count}×"
 list-off = " · **off**"
-list-empty = "No custom commands yet. Write one with `/customcommand create`."
+list-empty = "No custom commands yet. Write one with `/setup commands custom-create`."
 list-title = "Custom commands ({count}/{max})"
 list-page = "Page {page} of {pages}"
 previous = "Previous"

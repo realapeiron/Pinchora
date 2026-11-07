@@ -11,6 +11,11 @@ pub async fn publish(state: &WebState, what: Invalidation) {
         Invalidation::House(_) => {}
         Invalidation::Guild(guild) => state.app.forget_guild_settings(guild).await,
         Invalidation::XpRules(guild) => state.app.forget_xp_rules(guild).await,
+        Invalidation::Commands(application) => {
+            if application == state.app.application_id.get() {
+                state.app.forget_command_registration().await;
+            }
+        }
     }
     match state.app.cache.publish_invalidation(what).await {
         Ok(listeners) => tracing::debug!(?what, listeners, "invalidation published"),

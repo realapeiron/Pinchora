@@ -1,4 +1,4 @@
-# /tag, /customcommand and the checks on a custom command's text.
+# /tag, /setup commands and the checks on a custom command's text.
 
 [settings-error]
 tag-no-reply = "En az bir yanıt yaz."
@@ -26,8 +26,8 @@ role-needed = "Bu komut belirli bir role sahip üyeler için."
 this-server = "bu sunucu"
 guild-only = "Özel komutlar sunucularda yaşar."
 needs-manage = "Özel komutları yönetmek için Sunucuyu Yönet iznine ihtiyacın var."
-none = "`{name}` adında bir özel komut yok. Hepsini `/customcommand list` ile gör."
-exists = "`/tag {name}` zaten var. `/customcommand edit` ile değiştir."
+none = "`{name}` adında bir özel komut yok. Hepsini `/setup commands custom-list` ile gör."
+exists = "`/tag {name}` zaten var. `/setup commands custom-edit` ile değiştir."
 full = "Bu sunucuda zaten {max} özel komut var, bu olabilecek en yüksek sayı. Önce birini kaldır."
 new-title = "Yeni /tag {name}"
 edit-title = "/tag {name} düzenle"
@@ -46,7 +46,7 @@ saved = "`/tag {name}` kaydedildi."
 deleted = "`/tag {name}` kaldırıldı."
 list-used = " · {count} kez kullanıldı"
 list-off = " · **kapalı**"
-list-empty = "Henüz özel komut yok. `/customcommand create` ile bir tane yaz."
+list-empty = "Henüz özel komut yok. `/setup commands custom-create` ile bir tane yaz."
 list-title = "Özel komutlar ({count}/{max})"
 list-page = "Sayfa {page}/{pages}"
 previous = "Önceki"

@@ -74,7 +74,6 @@ declined = "Katılmıyorum"
 "event attendees id" = "Etkinlik numarası"
 "event remind" = "Etkinlik hatırlatmalarını yeniden ayarla"
 "event remind id" = "Etkinlik numarası"
-"event template" = "Etkinlik şablonunu ve oluşturma düğmesini göster"
 
 [events.web]
 disabled = "Etkinlikler burada kapalı."

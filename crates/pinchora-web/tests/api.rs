@@ -1651,7 +1651,7 @@ async fn settings_answer_with_the_field_and_the_command_sentence() {
     let errors = refused(&bad);
     assert_eq!(
         errors[0].1, "Colours look like `#ff6b4a`.",
-        "the /config welcome-card sentence"
+        "the /setup welcome card sentence"
     );
     let fields: Vec<&str> = errors.iter().map(|(f, _)| f.as_str()).collect();
     assert_eq!(
@@ -1687,7 +1687,7 @@ async fn settings_answer_with_the_field_and_the_command_sentence() {
     );
     assert_eq!(
         errors[4].1, "The least points per message can't be above the most.",
-        "the /config points sentence, checked against the stored maximum of 3"
+        "the /setup economy points-settings sentence, checked against the stored maximum of 3"
     );
 
     // Channels must be text or announcement channels that exist; the join role one the bot can give.
@@ -1808,7 +1808,7 @@ async fn xp_multipliers_follow_the_command_and_reach_the_bot() {
         .await;
     assert_eq!(wrong_kind.status, StatusCode::NOT_FOUND);
 
-    // 1 drops a rule, like `/config xp multiplier value:1`.
+    // 1 drops a rule, like `/setup leveling xp-multiplier value:1`.
     let normal = browser
         .write(
             Method::PUT,

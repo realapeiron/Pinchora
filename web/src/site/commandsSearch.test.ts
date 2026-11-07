@@ -35,8 +35,8 @@ const areas: CommandArea[] = [
     intro: "",
     commands: [
       {
-        path: "config welcome",
-        usage: "/config welcome",
+        path: "setup welcome message",
+        usage: "/setup welcome message",
         description: "Welcome cards (Manage Server)",
         manager: true,
         options: [],
@@ -101,13 +101,42 @@ describe("the committed command list", () => {
       filterAreas(catalog.areas, query, false).flatMap((a) => a.commands.map((c) => c.path));
     expect(found("/profile")).toContain("profile");
     expect(found("fish")).toContain("fish cast");
-    expect(found("welcome")).toContain("config welcome");
+    expect(found("welcome")).toContain("setup welcome message");
   });
 
   it("marks a command that needs Manage Server", () => {
     const managers = filterAreas(catalog.areas, "", true).flatMap((a) => a.commands);
     expect(managers.length).toBeGreaterThan(10);
-    expect(managers.some((c) => c.path === "config welcome")).toBe(true);
+    expect(managers.some((c) => c.path === "setup welcome message")).toBe(true);
     expect(managers.some((c) => c.path === "profile")).toBe(false);
   });
+});
+
+it("finds canonical commands by their old names without duplicate slash entries", () => {
+  const commands = catalog.areas.flatMap((a) => a.commands);
+  expect(commands).toHaveLength(330);
+  expect(new Set(commands.map((c) => c.path.split(" ")[0])).size).toBe(62);
+  for (const command of commands) {
+    for (const alias of command.aliases ?? []) {
+      expect(filterAreas(catalog.areas, alias, false).flatMap((a) => a.commands)).toContain(command);
+      expect(commands.some((c) => c.path === alias)).toBe(false);
+    }
+  }
+});
+
+it("includes every quick game in the canonical catalog", () => {
+  const paths = catalog.areas.flatMap((a) => a.commands.map((c) => c.path));
+  for (const path of [
+    "play memory",
+    "play minesweeper",
+    "play higherlower",
+    "play anagram",
+    "play typing",
+    "play guessnumber",
+    "duel othello",
+    "party nhie",
+    "party fun",
+  ]) {
+    expect(paths).toContain(path);
+  }
 });

@@ -297,7 +297,7 @@ function CounterChannels({ guild }: { guild: string }) {
       <p className="muted panel-lead">
         A channel whose name shows a live number, like <strong>Members: 1,234</strong>. Pinchora renames it
         when the number changes, at most once every 10 minutes. A locked voice channel works best. Same as{" "}
-        <code>/counters</code> in Discord.
+        <code>/setup stats</code> in Discord.
       </p>
       {query.isPending && <Loading label="Reading the counters" />}
       {query.isError && <Problem error={query.error} />}

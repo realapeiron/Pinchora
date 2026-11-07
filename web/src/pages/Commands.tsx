@@ -34,7 +34,7 @@ export function Commands() {
         lead={
           <>
             Commands your members run with <code>/tag</code>: a reply, an embed, a role to give. You can also
-            write simple ones in Discord with <code>/customcommand</code>.
+            write simple ones in Discord with <code>/setup commands</code>.
           </>
         }
         action={

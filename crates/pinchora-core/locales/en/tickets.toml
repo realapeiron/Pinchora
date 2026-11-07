@@ -1,4 +1,4 @@
-# Tickets: /ticket, /tickets, the panels, the controls inside a ticket, the log, the transcript page.
+# Tickets: /ticket, /setup tickets, the panels, the controls inside a ticket, the log, the transcript page.
 
 [module]
 tickets = "Tickets"
@@ -93,7 +93,7 @@ thread = "I can't open private threads in {channel}: I need **Create Private Thr
 manage = "I can't change {channel}: I need **Manage Channels** and **Manage Roles** there (**Manage Threads** for a thread)."
 post = "I can't post in {channel}: I need View Channel, Send Messages and Embed Links there."
 gone = "That channel no longer exists."
-full = "This server has 500 channels, Discord's limit. Switch tickets to private threads with `/tickets settings mode`."
+full = "This server has 500 channels, Discord's limit. Switch tickets to private threads with `/setup tickets settings mode`."
 refused = "Discord refused that."
 unreachable = "Discord could not be reached. Try again in a moment."
 history = "I couldn't read this ticket's messages: I need **Read Message History** here."
@@ -125,17 +125,17 @@ staff-only = "Only the ticket's staff can do that."
 default-title = "Need help?"
 default-description = "Press the button below and a private ticket opens, just for you and the staff."
 default-topic = "Open a ticket"
-no-panel = "There is no panel called **{panel}**. `/tickets panel list` shows them."
+no-panel = "There is no panel called **{panel}**. `/setup tickets panel-list` shows them."
 full = "A server has at most {max} panels. Delete one first."
 name-taken = "Another panel is already called **{name}**."
 color = "Colours look like `#ff6b4a`."
-created = "Panel **{name}** is ready. Post it in {channel} with `/tickets panel post`."
+created = "Panel **{name}** is ready. Post it in {channel} with `/setup tickets panel-post`."
 edited = "Panel **{name}** is saved. If it is posted, post it again to update it."
 posted = "Panel **{name}** is up: {link}"
 updated = "Panel **{name}** was updated in place: {link}"
 deleted = "Panel **{name}** is deleted. Its tickets stay."
 list-title = "Ticket panels ({count}/{max})"
-list-empty = "No panels yet. Make one with `/tickets panel create`."
+list-empty = "No panels yet. Make one with `/setup tickets panel-create`."
 list-open = { one = "1 ticket is open right now.", other = "{count} tickets are open right now." }
 list-posted = "Posted in {channel}"
 list-draft = "Not posted yet (for {channel})"
@@ -199,4 +199,4 @@ embeds = { one = "1 embed", other = "{count} embeds" }
 already-closed = "This ticket is already closed."
 
 [module-blurb]
-tickets = "/ticket and /tickets: private support tickets opened from a panel, with transcripts."
+tickets = "/ticket and /setup tickets: private support tickets opened from a panel, with transcripts."

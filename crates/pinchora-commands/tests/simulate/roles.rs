@@ -288,7 +288,7 @@ fn custom(id: u64, name: &str) -> Value {
     json!({ "id": id.to_string(), "name": name, "animated": false })
 }
 
-/// `/autoroles add` for `role` with more options.
+/// `/setup roles auto-add` for `role` with more options.
 fn add_auto(role: &Value, extra: Vec<Value>) -> Value {
     let mut options = vec![role_option("role", role)];
     options.extend(extra);
@@ -1554,12 +1554,16 @@ async fn colour_roles_are_one_at_a_time_and_made_on_demand() {
         off.content()
     );
     assert!(
-        !off.content().contains("/color setup"),
+        !off.content().contains("/setup roles color-setup"),
         "members are not told how to switch it on"
     );
     sim.permissions = MANAGE_GUILD;
     let off = sim.command(admin, "color", json!([sub("pick", vec![])])).await;
-    assert!(off.content().contains("/color setup enabled:true"), "{}", off.content());
+    assert!(
+        off.content().contains("/setup roles color-setup enabled:true"),
+        "{}",
+        off.content()
+    );
     let denied = {
         sim.permissions = 0;
         sim.command(

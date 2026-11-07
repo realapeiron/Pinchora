@@ -1,4 +1,4 @@
-//! Custom commands and auto-responders through the real handlers: written with `/customcommand`'s forms,
+//! Custom commands and auto-responders through the real handlers: written with `/setup commands`'s forms,
 //! run with `/tag` (autocomplete, cooldowns, restrictions, actions), and the responders that answer joins,
 //! leaves, level-ups, role changes and keywords.
 
@@ -68,7 +68,7 @@ fn manage(sub_command: Value) -> Value {
     json!([sub_command])
 }
 
-/// What Discord would suggest while `typed` is in the `name` box of `/tag` or `/customcommand <sub_command>`.
+/// What Discord would suggest while `typed` is in the `name` box of `/tag` or `/setup commands <sub_command>`.
 async fn suggest(sim: &Sim, user: u64, command: &str, sub_command: Option<&str>, typed: &str) -> Vec<String> {
     let focused = json!({ "name": "name", "type": 3, "value": typed, "focused": true });
     let options = match sub_command {

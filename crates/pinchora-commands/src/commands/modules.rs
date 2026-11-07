@@ -357,19 +357,19 @@ mod tests {
     fn module_option(sub: &str) -> twilight_model::application::command::CommandOption {
         let config = crate::command_definitions()
             .into_iter()
-            .find(|c| c.name == "config")
-            .expect("/config is registered");
+            .find(|c| c.name == "setup")
+            .expect("/setup is registered");
         let modules = config
             .options
             .iter()
-            .find(|o| o.name == "modules")
-            .expect("/config modules");
+            .find(|o| o.name == "server")
+            .expect("/setup server");
         let sub = modules
             .options
             .as_deref()
             .unwrap_or_default()
             .iter()
-            .find(|o| o.name == sub)
+            .find(|o| o.name == format!("modules-{sub}"))
             .expect("subcommand");
         sub.options
             .as_deref()

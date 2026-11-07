@@ -1,0 +1,1652 @@
+[
+  {
+    "legacy": "achievementadmin add",
+    "canonical": "setup achievements add",
+    "slice": 8
+  },
+  {
+    "legacy": "achievementadmin edit",
+    "canonical": "setup achievements edit",
+    "slice": 8
+  },
+  {
+    "legacy": "achievementadmin grant",
+    "canonical": "setup achievements grant",
+    "slice": 8
+  },
+  {
+    "legacy": "achievementadmin list",
+    "canonical": "setup achievements list",
+    "slice": 8
+  },
+  {
+    "legacy": "achievementadmin remove",
+    "canonical": "setup achievements remove",
+    "slice": 8
+  },
+  {
+    "legacy": "achievements",
+    "canonical": "achievements",
+    "slice": 0
+  },
+  {
+    "legacy": "afk set",
+    "canonical": "afk set",
+    "slice": 0
+  },
+  {
+    "legacy": "antinuke disable",
+    "canonical": "setup antinuke disable",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke enable",
+    "canonical": "setup antinuke enable",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke events",
+    "canonical": "setup antinuke events",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke limits",
+    "canonical": "setup antinuke limits",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke status",
+    "canonical": "setup antinuke status",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke trust add",
+    "canonical": "setup antinuke trust-add",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke trust remove",
+    "canonical": "setup antinuke trust-remove",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke vip add",
+    "canonical": "setup antinuke vip-add",
+    "slice": 6
+  },
+  {
+    "legacy": "antinuke vip remove",
+    "canonical": "setup antinuke vip-remove",
+    "slice": 6
+  },
+  {
+    "legacy": "automod exempt channel",
+    "canonical": "setup automod exempt-channel",
+    "slice": 6
+  },
+  {
+    "legacy": "automod exempt role",
+    "canonical": "setup automod exempt-role",
+    "slice": 6
+  },
+  {
+    "legacy": "automod profile",
+    "canonical": "setup automod profile",
+    "slice": 6
+  },
+  {
+    "legacy": "automod show",
+    "canonical": "setup automod show",
+    "slice": 6
+  },
+  {
+    "legacy": "automod test",
+    "canonical": "setup automod test",
+    "slice": 6
+  },
+  {
+    "legacy": "automod toggle",
+    "canonical": "setup automod toggle",
+    "slice": 6
+  },
+  {
+    "legacy": "autoroles add",
+    "canonical": "setup roles auto-add",
+    "slice": 5
+  },
+  {
+    "legacy": "autoroles list",
+    "canonical": "setup roles auto-list",
+    "slice": 5
+  },
+  {
+    "legacy": "autoroles remove",
+    "canonical": "setup roles auto-remove",
+    "slice": 5
+  },
+  {
+    "legacy": "autoroles sticky",
+    "canonical": "setup roles auto-sticky",
+    "slice": 5
+  },
+  {
+    "legacy": "backup export",
+    "canonical": "setup backup export",
+    "slice": 11
+  },
+  {
+    "legacy": "backup import",
+    "canonical": "setup backup import",
+    "slice": 11
+  },
+  {
+    "legacy": "backup list",
+    "canonical": "setup backup list",
+    "slice": 11
+  },
+  {
+    "legacy": "backup restore",
+    "canonical": "setup backup restore",
+    "slice": 11
+  },
+  {
+    "legacy": "balance",
+    "canonical": "balance",
+    "slice": 0
+  },
+  {
+    "legacy": "ban",
+    "canonical": "ban",
+    "slice": 0
+  },
+  {
+    "legacy": "beachcomb",
+    "canonical": "beachcomb",
+    "slice": 0
+  },
+  {
+    "legacy": "bio",
+    "canonical": "customize bio",
+    "slice": 10
+  },
+  {
+    "legacy": "birthday list",
+    "canonical": "birthday list",
+    "slice": 0
+  },
+  {
+    "legacy": "birthday me",
+    "canonical": "birthday me",
+    "slice": 0
+  },
+  {
+    "legacy": "birthday next",
+    "canonical": "birthday next",
+    "slice": 0
+  },
+  {
+    "legacy": "birthday remove",
+    "canonical": "birthday remove",
+    "slice": 0
+  },
+  {
+    "legacy": "birthday set",
+    "canonical": "birthday set",
+    "slice": 0
+  },
+  {
+    "legacy": "birthday view",
+    "canonical": "birthday view",
+    "slice": 0
+  },
+  {
+    "legacy": "birthdays preview",
+    "canonical": "setup birthdays preview",
+    "slice": 8
+  },
+  {
+    "legacy": "birthdays settings",
+    "canonical": "setup birthdays settings",
+    "slice": 8
+  },
+  {
+    "legacy": "case",
+    "canonical": "mod case",
+    "slice": 9
+  },
+  {
+    "legacy": "character",
+    "canonical": "character",
+    "slice": 0
+  },
+  {
+    "legacy": "color list",
+    "canonical": "color list",
+    "slice": 0
+  },
+  {
+    "legacy": "color pick",
+    "canonical": "color pick",
+    "slice": 0
+  },
+  {
+    "legacy": "color remove",
+    "canonical": "color remove",
+    "slice": 0
+  },
+  {
+    "legacy": "color set",
+    "canonical": "color set",
+    "slice": 0
+  },
+  {
+    "legacy": "color setup",
+    "canonical": "setup roles color-setup",
+    "slice": 5
+  },
+  {
+    "legacy": "commandcontrol alias",
+    "canonical": "setup commands alias",
+    "slice": 11
+  },
+  {
+    "legacy": "commandcontrol reset",
+    "canonical": "setup commands reset",
+    "slice": 11
+  },
+  {
+    "legacy": "commandcontrol set",
+    "canonical": "setup commands set",
+    "slice": 11
+  },
+  {
+    "legacy": "commandcontrol show",
+    "canonical": "setup commands show",
+    "slice": 11
+  },
+  {
+    "legacy": "config critters",
+    "canonical": "setup economy critters",
+    "slice": 4
+  },
+  {
+    "legacy": "config gambling",
+    "canonical": "setup economy gambling",
+    "slice": 4
+  },
+  {
+    "legacy": "config goodbye",
+    "canonical": "setup welcome goodbye",
+    "slice": 3
+  },
+  {
+    "legacy": "config join-role",
+    "canonical": "setup roles join-role",
+    "slice": 5
+  },
+  {
+    "legacy": "config language",
+    "canonical": "setup server language",
+    "slice": 3
+  },
+  {
+    "legacy": "config level-roles add",
+    "canonical": "setup leveling roles-add",
+    "slice": 4
+  },
+  {
+    "legacy": "config level-roles list",
+    "canonical": "setup leveling roles-list",
+    "slice": 4
+  },
+  {
+    "legacy": "config level-roles mode",
+    "canonical": "setup leveling roles-mode",
+    "slice": 4
+  },
+  {
+    "legacy": "config level-roles remove",
+    "canonical": "setup leveling roles-remove",
+    "slice": 4
+  },
+  {
+    "legacy": "config level-roles sync",
+    "canonical": "setup leveling roles-sync",
+    "slice": 4
+  },
+  {
+    "legacy": "config leveling",
+    "canonical": "setup leveling settings",
+    "slice": 4
+  },
+  {
+    "legacy": "config log",
+    "canonical": "setup moderation log",
+    "slice": 3
+  },
+  {
+    "legacy": "config log-events",
+    "canonical": "setup moderation log-events",
+    "slice": 3
+  },
+  {
+    "legacy": "config log-ignore",
+    "canonical": "setup moderation log-ignore",
+    "slice": 3
+  },
+  {
+    "legacy": "config moderation",
+    "canonical": "setup moderation settings",
+    "slice": 3
+  },
+  {
+    "legacy": "config modules channels",
+    "canonical": "setup server modules-channels",
+    "slice": 3
+  },
+  {
+    "legacy": "config modules show",
+    "canonical": "setup server modules-show",
+    "slice": 3
+  },
+  {
+    "legacy": "config modules toggle",
+    "canonical": "setup server modules-toggle",
+    "slice": 3
+  },
+  {
+    "legacy": "config partygames",
+    "canonical": "setup economy partygames",
+    "slice": 4
+  },
+  {
+    "legacy": "config points",
+    "canonical": "setup economy points-settings",
+    "slice": 4
+  },
+  {
+    "legacy": "config prefix reset",
+    "canonical": "setup server prefix-reset",
+    "slice": 3
+  },
+  {
+    "legacy": "config prefix set",
+    "canonical": "setup server prefix-set",
+    "slice": 3
+  },
+  {
+    "legacy": "config prefix show",
+    "canonical": "setup server prefix-show",
+    "slice": 3
+  },
+  {
+    "legacy": "config rep-roles add",
+    "canonical": "setup economy rep-roles-add",
+    "slice": 4
+  },
+  {
+    "legacy": "config rep-roles list",
+    "canonical": "setup economy rep-roles-list",
+    "slice": 4
+  },
+  {
+    "legacy": "config rep-roles remove",
+    "canonical": "setup economy rep-roles-remove",
+    "slice": 4
+  },
+  {
+    "legacy": "config show",
+    "canonical": "setup server show",
+    "slice": 3
+  },
+  {
+    "legacy": "config store add",
+    "canonical": "setup economy store-add",
+    "slice": 4
+  },
+  {
+    "legacy": "config store list",
+    "canonical": "setup economy store-list",
+    "slice": 4
+  },
+  {
+    "legacy": "config store remove",
+    "canonical": "setup economy store-remove",
+    "slice": 4
+  },
+  {
+    "legacy": "config suggestions",
+    "canonical": "setup community suggestions",
+    "slice": 8
+  },
+  {
+    "legacy": "config surge",
+    "canonical": "setup economy surge",
+    "slice": 4
+  },
+  {
+    "legacy": "config warn-ladder",
+    "canonical": "setup moderation warn-ladder",
+    "slice": 3
+  },
+  {
+    "legacy": "config welcome",
+    "canonical": "setup welcome message",
+    "slice": 3
+  },
+  {
+    "legacy": "config welcome-card",
+    "canonical": "setup welcome card",
+    "slice": 3
+  },
+  {
+    "legacy": "config xp clear",
+    "canonical": "setup leveling xp-clear",
+    "slice": 4
+  },
+  {
+    "legacy": "config xp multiplier",
+    "canonical": "setup leveling xp-multiplier",
+    "slice": 4
+  },
+  {
+    "legacy": "config xp show",
+    "canonical": "setup leveling xp-show",
+    "slice": 4
+  },
+  {
+    "legacy": "config xp voice",
+    "canonical": "setup leveling xp-voice",
+    "slice": 4
+  },
+  {
+    "legacy": "counters add",
+    "canonical": "setup stats counter-add",
+    "slice": 7
+  },
+  {
+    "legacy": "counters list",
+    "canonical": "setup stats counter-list",
+    "slice": 7
+  },
+  {
+    "legacy": "counters remove",
+    "canonical": "setup stats counter-remove",
+    "slice": 7
+  },
+  {
+    "legacy": "crabpot",
+    "canonical": "crabpot",
+    "slice": 0
+  },
+  {
+    "legacy": "critterdrop",
+    "canonical": "critterdrop",
+    "slice": 0
+  },
+  {
+    "legacy": "customcommand create",
+    "canonical": "setup commands custom-create",
+    "slice": 11
+  },
+  {
+    "legacy": "customcommand delete",
+    "canonical": "setup commands custom-delete",
+    "slice": 11
+  },
+  {
+    "legacy": "customcommand edit",
+    "canonical": "setup commands custom-edit",
+    "slice": 11
+  },
+  {
+    "legacy": "customcommand info",
+    "canonical": "setup commands custom-info",
+    "slice": 11
+  },
+  {
+    "legacy": "customcommand list",
+    "canonical": "setup commands custom-list",
+    "slice": 11
+  },
+  {
+    "legacy": "customize background",
+    "canonical": "customize background",
+    "slice": 0
+  },
+  {
+    "legacy": "customize badges",
+    "canonical": "customize badges",
+    "slice": 0
+  },
+  {
+    "legacy": "customize showcase",
+    "canonical": "customize showcase",
+    "slice": 0
+  },
+  {
+    "legacy": "customize style",
+    "canonical": "customize style",
+    "slice": 0
+  },
+  {
+    "legacy": "customize title",
+    "canonical": "customize title",
+    "slice": 0
+  },
+  {
+    "legacy": "daily",
+    "canonical": "daily",
+    "slice": 0
+  },
+  {
+    "legacy": "dex",
+    "canonical": "dex",
+    "slice": 0
+  },
+  {
+    "legacy": "duel checkers",
+    "canonical": "duel checkers",
+    "slice": 0
+  },
+  {
+    "legacy": "duel chess",
+    "canonical": "duel chess",
+    "slice": 0
+  },
+  {
+    "legacy": "duel connect4",
+    "canonical": "duel connect4",
+    "slice": 0
+  },
+  {
+    "legacy": "duel othello",
+    "canonical": "duel othello",
+    "slice": 0
+  },
+  {
+    "legacy": "duel rps",
+    "canonical": "duel rps",
+    "slice": 0
+  },
+  {
+    "legacy": "duel seafleet",
+    "canonical": "duel seafleet",
+    "slice": 0
+  },
+  {
+    "legacy": "duel share",
+    "canonical": "duel share",
+    "slice": 0
+  },
+  {
+    "legacy": "duel tictactoe",
+    "canonical": "duel tictactoe",
+    "slice": 0
+  },
+  {
+    "legacy": "event attendees",
+    "canonical": "event attendees",
+    "slice": 0
+  },
+  {
+    "legacy": "event cancel",
+    "canonical": "event cancel",
+    "slice": 0
+  },
+  {
+    "legacy": "event create",
+    "canonical": "event create",
+    "slice": 0
+  },
+  {
+    "legacy": "event edit",
+    "canonical": "event edit",
+    "slice": 0
+  },
+  {
+    "legacy": "event list",
+    "canonical": "event list",
+    "slice": 0
+  },
+  {
+    "legacy": "event remind",
+    "canonical": "event remind",
+    "slice": 0
+  },
+  {
+    "legacy": "event template",
+    "canonical": "setup events template",
+    "slice": 8
+  },
+  {
+    "legacy": "feeds add",
+    "canonical": "setup feeds add",
+    "slice": 7
+  },
+  {
+    "legacy": "feeds edit",
+    "canonical": "setup feeds edit",
+    "slice": 7
+  },
+  {
+    "legacy": "feeds list",
+    "canonical": "setup feeds list",
+    "slice": 7
+  },
+  {
+    "legacy": "feeds remove",
+    "canonical": "setup feeds remove",
+    "slice": 7
+  },
+  {
+    "legacy": "feeds test",
+    "canonical": "setup feeds test",
+    "slice": 7
+  },
+  {
+    "legacy": "fish book",
+    "canonical": "fish book",
+    "slice": 0
+  },
+  {
+    "legacy": "fish cast",
+    "canonical": "fish cast",
+    "slice": 0
+  },
+  {
+    "legacy": "fish gear",
+    "canonical": "fish gear",
+    "slice": 0
+  },
+  {
+    "legacy": "fish sell",
+    "canonical": "fish sell",
+    "slice": 0
+  },
+  {
+    "legacy": "fish shop",
+    "canonical": "fish shop",
+    "slice": 0
+  },
+  {
+    "legacy": "friends add",
+    "canonical": "friends add",
+    "slice": 0
+  },
+  {
+    "legacy": "friends list",
+    "canonical": "friends list",
+    "slice": 0
+  },
+  {
+    "legacy": "friends remove",
+    "canonical": "friends remove",
+    "slice": 0
+  },
+  {
+    "legacy": "gift",
+    "canonical": "gift",
+    "slice": 0
+  },
+  {
+    "legacy": "give",
+    "canonical": "give",
+    "slice": 0
+  },
+  {
+    "legacy": "giveaway end",
+    "canonical": "giveaway end",
+    "slice": 0
+  },
+  {
+    "legacy": "giveaway list",
+    "canonical": "giveaway list",
+    "slice": 0
+  },
+  {
+    "legacy": "giveaway reroll",
+    "canonical": "giveaway reroll",
+    "slice": 0
+  },
+  {
+    "legacy": "giveaway start",
+    "canonical": "giveaway start",
+    "slice": 0
+  },
+  {
+    "legacy": "help",
+    "canonical": "help",
+    "slice": 0
+  },
+  {
+    "legacy": "highfive",
+    "canonical": "highfive",
+    "slice": 0
+  },
+  {
+    "legacy": "house contest enter",
+    "canonical": "house contest enter",
+    "slice": 0
+  },
+  {
+    "legacy": "house contest view",
+    "canonical": "house contest view",
+    "slice": 0
+  },
+  {
+    "legacy": "house contest vote",
+    "canonical": "house contest vote",
+    "slice": 0
+  },
+  {
+    "legacy": "house contest winners",
+    "canonical": "house contest winners",
+    "slice": 0
+  },
+  {
+    "legacy": "house decorate",
+    "canonical": "house decorate",
+    "slice": 0
+  },
+  {
+    "legacy": "house edit",
+    "canonical": "house edit",
+    "slice": 0
+  },
+  {
+    "legacy": "house guestbook",
+    "canonical": "house guestbook",
+    "slice": 0
+  },
+  {
+    "legacy": "house like",
+    "canonical": "house like",
+    "slice": 0
+  },
+  {
+    "legacy": "house lock",
+    "canonical": "house lock",
+    "slice": 0
+  },
+  {
+    "legacy": "house upgrade",
+    "canonical": "house upgrade",
+    "slice": 0
+  },
+  {
+    "legacy": "house view",
+    "canonical": "house view",
+    "slice": 0
+  },
+  {
+    "legacy": "house visit",
+    "canonical": "house visit",
+    "slice": 0
+  },
+  {
+    "legacy": "hug",
+    "canonical": "hug",
+    "slice": 0
+  },
+  {
+    "legacy": "info avatar",
+    "canonical": "info avatar",
+    "slice": 0
+  },
+  {
+    "legacy": "info banner",
+    "canonical": "info banner",
+    "slice": 0
+  },
+  {
+    "legacy": "info channel",
+    "canonical": "info channel",
+    "slice": 0
+  },
+  {
+    "legacy": "info emoji",
+    "canonical": "info emoji",
+    "slice": 0
+  },
+  {
+    "legacy": "info invite",
+    "canonical": "info invite",
+    "slice": 0
+  },
+  {
+    "legacy": "info members",
+    "canonical": "info members",
+    "slice": 0
+  },
+  {
+    "legacy": "info role",
+    "canonical": "info role",
+    "slice": 0
+  },
+  {
+    "legacy": "info server",
+    "canonical": "info server",
+    "slice": 0
+  },
+  {
+    "legacy": "info user",
+    "canonical": "info user",
+    "slice": 0
+  },
+  {
+    "legacy": "inventory",
+    "canonical": "inventory",
+    "slice": 0
+  },
+  {
+    "legacy": "inviteadmin bonus-add",
+    "canonical": "setup invites bonus-add",
+    "slice": 7
+  },
+  {
+    "legacy": "inviteadmin bonus-remove",
+    "canonical": "setup invites bonus-remove",
+    "slice": 7
+  },
+  {
+    "legacy": "inviteadmin post",
+    "canonical": "setup invites post",
+    "slice": 7
+  },
+  {
+    "legacy": "inviteadmin reward-add",
+    "canonical": "setup invites reward-add",
+    "slice": 7
+  },
+  {
+    "legacy": "inviteadmin reward-remove",
+    "canonical": "setup invites reward-remove",
+    "slice": 7
+  },
+  {
+    "legacy": "inviteadmin settings",
+    "canonical": "setup invites settings",
+    "slice": 7
+  },
+  {
+    "legacy": "invites temp",
+    "canonical": "invites temp",
+    "slice": 0
+  },
+  {
+    "legacy": "invites top",
+    "canonical": "invites top",
+    "slice": 0
+  },
+  {
+    "legacy": "invites user",
+    "canonical": "invites user",
+    "slice": 0
+  },
+  {
+    "legacy": "kick",
+    "canonical": "kick",
+    "slice": 0
+  },
+  {
+    "legacy": "language set",
+    "canonical": "language set",
+    "slice": 0
+  },
+  {
+    "legacy": "leaderboard",
+    "canonical": "leaderboard",
+    "slice": 0
+  },
+  {
+    "legacy": "lock",
+    "canonical": "mod lock",
+    "slice": 9
+  },
+  {
+    "legacy": "monthly",
+    "canonical": "rewards monthly",
+    "slice": 10
+  },
+  {
+    "legacy": "nick",
+    "canonical": "mod nick",
+    "slice": 9
+  },
+  {
+    "legacy": "partner leave",
+    "canonical": "partner leave",
+    "slice": 0
+  },
+  {
+    "legacy": "partner propose",
+    "canonical": "partner propose",
+    "slice": 0
+  },
+  {
+    "legacy": "partner view",
+    "canonical": "partner view",
+    "slice": 0
+  },
+  {
+    "legacy": "party acronym",
+    "canonical": "party acronym",
+    "slice": 0
+  },
+  {
+    "legacy": "party fun",
+    "canonical": "party fun",
+    "slice": 0
+  },
+  {
+    "legacy": "party hotpearl",
+    "canonical": "party hotpearl",
+    "slice": 0
+  },
+  {
+    "legacy": "party nhie",
+    "canonical": "party nhie",
+    "slice": 0
+  },
+  {
+    "legacy": "party postcard",
+    "canonical": "party postcard",
+    "slice": 0
+  },
+  {
+    "legacy": "party stop",
+    "canonical": "party stop",
+    "slice": 0
+  },
+  {
+    "legacy": "party truthordare",
+    "canonical": "party truthordare",
+    "slice": 0
+  },
+  {
+    "legacy": "party wordrace",
+    "canonical": "party wordrace",
+    "slice": 0
+  },
+  {
+    "legacy": "party wouldyourrather",
+    "canonical": "party wouldyourrather",
+    "slice": 0
+  },
+  {
+    "legacy": "pat",
+    "canonical": "pat",
+    "slice": 0
+  },
+  {
+    "legacy": "pet adopt",
+    "canonical": "pet adopt",
+    "slice": 0
+  },
+  {
+    "legacy": "pet capsule",
+    "canonical": "pet capsule",
+    "slice": 0
+  },
+  {
+    "legacy": "pet list",
+    "canonical": "pet list",
+    "slice": 0
+  },
+  {
+    "legacy": "pet rename",
+    "canonical": "pet rename",
+    "slice": 0
+  },
+  {
+    "legacy": "pet trip claim",
+    "canonical": "pet trip claim",
+    "slice": 0
+  },
+  {
+    "legacy": "pet trip go",
+    "canonical": "pet trip go",
+    "slice": 0
+  },
+  {
+    "legacy": "pet view",
+    "canonical": "pet view",
+    "slice": 0
+  },
+  {
+    "legacy": "ping",
+    "canonical": "ping",
+    "slice": 0
+  },
+  {
+    "legacy": "play 2048",
+    "canonical": "play 2048",
+    "slice": 0
+  },
+  {
+    "legacy": "play anagram",
+    "canonical": "play anagram",
+    "slice": 0
+  },
+  {
+    "legacy": "play derby",
+    "canonical": "play derby",
+    "slice": 0
+  },
+  {
+    "legacy": "play guessnumber",
+    "canonical": "play guessnumber",
+    "slice": 0
+  },
+  {
+    "legacy": "play hangman",
+    "canonical": "play hangman",
+    "slice": 0
+  },
+  {
+    "legacy": "play heist",
+    "canonical": "play heist",
+    "slice": 0
+  },
+  {
+    "legacy": "play higherlower",
+    "canonical": "play higherlower",
+    "slice": 0
+  },
+  {
+    "legacy": "play memory",
+    "canonical": "play memory",
+    "slice": 0
+  },
+  {
+    "legacy": "play minesweeper",
+    "canonical": "play minesweeper",
+    "slice": 0
+  },
+  {
+    "legacy": "play picross",
+    "canonical": "play picross",
+    "slice": 0
+  },
+  {
+    "legacy": "play shells",
+    "canonical": "play shells",
+    "slice": 0
+  },
+  {
+    "legacy": "play stats",
+    "canonical": "play stats",
+    "slice": 0
+  },
+  {
+    "legacy": "play trivia",
+    "canonical": "play trivia",
+    "slice": 0
+  },
+  {
+    "legacy": "play typing",
+    "canonical": "play typing",
+    "slice": 0
+  },
+  {
+    "legacy": "play wordle",
+    "canonical": "play wordle",
+    "slice": 0
+  },
+  {
+    "legacy": "plaza donate",
+    "canonical": "plaza donate",
+    "slice": 0
+  },
+  {
+    "legacy": "plaza edit",
+    "canonical": "setup community plaza-edit",
+    "slice": 8
+  },
+  {
+    "legacy": "plaza view",
+    "canonical": "plaza view",
+    "slice": 0
+  },
+  {
+    "legacy": "points give",
+    "canonical": "setup economy points-give",
+    "slice": 4
+  },
+  {
+    "legacy": "points show",
+    "canonical": "points show",
+    "slice": 0
+  },
+  {
+    "legacy": "points take",
+    "canonical": "setup economy points-take",
+    "slice": 4
+  },
+  {
+    "legacy": "poll",
+    "canonical": "poll",
+    "slice": 0
+  },
+  {
+    "legacy": "privacy",
+    "canonical": "privacy",
+    "slice": 0
+  },
+  {
+    "legacy": "profile",
+    "canonical": "profile",
+    "slice": 0
+  },
+  {
+    "legacy": "purge",
+    "canonical": "purge",
+    "slice": 0
+  },
+  {
+    "legacy": "quests",
+    "canonical": "quests",
+    "slice": 0
+  },
+  {
+    "legacy": "raid lockdown",
+    "canonical": "mod raid lockdown",
+    "slice": 9
+  },
+  {
+    "legacy": "raid status",
+    "canonical": "mod raid status",
+    "slice": 9
+  },
+  {
+    "legacy": "raid unlock",
+    "canonical": "mod raid unlock",
+    "slice": 9
+  },
+  {
+    "legacy": "rank",
+    "canonical": "rank",
+    "slice": 0
+  },
+  {
+    "legacy": "reason",
+    "canonical": "mod reason",
+    "slice": 9
+  },
+  {
+    "legacy": "remind cancel",
+    "canonical": "remind cancel",
+    "slice": 0
+  },
+  {
+    "legacy": "remind list",
+    "canonical": "remind list",
+    "slice": 0
+  },
+  {
+    "legacy": "remind me in",
+    "canonical": "remind me in",
+    "slice": 0
+  },
+  {
+    "legacy": "remind me when",
+    "canonical": "remind me when",
+    "slice": 0
+  },
+  {
+    "legacy": "rep",
+    "canonical": "rep",
+    "slice": 0
+  },
+  {
+    "legacy": "role add",
+    "canonical": "mod role add",
+    "slice": 9
+  },
+  {
+    "legacy": "role remove",
+    "canonical": "mod role remove",
+    "slice": 9
+  },
+  {
+    "legacy": "roles add",
+    "canonical": "setup roles panel-add",
+    "slice": 5
+  },
+  {
+    "legacy": "roles panel",
+    "canonical": "setup roles panel-create",
+    "slice": 5
+  },
+  {
+    "legacy": "roles post",
+    "canonical": "setup roles panel-post",
+    "slice": 5
+  },
+  {
+    "legacy": "roles remove",
+    "canonical": "setup roles panel-remove",
+    "slice": 5
+  },
+  {
+    "legacy": "roles temp",
+    "canonical": "setup roles panel-temp",
+    "slice": 5
+  },
+  {
+    "legacy": "schedule add",
+    "canonical": "setup utility schedule-add",
+    "slice": 8
+  },
+  {
+    "legacy": "schedule list",
+    "canonical": "setup utility schedule-list",
+    "slice": 8
+  },
+  {
+    "legacy": "schedule pause",
+    "canonical": "setup utility schedule-pause",
+    "slice": 8
+  },
+  {
+    "legacy": "schedule preview",
+    "canonical": "setup utility schedule-preview",
+    "slice": 8
+  },
+  {
+    "legacy": "schedule remove",
+    "canonical": "setup utility schedule-remove",
+    "slice": 8
+  },
+  {
+    "legacy": "schedule resume",
+    "canonical": "setup utility schedule-resume",
+    "slice": 8
+  },
+  {
+    "legacy": "schedule run-now",
+    "canonical": "setup utility schedule-run-now",
+    "slice": 8
+  },
+  {
+    "legacy": "shop catalog",
+    "canonical": "shop catalog",
+    "slice": 0
+  },
+  {
+    "legacy": "shop market",
+    "canonical": "shop market",
+    "slice": 0
+  },
+  {
+    "legacy": "slowmode",
+    "canonical": "mod slowmode",
+    "slice": 9
+  },
+  {
+    "legacy": "stall manage",
+    "canonical": "stall manage",
+    "slice": 0
+  },
+  {
+    "legacy": "stall sell",
+    "canonical": "stall sell",
+    "slice": 0
+  },
+  {
+    "legacy": "stall view",
+    "canonical": "stall view",
+    "slice": 0
+  },
+  {
+    "legacy": "starboard edit",
+    "canonical": "setup starboard edit",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard list",
+    "canonical": "setup starboard list",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard remove",
+    "canonical": "setup starboard remove",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard setup",
+    "canonical": "setup starboard setup",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard top",
+    "canonical": "setup starboard top",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard votes add",
+    "canonical": "setup starboard votes-add",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard votes list",
+    "canonical": "setup starboard votes-list",
+    "slice": 7
+  },
+  {
+    "legacy": "starboard votes remove",
+    "canonical": "setup starboard votes-remove",
+    "slice": 7
+  },
+  {
+    "legacy": "stats channel",
+    "canonical": "stats channel",
+    "slice": 0
+  },
+  {
+    "legacy": "stats me",
+    "canonical": "stats me",
+    "slice": 0
+  },
+  {
+    "legacy": "stats server",
+    "canonical": "stats server",
+    "slice": 0
+  },
+  {
+    "legacy": "sticky remove",
+    "canonical": "setup utility sticky-remove",
+    "slice": 8
+  },
+  {
+    "legacy": "sticky set",
+    "canonical": "setup utility sticky-set",
+    "slice": 8
+  },
+  {
+    "legacy": "sticky show",
+    "canonical": "setup utility sticky-show",
+    "slice": 8
+  },
+  {
+    "legacy": "store",
+    "canonical": "store",
+    "slice": 0
+  },
+  {
+    "legacy": "suggest",
+    "canonical": "suggest",
+    "slice": 0
+  },
+  {
+    "legacy": "suggestion approve",
+    "canonical": "mod suggestion approve",
+    "slice": 9
+  },
+  {
+    "legacy": "suggestion deny",
+    "canonical": "mod suggestion deny",
+    "slice": 9
+  },
+  {
+    "legacy": "surge",
+    "canonical": "surge",
+    "slice": 0
+  },
+  {
+    "legacy": "tag",
+    "canonical": "tag",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket add",
+    "canonical": "ticket add",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket claim",
+    "canonical": "ticket claim",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket close",
+    "canonical": "ticket close",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket move",
+    "canonical": "ticket move",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket remove",
+    "canonical": "ticket remove",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket rename",
+    "canonical": "ticket rename",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket reopen",
+    "canonical": "ticket reopen",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket transcript",
+    "canonical": "ticket transcript",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket unclaim",
+    "canonical": "ticket unclaim",
+    "slice": 0
+  },
+  {
+    "legacy": "tickets panel create",
+    "canonical": "setup tickets panel-create",
+    "slice": 5
+  },
+  {
+    "legacy": "tickets panel delete",
+    "canonical": "setup tickets panel-delete",
+    "slice": 5
+  },
+  {
+    "legacy": "tickets panel edit",
+    "canonical": "setup tickets panel-edit",
+    "slice": 5
+  },
+  {
+    "legacy": "tickets panel list",
+    "canonical": "setup tickets panel-list",
+    "slice": 5
+  },
+  {
+    "legacy": "tickets panel post",
+    "canonical": "setup tickets panel-post",
+    "slice": 5
+  },
+  {
+    "legacy": "tickets settings",
+    "canonical": "setup tickets settings",
+    "slice": 5
+  },
+  {
+    "legacy": "timeout",
+    "canonical": "timeout",
+    "slice": 0
+  },
+  {
+    "legacy": "unban",
+    "canonical": "mod unban",
+    "slice": 9
+  },
+  {
+    "legacy": "unlock",
+    "canonical": "mod unlock",
+    "slice": 9
+  },
+  {
+    "legacy": "untimeout",
+    "canonical": "mod untimeout",
+    "slice": 9
+  },
+  {
+    "legacy": "unwarn",
+    "canonical": "mod unwarn",
+    "slice": 9
+  },
+  {
+    "legacy": "verification message",
+    "canonical": "setup verification message",
+    "slice": 6
+  },
+  {
+    "legacy": "verification mode",
+    "canonical": "setup verification mode",
+    "slice": 6
+  },
+  {
+    "legacy": "verification post",
+    "canonical": "setup verification post",
+    "slice": 6
+  },
+  {
+    "legacy": "verification setup",
+    "canonical": "setup verification setup",
+    "slice": 6
+  },
+  {
+    "legacy": "verify",
+    "canonical": "verify",
+    "slice": 0
+  },
+  {
+    "legacy": "voice claim",
+    "canonical": "voice claim",
+    "slice": 0
+  },
+  {
+    "legacy": "voice creators add",
+    "canonical": "setup utility voice-add",
+    "slice": 5
+  },
+  {
+    "legacy": "voice creators list",
+    "canonical": "setup utility voice-list",
+    "slice": 5
+  },
+  {
+    "legacy": "voice creators remove",
+    "canonical": "setup utility voice-remove",
+    "slice": 5
+  },
+  {
+    "legacy": "voice hide",
+    "canonical": "voice hide",
+    "slice": 0
+  },
+  {
+    "legacy": "voice invite",
+    "canonical": "voice invite",
+    "slice": 0
+  },
+  {
+    "legacy": "voice kick",
+    "canonical": "voice kick",
+    "slice": 0
+  },
+  {
+    "legacy": "voice limit",
+    "canonical": "voice limit",
+    "slice": 0
+  },
+  {
+    "legacy": "voice lock",
+    "canonical": "voice lock",
+    "slice": 0
+  },
+  {
+    "legacy": "voice panel",
+    "canonical": "voice panel",
+    "slice": 0
+  },
+  {
+    "legacy": "voice rename",
+    "canonical": "voice rename",
+    "slice": 0
+  },
+  {
+    "legacy": "voice show",
+    "canonical": "voice show",
+    "slice": 0
+  },
+  {
+    "legacy": "voice transfer",
+    "canonical": "voice transfer",
+    "slice": 0
+  },
+  {
+    "legacy": "voice unlock",
+    "canonical": "voice unlock",
+    "slice": 0
+  },
+  {
+    "legacy": "warn",
+    "canonical": "warn",
+    "slice": 0
+  },
+  {
+    "legacy": "warnings",
+    "canonical": "mod warnings",
+    "slice": 9
+  },
+  {
+    "legacy": "wave",
+    "canonical": "wave",
+    "slice": 0
+  },
+  {
+    "legacy": "weekly",
+    "canonical": "rewards weekly",
+    "slice": 10
+  },
+  {
+    "legacy": "wrapped",
+    "canonical": "info wrapped",
+    "slice": 10
+  },
+  {
+    "legacy": "xp add",
+    "canonical": "setup leveling xp-add",
+    "slice": 4
+  },
+  {
+    "legacy": "xp import mee6",
+    "canonical": "setup leveling xp-import-mee6",
+    "slice": 4
+  },
+  {
+    "legacy": "xp remove",
+    "canonical": "setup leveling xp-remove",
+    "slice": 4
+  },
+  {
+    "legacy": "xp reset",
+    "canonical": "setup leveling xp-reset",
+    "slice": 4
+  },
+  {
+    "legacy": "xp reset-all",
+    "canonical": "setup leveling xp-reset-all",
+    "slice": 4
+  },
+  {
+    "legacy": "xp set",
+    "canonical": "setup leveling xp-set",
+    "slice": 4
+  }
+]

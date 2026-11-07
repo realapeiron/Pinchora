@@ -56,6 +56,11 @@
 "ui.deny" = "Engelli"
 "ui.staff_checks" = "Bu komutun yerleşik yetkili izin kontrolleri uygulanmaya devam eder."
 
+"ui.migration" = "Eski komut kuralları ve kısayollar yeni yolları takip eder. Taşınan kısıtlamalar birlikte uygulanır; değiştirmek için kuralı sıfırla. Komut güncellemesinden sonra Sunucu Ayarları → Entegrasyonlar bölümünü kontrol et."
+
+"ui.migrated_constraints" = "Taşınan bu kısıtlamalar da uygulanır. Sıfırla bunları temizler; Kaydet yeni kuralı uygular."
+"ui.reset" = "Kuralı sıfırla"
+
 [module]
 command_control = "Komut denetimi"
 [module-blurb]

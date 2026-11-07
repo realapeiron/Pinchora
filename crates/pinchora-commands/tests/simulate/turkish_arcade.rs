@@ -111,7 +111,7 @@ async fn a_staked_turkish_derby_is_refused_until_gambling_is_on_and_the_janitor_
     let (host, a, b, c, broke) = (unique(), unique(), unique(), unique(), unique());
     let off = open_derby(&mut sim, host, Some(40)).await;
     assert!(
-        off.ephemeral && off.content().contains("**kapalı**") && off.content().contains("/config gambling"),
+        off.ephemeral && off.content().contains("**kapalı**") && off.content().contains("/setup economy gambling"),
         "{}",
         off.content()
     );

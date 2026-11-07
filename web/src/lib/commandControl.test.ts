@@ -9,7 +9,7 @@ const commands: ControlCommand[] = [
     ephemeral_supported: false,
   },
   {
-    path: "backup",
+    path: "setup backup",
     description: "Export configuration",
     permissions: "32",
     protected: true,
@@ -19,7 +19,7 @@ const commands: ControlCommand[] = [
 describe("command control discovery", () => {
   it("searches command paths and descriptions without case or surrounding-space sensitivity", () => {
     expect(filteredCommands(commands, " WORDLE ").map((c) => c.path)).toEqual(["play wordle"]);
-    expect(filteredCommands(commands, "configuration").map((c) => c.path)).toEqual(["backup"]);
+    expect(filteredCommands(commands, "configuration").map((c) => c.path)).toEqual(["setup backup"]);
     expect(filteredCommands(commands, "missing")).toEqual([]);
   });
   it("leaves built-in permissions and cooldowns authoritative by default", () => {

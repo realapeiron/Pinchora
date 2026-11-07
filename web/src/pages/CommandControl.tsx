@@ -36,6 +36,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
   return (
     <div className="settings-page command-control-page">
       <PageHead title={t("ui.title")} lead={t("ui.lead")} />
+      <p className="muted">{t("ui.migration")}</p>
       <Field label={t("ui.search")} htmlFor="command-search">
         <input
           id="command-search"
@@ -329,6 +330,30 @@ function CommandDrawer({
           </label>
           {!command.ephemeral_supported && <p className="muted">{t("no_ephemeral")}</p>}
         </fieldset>
+        {Object.keys(rule.constraints ?? {}).length > 0 && (
+          <div className="notice">
+            <p>{t("ui.migrated_constraints")}</p>
+            {Object.entries(rule.constraints ?? {}).map(([path, inherited]) => (
+              <p key={path}>
+                <code>/{path}</code>: {t(inherited.enabled ? "ui.enabled" : "disabled")}
+                {(["allowed_roles", "denied_roles", "allowed_channels", "denied_channels"] as const).map(
+                  (field) =>
+                    inherited[field].length > 0
+                      ? ` · ${t(`ui.${field}`)}: ${inherited[field].join(", ")}`
+                      : "",
+                )}
+              </p>
+            ))}
+            <PixelButton
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => setRule(defaultRule())}
+            >
+              {t("ui.reset")}
+            </PixelButton>
+          </div>
+        )}
         {error && (
           <p className="field-error" role="alert">
             {error}

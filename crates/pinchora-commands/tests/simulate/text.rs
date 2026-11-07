@@ -306,17 +306,13 @@ async fn text_commands_run_the_slash_handlers() {
     );
     assert!(gear.components.is_empty());
 
-    // The server's settings stay slash-only: a reply would show them to the whole channel.
+    // Members cannot open setup actions, including through old multi-token paths.
     let settings = sim.text_one(unique(), &[], "p!config show", &[]).await;
-    assert_eq!(
-        settings.content(),
-        "This one only works as a slash command: use `/config show`."
-    );
+    assert!(settings.content().contains("Manage Server"));
+    assert!(settings.content().contains("/setup server show"));
     let settings = sim.text_one(unique(), &[], "<@1> config prefix set z!", &[]).await;
-    assert_eq!(
-        settings.content(),
-        "This one only works as a slash command: use `/config prefix set`."
-    );
+    assert!(settings.content().contains("Manage Server"));
+    assert!(settings.content().contains("/setup server prefix-set"));
 
     // Just the mention: how to start.
     let hello = sim.text_one(unique(), &[], BOT_MENTION, &[]).await;
@@ -424,9 +420,10 @@ async fn text_commands_keep_permissions_and_modules() {
     );
     // Even a manager cannot read or change the server's settings from the channel.
     let settings = sim.text_one(manager, &[staff], "z!config show", &[]).await;
-    assert_eq!(
-        settings.content(),
-        "This one only works as a slash command: use `/config show`."
+    assert!(
+        settings
+            .content()
+            .starts_with("This one only works as a slash command: use `/setup server show`.")
     );
 
     // The slash command sees the prefix, and refuses what the shared rule refuses.
@@ -501,7 +498,7 @@ async fn the_text_commands_module_switches_them_off_by_server_and_channel() {
         .text_one(manager, &[staff], &format!("{BOT_MENTION} profile"), &[])
         .await;
     assert!(
-        way_back.content().contains("**Text commands**") && way_back.content().contains("/config modules"),
+        way_back.content().contains("**Text commands**") && way_back.content().contains("/setup server"),
         "{}",
         way_back.content()
     );
@@ -826,7 +823,7 @@ async fn private_text_answers_are_deleted_when_the_bot_shuts_down() {
 }
 
 /// A message carries no Discord language: a text command answers in the member's `/language` pick,
-/// else the server's default, else English; `/config prefix` follows the interaction's language.
+/// else the server's default, else English; `/setup server` follows the interaction's language.
 #[tokio::test]
 async fn text_commands_answer_in_the_members_or_the_servers_language() {
     use pinchora_core::i18n::Lang;
@@ -882,7 +879,7 @@ async fn text_commands_answer_in_the_members_or_the_servers_language() {
     let usage = sim.text_one(picker, &[], "p!duel connect4", &[]).await;
     assert!(usage.content().starts_with("`user` is missing."), "{}", usage.content());
 
-    // `/config prefix` is answered in the language of the interaction.
+    // `/setup server` is answered in the language of the interaction.
     sim.locale = "tr";
     sim.permissions = MANAGE_GUILD;
     let shown = sim
@@ -901,4 +898,37 @@ async fn text_commands_answer_in_the_members_or_the_servers_language() {
         )
         .await;
     assert_eq!(bad.content(), "Önekte boşluk, @, # ya da ters tırnak olamaz.");
+}
+
+#[tokio::test]
+async fn legacy_paths_and_server_aliases_redirect_with_localized_daily_notices() {
+    use pinchora_core::{command_control::Config, i18n::Lang};
+    let Some(mut sim) = Sim::new("legacy_prefix_paths").await else {
+        return;
+    };
+    let user = unique();
+    sim.own_server(user);
+    sim.channel_is(sim.channel, 0, None);
+    sim.app.set_user_lang(user, Some(Lang::Tr)).await.unwrap();
+    let (ran, replies) = sim.text(user, &[], "p!config xp voice", &[]).await;
+    assert!(ran);
+    assert_eq!(replies.len(), 1);
+    assert!(replies[0].content().contains("/setup leveling xp-voice"));
+    assert!(replies[0].content().contains("artık"));
+    assert!(!replies[0].content().contains("Your shortcut"));
+    let (_, again) = sim.text(user, &[], "p!config xp voice", &[]).await;
+    assert!(!again[0].content().contains("artık"));
+    let config = Config {
+        aliases: [("panel".into(), "tickets panel list".into())].into(),
+        ..Config::default()
+    };
+    sim.app.db.set_command_control(sim.guild, &config).await.unwrap();
+    sim.app.announce_guild_change(sim.guild).await;
+    let (_, alias) = sim.text(user, &[], "p!panel", &[]).await;
+    assert!(alias[0].content().contains("/setup tickets panel-list"));
+    assert!(alias[0].files.is_empty());
+    assert!(alias[0].components.is_empty());
+    sim.app.set_user_lang(user, Some(Lang::En)).await.unwrap();
+    let (_, english) = sim.text(user, &[], "p!feeds list", &[]).await;
+    assert!(english[0].content().contains("moved to `/setup feeds list`"));
 }

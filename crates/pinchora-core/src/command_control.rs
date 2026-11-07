@@ -7,7 +7,16 @@ pub const MAX_ALIASES: usize = 50;
 pub const PROTECTED: &[&str] = &[
     "commandcontrol",
     "backup",
-    "config",
+    "config show",
+    "config modules",
+    "config prefix",
+    "config language",
+    "setup server",
+    "setup commands show",
+    "setup commands set",
+    "setup commands reset",
+    "setup commands alias",
+    "setup backup",
     "help",
     "ping",
     "privacy",
@@ -15,9 +24,19 @@ pub const PROTECTED: &[&str] = &[
     "remind",
 ];
 
+/// Recovery paths are protected individually; unrelated setup actions remain policy-controlled.
+pub fn protected(path: &str) -> bool {
+    PROTECTED
+        .iter()
+        .any(|p| path == *p || path.strip_prefix(p).is_some_and(|s| s.starts_with(' ')))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct Rule {
+    /// Independent migrated parent/leaf restrictions, keyed by their original path.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub constraints: BTreeMap<String, Rule>,
     pub enabled: bool,
     pub allowed_roles: Vec<String>,
     pub denied_roles: Vec<String>,
@@ -31,6 +50,7 @@ pub struct Rule {
 impl Default for Rule {
     fn default() -> Self {
         Self {
+            constraints: BTreeMap::new(),
             enabled: true,
             allowed_roles: vec![],
             denied_roles: vec![],
@@ -81,6 +101,9 @@ impl Denial {
 }
 impl Rule {
     pub fn check(&self, roles: &[String], lineage: &[String]) -> Result<(), Denial> {
+        for rule in self.constraints.values() {
+            rule.check(roles, lineage)?;
+        }
         let intersects = |a: &[String], b: &[String]| a.iter().any(|id| b.contains(id));
         if !self.enabled {
             return Err(Denial::Disabled);
@@ -108,7 +131,7 @@ impl Config {
         })
     }
     pub fn check(&self, path: &str, roles: &[String], lineage: &[String]) -> Result<(), Denial> {
-        if PROTECTED.contains(&path.split(' ').next().unwrap_or(path)) {
+        if protected(path) {
             return Ok(());
         }
         for (_, rule) in self.matching(path) {
@@ -125,37 +148,64 @@ impl Config {
             None => text.to_owned(),
         }
     }
+    /// Existing aliases that collide with a newly shipped root keep their text meaning.
+    /// Editing an unrelated rule must not delete them; new collisions are still rejected.
+    pub fn validate_update(
+        &self,
+        previous: &Self,
+        commands: &[Command],
+        reserved: &[&str],
+        lang: Lang,
+    ) -> Result<(), String> {
+        let mut check = self.clone();
+        check.aliases.retain(|name, target| {
+            !(previous.aliases.get(name) == Some(target)
+                && commands.iter().any(|c| &c.path == target)
+                && (reserved.contains(&name.as_str())
+                    || commands.iter().any(|c| c.path.split(' ').next() == Some(name))))
+        });
+        if self.aliases.len() > MAX_ALIASES {
+            return Err(t!(lang, "command_control.alias_invalid"));
+        }
+        check.validate(commands, reserved, lang)
+    }
+
     pub fn validate(&self, commands: &[Command], reserved: &[&str], lang: Lang) -> Result<(), String> {
         let invalid = || t!(lang, "command_control.invalid");
         if self.aliases.len() > MAX_ALIASES || self.rules.len() > commands.len() {
             return Err(invalid());
         }
-        for (path, rule) in &self.rules {
-            let command = commands.iter().find(|c| &c.path == path).ok_or_else(invalid)?;
-            if command.protected && rule != &Rule::default() {
-                return Err(t!(lang, "command_control.protected"));
-            }
-            if rule.ephemeral && !command.ephemeral_supported {
-                return Err(t!(lang, "command_control.no_ephemeral"));
-            }
-            if rule.cooldown_secs > 86400 || rule.delete_reply_secs > 840 || rule.delete_invocation_secs > 86400 {
+        for (path, parent) in &self.rules {
+            if parent.constraints.len() > 16 || parent.constraints.values().any(|r| !r.constraints.is_empty()) {
                 return Err(invalid());
             }
-            for ids in [
-                &rule.allowed_roles,
-                &rule.denied_roles,
-                &rule.allowed_channels,
-                &rule.denied_channels,
-            ] {
-                if ids.len() > 50
-                    || ids.iter().any(|id| {
-                        id.parse::<u64>()
-                            .ok()
-                            .filter(|id| *id > 0 && *id <= i64::MAX as u64)
-                            .is_none()
-                    })
-                {
+            for rule in std::iter::once(parent).chain(parent.constraints.values()) {
+                let command = commands.iter().find(|c| &c.path == path).ok_or_else(invalid)?;
+                if command.protected && rule != &Rule::default() {
+                    return Err(t!(lang, "command_control.protected"));
+                }
+                if rule.ephemeral && !command.ephemeral_supported {
+                    return Err(t!(lang, "command_control.no_ephemeral"));
+                }
+                if rule.cooldown_secs > 86400 || rule.delete_reply_secs > 840 || rule.delete_invocation_secs > 86400 {
                     return Err(invalid());
+                }
+                for ids in [
+                    &rule.allowed_roles,
+                    &rule.denied_roles,
+                    &rule.allowed_channels,
+                    &rule.denied_channels,
+                ] {
+                    if ids.len() > 50
+                        || ids.iter().any(|id| {
+                            id.parse::<u64>()
+                                .ok()
+                                .filter(|id| *id > 0 && *id <= i64::MAX as u64)
+                                .is_none()
+                        })
+                    {
+                        return Err(invalid());
+                    }
                 }
             }
         }

@@ -47,13 +47,10 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 /// answered), or it shows the server's settings, which a reply in the channel would show to everyone.
 const SLASH_ONLY: &[&str] = &[
     "character",
-    "config",
-    "backup",
-    "commandcontrol",
+    "setup",
     "customize",
     "house decorate",
     "house edit",
-    "plaza edit",
     "play 2048",
     "play picross",
     "play wordle",
@@ -369,6 +366,7 @@ pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
             return true;
         }
     };
+    let (expanded, moved) = crate::routing::resolve_text(&expanded);
     let rest = expanded.as_str();
     if !mentioned && !parse::is_command(&TREE, rest) {
         return false;
@@ -406,6 +404,19 @@ pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
         path.clone(),
         lang,
     ));
+    if let Some(route) = moved
+        && matches!(
+            app.cache
+                .try_cooldown(
+                    &format!("command-moved:{guild}:{user}:{}", route.legacy),
+                    Duration::from_secs(86400),
+                )
+                .await,
+            Ok(None)
+        )
+    {
+        responder.set_migration_notice(t!(lang, "text.moved", old = route.legacy, new = route.canonical));
+    }
     let notice = match prepare(&app, guild, message, parsed, gate, &prefix, lang).await {
         Ok(Prepared::Run(interaction)) => {
             handle_interaction(app.clone(), *interaction, responder.clone()).await;
@@ -478,9 +489,16 @@ async fn prepare(
             return Ok(Prepared::Notice(hint));
         }
     };
-    if SLASH_ONLY
-        .iter()
-        .any(|e| parsed.path == *e || parsed.path.starts_with(&format!("{e} ")))
+    if parsed.command.name == "setup" {
+        let facts = app.permission_facts(guild).await?;
+        if !guild_permissions(&facts, guild, user, held).contains(Permissions::MANAGE_GUILD) {
+            return Ok(Prepared::Notice(t!(lang, "config.needs-manage-server")));
+        }
+    }
+    if parsed.path != "customize bio"
+        && SLASH_ONLY
+            .iter()
+            .any(|e| parsed.path == *e || parsed.path.starts_with(&format!("{e} ")))
     {
         let notice = t!(lang, "text.slash-only", path = parsed.path);
         return Ok(Prepared::Notice(notice));

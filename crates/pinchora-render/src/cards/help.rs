@@ -59,16 +59,28 @@ impl HelpCard {
         (lines.len() <= 2).then_some(lines)
     }
 
-    /// Whether the row is drawn whole: its command fits its column and its text fits two lines.
+    /// Long command paths wrap at spaces, keeping every callable name visible.
+    fn command_lines(command: &str) -> Vec<String> {
+        wrap_laid_out(command, SANS, true, COMMAND_SIZE, COMMAND_W, 3)
+    }
+
+    /// Whether both columns can be drawn whole in at most two lines.
     pub fn fits(row: &HelpRow) -> bool {
-        laid_out_width(&row.command, SANS, true, COMMAND_SIZE) <= COMMAND_W && Self::lines(&row.text).is_some()
+        let lines = Self::command_lines(&row.command);
+        lines.len() <= 2
+            && lines.join(" ") == row.command
+            && lines
+                .iter()
+                .all(|line| laid_out_width(line, SANS, true, COMMAND_SIZE) <= COMMAND_W)
+            && Self::lines(&row.text).is_some()
     }
 
     /// How tall the row stands on the card.
     pub fn row_height(row: &HelpRow) -> f32 {
-        match Self::lines(&row.text) {
-            Some(lines) if lines.len() > 1 => TWO_LINES,
-            _ => ONE_LINE,
+        if Self::command_lines(&row.command).len() > 1 || Self::lines(&row.text).is_some_and(|lines| lines.len() > 1) {
+            TWO_LINES
+        } else {
+            ONE_LINE
         }
     }
 
@@ -157,17 +169,21 @@ impl HelpCard {
                 any_manager = true;
                 sprite(&mut s, STAR, BODY_X + 12.0, middle - 9.0, 2.0, &t.gold, "#fff1e8");
             }
-            text(
-                &mut s,
-                COMMAND_X,
-                middle + 6.0,
-                COMMAND_SIZE,
-                SANS,
-                true,
-                &t.ink,
-                "start",
-                &escape(&fit_laid_out(&row.command, SANS, true, COMMAND_SIZE, COMMAND_W)),
-            );
+            let command_lines = Self::command_lines(&row.command);
+            let first = middle + 6.0 - (command_lines.len() as f32 - 1.0) * 10.0;
+            for (n, line) in command_lines.iter().enumerate() {
+                text(
+                    &mut s,
+                    COMMAND_X,
+                    first + n as f32 * 20.0,
+                    COMMAND_SIZE,
+                    SANS,
+                    true,
+                    &t.ink,
+                    "start",
+                    &escape(line),
+                );
+            }
             let lines =
                 Self::lines(&row.text).unwrap_or_else(|| wrap_laid_out(&row.text, SANS, false, TEXT_SIZE, TEXT_W, 2));
             let first = middle + 5.0 - (lines.len() as f32 - 1.0) * 9.0;
@@ -256,10 +272,22 @@ mod tests {
 
     #[test]
     fn rows_that_would_be_cut_are_told_apart() {
-        let wide = row("/config modules channels extra extra extra", "x", false);
+        let wide = row(&format!("/{}", "unbreakable".repeat(12)), "x", false);
         assert!(!HelpCard::fits(&wide), "a command wider than its column");
         let endless = row("/x", &"word ".repeat(40), false);
         assert!(!HelpCard::fits(&endless), "a text of more than two lines");
+    }
+
+    #[test]
+    fn consolidated_paths_wrap_without_truncating_the_action() {
+        let row = row("/setup leveling xp-import-mee6", "Import server XP", true);
+        assert!(HelpCard::fits(&row));
+        assert_eq!(HelpCard::row_height(&row), TWO_LINES);
+        let lines = HelpCard::command_lines(&row.command);
+        assert_eq!(lines.join(" "), row.command);
+        let svg = card(vec![row]).to_svg();
+        assert!(svg.contains("xp-import-mee6"));
+        Renderer::new().svg_to_png(&svg).expect("wrapped help renders");
     }
 
     #[test]

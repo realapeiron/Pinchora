@@ -147,6 +147,7 @@ pub struct App {
     permission_facts: Moka<u64, Arc<PermissionFacts>>,
     channel_rules: Moka<u64, Arc<ChannelRules>>,
     command_ids: Moka<(), Arc<HashMap<String, u64>>>,
+    saved_overrides: Moka<u64, Option<Arc<CommandOverrides>>>,
     command_overrides: Moka<u64, Arc<CommandOverrides>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
     command_control: Moka<u64, Arc<pinchora_core::command_control::Config>>,
@@ -219,6 +220,10 @@ impl App {
                 .build(),
             channel_rules: Moka::builder()
                 .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            saved_overrides: Moka::builder()
+                .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             command_ids: Moka::builder()
@@ -667,9 +672,39 @@ impl App {
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
+    /// Registration invalidates both caches together, on every serving process.
+    pub async fn forget_command_registration(&self) {
+        self.command_ids.invalidate_all();
+        self.command_overrides.invalidate_all();
+        self.saved_overrides.invalidate_all();
+    }
+
+    pub(crate) async fn saved_command_overrides(&self, guild: u64) -> anyhow::Result<Option<Arc<CommandOverrides>>> {
+        self.saved_overrides
+            .try_get_with(guild, async {
+                let Some(value) = self
+                    .db
+                    .saved_command_permissions(guild, self.application_id.get())
+                    .await?
+                else {
+                    return anyhow::Ok(None);
+                };
+                let entries = serde_json::from_value(value["entries"].clone())?;
+                let ids = serde_json::from_value(value["ids"].clone())?;
+                Ok(Some(Arc::new(CommandOverrides::new(
+                    entries,
+                    self.application_id.get(),
+                    &ids,
+                ))))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
     /// Forgets a server's command overrides, when they changed.
     pub async fn forget_command_overrides(&self, guild_id: u64) {
         self.command_overrides.invalidate(&guild_id).await;
+        self.command_ids.invalidate_all();
     }
 
     /// The ids of the bot's commands by name, which tell the entries of Discord's command permissions

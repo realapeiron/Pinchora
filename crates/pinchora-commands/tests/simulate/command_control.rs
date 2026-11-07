@@ -492,7 +492,7 @@ async fn permissive_overrides_and_aliases_cannot_open_manage_server_paths() {
     sim.app.announce_guild_change(sim.guild).await;
     assert_eq!(
         sim.app.command_control(sim.guild).await.unwrap().expand("ccmanage"),
-        "customcommand list"
+        "setup commands custom-list"
     );
     assert_eq!(
         sim.app.command_control(sim.guild + 1).await.unwrap().expand("ccmanage"),
@@ -591,6 +591,7 @@ async fn utility_and_events_obey_command_control_on_slash_buttons_and_modals() {
     };
     let actor = unique();
     sim.own_server(actor);
+    sim.permissions = MANAGE_GUILD;
     sim.channel_is(sim.channel, 0, None);
     let original = sim.command(actor, "ping", json!([])).await;
     for (command, subcommand, component) in [
@@ -611,7 +612,7 @@ async fn utility_and_events_obey_command_control_on_slash_buttons_and_modals() {
                 )]),
                 ..Config::default()
             };
-            config
+            pinchora_commands::routing::normalize_control(&config)
                 .validate(
                     &pinchora_commands::control_catalog(),
                     &[],

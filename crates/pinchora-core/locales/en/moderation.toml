@@ -1,5 +1,5 @@
 # Moderation: the commands' answers, the cases in the mod-log, the member's direct message, and the
-# moderation settings under /config. Case details (`[mod.details]`) are written once, in the server's
+# moderation settings under /setup. Case details (`[mod.details]`) are written once, in the server's
 # language, and kept with the case.
 
 [mod]
@@ -141,7 +141,7 @@ slowmode-every = "one message every {duration}"
 nick-set = "nickname set to {nick}"
 nick-reset = "nickname reset"
 
-# The mod-log entry, and what /case shows.
+# The mod-log entry, and what /mod case shows.
 [mod.case]
 title = "Case #{number} · {label}"
 member = "Member"
@@ -188,7 +188,7 @@ ban-for = "{duration} ban"
 ban = "permanent ban"
 kick = "kick"
 
-# /config moderation, /config warn-ladder and /config log-ignore.
+# /setup moderation settings, /setup moderation warn-ladder and /setup moderation log-ignore.
 [mod.setup]
 field = "Moderation"
 channel-or-off = "Pick a channel or `off`, not both."

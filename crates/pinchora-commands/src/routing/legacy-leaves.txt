@@ -1,0 +1,330 @@
+achievementadmin add
+achievementadmin edit
+achievementadmin grant
+achievementadmin list
+achievementadmin remove
+achievements
+afk set
+antinuke disable
+antinuke enable
+antinuke events
+antinuke limits
+antinuke status
+antinuke trust add
+antinuke trust remove
+antinuke vip add
+antinuke vip remove
+automod exempt channel
+automod exempt role
+automod profile
+automod show
+automod test
+automod toggle
+autoroles add
+autoroles list
+autoroles remove
+autoroles sticky
+backup export
+backup import
+backup list
+backup restore
+balance
+ban
+beachcomb
+bio
+birthday list
+birthday me
+birthday next
+birthday remove
+birthday set
+birthday view
+birthdays preview
+birthdays settings
+case
+character
+color list
+color pick
+color remove
+color set
+color setup
+commandcontrol alias
+commandcontrol reset
+commandcontrol set
+commandcontrol show
+config critters
+config gambling
+config goodbye
+config join-role
+config language
+config level-roles add
+config level-roles list
+config level-roles mode
+config level-roles remove
+config level-roles sync
+config leveling
+config log
+config log-events
+config log-ignore
+config moderation
+config modules channels
+config modules show
+config modules toggle
+config partygames
+config points
+config prefix reset
+config prefix set
+config prefix show
+config rep-roles add
+config rep-roles list
+config rep-roles remove
+config show
+config store add
+config store list
+config store remove
+config suggestions
+config surge
+config warn-ladder
+config welcome
+config welcome-card
+config xp clear
+config xp multiplier
+config xp show
+config xp voice
+counters add
+counters list
+counters remove
+crabpot
+critterdrop
+customcommand create
+customcommand delete
+customcommand edit
+customcommand info
+customcommand list
+customize background
+customize badges
+customize showcase
+customize style
+customize title
+daily
+dex
+duel checkers
+duel chess
+duel connect4
+duel othello
+duel rps
+duel seafleet
+duel share
+duel tictactoe
+event attendees
+event cancel
+event create
+event edit
+event list
+event remind
+event template
+feeds add
+feeds edit
+feeds list
+feeds remove
+feeds test
+fish book
+fish cast
+fish gear
+fish sell
+fish shop
+friends add
+friends list
+friends remove
+gift
+give
+giveaway end
+giveaway list
+giveaway reroll
+giveaway start
+help
+highfive
+house contest enter
+house contest view
+house contest vote
+house contest winners
+house decorate
+house edit
+house guestbook
+house like
+house lock
+house upgrade
+house view
+house visit
+hug
+info avatar
+info banner
+info channel
+info emoji
+info invite
+info members
+info role
+info server
+info user
+inventory
+inviteadmin bonus-add
+inviteadmin bonus-remove
+inviteadmin post
+inviteadmin reward-add
+inviteadmin reward-remove
+inviteadmin settings
+invites temp
+invites top
+invites user
+kick
+language set
+leaderboard
+lock
+monthly
+nick
+partner leave
+partner propose
+partner view
+party acronym
+party fun
+party hotpearl
+party nhie
+party postcard
+party stop
+party truthordare
+party wordrace
+party wouldyourrather
+pat
+pet adopt
+pet capsule
+pet list
+pet rename
+pet trip claim
+pet trip go
+pet view
+ping
+play 2048
+play anagram
+play derby
+play guessnumber
+play hangman
+play heist
+play higherlower
+play memory
+play minesweeper
+play picross
+play shells
+play stats
+play trivia
+play typing
+play wordle
+plaza donate
+plaza edit
+plaza view
+points give
+points show
+points take
+poll
+privacy
+profile
+purge
+quests
+raid lockdown
+raid status
+raid unlock
+rank
+reason
+remind cancel
+remind list
+remind me in
+remind me when
+rep
+role add
+role remove
+roles add
+roles panel
+roles post
+roles remove
+roles temp
+schedule add
+schedule list
+schedule pause
+schedule preview
+schedule remove
+schedule resume
+schedule run-now
+shop catalog
+shop market
+slowmode
+stall manage
+stall sell
+stall view
+starboard edit
+starboard list
+starboard remove
+starboard setup
+starboard top
+starboard votes add
+starboard votes list
+starboard votes remove
+stats channel
+stats me
+stats server
+sticky remove
+sticky set
+sticky show
+store
+suggest
+suggestion approve
+suggestion deny
+surge
+tag
+ticket add
+ticket claim
+ticket close
+ticket move
+ticket remove
+ticket rename
+ticket reopen
+ticket transcript
+ticket unclaim
+tickets panel create
+tickets panel delete
+tickets panel edit
+tickets panel list
+tickets panel post
+tickets settings
+timeout
+unban
+unlock
+untimeout
+unwarn
+verification message
+verification mode
+verification post
+verification setup
+verify
+voice claim
+voice creators add
+voice creators list
+voice creators remove
+voice hide
+voice invite
+voice kick
+voice limit
+voice lock
+voice panel
+voice rename
+voice show
+voice transfer
+voice unlock
+warn
+warnings
+wave
+weekly
+wrapped
+xp add
+xp import mee6
+xp remove
+xp reset
+xp reset-all
+xp set

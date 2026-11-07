@@ -68,15 +68,21 @@ async fn save(
     ApiJson(config): ApiJson<Config>,
 ) -> ApiResult<Json<Value>> {
     let lang = state.app.guild_lang(managed.id).await;
+    let before = state.app.db.command_control(managed.id).await?;
     config
-        .validate(
-            &pinchora_commands::control_catalog(),
+        .validate_update(
+            &before,
+            &pinchora_commands::control_validation_catalog(),
             &pinchora_commands::command_reserved_aliases(),
             lang,
         )
         .map_err(ApiError::blocked)?;
     let info = guild_info::get(&state, managed.id, false).await?;
-    for rule in config.rules.values() {
+    for rule in config
+        .rules
+        .values()
+        .flat_map(|r| std::iter::once(r).chain(r.constraints.values()))
+    {
         for role in rule.allowed_roles.iter().chain(&rule.denied_roles) {
             info.check_role(
                 "roles",
@@ -93,7 +99,6 @@ async fn save(
             )?;
         }
     }
-    let before = state.app.db.command_control(managed.id).await?;
     state.app.db.set_command_control(managed.id, &config).await?;
     audit::finish(
         &state,

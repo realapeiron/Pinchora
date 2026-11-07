@@ -1,8 +1,8 @@
-# /suggest, /suggestion and /poll.
+# /suggest, /mod suggestion and /poll.
 
 [suggest]
 summary-on = "**açık** · {channel}"
-summary-off = "**kapalı** · `/config suggestions` ile bir kanal seç"
+summary-off = "**kapalı** · `/setup community suggestions` ile bir kanal seç"
 both = "Bir kanal seç ya da `off` ver, ikisini birden değil."
 current = "Öneriler: {summary}"
 approved-by = "Onaylayan"
@@ -13,7 +13,7 @@ reason = "Gerekçe"
 footer-open = "Düğmelerle oy ver; oyunu geri çekmek için aynı tarafa yeniden bas"
 footer-closed = "Oylama kapandı"
 guild-only = "Öneriler yalnızca bir sunucuda var."
-not-set-up = "Burada öneriler kurulu değil. Bir yönetici `/config suggestions` ile bir kanal seçebilir."
+not-set-up = "Burada öneriler kurulu değil. Bir yönetici `/setup community suggestions` ile bir kanal seçebilir."
 needs-text = "Önerini komutun ardına yaz."
 slow-down = "Biraz bekle: {seconds} saniye sonra yeniden öneride bulunabilirsin."
 posted = "Önerin {channel} kanalında **#{number}** olarak yayında: {link}"

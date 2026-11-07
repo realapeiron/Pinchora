@@ -1516,13 +1516,10 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
             assert!(option["description"].as_str().unwrap().len() <= 100);
         }
     }
-    let config = serde_json::to_value(definitions.iter().find(|c| c.name == "config").expect("/config")).unwrap();
-    assert!(
-        config["options"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|o| o["name"] == "partygames")
+    let config = command_tree::definition("setup");
+    assert_eq!(
+        command_tree::definition("setup economy partygames")["name"],
+        "partygames"
     );
 
     let Some(mut sim) = Sim::new("the_party_commands_fit_discords_limits_and_help_knows_them").await else {
@@ -1536,7 +1533,7 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
             .any(|a| a == "Puzzles & word games" || a.starts_with("Puzzles & word games (")),
         "{areas:?}"
     );
-    // Like the rest of /config, it is for managers: Discord keeps it from everyone else.
+    // Like the rest of /setup, it is for managers: Discord keeps it from everyone else.
     assert!(config["default_member_permissions"].is_string(), "{config}");
 }
 

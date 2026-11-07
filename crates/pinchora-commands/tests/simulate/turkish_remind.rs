@@ -1,5 +1,5 @@
 //! Turkish for the remind group, played through the real handlers: `/remind` and the direct messages
-//! the ticker sends, `/leaderboard` and `/wrapped`.
+//! the ticker sends, `/leaderboard` and `/info wrapped`.
 
 use pinchora_core::i18n::Lang;
 
@@ -206,7 +206,9 @@ async fn reminders_are_set_listed_cancelled_and_delivered_in_turkish() {
     assert_eq!(weekly.len(), 1, "the weekly message");
     assert_eq!(weekly[0].title(), "Your weekly is ready");
     assert!(
-        weekly[0].description().contains("Collect your shells with `/weekly`."),
+        weekly[0]
+            .description()
+            .contains("Collect your shells with `/rewards weekly`."),
         "{}",
         weekly[0].description()
     );

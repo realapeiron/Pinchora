@@ -1,8 +1,8 @@
-# /suggest, /suggestion and /poll.
+# /suggest, /mod suggestion and /poll.
 
 [suggest]
 summary-on = "**on** · {channel}"
-summary-off = "**off** · pick a channel with `/config suggestions`"
+summary-off = "**off** · pick a channel with `/setup community suggestions`"
 both = "Pick a channel or `off`, not both."
 current = "Suggestions: {summary}"
 approved-by = "Approved by"
@@ -13,7 +13,7 @@ reason = "Reason"
 footer-open = "Vote with the buttons; press your side again to take your vote back"
 footer-closed = "Voting is closed"
 guild-only = "Suggestions only exist inside a server."
-not-set-up = "Suggestions aren't set up here. A manager can pick a channel with `/config suggestions`."
+not-set-up = "Suggestions aren't set up here. A manager can pick a channel with `/setup community suggestions`."
 needs-text = "Write your suggestion after the command."
 slow-down = "Give it a moment: you can suggest again in {seconds} seconds."
 posted = "Your suggestion is up as **#{number}** in {channel}: {link}"

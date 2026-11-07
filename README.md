@@ -14,6 +14,16 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
+Command-tree consolidation (slices 1–18): **62 registered roots**, covering all **330 executable actions**.
+The eight planned feature families project **70 roots**. `/setup` has 21 groups;
+`/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.
+Old prefix paths and server aliases resolve to the new paths, with a daily English/Turkish notice.
+Private setup actions redirect to slash. Existing colliding server aliases keep their text meaning;
+new collisions are rejected, and existing custom commands remain available through `/tag`.
+Migration `0066` rewrites policy keys and alias targets, expanding split parents while retaining
+independent restrictions. Old version-1 backups normalize before validation and import.
+
+
 | Command | What it does |
 |---|---|
 | `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio, an optional title under the name, up to six badges, each on a plate tinted by its rarity, and, if the player chose any, a **showcase** row (favourite fish, pet, furniture, house thumbnail) and their style (accent colour, panel opacity, frame). Until you choose your badges the card shows your best earned ones (rarest first) on its own. With nothing on the showcase the card keeps its classic layout; with a showcase the about-me panel and the stats give up height to a row of tiles. With a partner (`/partner`), the corner of the about-me panel shows `♥ NAME`, measured as drawn so accented, non-Latin and emoji names keep the heart beside them. |
@@ -27,68 +37,68 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), **Weekly catch** (each player's biggest catch of the week by size for its species, so a 7.9 cm minnow can beat a 200 cm sailfish; boots and tins do not count; same Monday reset and last-week podium), global XP or global shells as a pixel-art card, with page buttons |
 | `/invites user [user]`, `/invites top [all\|week\|month]` | Pixel invite card and a paged server leaderboard; counts eligible joins, accounts too new to count, leavers and manager bonuses |
 | `/invites temp` | Private expiring, limited-use friend link when enabled; the bot needs Create Instant Invite in the selected channel |
-| `/inviteadmin settings`, `bonus-add`, `bonus-remove`, `reward-add`, `reward-remove`, `post` | Manage invite tracking, bonus counts, reward roles and the friend-link button (Manage Server) |
+| `/setup invites settings`, `bonus-add`, `bonus-remove`, `reward-add`, `reward-remove`, `post` | Manage invite tracking, bonus counts, reward roles and the friend-link button (Manage Server) |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
-| `/weekly`, `/monthly` | A bigger reward each, on a cooldown of their own: 1,500 shells every 7 days and 6,500 every 30. The cooldown counts from the claim, and a claim made at the same moment as another pays once |
+| `/rewards weekly`, `/rewards monthly` | A bigger reward each, on a cooldown of their own: 1,500 shells every 7 days and 6,500 every 30. The cooldown counts from the claim, and a claim made at the same moment as another pays once |
 | `/balance [user]`, `/give user amount` | Wallet and transfers. The wallet card shows the time left on the daily, weekly and monthly reward side by side (`ready` in green once it can be collected) |
 | `/remind me when daily\|weekly\|monthly\|pet\|trip on\|off` | Opt in to a direct message when a reward is ready again (scheduled when you collect it, or at once for one already counting down), when your active pet needs looking after (hunger, fun or hygiene down to 30, no sooner than two hours after you last looked after it; not while it is away or asleep) or when a pet is home from a trip. One message each time, then it waits for the next claim, trip or care |
 | `/remind me in duration text` | A note to yourself by direct message: `45m`, `2h30m`, `1d 12h` (a minute to a year; units w d h m s). The text is up to 200 characters and loses any mention (users, roles, channels, `@everyone`, `@here`). Up to 25 open at a time |
 | `/remind list`, `/remind cancel id` | Which notifications are on and the reminders still to come, with a menu to cancel one; or cancel by the number the list shows |
 | `/privacy [server_dms]` | Private panel with four switches and a delete button (the `server_dms` option sets the last switch directly). **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view`, `/play stats` or `/dex` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too, and its guestbook (notes and visitors) cannot be read or signed and the house cannot be liked (stronger than `/house lock`). **Server DMs** off: no server's custom commands, auto-responders, level-ups, suggestion updates or moderation notices (warns, timeouts, kicks, bans) send you direct messages (your own `/remind` messages still arrive). A private profile also hides your `/points show` and `/stall view`. **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, suggestions, polls, giveaway entries, history and the rest (a server's custom commands you wrote stay, no longer saying who wrote them). A running duel's wager goes back to the other player, a derby you host gives its racers their stakes back, a giveaway you host is called off, and likes you gave come off the houses. You come back with nothing but not with fresh waiting times: see below |
-| `/wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, server XP (chat and voice), shells earned (a duel counts what you won, not your own stake), fish caught, houses visited, pets cared for, likes given and received, your favourite fish of the year, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
+| `/info wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, server XP (chat and voice), shells earned (a duel counts what you won, not your own stake), fish caught, houses visited, pets cared for, likes given and received, your favourite fish of the year, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
-| `/bio text` | About-me text on the profile card |
-| `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
-| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
-| `/config xp multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
-| `/config xp clear [channel] [role]`, `/config xp show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
-| `/config xp voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
-| `/config rep-roles add\|remove\|list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
-| `/config join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
-| `/config goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
-| `/config log [channel] [off] [category]` | The server log's channel (this turns it on), or with `category` a channel of its own for one of the nine categories (members, messages, roles, channels and threads, voice, moderation, server, invites, emojis and stickers); `off` with a category sends it back to the log channel (Manage Server) |
-| `/config log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]` | Switch kinds of log entries on or off; all start on except self mutes, so picking a log channel is enough (a server that logged before keeps only its four old kinds on). Single events are switched on the dashboard (Manage Server) |
-| `/config log-ignore [channel] [role] [user] [bots] [remove]` | Members, members with a role, channels (a category covers its channels, a channel its threads) and bots the server log leaves alone, up to 50 of each; `remove` takes one off; no options shows the lists (Manage Server) |
-| `/config moderation [channel] [off] [dm]` | The mod-log channel every case is posted to (`off`: the server log's moderation channel), and whether members are told by direct message (Manage Server) |
-| `/config warn-ladder [warns] [action] [duration] [remove]` | What a number of active warns brings: a timeout (with a duration), a kick, or a ban (temporary with a duration); up to 10 rungs, the same count again replaces one; `remove` takes one off; no options shows the ladder (Manage Server) |
-| `/roles panel title [description] [style] [exclusive] [required] [min] [max]` | Start a role panel (a draft); the same title again changes only what is given. `style` is `buttons` (the default), `select` (a menu) or `reactions`; `exclusive` makes picking a role swap the member's other role of the panel; `required` is a role members need to use it (@everyone takes the need away); `min` and `max` (0 to 25, 0 is no limit) are the fewest and most roles of the panel a member holds (Manage Server) |
-| `/roles add panel role label [emoji] [description]` | Put a role on a panel (up to 25); adding a role again changes its label, emoji and line. `panel` is the title or the number; `description` is the line under the label in a menu; a reactions panel needs an emoji on every role (Manage Server) |
-| `/roles remove panel role`, `/roles post panel channel` | Take a role off, or post the panel; posting again in the same channel updates the message in place, and a reactions panel gets its emojis put under the message (Manage Server) |
-| `/roles temp role duration [panel]` | Make a role last only `duration` (`12h`, `7d`; a minute to a year; `off` for good) after a member takes it from a panel, on one panel or on every panel that has it (Manage Server) |
-| `/autoroles add role [kind] [delay] [remove_after]` | Give a role to everyone who joins (up to 10 a server): `kind` is `join` (members, the default), `bot` or `after_verify` (when the join gate lets a member in); `delay` waits (30 seconds to 30 days) and `remove_after` takes it back again (a minute to a year); adding the same role and kind again changes it. Same safety checks as level roles (Manage Server) |
-| `/autoroles remove role [kind]`, `/autoroles list` | Stop giving a role (of one kind, or every kind), or list the auto roles with whether sticky roles are on (Manage Server) |
-| `/autoroles sticky enabled` | Sticky roles: a member who leaves and comes back within 60 days gets back the roles they held, as far as the bot can give them (not roles above its own, roles with a dangerous permission, roles an integration owns, or roles whose time ran out while they were away). Switching it on starts from the roles members hold now (Manage Server) |
+| `/customize bio text` | About-me text on the profile card |
+| `/setup welcome message`, `/setup leveling settings`, `/setup server show` | Welcome cards and level-up messages. `/setup leveling settings` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
+| `/setup leveling roles-add\|roles-remove\|roles-list\|roles-mode\|roles-sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
+| `/setup leveling xp-multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
+| `/setup leveling xp-clear [channel] [role]`, `/setup leveling xp-show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
+| `/setup leveling xp-voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
+| `/setup economy rep-roles-add\|rep-roles-remove\|rep-roles-list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
+| `/setup roles join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
+| `/setup welcome goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
+| `/setup moderation log [channel] [off] [category]` | The server log's channel (this turns it on), or with `category` a channel of its own for one of the nine categories (members, messages, roles, channels and threads, voice, moderation, server, invites, emojis and stickers); `off` with a category sends it back to the log channel (Manage Server) |
+| `/setup moderation log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]` | Switch kinds of log entries on or off; all start on except self mutes, so picking a log channel is enough (a server that logged before keeps only its four old kinds on). Single events are switched on the dashboard (Manage Server) |
+| `/setup moderation log-ignore [channel] [role] [user] [bots] [remove]` | Members, members with a role, channels (a category covers its channels, a channel its threads) and bots the server log leaves alone, up to 50 of each; `remove` takes one off; no options shows the lists (Manage Server) |
+| `/setup moderation settings [channel] [off] [dm]` | The mod-log channel every case is posted to (`off`: the server log's moderation channel), and whether members are told by direct message (Manage Server) |
+| `/setup moderation warn-ladder [warns] [action] [duration] [remove]` | What a number of active warns brings: a timeout (with a duration), a kick, or a ban (temporary with a duration); up to 10 rungs, the same count again replaces one; `remove` takes one off; no options shows the ladder (Manage Server) |
+| `/setup roles panel-create title [description] [style] [exclusive] [required] [min] [max]` | Start a role panel (a draft); the same title again changes only what is given. `style` is `buttons` (the default), `select` (a menu) or `reactions`; `exclusive` makes picking a role swap the member's other role of the panel; `required` is a role members need to use it (@everyone takes the need away); `min` and `max` (0 to 25, 0 is no limit) are the fewest and most roles of the panel a member holds (Manage Server) |
+| `/setup roles panel-add panel role label [emoji] [description]` | Put a role on a panel (up to 25); adding a role again changes its label, emoji and line. `panel` is the title or the number; `description` is the line under the label in a menu; a reactions panel needs an emoji on every role (Manage Server) |
+| `/setup roles panel-remove panel role`, `/setup roles panel-post panel channel` | Take a role off, or post the panel; posting again in the same channel updates the message in place, and a reactions panel gets its emojis put under the message (Manage Server) |
+| `/setup roles panel-temp role duration [panel]` | Make a role last only `duration` (`12h`, `7d`; a minute to a year; `off` for good) after a member takes it from a panel, on one panel or on every panel that has it (Manage Server) |
+| `/setup roles auto-add role [kind] [delay] [remove_after]` | Give a role to everyone who joins (up to 10 a server): `kind` is `join` (members, the default), `bot` or `after_verify` (when the join gate lets a member in); `delay` waits (30 seconds to 30 days) and `remove_after` takes it back again (a minute to a year); adding the same role and kind again changes it. Same safety checks as level roles (Manage Server) |
+| `/setup roles auto-remove role [kind]`, `/setup roles auto-list` | Stop giving a role (of one kind, or every kind), or list the auto roles with whether sticky roles are on (Manage Server) |
+| `/setup roles auto-sticky enabled` | Sticky roles: a member who leaves and comes back within 60 days gets back the roles they held, as far as the bot can give them (not roles above its own, roles with a dangerous permission, roles an integration owns, or roles whose time ran out while they were away). Switching it on starts from the roles members hold now (Manage Server) |
 | `/color pick`, `/color list`, `/color remove` | Colour your name with a role: the menu offers the palette (the card colours that read on Discord's dark chat) and the server's own colour roles, with a card showing the pick on a name; a member holds one colour at a time. Roles are made the first time somebody picks a colour |
 | `/color set hex` | Any colour by hex code (`#ff6b4a`), when the server's mode is `hex`; colours too dark to read are refused |
-| `/color setup [enabled] [mode] [allow] [disallow] [anchor] [roles]` | Switch colour roles on, choose `palette` or `hex` mode, name the roles allowed to pick (none named means everyone), the anchor role new colour roles are made under, and own roles to offer as colours (mention them, up to 10). A server holds up to 32 colour roles (Manage Server) |
+| `/setup roles color-setup [enabled] [mode] [allow] [disallow] [anchor] [roles]` | Switch colour roles on, choose `palette` or `hex` mode, name the roles allowed to pick (none named means everyone), the anchor role new colour roles are made under, and own roles to offer as colours (mention them, up to 10). A server holds up to 32 colour roles (Manage Server) |
 | `/points show [user]` | Server points balance and rank; the server can rename the points and pick their emoji |
 | `/points give\|take user amount` | Adjust a member's server points (Manage Server) |
-| `/config points [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
+| `/setup economy points-settings [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
 | `/store` | The server's role store: pick a role from the menu to buy it with server points |
-| `/config store add\|remove\|list` | Put roles on sale for points, with optional stock (up to 25); adding a role again updates its price and stock (Manage Server) |
+| `/setup economy store-add\|store-remove\|store-list` | Put roles on sale for points, with optional stock (up to 25); adding a role again updates its price and stock (Manage Server) |
 | `/giveaway start duration winners prize [shells] [channel] [required_role]` | Post a giveaway with an **Enter** button (press again to leave): `duration` like `30m`, `2h`, `1d12h` (1 minute to 30 days), 1 to 20 `winners`, an optional `shells` prize **per winner**, a `channel` (default: here) and a `required_role`. Up to 20 run at once per server (Manage Server) |
 | `/giveaway end id`, `/giveaway reroll id [winners]`, `/giveaway list` | End one now and pick its winners; pick new winners from the entrants who have not won yet (a reroll never pays shells, and the announcement of a shells giveaway says so); list the running ones with entries and links. `id` is the number in the giveaway's footer (Manage Server) |
-| `/config suggestions [channel] [off]` | Where `/suggest` posts; with neither option it shows the setting, and `/config show` lists it (Manage Server) |
-| `/config critters [enabled] [channel] [anywhere]` | Let critter drops and bottles wash up while people chat (off until you turn it on): with a `channel`, only chat there counts and the drops land there; with `anywhere`, they land in whichever channel tipped the count. With none of the options it just shows the setting, and `/config show` lists it (Manage Server) |
+| `/setup community suggestions [channel] [off]` | Where `/suggest` posts; with neither option it shows the setting, and `/setup server show` lists it (Manage Server) |
+| `/setup economy critters [enabled] [channel] [anywhere]` | Let critter drops and bottles wash up while people chat (off until you turn it on): with a `channel`, only chat there counts and the drops land there; with `anywhere`, they land in whichever channel tipped the count. With none of the options it just shows the setting, and `/setup server show` lists it (Manage Server) |
 | `/suggest text` | Post a suggestion (up to 1000 characters) in the server's suggestion channel as an embed with 👍 and 👎 buttons showing live counts. One vote per member: press the other side to switch, the same side again to take the vote back. One suggestion per 30 seconds |
-| `/suggestion approve\|deny id [reason]` | Decide on the server's suggestion number `id` (the `#n` in its title): the embed turns green or red with who decided and why, its buttons lock with the final counts, and the author gets a direct message (closed DMs are reported to you, not an error). Decided once (Manage Server) |
+| `/mod suggestion approve\|deny id [reason]` | Decide on the server's suggestion number `id` (the `#n` in its title): the embed turns green or red with who decided and why, its buttons lock with the final counts, and the author gets a direct message (closed DMs are reported to you, not an error). Decided once (Manage Server) |
 | `/poll question options [duration]` | A question with two to five answers separated by `\|`, up to 80 characters each; `duration` like `30m`, `6h`, `1d` (default 1 day, 1 minute to 14 days). One button per answer plus **Results**; one vote per member, the same switch/take-back rule as suggestions. Votes stay hidden while it runs, **Results** shows a private pixel bar-chart card (drawn at most every 10 seconds per poll), and when it closes the channel gets the final card and a line saying who won (or the tie). Three open polls per member |
 | `/ban user [reason] [duration] [delete_days]` | Ban a member, or anyone by user id: for good, or for a while (`12h`, `7d`, a minute to a year; the ban is lifted on its own), deleting 0 to 7 days of their messages (Ban Members) |
-| `/unban user [reason]`, `/kick user [reason]` | Lift a ban (paste the user id); remove a member, who can join again (Ban Members, Kick Members) |
-| `/timeout user duration [reason]`, `/untimeout user [reason]` | Time a member out for a minute to 28 days, or end it early; administrators can't be timed out (Timeout Members) |
-| `/warn user reason`, `/warnings user`, `/unwarn case [reason]` | Warn a member (the answer says how many warns they have, and the warn ladder acts when a count is reached); a private list of the warns that still count; take a warn back so it stops counting, over a member and a warn's moderator below you (Timeout Members) |
+| `/mod unban user [reason]`, `/kick user [reason]` | Lift a ban (paste the user id); remove a member, who can join again (Ban Members, Kick Members) |
+| `/timeout user duration [reason]`, `/mod untimeout user [reason]` | Time a member out for a minute to 28 days, or end it early; administrators can't be timed out (Timeout Members) |
+| `/warn user reason`, `/mod warnings user`, `/mod unwarn case [reason]` | Warn a member (the answer says how many warns they have, and the warn ladder acts when a count is reached); a private list of the warns that still count; take a warn back so it stops counting, over a member and a warn's moderator below you (Timeout Members) |
 | `/purge count [user] [bots] [contains] [links] [attachments] [reason]` | Delete up to 100 recent messages here, never pinned ones or ones older than 14 days, matching every filter given; `contains`, `links` and `attachments` need the Message Content intent (Manage Messages) |
-| `/slowmode duration [channel] [reason]` | One message every `5s` to `6h` per member in a channel, or `off` (Manage Channels) |
-| `/lock [channel] [reason]`, `/unlock [channel] [reason]` | Take sending messages, sending in threads and making threads from @everyone in a channel, or give back exactly what @everyone had before (Manage Channels; the bot needs Manage Roles there) |
-| `/nick user [nickname] [reason]` | Change or reset a member's nickname (Manage Nicknames) |
-| `/role add\|remove user role [reason]` | Give or take a role below both your highest role and the bot's; managed roles and @everyone are refused, and so is a role with a dangerous permission (Administrator, Manage Server, Ban Members and the like) unless you own or administer the server (Manage Roles) |
-| `/case id`, `/reason id reason` | Look a case up privately; give it a new reason, which edits its mod-log entry too: your own cases, or those of a moderator below you (any of Ban, Kick or Timeout Members, Manage Messages or Manage Server) |
+| `/mod slowmode duration [channel] [reason]` | One message every `5s` to `6h` per member in a channel, or `off` (Manage Channels) |
+| `/mod lock [channel] [reason]`, `/mod unlock [channel] [reason]` | Take sending messages, sending in threads and making threads from @everyone in a channel, or give back exactly what @everyone had before (Manage Channels; the bot needs Manage Roles there) |
+| `/mod nick user [nickname] [reason]` | Change or reset a member's nickname (Manage Nicknames) |
+| `/mod role add\|remove user role [reason]` | Give or take a role below both your highest role and the bot's; managed roles and @everyone are refused, and so is a role with a dangerous permission (Administrator, Manage Server, Ban Members and the like) unless you own or administer the server (Manage Roles) |
+| `/mod case id`, `/mod reason id reason` | Look a case up privately; give it a new reason, which edits its mod-log entry too: your own cases, or those of a moderator below you (any of Ban, Kick or Timeout Members, Manage Messages or Manage Server) |
 | `/tag name [args]` | Run one of the server's custom commands (see "Custom commands and auto-responders" below). `name` suggests the server's commands as you type, by name and description; `args` (up to 200 characters) are what the command can use as `{args}` and `{1}` to `{5}`. A command can have a cooldown per member, allowed and denied roles and channels, and answer privately; what the people who ran it typed can never ping anyone |
-| `/customcommand create name [description] [private]` | Write a command: a form asks for its reply (up to 2,000 characters, with placeholders), an optional description and cooldown. Names are 1 to 32 characters of `a-z 0-9 - _` and cannot be one of Pinchora's own commands; 50 per server (Manage Server) |
-| `/customcommand edit name [private]`, `delete name`, `list`, `info name` | Change a command's first reply, description and cooldown in the same form (and whether it answers privately), remove it, list them with their use counts (paged), or see how one is set up. Embeds, several replies, actions and role or channel limits are on the dashboard (Manage Server) |
+| `/setup commands custom-create name [description] [private]` | Write a command: a form asks for its reply (up to 2,000 characters, with placeholders), an optional description and cooldown. Names are 1 to 32 characters of `a-z 0-9 - _` and cannot be one of Pinchora's own commands; 50 per server (Manage Server) |
+| `/setup commands custom-edit name [private]`, `custom-delete name`, `custom-list`, `custom-info name` | Change a command's first reply, description and cooldown in the same form (and whether it answers privately), remove it, list them with their use counts (paged), or see how one is set up. Embeds, several replies, actions and role or channel limits are on the dashboard (Manage Server) |
 | `/ping` | Health: how fast the interaction, the database and Redis answer |
 | `/help` | A private guide drawn as pixel cards, one area at a time (profile, shells, shops, house, pets, fishing, friends, duels, puzzles and party games, crowd games and collecting, community tools, moderation, four pages of server setup). Every command and subcommand has its own line with what it does, and a star marks the ones for members who can manage the server. Jump to nearby pages with the menu (up to 25 at a time) or reach any page with the previous/next buttons; the pages are built from the registered command tree, and a unit test fails until a new command is given an area |
-| `/language set language` | The language Pinchora answers you in, on every server: English, Türkçe, or Automatic (the default: your Discord client's language). Private. Without a pick, a member whose Discord is in Turkish gets Turkish replies, cards and slash-command descriptions; the server's `/config language` only fills in where Discord sends no language. Adding a language: `crates/pinchora-core/locales/CONTRIBUTING.md` |
+| `/language set language` | The language Pinchora answers you in, on every server: English, Türkçe, or Automatic (the default: your Discord client's language). Private. Without a pick, a member whose Discord is in Turkish gets Turkish replies, cards and slash-command descriptions; the server's `/setup server language` only fills in where Discord sends no language. Adding a language: `crates/pinchora-core/locales/CONTRIBUTING.md` |
 
 Chatting earns 15–25 XP and, by default, 1–3 server points per minute per server. Level roles are
 given on level-up, and the bot needs the Manage Roles permission with its role above the roles it
@@ -153,7 +163,7 @@ in `crates/pinchora-db/src/privacy.rs` before it can ship.
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
 never pays a minute twice. Servers with voice XP off are not tracked at all (the ticker drops one the
-moment it finds it switched off), and the switch lives in Redis too: turning voice XP off (`/config xp
+moment it finds it switched off), and the switch lives in Redis too: turning voice XP off (`/setup leveling
 voice` or the dashboard) forgets everyone and makes every pod refuse to write who is in voice for ten
 minutes, so a pod whose settings are a minute old cannot write a just-forgotten member back. Settings and
 multiplier changes made with the slash commands are announced through Redis like the dashboard's, so every
@@ -201,7 +211,7 @@ change is logged as just the new value. Voice moves work the same way: a member 
 channel when the bot starts is only noticed once their state changes.
 
 Moderation commands check the moderator's own permission (the one Discord would ask for: Ban Members for
-`/ban`, Manage Channels in the channel named for `/lock`, and so on; Administrator stands for all of them)
+`/ban`, Manage Channels in the channel named for `/mod lock`, and so on; Administrator stands for all of them)
 from the member permissions Discord sends with the interaction, and the role hierarchy the way Discord does
 (`pinchora_core::moderation::may_act`): nobody acts on the owner, on themselves or on the bot, and both the
 moderator (unless they own the server) and the bot must sit strictly above the member. A refusal is private
@@ -213,14 +223,14 @@ kicks and bans; before a kick or ban, since afterwards the member shares no serv
 or ban Discord then refuses turns that message into one saying it did not go through; a server can switch
 this off, a member's `/privacy` "Server DMs" switch is honoured, and a closed DM is noted on the case) and
 posts the case to the mod-log (its own channel, else the server log's moderation channel), in the server's
-language. Audit log reasons read `moderator: reason`. `/unwarn` follows the hierarchy against both the
-warned member and the moderator who gave the warn, and `/reason` is for the case's own moderator or someone
+language. Audit log reasons read `moderator: reason`. `/mod unwarn` follows the hierarchy against both the
+warned member and the moderator who gave the warn, and `/mod reason` is for the case's own moderator or someone
 above them (a case the bot opened: someone above its member); both look the members up on Discord. The warn
 ladder (`mod_warn_thresholds`) acts as the bot, as a case of its own, when a warn brings a member's active
-warns to a rung's count. `/role add|remove` uses the same rule as every role Pinchora hands out
+warns to a rung's count. `/mod role add|remove` uses the same rule as every role Pinchora hands out
 (`settings::grant_refusal`): a role the bot can give, below the moderator's highest role, and none with a
-dangerous permission unless they own or administer the server. `/lock` remembers what @everyone's
-overwrite allowed and denied of the locked permissions, and `/unlock` puts exactly that back (a channel
+dangerous permission unless they own or administer the server. `/mod lock` remembers what @everyone's
+overwrite allowed and denied of the locked permissions, and `/mod unlock` puts exactly that back (a channel
 locked by hand goes back to neutral). Temporary bans are lifted by a ticker on every pod every 30 seconds: due
 bans are leased for two minutes with `FOR UPDATE SKIP LOCKED`, taken off with `UPDATE … WHERE active
 RETURNING` right before Discord is asked (so a ban that was lifted or replaced meanwhile is left alone and
@@ -240,7 +250,7 @@ come from the gateway events; roles, member roles, channels and threads (permiss
 the server's settings, invites, emojis, stickers, kicks and timeouts come from Discord's audit log as it
 happens (`GUILD_AUDIT_LOG_ENTRY_CREATE`, which needs the bot to have View Audit Log), with who did it and what
 changed; a ban waits a moment for the audit log to name who did it. What Pinchora did itself is left to its
-case in the mod-log. Entries are written in the server's language (`/config language`). Without the
+case in the mod-log. Entries are written in the server's language (`/setup server language`). Without the
 privileged Message Content intent the log says who edited a message, where and when, and for a deleted
 message only where and when it was sent: Discord does not say whose it was, and nothing was kept to tell.
 With the intent on (`PINCHORA_GATEWAY__MESSAGE_CONTENT=true`, the same switch the keyword auto-responders
@@ -258,8 +268,8 @@ Voice States were there already; Server Members and Message Content are privileg
 switch. Invites and emoji or sticker changes come from the audit log too: the bot asks for neither the Guild
 Invites nor the Guild Emojis and Stickers intent, so it needs View Audit Log for them.
 
-Admin commands check the permission themselves. `/config` (every subcommand), `/roles`, `/giveaway`,
-`/suggestion`, `/points give|take` and `/plaza edit` (with the buttons and menus of its editor) need
+Admin commands check the permission themselves. `/setup` (every subcommand), `/setup roles`, `/giveaway`,
+`/mod suggestion`, `/setup economy points-give|take` and `/setup community plaza-edit` (with the buttons and menus of its editor) need
 Manage Server or Administrator, read from the member permissions Discord sends with each interaction,
 on top of the command's default visibility: a server owner can change who sees a command in the
 integration settings, so hiding or showing one never decides who may use it. A member without the
@@ -298,7 +308,7 @@ permission gets a private refusal and nothing changes.
 | `/fish sell` | Your bucket on a card, with **Sell all** and **Sell duplicates** (keeps the biggest of each species), priced by rarity and size (fish of a species the game no longer has are not counted and **Sell all** clears them for nothing). The fish book never loses an entry or a record |
 | `/fish book` | Your fish book on a card, eight species a page: record size and catch count for the ones you have, a shadow and where they live for the ones you have not, and the milestone rewards: **10 / 25 / 50 / 72** species pay 300 / 1,000 / 3,000 / 10,000 shells and a badge or profile background (Pocket Puffer, Brinebell Market, Lantern Jelly, Moonwhale Crossing). Each pays once; players who passed a milestone earlier are paid at their next catch |
 | `/beachcomb` | Walk the shore (once every 20 minutes) for a find: shells, sea glass, driftwood, coins, now and then a critter; some only turn up at a time of day or in a season. A first find is a discovery for your dex and pays well, a spare is recycled for a few shells and fragments. A card shows what you found |
-| `/critterdrop` | Drop three pixel critters in the channel on one picture with a numbered button each: the first click takes a card, nobody takes two, they drift away after 90 seconds. It follows `/config critters` (off in a server until a manager turns it on, and kept to the set channel if there is one). You can call one every 30 minutes, a channel gets one every 10 minutes whoever calls, and one waits at a time per channel; chat can make them wash up too, but never on top of a drop that is still open in the channel |
+| `/critterdrop` | Drop three pixel critters in the channel on one picture with a numbered button each: the first click takes a card, nobody takes two, they drift away after 90 seconds. It follows `/setup economy critters` (off in a server until a manager turns it on, and kept to the set channel if there is one). You can call one every 30 minutes, a channel gets one every 10 minutes whoever calls, and one waits at a time per channel; chat can make them wash up too, but never on top of a drop that is still open in the channel |
 | `/crabpot` | A crab pot you set for 1, 4 or 8 hours and haul in later (a stored end time, so it survives restarts): 1 to 1.8 catches an hour, more for a longer soak, drawn from the critters of the shallows and the finds. Five levels, bought with shells: a better pot catches more and finds rarer things. The haul is a card of everything it brought |
 | `/dex [user] [tab]` | The Tide Pool Dex: a paged picture book of all 48 critters and 36 finds with a progress bar, how many you met of each, and the ones you have not found as dark silhouettes. **Spend fragments** trades what spares leave behind for a free-to-earn decor piece of the tier you pick (12 / 65 / 370 / 1,950 / 8,900 fragments from common to legendary); the piece is **soulbound**: it can be placed in your own house but never sold at a stall, gifted, donated to a plaza or placed in a partner's house |
 | `/quests` | Three daily quests; clear all three for pearls. The **Claim rewards** button belongs to the day of its board: a button from yesterday says it expired and shows today's quests |
@@ -318,13 +328,13 @@ permission gets a private refusal and nothing changes.
 | `/play hangman` | A cozy word (780 in five categories, and 500 in Turkish with all 29 letters of the Turkish alphabet) guessed from two letter menus while the tide washes a pixel sandcastle away; six misses lose |
 | `/play wordle [mode]` | Five letters, six tries, typed into a form, shown as private pixel tiles with a keyboard summary. `daily` (default) is one word the same for everyone, kept per player per day, with a spoiler-free **Share result**; `practice` is a random word, as many as you like (**New word** on a board you had started, with a guess in, counts it as a lost game). A player whose Discord is set to Turkish gets the **Turkish wordle**: 1,247 answers and 6,001 guesses, the Turkish alphabet with a Turkish Q keyboard (Ğ Ü İ Ö Ş Ç, dotted `i`/`İ` and dotless `ı`/`I` kept apart), its own daily word and board (`daily-tr`), and one daily reward a day across both languages |
 | `/play trivia [category]` | A question for the channel from 464 (8 topics, three difficulties; 564 in Turkish, 464 translated and 100 about Turkey): four answer buttons, 20 seconds, anyone answers once; the message then reveals the answer and who got it right |
-| `/play derby [bet]` | Hermit Crab Derby: a lobby for the channel with six crabs (the hermit crab pet in six shell colours); everyone picks a crab with a button (and can switch or **Leave** until the start) and **Start the race** (host) or the 75 s timer runs it as an animated GIF of 480x288 under 600 KB that plays once (the lane plates show each crab's number and name, and the finished crabs fan out by place). With a `bet` (10 to 500) each racer puts that many shells on their crab and those who back the winner share the pool; nobody backing it, or fewer than two racers, gives every stake back, so the house never takes a shell. A staked race is pure chance, so it is a gambling-style game: `bet` is refused until a manager runs `/config gambling`, and nobody can be more than 1,000 shells down on a day's staked races (a stake held in a lobby counts as down until it comes back, counted on the day it was put up). Without a bet the backers of the winner get 20 shells (five wins a day). The result is hidden in a spoiler under the GIF |
+| `/play derby [bet]` | Hermit Crab Derby: a lobby for the channel with six crabs (the hermit crab pet in six shell colours); everyone picks a crab with a button (and can switch or **Leave** until the start) and **Start the race** (host) or the 75 s timer runs it as an animated GIF of 480x288 under 600 KB that plays once (the lane plates show each crab's number and name, and the finished crabs fan out by place). With a `bet` (10 to 500) each racer puts that many shells on their crab and those who back the winner share the pool; nobody backing it, or fewer than two racers, gives every stake back, so the house never takes a shell. A staked race is pure chance, so it is a gambling-style game: `bet` is refused until a manager runs `/setup economy gambling`, and nobody can be more than 1,000 shells down on a day's staked races (a stake held in a lobby counts as down until it comes back, counted on the day it was put up). Without a bet the backers of the winner get 20 shells (five wins a day). The result is hidden in a spoiler under the GIF |
 | `/play heist` | Treasure Heist: a crew of 2 to 8 picks roles (Lookout, Locksmith, Diver) in a lobby; three stages (slip past the guards, crack the lock, haul out the loot) each go better with a fitting role, and the card shows the crew's live chances. All three stages pay each member 60 shells, two pay 25, one pays 8, none is busted. Nobody ever loses shells; at most 150 shells a day and a 5 minute rest after a heist |
-| `/play shells bet` | Shell Game: the pearl is under one of three shells, a right guess pays two and a half times the stake (5 to 100), which is a sixth less than fair. A gambling-style game, so it is off until a manager runs `/config gambling`, with 20 games, a 300 shell loss and a 600 shell win limit per player a day; an unanswered table gives the stake back |
+| `/play shells bet` | Shell Game: the pearl is under one of three shells, a right guess pays two and a half times the stake (5 to 100), which is a sixth less than fair. A gambling-style game, so it is off until a manager runs `/setup economy gambling`, with 20 games, a 300 shell loss and a 600 shell win limit per player a day; an unanswered table gives the stake back |
 | `/surge` | Managers call a Storm Surge: for 10 minutes everyone presses **Stack a sandbag** (one every 6 s, at most 25 each) while the sea washes one away every 30 s; the wall's goal is 24 plus 8 per helper, so one player cannot hold it alone. A shared card shows the wall, the helpers and the best three; hold it and every helper gets 20 shells plus 2 per sandbag (up to 50), lose and they get 6 plus 1 per sandbag; at most 120 shells a day |
 | `/play stats [user]` | Games played and won for each game |
-| `/config gambling enabled` | Switch gambling-style games (the shell game and staked derbies) on or off for the server; off by default (Manage Server) |
-| `/config surge [enabled] [channel] [every]` | Timed storm surges, off by default: one comes to the channel every 6, 12 or 24 hours, 2 days or a week; with no options it shows the setting. `/surge` always works for managers (Manage Server) |
+| `/setup economy gambling enabled` | Switch gambling-style games (the shell game and staked derbies) on or off for the server; off by default (Manage Server) |
+| `/setup economy surge [enabled] [channel] [every]` | Timed storm surges, off by default: one comes to the channel every 6, 12 or 24 hours, 2 days or a week; with no options it shows the setting. `/surge` always works for managers (Manage Server) |
 | `/party hotpearl [lives]` | Hot Pearl, 2 to 8 players: a lobby message with **Join**, **Leave**, **Start** (host only) and **Cancel** (closed by the clock after 3 minutes). Each turn the pearl shows a syllable (from 2 and 3 letter fragments, gentle at first, harder later) and its holder presses **Type a word** and types a real word that contains it (176,000 words, plus the usual plurals, `ed`, `ing`, `er`, `est`, `ly` forms; a word can only be played once) before the pearl pops: 25 seconds, shrinking to 15. A pop costs a life (2 each, 1 to 3 with `lives`), a word passes the pearl on with a new syllable, and the last player with lives wins; a click that arrives after the clock pops the pearl itself. A win only pays shells when at least 4 words were played in the game and 2 of them by the winner, so waiting out an empty table earns nothing. The table is a picture with hearts, whose turn it is and the last word |
 | `/party acronym [rounds]` | Acronym Tide, 3 to 10 players, 1 to 5 rounds: 3, 4 or 5 letters come up and everyone writes a phrase with one word per letter, in order (75 s, in a form; a rewrite replaces the first). The phrases go up anonymously and numbered, everybody votes with a number button (not for their own; the vote can be changed; 40 s), then the reveal shows who wrote what and the votes (1 point a vote, 2 more for the round's winner, a tie shares it). An early finish (everyone wrote, everyone voted) moves a phase on sooner; fewer than two phrases skip the vote |
 | `/party postcard [rounds]` | Caption the Postcard, 3 to 10 players, 1 to 5 rounds: a pixel postcard (one of 11 scenes: a profile backdrop with pets, fish and characters standing on it at the backdrop's own pixel size, stamped and postmarked) comes up, everyone writes a caption (60 s), then the same anonymous vote and reveal as Acronym Tide with the postcard above the captions |
@@ -332,11 +342,11 @@ permission gets a private refusal and nothing changes.
 | `/party wouldyourrather [topic]` | A would-you-rather question from 212 (six topics: silly, food, adventure, ocean, brainy, cozy) with a card and an **A** and a **B** button: one vote each, changeable, the split hidden until the poll closes after 10 minutes, when the card shows the percentages. One poll every 20 seconds per channel |
 | `/party truthordare [topic]` | Truth or Dare, 2 to 10 players, family friendly (102 truths and 102 dares in six topics): the bot picks whose turn it is, that player presses **Truth** or **Dare**, gets one nobody had lately, and presses **Done** or **Pass** (passing is always fine). The host ends the game with **End game**; a table that lets two turns in a row run out of time ends it by itself. Each player gets one game in `/play stats` when it ends |
 | `/party stop` | Ends the lobby or game running in this channel: its host or a member with Manage Server can. The message is closed, nobody wins and nothing is paid or refunded (the party games have no wagers); the answer is private |
-| `/config partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
-| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/language`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 28 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
-| `/config welcome-card` | The classic welcome card (theme, headline, accent colour) with a preview: any option makes the classic card the server's welcome image again (a design made in the dashboard's editor is put aside, and the reply says so; how the image is sent stays), and without options it shows the welcome image as it is now, the editor's design included |
-| `/config language language` | The server's default language (English, Türkçe, or Automatic for English) for messages that answer nobody in particular: welcome cards, level-ups, logs, giveaways. Replies to a member are still in that member's own language (Manage Server) |
-| `/config prefix set\|reset\|show` | What text commands start with here: 1 to 5 characters without spaces, `@`, `#` or backticks; `reset` goes back to `p!`. `/config show` and the dashboard's Overview show it too (Manage Server) |
+| `/setup economy partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
+| `/setup server modules-show\|modules-toggle\|modules-channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/setup`, `/help`, `/language`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/rewards weekly` and `/rewards monthly` belong to the economy module and `/info wrapped` to profiles. The 28 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/setup leveling settings`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
+| `/setup welcome card` | The classic welcome card (theme, headline, accent colour) with a preview: any option makes the classic card the server's welcome image again (a design made in the dashboard's editor is put aside, and the reply says so; how the image is sent stays), and without options it shows the welcome image as it is now, the editor's design included |
+| `/setup server language language` | The server's default language (English, Türkçe, or Automatic for English) for messages that answer nobody in particular: welcome cards, level-ups, logs, giveaways. Replies to a member are still in that member's own language (Manage Server) |
+| `/setup server prefix-set\|prefix-reset\|prefix-show` | What text commands start with here: 1 to 5 characters without spaces, `@`, `#` or backticks; `reset` goes back to `p!`. `/setup server show` and the dashboard's Overview show it too (Manage Server) |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
 challenged player accepts; then both bets leave the balances in one transaction and sit in the database
@@ -431,14 +441,14 @@ no duplicate names, the glossary, the furniture noun table (`_furniture_nouns.js
 `content/i18n/tr/`, translate it, add the files to `TR_FILES`-style tables in `crates/pinchora-game/src/overlay.rs` and
 an arm to `overlay()`.
 
-**Turkish social and server tools.** `/partner`, `/friends`, `/hug` `/pat` `/wave` `/highfive`, `/rep`, `/bio`, `/ping`,
-the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/roles`, `/tag` and `/customcommand`, every
-`/config` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
+**Turkish social and server tools.** `/partner`, `/friends`, `/hug` `/pat` `/wave` `/highfive`, `/rep`, `/customize bio`, `/ping`,
+the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/setup roles`, `/tag` and `/setup commands`, every
+`/setup` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
 `suggestions`, `welcome-card`) and the messages a server sends on its own (welcome card, goodbye, level-up banner, server
 log, giveaway, suggestion and poll messages) speak Turkish: the catalogs are `locales/<code>/social.toml`, `guestbook.toml`
 (+ contest), `giveaway.toml`, `suggest.toml` (+ poll), `roles.toml`, `tags.toml`, `modules.toml`, `serverconfig.toml`
 and `settings.toml`. Replies use the member's language; what answers nobody in particular (the giveaway, suggestion, poll and
-role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/config
+role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/setup
 language`), and a direct message (a level-up by DM, a suggestion's verdict) uses its recipient's own pick. The checks that
 refuse a setting (`pinchora_core::settings::FieldError`) carry a catalog key beside their English text: ask
 `error.text(lang)`; role refusals have `*_in(lang, …)` twins (`role_refusal_in`, `grant_refusal_in`, …) and the pixel cards
@@ -467,7 +477,7 @@ also what `/play stats` lists), `play.toml` (`/play stats`), `duel.toml` (every 
 `/beachcomb`, `/crabpot`), `party.toml` (`/party`) and `arcade.toml` (the crab derby, treasure heist, shell game and storm
 surge, including the derby GIF's own 3x5 font, which folds Ç Ğ İ Ö Ş Ü to plain letters). A public message in a channel
 (a challenge, a duel or board game's board, a party, derby, heist or storm lobby, the shell game's table, a critter drop or
-bottle) is drawn in the server's language (`/config language`, English when unset) for its whole life, whoever clicks it:
+bottle) is drawn in the server's language (`/setup server language`, English when unset) for its whole life, whoever clicks it:
 the duel and board-game boards ask `App::guild_lang`, and a lobby locks the server's language when it opens (the derby,
 heist, storm and shell game states end in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not
 switch it. What only the clicker sees (a refusal, a menu, a private picker, "not your turn") is in the clicker's own
@@ -475,7 +485,7 @@ language; what the bot edits in by itself (a time-out, a secret pick) is in the 
 catalog already in capitals, and text a card capitalises is capitalised with `Lang::upper` first (Turkish
 `i` is `İ`). The Turkish simulator flows are `tests/simulate/turkish_{duel,solo,party,arcade}.rs`.
 **Turkish pets, fishing, shops and cards.** `/pet` (with trips and the nursery), `/fish`, `/shop`, `/inventory`, `/gift`,
-`/stall`, `/plaza`, `/quests`, `/points`, `/store`, `/leaderboard`, `/wrapped`, `/remind` and the `/customize` title, style
+`/stall`, `/plaza`, `/quests`, `/points`, `/store`, `/leaderboard`, `/info wrapped`, `/remind` and the `/customize` title, style
 and showcase editors answer in the player's language: their texts are the keys of `locales/{en,tr}/{pets,fish,shop,
 quests,points,remind,boards,cosmetics}.toml`, and the pet, nursery, wrapped, leaderboard and badge-collection cards take
 a `lang` for the words they draw. A new pet is named after its species in the adopter's language. `/remind` also
@@ -491,7 +501,7 @@ same after the bot's mention (`@Pinchora fish cast reef`), which always works wh
 is read against the registered slash commands and runs the very same handler, so the module switches, the
 Manage Server checks (from the member's roles), cooldowns and wagers are those of the slash command.
 
-Servers control them like any other part of the bot. The **Text commands** module (`/config modules`, the
+Servers control them like any other part of the bot. The **Text commands** module (`/setup server`, the
 dashboard's Modules page) switches every text command off for the server or in some channels, the `@Pinchora`
 form included: where it is off, a command typed with the prefix is ignored without a word and one typed after
 the mention is answered with "This feature is turned off". On top of that a text command is allowed only where
@@ -513,11 +523,11 @@ permissions (`default_member_permissions`, where `"0"` means administrators only
   once when the bot shuts down. Buttons and menus on a reply work as on the slash command's message and
   check the member who typed the command.
 - A message carries no Discord language, so a text command answers in the member's `/language` pick, else the
-  server's default (`/config language`), else English. The notices, usage lines and `/config prefix` are in the
+  server's default (`/setup server language`), else English. The notices, usage lines and `/setup server` are in the
   `text` catalogs (`crates/pinchora-core/locales/<code>/text.toml`); a switch also takes `evet`/`hayır`.
-- Private panels, forms and server settings stay slash-only: `/config` (which would show the server's
+- Private panels, forms and server settings stay slash-only: `/setup` (which would show the server's
   settings to the whole channel), `/house edit`, `/house decorate`, `/customize`, `/character`,
-  `/plaza edit`, `/stall manage`, `/play picross`, `/play wordle` and `/play 2048` (and any other command
+  `/setup community plaza-edit`, `/stall manage`, `/play picross`, `/play wordle` and `/play 2048` (and any other command
   whose first answer is a private panel) answer "This one only works as a slash command: use `/…`".
 - Bots, webhooks and direct messages are ignored, and a member's text commands count at most once every
   1.5 seconds. If the rate limit cannot be read (Redis is down) text commands are ignored rather than let
@@ -527,15 +537,63 @@ The bot owner turns this on in two places: **Message Content Intent** on the Bot
 Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
 mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
 
+### Consolidated command tree (slices 1–18)
+
+The original 95 roots now occupy **62 registered roots** including `/setup`, `/mod`, and `/rewards`.
+Every one of the 330 actions is reachable, including the 9 quick-game actions. The 160 moved actions call their original
+typed handlers. `/setup` adds Manage Server authorization on every action; `/mod` has no restrictive
+root default and preserves each action's existing authorization and feature module.
+Member panel buttons keep their custom IDs and authorization. Old prefix paths use longest-token
+matching, after one server alias expansion, and show a rate-limited English/Turkish migration notice.
+Private configuration redirects to the new slash path. Existing colliding aliases retain their
+meaning; existing custom content remains available through `/tag`. New collisions are rejected.
+
+| New command group | Actions (typed arguments are unchanged) |
+| --- | --- |
+| `/setup achievements` | `add`, `edit`, `grant`, `list`, `remove` |
+| `/setup antinuke` | `disable`, `enable`, `events`, `limits`, `status`, `trust-add`, `trust-remove`, `vip-add`, `vip-remove` |
+| `/setup automod` | `exempt-channel`, `exempt-role`, `profile`, `show`, `test`, `toggle` |
+| `/setup backup` | `export`, `import`, `list`, `restore` |
+| `/setup birthdays` | `preview`, `settings` |
+| `/setup commands` | `alias`, `reset`, `set`, `show`, `custom-create`, `custom-delete`, `custom-edit`, `custom-info`, `custom-list` |
+| `/setup community` | `suggestions`, `plaza-edit` |
+| `/setup economy` | `critters`, `gambling`, `partygames`, `points-settings`, `rep-roles-add`, `rep-roles-list`, `rep-roles-remove`, `store-add`, `store-list`, `store-remove`, `surge`, `points-give`, `points-take` |
+| `/setup events` | `template` |
+| `/setup feeds` | `add`, `edit`, `list`, `remove`, `test` |
+| `/setup invites` | `bonus-add`, `bonus-remove`, `post`, `reward-add`, `reward-remove`, `settings` |
+| `/setup leveling` | `roles-add`, `roles-list`, `roles-mode`, `roles-remove`, `roles-sync`, `settings`, `xp-clear`, `xp-multiplier`, `xp-show`, `xp-voice`, `xp-add`, `xp-import-mee6`, `xp-remove`, `xp-reset`, `xp-reset-all`, `xp-set` |
+| `/setup moderation` | `log`, `log-events`, `log-ignore`, `settings`, `warn-ladder` |
+| `/setup roles` | `auto-add`, `auto-list`, `auto-remove`, `auto-sticky`, `color-setup`, `join-role`, `panel-add`, `panel-create`, `panel-post`, `panel-remove`, `panel-temp` |
+| `/setup server` | `language`, `modules-channels`, `modules-show`, `modules-toggle`, `prefix-reset`, `prefix-set`, `prefix-show`, `show` |
+| `/setup starboard` | `edit`, `list`, `remove`, `setup`, `top`, `votes-add`, `votes-list`, `votes-remove` |
+| `/setup stats` | `counter-add`, `counter-list`, `counter-remove` |
+| `/setup tickets` | `panel-create`, `panel-delete`, `panel-edit`, `panel-list`, `panel-post`, `settings` |
+| `/setup utility` | `schedule-add`, `schedule-list`, `schedule-pause`, `schedule-preview`, `schedule-remove`, `schedule-resume`, `schedule-run-now`, `sticky-remove`, `sticky-set`, `sticky-show`, `voice-add`, `voice-list`, `voice-remove` |
+| `/setup verification` | `message`, `mode`, `post`, `setup` |
+| `/setup welcome` | `goodbye`, `message`, `card` |
+
+`/mod` contains `unban`, `untimeout`, `warnings`, `unwarn`, `slowmode`, `lock`, `unlock`, `nick`,
+`case`, `reason`, `role add|remove`, `raid lockdown|unlock|status`, and `suggestion approve|deny`.
+`/rewards weekly|monthly`, `/customize bio`, and `/info wrapped` retain their original arguments
+and module ownership. The player leaves under points, voice, color, plaza and event remain available.
+
+The route manifest in `crates/pinchora-commands/src/routing/manifest.json` records every original
+leaf, final path and rollout slice. Registration validates the 100-root budget, depth and 25-option
+limits. Migration `0066` expands old parent rules onto their exact replacement actions and preserves
+independent role/channel restrictions. Recovery protection is path-aware. Help lists canonical paths
+and maps old `hp:<page-index>` buttons to the same action. Registration snapshots Discord overrides
+before replacing command IDs and invalidates caches afterward; see the [release rehearsal and admin
+checklist](docs/releases/command-tree.md). Old slash definitions remain internal only.
+
 ### Command control and configuration backup (D2)
 
 | Command (Manage Server) | What it does |
 | --- | --- |
-| `/commandcontrol show` | Show override and alias counts. |
-| `/commandcontrol set command [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]` | Add restrictions to a command or full subcommand path. Parent restrictions and the command's original permission/cooldown checks always apply. Channel lists include categories and threads. |
-| `/commandcontrol reset command` | Remove an override. |
-| `/commandcontrol alias name [command]` | Set a prefix shortcut (up to 50); omit the command to remove it. For example `w` → `play wordle`. |
-| `/backup export`, `/backup list`, `/backup restore id`, `/backup import` | Download configuration, list the last ten restore points, preview a restore before confirming, or open the import dashboard. |
+| `/setup commands show` | Show override and alias counts. |
+| `/setup commands set command [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]` | Add restrictions to a command or full subcommand path. Parent restrictions and the command's original permission/cooldown checks always apply. Channel lists include categories and threads. |
+| `/setup commands reset command` | Remove an override. |
+| `/setup commands alias name [command]` | Set a prefix shortcut (up to 50); omit the command to remove it. For example `w` → `play wordle`. |
+| `/setup backup export`, `/setup backup list`, `/setup backup restore id`, `/setup backup import` | Download configuration, list the last ten restore points, preview a restore before confirming, or open the import dashboard. |
 
 The **Commands** dashboard searches the full registered command tree, edits access and reply behavior in a drawer,
 and shows Discord integration permission rows when available. Discord's integration permissions and all server-side
@@ -576,12 +634,12 @@ server command-control setting. The server sidebar retains Commands and Backup u
 
 | Command | What it does |
 |---|---|
-| `/automod show` | Current profile, active rules and observation deadline |
-| `/automod profile name` | Apply `relaxed`, `standard`, `strict` or `off`; standard only logs for its first 48 hours |
-| `/automod toggle rule enabled` | Enable or pause one named rule |
-| `/automod exempt role action role [rule]` | `add` or `remove` a role exemption, for one rule or all rules |
-| `/automod exempt channel action channel [rule]` | `add` or `remove` a channel exemption |
-| `/automod test text` | Private matcher preview; no strikes or actions |
+| `/setup automod show` | Current profile, active rules and observation deadline |
+| `/setup automod profile name` | Apply `relaxed`, `standard`, `strict` or `off`; standard only logs for its first 48 hours |
+| `/setup automod toggle rule enabled` | Enable or pause one named rule |
+| `/setup automod exempt-role action role [rule]` | `add` or `remove` a role exemption, for one rule or all rules |
+| `/setup automod exempt-channel action channel [rule]` | `add` or `remove` a channel exemption |
+| `/setup automod test text` | Private matcher preview; no strikes or actions |
 
 The **AutoMod** dashboard under Safety has profile cards, up to 30 rule cards, ordered actions,
 role/channel exemptions, channel scopes, a message test, the last 50 hits and per-member strike reset.
@@ -609,7 +667,7 @@ English and Turkish text comes from `locales/{en,tr}/automod.toml`.
 ### Roles pack
 
 Auto roles, role panels in three styles, roles that expire, roles kept for members who come back, and colour
-roles. The commands are in the table above (`/autoroles`, `/roles`, `/color`); the dashboard's **Roles** page
+roles. The commands are in the table above (`/setup roles`, `/setup roles`, `/color`); the dashboard's **Roles** page
 (sidebar group Roles) does the same with a live preview of every panel.
 
 - **Auto roles** (module `autoroles`) are given by the join hook, after what sticky roles bring back, and respect a
@@ -643,10 +701,10 @@ dashboard's Community group).
 
 | Command | What it does |
 |---|---|
-| `/tickets panel create name channel [title] [description] [topics] [style] [support_role]` | Make a panel (up to 10): a title, a text, and its topics as buttons (up to 5) or a menu (up to 25), typed as `Support, Billing, Report a member`. The support role sees and answers its tickets (Manage Server) |
-| `/tickets panel edit panel [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]` | Change a panel; `welcome` is the ticket's first message, with `{user}` `{server}` `{number}` `{topic}`. Post it again to update it (Manage Server) |
-| `/tickets panel post\|delete\|list panel` | Post a panel (posting again edits it where it is), delete one (its tickets stay), or list them with how many tickets are open (Manage Server) |
-| `/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]` | Where ticket channels go and where closed ones move, the log channel, closing tickets nobody wrote in for 1 to 720 hours, the transcript by direct message, 1 to 5 star ratings, channels or private threads (automatic: threads once the server has more than 400 channels), the channel name (`ticket-{number}`, also `{user}` `{topic}`) and how many tickets one member may have open (1 to 10). No options shows them (Manage Server) |
+| `/setup tickets panel-create name channel [title] [description] [topics] [style] [support_role]` | Make a panel (up to 10): a title, a text, and its topics as buttons (up to 5) or a menu (up to 25), typed as `Support, Billing, Report a member`. The support role sees and answers its tickets (Manage Server) |
+| `/setup tickets panel-edit panel [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]` | Change a panel; `welcome` is the ticket's first message, with `{user}` `{server}` `{number}` `{topic}`. Post it again to update it (Manage Server) |
+| `/setup tickets panel-post\|panel-delete\|panel-list panel` | Post a panel (posting again edits it where it is), delete one (its tickets stay), or list them with how many tickets are open (Manage Server) |
+| `/setup tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]` | Where ticket channels go and where closed ones move, the log channel, closing tickets nobody wrote in for 1 to 720 hours, the transcript by direct message, 1 to 5 star ratings, channels or private threads (automatic: threads once the server has more than 400 channels), the channel name (`ticket-{number}`, also `{user}` `{topic}`) and how many tickets one member may have open (1 to 10). No options shows them (Manage Server) |
 | `/ticket close [reason]`, `/ticket transcript` | In a ticket: close it, or get its messages as a web page only you see. The member who opened it may do both |
 | `/ticket claim\|unclaim\|add user\|remove user\|rename name\|reopen\|move category` | In a ticket, for staff (a support role, Manage Channels or Manage Server): say you handle it or hand it back, let someone in or take them out, rename the channel, reopen a closed ticket, move the channel to another category |
 
@@ -682,12 +740,12 @@ A voice channel a server sets up as a **creator** gives whoever joins it a voice
 `Mira's room` in the creator's category, moves the member in, and deletes the room when the last person leaves.
 Module `temp_voice` (Community group, switched on or off for the whole server). Needs **Manage Channels**,
 **Move Members** and **Manage Roles** (it writes the channel's permission overwrites); when one is missing,
-`/voice creators add`, the dashboard and the creator's own chat name it.
+`/setup utility voice-add`, the dashboard and the creator's own chat name it.
 
 | Command | What it does |
 |---|---|
-| `/voice creators add channel [category] [limit] [template]` | Make a voice channel a creator, or change one: `category` is where rooms go (default: the creator's own), `limit` how many a room takes at first (0: no limit), `template` what rooms are called (`{user}` is the owner's name, `{n}` the room's number; default `{user}'s room`). Up to 10 per server (Manage Server) |
-| `/voice creators remove channel`, `/voice creators list` | Stop a channel making rooms (its rooms stay until they empty), or list the creators with their rooms alive (Manage Server) |
+| `/setup utility voice-add channel [category] [limit] [template]` | Make a voice channel a creator, or change one: `category` is where rooms go (default: the creator's own), `limit` how many a room takes at first (0: no limit), `template` what rooms are called (`{user}` is the owner's name, `{n}` the room's number; default `{user}'s room`). Up to 10 per server (Manage Server) |
+| `/setup utility voice-remove channel`, `/setup utility voice-list` | Stop a channel making rooms (its rooms stay until they empty), or list the creators with their rooms alive (Manage Server) |
 | `/voice lock`, `/voice unlock` | Keep new people out of your room (@everyone loses Connect; the owner and the bot keep their seats), or open it again. A room goes back to what its category says, so a private category stays private |
 | `/voice hide`, `/voice show` | Hide the room from people who are not in it (View Channel), or show it again |
 | `/voice limit people` | How many people the room takes, 0 to 99 (0: no limit) |
@@ -723,7 +781,7 @@ in, else the one you own, and a panel finds the room it sits in. Answers are pri
 
 ### Starboard and vote channels
 
-`/starboard setup|edit|remove|list|top` manages up to three boards per server. Each board has an emoji,
+`/setup starboard setup|edit|remove|list|top` manages up to three boards per server. Each board has an emoji,
 threshold (1–50), self-star and bot rules, source channel allow/deny lists, image requirement, colour,
 role weights and an option to remove posts that fall below the threshold. A reaction is counted once per
 member and board after a short debounce against Discord's current reactions and membership. A qualifying
@@ -731,7 +789,7 @@ post is claimed in Postgres before sending; stale senders clean up any losing co
 updates the count, and deleted or edited sources are reconciled with the board copy. NSFW sources only
 copy to NSFW boards. Private sources are excluded even when selected in a source allow list.
 
-`/starboard votes add|remove|list` sets channels where each new message gets the up reaction followed
+`/setup starboard votes-add|votes-remove|votes-list` sets channels where each new message gets the up reaction followed
 by the down reaction; the server may choose emojis, restrict to media posts and open discussion threads.
 Discussion threads have per-member and per-channel cooldowns and a bounded worker pool.
 The **Starboard** dashboard page edits boards and vote channels and previews the board card. With the
@@ -744,7 +802,7 @@ the relevant channels; thread creation additionally needs Create Public Threads.
 
 `/invites user [user]` draws a pixel card with regular invitations, members who left, accounts younger than the configured fake window, bonus, and the counted total. `/invites top [all|week|month]` shows the leaderboard with `in:` page buttons. `/invites temp` gives a private expiring link when the server enables friend links; the same action is available from an “Invite a friend” button. A member can request only the configured number of links per UTC day. The bot needs **Create Instant Invite** in the selected channel.
 
-Managers use `/inviteadmin settings` to enable tracking, choose the log and invite channels, set the fake age window and daily quota; `/inviteadmin bonus-add|bonus-remove`, `/inviteadmin reward-add|reward-remove`, and `/inviteadmin post` manage bonuses, role milestones and the friend button. A reward role is checked against the bot hierarchy and dangerous permissions when configured and again before grant. The **Invites** dashboard page edits these settings, shows reward roles, leaderboards and member details, and exports counts as CSV.
+Managers use `/setup invites settings` to enable tracking, choose the log and invite channels, set the fake age window and daily quota; `/setup invites bonus-add|bonus-remove`, `/setup invites reward-add|reward-remove`, and `/setup invites post` manage bonuses, role milestones and the friend button. A reward role is checked against the bot hierarchy and dangerous permissions when configured and again before grant. The **Invites** dashboard page edits these settings, shows reward roles, leaderboards and member details, and exports counts as CSV.
 
 Attribution compares Discord invite uses on each join, with a Redis snapshot per server and a database lock to prevent pods crediting one use twice. **Manage Server** is required to list server invites; if the bot lacks it, the join remains unknown. A used-up temporary invite may disappear before it can be matched, so it is labeled temporary/unknown rather than credited by guess. Vanity and widget joins are not credited to a person. Rejoining restores the original member record and does not earn a second invite. No invite channel is shown to ordinary members.
 
@@ -752,7 +810,7 @@ Attribution compares Discord invite uses on each join, with a Redis snapshot per
 
 Members opt in with `/birthday set <day> <month> [year] [timezone]`. The IANA time zone is suggested as they type and defaults to the server zone. The optional year stays private. A confirmation button saves the date; `public` and `show_age` are separate choices, both off by default. `/birthday me`, `/birthday view <member>`, `/birthday next`, `/birthday list [month]` and `/birthday remove` read or remove it. Only shared dates from public profiles appear in other members' views and lists. Date and time zone changes are locked for 30 days after setting, including after removal; privacy choices remain editable. `/privacy delete` removes the active birthday role and clears birthday rows and yearly claims. A minimal cooldown expiry in the existing deletion tombstone prevents re-setting a claimed birthday until the next UTC year (and preserves any longer original 30-day date lock); no birthday date, birth year, time zone or guild is retained there.
 
-Managers use `/birthdays settings` for the announcement channel, message (`{user}`, `{age}`), 24-hour role, IANA server zone, optional Cake Day collectible badge and card ribbon, and a system gift of 0–500 shells. `/birthdays preview` renders the pixel cake card privately. The Community dashboard has the same settings, a preview, and the next 30 days of shared dates. The `birthdays` module can switch the feature off.
+Managers use `/setup birthdays settings` for the announcement channel, message (`{user}`, `{age}`), 24-hour role, IANA server zone, optional Cake Day collectible badge and card ribbon, and a system gift of 0–500 shells. `/setup birthdays preview` renders the pixel cake card privately. The Community dashboard has the same settings, a preview, and the next 30 days of shared dates. The `birthdays` module can switch the feature off.
 
 The minute ticker starts at each member's local midnight and catches up throughout that local day. February 29 is celebrated on February 28 in a non-leap year. Claims are unique per guild/member/local year and UTC year; system gifts are capped to one per player globally per UTC year, even across servers. Current Discord membership is checked before awarding a gift. The 24-hour removal timer is committed with the claim, and grants re-check live role safety. Pending announcements survive restarts and are grouped into at most 25 members per message with restricted mentions. Retries use a stable Discord nonce; Discord only deduplicates recent nonces, so a crash after sending but before recording success can still duplicate an announcement after a long outage. A member must have a `members` row (the bot must have seen their activity) before the server can celebrate them.
 
@@ -763,9 +821,9 @@ Servers can configure up to 25 achievements. Members see earned and locked miles
 | Command | What it does |
 |---|---|
 | `/achievements [user]` | Show the member's server achievement card. Private profiles remain private. |
-| `/achievementadmin add name kind target [description] [icon] [role] [points] [announce_channel] [secret]` | Add a milestone (Manage Server). |
-| `/achievementadmin edit id […]`, `/achievementadmin remove id`, `/achievementadmin list` | Change, remove, or list milestones (Manage Server). |
-| `/achievementadmin grant id user` | Grant a custom achievement once (Manage Server). |
+| `/setup achievements add name kind target [description] [icon] [role] [points] [announce_channel] [secret]` | Add a milestone (Manage Server). |
+| `/setup achievements edit id […]`, `/setup achievements remove id`, `/setup achievements list` | Change, remove, or list milestones (Manage Server). |
+| `/setup achievements grant id user` | Grant a custom achievement once (Manage Server). |
 
 Kinds: messages, voice minutes, level, active days, invites, stars received, tickets closed, reputation, games won, fish caught, and custom. A kind whose source module is off is hidden and does not grant. The dashboard's **Achievements** page edits cards, picks icons from the existing glyphs and badge atlas, previews a card, and lists members who earned one. Grants are unique in `member_achievements`; point rewards and the grant commit together under the player lock. `server_achievements` holds the server's rules. Announcement batches post one summary per channel per minute, including when existing progress earns a new rule. Invites exclude self, fake and under-seven-day accounts and count each eligible live invitee once. Stars count distinct external reactions from boards that disallow bots, excluding accounts under seven days old and role weight multipliers; closing one's own ticket earns no progress.
 
@@ -783,8 +841,8 @@ its channel (once the bot has seen it in the server's channel list), days and ho
 | `/stats server [period]` | A pixel card of the last 7, 30 or 90 days: messages, voice time, joins, leaves, a column a day, joins against leaves, the busiest hours (weekday × hour) and the top channels and members (players hiding from leaderboards are left out), with buttons to switch the period |
 | `/stats me [period]` | Your messages and voice time here, your place among the members and your active days |
 | `/stats channel <channel> [period]` | One channel's messages and voice time, its place and its share of the server |
-| `/counters add <channel> <kind> [role] [template]` | Makes a channel's name show a live number (`👥 Members: 1,234`; `{count}` marks the number): members, humans, bots, online now, boosts, roles, channels, members with a role, and the server's Pinchora houses, fish caught or average level. Renamed when the number changes, never twice within 10 minutes; at most 10 per server. Answers with the exact permission the bot lacks in that channel (View Channel, Connect, Manage Channels). Manage Server |
-| `/counters remove <channel>`, `/counters list` | Stop a counter (the channel keeps its last name); list them with what each shows and what keeps one from updating. Manage Server |
+| `/setup stats counter-add <channel> <kind> [role] [template]` | Makes a channel's name show a live number (`👥 Members: 1,234`; `{count}` marks the number): members, humans, bots, online now, boosts, roles, channels, members with a role, and the server's Pinchora houses, fish caught or average level. Renamed when the number changes, never twice within 10 minutes; at most 10 per server. Answers with the exact permission the bot lacks in that channel (View Channel, Connect, Manage Channels). Manage Server |
+| `/setup stats counter-remove <channel>`, `/setup stats counter-list` | Stop a counter (the channel keeps its last name); list them with what each shows and what keeps one from updating. Manage Server |
 
 Members, online and boosts come from Discord's approximate counts (one request per server every 10 minutes); humans,
 bots and role counters list the members, so they work in servers of up to 10,000 members.
@@ -809,9 +867,9 @@ site has the whole bot's totals (servers, players, houses, pets, fish, games) an
 | Command | What it does |
 |---|---|
 | `/verify` | Pass the join gate: button, five-character pixel captcha with a private answer modal, or a member-bound web link. Captchas last 10 minutes and each answer consumes its image; three wrong answers trigger a 15-minute cooldown. **Ask a moderator** sends a staff alert. |
-| `/verification setup enabled [verified_role] [unverified_role] [channel] [kick_after]` | Configure the gate and optional timeout kick (Manage Server). Holds join roles, welcome and join responders until verified; then grants join and `after_verify` auto roles. |
-| `/verification mode mode`, `/verification message text`, `/verification post` | Choose `button`, `captcha` or `web`, edit the message and post its `vf:go` panel (Manage Server). |
-| `/raid lockdown [minutes]`, `/raid unlock`, `/raid status` | Start, end or inspect a raid (Manage Server). Lockdown forces captcha, raises Discord verification, and optionally pauses invites, sets slowmode or locks selected channels. Automatic expiry restores the captured settings while preserving unrelated staff edits. |
+| `/setup verification setup enabled [verified_role] [unverified_role] [channel] [kick_after]` | Configure the gate and optional timeout kick (Manage Server). Holds join roles, welcome and join responders until verified; then grants join and `after_verify` auto roles. |
+| `/setup verification mode mode`, `/setup verification message text`, `/setup verification post` | Choose `button`, `captcha` or `web`, edit the message and post its `vf:go` panel (Manage Server). |
+| `/mod raid lockdown [minutes]`, `/mod raid unlock`, `/mod raid status` | Start, end or inspect a raid (Manage Server). Lockdown forces captcha, raises Discord verification, and optionally pauses invites, sets slowmode or locks selected channels. Automatic expiry restores the captured settings while preserving unrelated staff edits. |
 
 **Safety** in the dashboard configures account-age/avatar/name checks, safe roles, exemptions, join-rate and similarity thresholds, automatic alert/lockdown/kick/ban, and displays captcha previews, live raid state and recent joins/events. Use a verified role to unlock member channels alongside Discord onboarding; configure role/channel permissions in Discord. The owner, staff, bots, whitelisted members and anyone above the bot are protected; roles are checked on save and again when applied. Raid alert buttons (`rd:unlock|kick|ban:<event>`) recheck Manage Server and member hierarchy. Modal IDs use `cq:a:<nonce>`. Actions appear in moderation cases/logs and the staff log. Web mode uses `PINCHORA_WEB__PUBLIC_URL` for its private `/verify/<token>` link and requires the same signed-in Discord account.
 
@@ -823,20 +881,20 @@ Migration **0054** adds `verification`, `verification_pending`, `raid_settings`,
 
 ### Anti-nuke
 
-`/antinuke` and **Safety → Anti-nuke** watch destructive actions per actor in rolling Redis windows.
+`/setup antinuke` and **Safety → Anti-nuke** watch destructive actions per actor in rolling Redis windows.
 Protection starts disabled, with alert-only responses. The owner always stays exempt; trusted users
 are exempt too, and only the owner can edit trust or weaken existing protections. Nobody can add themselves.
 Discord system users and owner/trusted-installed integrations are exempt; unknown integration owners fail closed.
 
 | Command | What it does |
 |---|---|
-| `/antinuke status` | Protection, response and trusted/VIP usage |
-| `/antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]` | Enable monitoring and select recovery/response options |
-| `/antinuke disable` | Pause destructive-action monitoring |
-| `/antinuke limits kind count seconds` | Allow 1–100 actions per actor in 5–300 seconds; the next action triggers |
-| `/antinuke trust add\|remove user` | Owner-managed exemptions, up to 50 members |
-| `/antinuke vip add\|remove role` | Protect holders of up to 50 VIP roles |
-| `/antinuke events` | Recent actions and outcomes |
+| `/setup antinuke status` | Protection, response and trusted/VIP usage |
+| `/setup antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]` | Enable monitoring and select recovery/response options |
+| `/setup antinuke disable` | Pause destructive-action monitoring |
+| `/setup antinuke limits kind count seconds` | Allow 1–100 actions per actor in 5–300 seconds; the next action triggers |
+| `/setup antinuke trust-add\|trust-remove user` | Owner-managed exemptions, up to 50 members |
+| `/setup antinuke vip-add\|vip-remove role` | Protect holders of up to 50 VIP roles |
+| `/setup antinuke events` | Recent actions and outcomes |
 
 Watches channel/role create and delete bursts, bans, kicks/prunes, webhook creation, dangerous role/member
 permission grants, bot additions, guild/vanity changes and emoji deletion. Gateway audit entries and
@@ -865,16 +923,16 @@ All feature text is in `locales/{en,tr}/anti_nuke.toml`. The dashboard includes 
 ### Social feeds
 
 New YouTube videos, RSS and podcast episodes, Reddit posts and Bluesky posts, posted in a channel as they
-appear: the **Social feeds** module (group Feeds), `/feeds` in Discord and the dashboard's **Social feeds** page.
+appear: the **Social feeds** module (group Feeds), `/setup feeds` in Discord and the dashboard's **Social feeds** page.
 A server follows up to 10 sources.
 
 | Command | What it does |
 |---|---|
-| `/feeds add kind source channel [message] [role]` | Follow a source. `kind` is YouTube, RSS or podcast, Reddit, Bluesky, or X/Instagram/TikTok (only with a bridge, below). `source` is a YouTube channel link, `@handle` or `UC…` id (a handle is read from the channel's page, best effort; the channel link always works), a feed address (`https://` is added when missing), `r/name` or a subreddit link, or a Bluesky handle, DID or profile link. The source is fetched once to show what it is and its latest post; what it already shows is never posted, only what comes after. `message` takes `{title}` `{url}` `{author}` `{account}` `{published}` (up to 500 characters; empty uses the kind's default, in the server's language); `role` is pinged with every new post (never `@everyone`) (Manage Server) |
-| `/feeds list` | The feeds with their number, channel, role and health: when the source was last checked and the last post went out, or why it fails (the site's error, “I need View Channel, Send Messages and Embed Links in that channel”), five per page (Manage Server) |
-| `/feeds edit id [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]` | Change a feed: another channel, the message (`-` back to the default), the role, Pinchora's card, filter words (comma-separated, `-` clears; `include` posts only titles with one of them, `exclude` never titles with one; up to 10 words of 40 characters each, any case), or switch it off and on (Manage Server) |
-| `/feeds test id` | Post the source's latest item in the feed's channel now, the way new posts look; nobody is pinged (Manage Server) |
-| `/feeds remove id` | Stop following a source (Manage Server) |
+| `/setup feeds add kind source channel [message] [role]` | Follow a source. `kind` is YouTube, RSS or podcast, Reddit, Bluesky, or X/Instagram/TikTok (only with a bridge, below). `source` is a YouTube channel link, `@handle` or `UC…` id (a handle is read from the channel's page, best effort; the channel link always works), a feed address (`https://` is added when missing), `r/name` or a subreddit link, or a Bluesky handle, DID or profile link. The source is fetched once to show what it is and its latest post; what it already shows is never posted, only what comes after. `message` takes `{title}` `{url}` `{author}` `{account}` `{published}` (up to 500 characters; empty uses the kind's default, in the server's language); `role` is pinged with every new post (never `@everyone`) (Manage Server) |
+| `/setup feeds list` | The feeds with their number, channel, role and health: when the source was last checked and the last post went out, or why it fails (the site's error, “I need View Channel, Send Messages and Embed Links in that channel”), five per page (Manage Server) |
+| `/setup feeds edit id [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]` | Change a feed: another channel, the message (`-` back to the default), the role, Pinchora's card, filter words (comma-separated, `-` clears; `include` posts only titles with one of them, `exclude` never titles with one; up to 10 words of 40 characters each, any case), or switch it off and on (Manage Server) |
+| `/setup feeds test id` | Post the source's latest item in the feed's channel now, the way new posts look; nobody is pinged (Manage Server) |
+| `/setup feeds remove id` | Stop following a source (Manage Server) |
 
 **How a post looks.** The message, then (when the card is on, the default for everything but YouTube)
 Pinchora's card: the title linking to the post, the account, a summary for articles, the picture (a video's
@@ -897,7 +955,7 @@ records it can still cause a duplicate after that window; delivery is at least o
 5 newest new items are posted per check, none older than 3 days, none
 published before the feed was added, so a feed that comes back after an outage or changes its ids does not
 flood the channel. A source that fails waits twice as long each time (up to 6 hours; a `Retry-After` is
-honoured) and the reason shows on `/feeds list` and the dashboard. A post Discord refuses (no permission, the
+honoured) and the reason shows on `/setup feeds list` and the dashboard. A post Discord refuses (no permission, the
 channel gone) is reported on the feed; after 10 in a row the feed switches itself off. With the module off,
 new items are recorded but not posted. Seen item ids expire after 7 days without a fresh full response, sources nobody
 follows after a day.
@@ -965,7 +1023,7 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### Utility
 
-`/afk set [reason] [global] [nickname]` marks you away until your next message. Mentions get one short notice per channel every five minutes. `/sticky set|remove|show` keeps a channel message visible after both a chosen number of human messages and a minimum time interval, with batched counters; the bot needs Manage Messages. `/schedule add|list|remove|pause|resume|run-now|preview` posts once or on an interval, daily, weekly, or with a five-field cron pattern. Each server stores a default IANA time zone such as `Europe/Istanbul`, which a schedule can override; daylight saving changes are automatic. Nonexistent local times are skipped, and repeated local times run once at the first occurrence. Up to 20 schedules fit. Missed recurrences coalesce into one send. A failed or uncertain delivery pauses with a reason; check the channel before resuming. Delivery intent is stored before sending, so a crash cannot automatically replay a potentially delivered message. Managers can edit sticky and scheduled messages on the Messages dashboard page.
+`/afk set [reason] [global] [nickname]` marks you away until your next message. Mentions get one short notice per channel every five minutes. `/setup utility sticky-set|sticky-remove|sticky-show` keeps a channel message visible after both a chosen number of human messages and a minimum time interval, with batched counters; the bot needs Manage Messages. `/setup utility schedule-add|schedule-list|schedule-remove|schedule-pause|schedule-resume|schedule-run-now|schedule-preview` posts once or on an interval, daily, weekly, or with a five-field cron pattern. Each server stores a default IANA time zone such as `Europe/Istanbul`, which a schedule can override; daylight saving changes are automatic. Nonexistent local times are skipped, and repeated local times run once at the first occurrence. Up to 20 schedules fit. Missed recurrences coalesce into one send. A failed or uncertain delivery pauses with a reason; check the channel before resuming. Delivery intent is stored before sending, so a crash cannot automatically replay a potentially delivered message. Managers can edit sticky and scheduled messages on the Messages dashboard page.
 
 ### Community pack
 
@@ -977,8 +1035,8 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### XP admin
 
-Managers can `/xp add|remove|set <user> <amount>`, `/xp reset <user>`,
-`/xp reset-all` (two confirmations), or `/xp import mee6` (merge or replace,
+Managers can `/setup leveling xp-add|remove|set <user> <amount>`, `/setup leveling xp-reset <user>`,
+`/setup leveling xp-reset-all` (two confirmations), or `/setup leveling xp-import-mee6` (merge or replace,
 once per server per day). The Leveling dashboard has member XP search and an
 import job with progress. Edits affect server XP only, resync level roles, and are audited.
 Confirmations expire after five minutes and can be used once. Failed or partial imports also
@@ -1036,20 +1094,20 @@ so every bot pod uses it from the next message instead of after its one-minute c
 
 | Page | What it sets | Same as |
 |---|---|---|
-| Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config prefix`, `/config modules show` |
-| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, moderation, role panels, auto roles, colour roles, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
-| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the welcome image the bot sends now (drawn by the bot) with a link to the editor, join role, goodbye channel and text | `/config welcome`, `join-role`, `goodbye` |
-| Welcome image | The image editor for welcome and goodbye pictures (below) | `/config welcome-card` (the classic card) |
-| Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
-| Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
-| Moderation | The mod-log channel, direct messages to members, and the warn ladder | `/config moderation`, `/config warn-ladder` |
-| Cases | Every case, searchable by name, reason or id and filtered by kind or what still stands; a case opens whole with the member's other cases, and its reason can be changed (the mod-log entry follows) | `/case`, `/reason` |
-| Server log | The log channel, a channel per category, every event on or off (marked when it needs View Audit Log), and the ignore lists | `/config log`, `/config log-events`, `/config log-ignore` |
+| Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/setup server show`, `/setup leveling settings enabled`, `/setup server`, `/setup server modules-show` |
+| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, moderation, role panels, auto roles, colour roles, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/setup server` |
+| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the welcome image the bot sends now (drawn by the bot) with a link to the editor, join role, goodbye channel and text | `/setup welcome message`, `join-role`, `goodbye` |
+| Welcome image | The image editor for welcome and goodbye pictures (below) | `/setup welcome card` (the classic card) |
+| Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/setup leveling settings`, `xp`, `level-roles`, `rep-roles` |
+| Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/setup economy points-settings`, `/setup economy` |
+| Moderation | The mod-log channel, direct messages to members, and the warn ladder | `/setup moderation settings`, `/setup moderation warn-ladder` |
+| Cases | Every case, searchable by name, reason or id and filtered by kind or what still stands; a case opens whole with the member's other cases, and its reason can be changed (the mod-log entry follows) | `/mod case`, `/mod reason` |
+| Server log | The log channel, a channel per category, every event on or off (marked when it needs View Audit Log), and the ignore lists | `/setup moderation log`, `/setup moderation log-events`, `/setup moderation log-ignore` |
 | Staff log | What staff did with Pinchora's commands, on the dashboard and by hand in Discord, searchable and filtered by where (kept 180 days) | |
-| Roles | Auto roles (who gets which role on joining, with a delay or an expiry), sticky roles, role panels as buttons, a menu or reactions with a live preview and posting from the page, and colour roles (palette, mode, who may pick, the anchor role, making the missing roles) | `/autoroles`, `/roles`, `/color` |
-| Custom commands | The commands members run with `/tag`: name, description, one to five replies (one picked at random), an embed, up to three actions (give, take or toggle a role, give or take server points, send a DM), who may use it and where, a cooldown, a live preview drawn by the bot, import and export as a JSON file | `/customcommand` (replies only) |
+| Roles | Auto roles (who gets which role on joining, with a delay or an expiry), sticky roles, role panels as buttons, a menu or reactions with a live preview and posting from the page, and colour roles (palette, mode, who may pick, the anchor role, making the missing roles) | `/setup roles`, `/setup roles`, `/color` |
+| Custom commands | The commands members run with `/tag`: name, description, one to five replies (one picked at random), an embed, up to three actions (give, take or toggle a role, give or take server points, send a DM), who may use it and where, a cooldown, a live preview drawn by the bot, import and export as a JSON file | `/setup commands` (replies only) |
 | Auto-responders | Messages the bot sends by itself when a member joins, leaves, levels up, gets or loses a role, or says a keyword (locked unless the bot has the Message Content intent): where it answers, how often, a cooldown, actions, a preview, import and export | |
-| Community | The `/suggest` channel; critter drops on/off and where they land; timed storm surges (on/off, channel, how often) | `/config suggestions`, `/config critters`, `/config surge` |
+| Community | The `/suggest` channel; critter drops on/off and where they land; timed storm surges (on/off, channel, how often) | `/setup community suggestions`, `/setup economy critters`, `/setup economy surge` |
 | Audit log | Every dashboard change: who, what, before and after (kept 180 days) | |
 
 Modules (`pinchora_core::modules`) are the one place that decides what a switched-off part does: the bot
@@ -1086,7 +1144,7 @@ The dashboard's role pickers grey out, for the manager looking, what they may no
 ### Custom commands and auto-responders
 
 Servers write their own commands (`/tag name`) and messages the bot sends by itself, on the dashboard or, for
-the simple case, with `/customcommand`. Both go through the same rules (`pinchora_core::tags`: limits, the
+the simple case, with `/setup commands`. Both go through the same rules (`pinchora_core::tags`: limits, the
 sentences that refuse a draft, the placeholder language) and the same writes, and every change is audited and
 announced to the bot. A server has up to 50 commands and 25 auto-responders; a reply is up to 2,000 characters,
 an embed up to 6,000 in all with at most 25 fields, and a command does at most three actions.
@@ -1112,7 +1170,7 @@ an embed up to 6,000 in all with at most 25 fields, and a command does at most t
   case-sensitive; at most one answer per message). Each has a chance, a cooldown per member, and answers where it
   happened, in one channel, or by direct message (closed DMs are skipped quietly). Keywords need
   `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`; without it they cannot be switched on and the dashboard says why.
-- **Modules**: the *Custom commands* module covers `/tag`, `/customcommand` and the responders, and can be kept
+- **Modules**: the *Custom commands* module covers `/tag`, `/setup commands` and the responders, and can be kept
   to channels like any other.
 - **Export and import**: a JSON file (`{"version": 1, "items": [...]}`) per list. An import checks every item like
   a new one, leaves out roles and channels the other server lacks (and role actions the importer may not set up),
@@ -1120,7 +1178,7 @@ an embed up to 6,000 in all with at most 25 fields, and a command does at most t
   replacing import keeps the commands it overwrote.
 
 The dashboard and the slash commands check values with the same rules (`pinchora_core::settings`): the same
-limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/config`
+limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/setup`
 gives. `web/src/lib/rules.json` carries those limits and sample answers to the browser (`cargo test -p
 pinchora-web rules -- --ignored write_rules` rewrites it; a test fails while it is out of date).
 
@@ -1192,7 +1250,7 @@ Pinchora always drew; a server that never opened the editor gets it in its theme
 *Starlit banner*, *Clean card* (transparent) and *Pet party*. **Send** picks how it goes out: with the text in one
 message, the image first then the text, the image alone, the text alone, or (welcomes) by direct message to the
 new member (closed DMs are skipped). **Send test** posts it to a channel you pick, with you as the member and
-pinging nobody (the note under it is in the server's language, like the `/config welcome-card` preview's text, which follows the member's own). The canvas is drawn by the browser so every drag is instant; **Try it** below holds the test and, behind
+pinging nobody (the note under it is in the server's language, like the `/setup welcome card` preview's text, which follows the member's own). The canvas is drawn by the browser so every drag is instant; **Try it** below holds the test and, behind
 **Show the bot's picture**, the bot's own PNG of the same design (`POST /api/guilds/{g}/preview/card`, debounced),
 which is exactly what members get, because the member events, the preview and the test all draw through the same
 `pinchora_commands` code. Previews (and test messages) are drawn in their own lane: two at a time, waiting at

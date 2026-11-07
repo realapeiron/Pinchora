@@ -56,6 +56,11 @@
 "ui.deny" = "Denied"
 "ui.staff_checks" = "This command keeps its built-in staff permission checks."
 
+"ui.migration" = "Old command rules and shortcuts now follow the new paths. Migrated constraints remain cumulative; reset a rule to replace them. Re-check Server Settings → Integrations after the slash command update."
+
+"ui.migrated_constraints" = "These migrated restrictions also apply. Reset clears them; Save applies the replacement rule."
+"ui.reset" = "Reset rule"
+
 [module]
 command_control = "Command control"
 [module-blurb]

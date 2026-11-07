@@ -1,4 +1,4 @@
-# /config modules, and the words the core uses for module groups and rules.
+# /setup server, and the words the core uses for module groups and rules.
 
 [module-group]
 server = "Sunucu araçları"
@@ -17,9 +17,9 @@ only = { other = "yalnızca {count} kanalda" }
 except = { other = "{count} kanalda kapalı" }
 
 [modules]
-not-a-module = "Bu bir bölüm değil. Bir ad yazmaya başla ve listeden seç, ya da hepsini `/config modules show` ile gör."
+not-a-module = "Bu bir bölüm değil. Bir ad yazmaya başla ve listeden seç, ya da hepsini `/setup server modules-show` ile gör."
 more = " ve {count} tane daha"
 limit = "En fazla {max} kanal; bir kategori altındaki kanalları ve alt başlıkları da kapsar."
 title = "Bölümler"
-about = "Bu sunucunun Pinchora'nın hangi bölümlerini kullandığı. `/config`, `/help` ve `/ping` her zaman çalışır."
-footer = "Bunları /config modules toggle ve channels ile ya da panelden değiştir."
+about = "Bu sunucunun Pinchora'nın hangi bölümlerini kullandığı. `/setup`, `/help` ve `/ping` her zaman çalışır."
+footer = "Bunları /setup server modules-toggle ve channels ile ya da panelden değiştir."

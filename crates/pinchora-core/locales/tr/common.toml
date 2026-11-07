@@ -10,9 +10,9 @@ needs-manage-server = "Bunun için **Sunucuyu Yönet** iznine ihtiyacın var."
 [gate]
 server-off = "Bu özellik bu sunucuda kapalı."
 channel-off = "Bu özellik bu kanalda kapalı."
-how-to-enable = " Bu, **{module}** modülü: `/config modules` ile ya da panelden açabilirsin."
+how-to-enable = " Bu, **{module}** modülü: `/setup server` ile ya da panelden açabilirsin."
 
-# Module names, by `Module::key`, as `/config modules` and refusals name them.
+# Module names, by `Module::key`, as `/setup server` and refusals name them.
 [module]
 leveling = "Seviye sistemi"
 points = "Sohbet puanları"

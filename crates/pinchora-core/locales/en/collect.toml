@@ -1,4 +1,4 @@
-# /critterdrop, the bottle, /beachcomb, /crabpot, /dex and `/config critters`: the collection games.
+# /critterdrop, the bottle, /beachcomb, /crabpot, /dex and `/setup economy critters`: the collection games.
 
 # /Shared
 [collect]
@@ -8,7 +8,7 @@ money-fragments = "+{fragments} frag"
 tag-new = "NEW"
 tag-spare = "SPARE"
 button-expired = "This button has expired."
-summary-off = "**off** · turn it on with `/config critters enabled:true`"
+summary-off = "**off** · turn it on with `/setup economy critters enabled:true`"
 summary-channel = "**on** · drops land in <#{channel}>, where chat counts"
 summary-anywhere = "**on** · drops land in whichever channel is busy"
 both-set = "Pick a channel or `anywhere`, not both."
@@ -16,7 +16,7 @@ setting = "Critter drops: {summary}"
 
 # /Critter drop
 [drop]
-off = "Critter drops are switched off in this server. A manager can turn them on with `/config critters enabled:true`."
+off = "Critter drops are switched off in this server. A manager can turn them on with `/setup economy critters enabled:true`."
 only-channel = "This server keeps critter drops to <#{channel}>. Call one there!"
 waiting = "Something is still waiting in this channel. Let somebody grab it first!"
 channel-cooldown = "This channel had a drop a little while ago. The next one can be called in {minutes} minutes."

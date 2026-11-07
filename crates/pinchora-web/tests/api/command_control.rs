@@ -13,8 +13,28 @@ async fn command_control_backup_preview_import_restore_and_permissions() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|c| c["path"] == "commandcontrol" && c["protected"] == true)
+            .any(|c| c["path"] == "setup commands show" && c["protected"] == true)
     );
+    for path in [
+        "play memory",
+        "play minesweeper",
+        "play higherlower",
+        "play anagram",
+        "play typing",
+        "play guessnumber",
+        "duel othello",
+        "party nhie",
+        "party fun",
+    ] {
+        assert!(
+            initial.json()["commands"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|command| command["path"] == path),
+            "quick game missing from command controls: {path}"
+        );
+    }
     let mut config = pinchora_core::command_control::Config::default();
     config.aliases.insert("w".into(), "play wordle".into());
     let saved = browser
@@ -198,7 +218,7 @@ async fn backup_utility_and_event_settings_validate_and_localize() {
     );
     assert_eq!(h.state.app.db.config_restore_points(guild).await.unwrap(), before);
     let catalog = browser.get(&format!("{path}/command-control")).await.json();
-    for command in ["afk", "sticky", "schedule", "event"] {
+    for command in ["afk", "setup utility sticky-set", "setup utility schedule-add", "event"] {
         assert!(
             catalog["commands"]
                 .as_array()

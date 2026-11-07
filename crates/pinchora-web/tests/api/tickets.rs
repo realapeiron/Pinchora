@@ -1,4 +1,4 @@
-//! Tickets over the API: settings and panels saved with the `/tickets` rules, a panel posted by the bot,
+//! Tickets over the API: settings and panels saved with the `/setup tickets` rules, a panel posted by the bot,
 //! the tickets list with its filters, one ticket with its transcript, and the transcript page.
 //! `seed_demo_tickets` (ignored) leaves tickets for the Playwright run to look at.
 

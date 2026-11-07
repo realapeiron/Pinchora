@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 export interface CommandRule {
+  constraints?: Record<string, CommandRule>;
   enabled: boolean;
   allowed_roles: string[];
   denied_roles: string[];
