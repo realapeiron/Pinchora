@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { Panel } from "../components/Panel";
@@ -14,6 +14,8 @@ import { type HouseTarget, loadCharacters, renderUrl, useArt, useHouse, useRoom 
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/house.css";
+
+const ReefStage = lazy(() => import("../reef/ReefStage"));
 
 /** `/me/house`: the logged-in player's house. */
 export function MyHouse({ me }: { me: Me }) {
@@ -30,7 +32,10 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const house = useHouse(target);
-  const art = useArt();
+  const playEnabled = params.get("play") === "1";
+  const [mode, setMode] = useState<"view" | "play">("play");
+  const playing = playEnabled && mode === "play";
+  const art = useArt(!playing);
   const [grid, setGrid] = useState(false);
   const [compare, setCompare] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -39,7 +44,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   const first = house.data?.rooms[0]?.idx ?? null;
   const asked = Number(params.get("room"));
   const idx = house.data?.rooms.find((r) => r.idx === asked)?.idx ?? first;
-  const room = useRoom(target, idx);
+  const room = useRoom(target, idx, !playing);
 
   // The characters in the room are drawn by the server; the room waits for their sprites.
   const codes = room.data?.characters ?? [];
@@ -49,7 +54,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
       if (art.data) await loadCharacters(art.data, codes);
       return true;
     },
-    enabled: art.isSuccess && room.isSuccess,
+    enabled: !playing && art.isSuccess && room.isSuccess,
     staleTime: Infinity,
   });
 
@@ -57,10 +62,10 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   // The bot's picture has no grid, so comparing draws without one.
   const edit = grid && !compare;
   const drawn = useMemo(() => {
-    if (!art.data || !room.data || !sprites.isSuccess) return null;
+    if (playing || !art.data || !room.data || !sprites.isSuccess) return null;
     const scene = buildScene(art.data.content, art.data, room.data, { edit, characterLabel: owner });
     return { scene, rendered: renderRoom(scene) };
-  }, [art.data, room.data, sprites.isSuccess, edit, owner]);
+  }, [art.data, room.data, sprites.isSuccess, edit, owner, playing]);
 
   useEffect(() => setHover(null), [drawn]);
 
@@ -131,18 +136,42 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                       role="tab"
                       aria-selected={r.idx === idx}
                       variant={r.idx === idx ? "primary" : "secondary"}
-                      onClick={() => setParams({ room: String(r.idx) }, { replace: true })}
+                      onClick={() =>
+                        setParams(
+                          (previous) => {
+                            const next = new URLSearchParams(previous);
+                            next.set("room", String(r.idx));
+                            return next;
+                          },
+                          { replace: true },
+                        )
+                      }
                     >
                       {r.name} <span className="house-tab-count">{r.items}</span>
                     </PixelButton>
                   ))}
                 </div>
               )}
-              {(room.isPending || art.isPending || (room.isSuccess && sprites.isPending)) && !art.isError && (
-                <Loading label="Drawing the room" />
+              {playEnabled && (
+                <div className="house-options" role="group" aria-label="Room mode">
+                  <PixelButton aria-pressed={playing} onClick={() => setMode("play")}>
+                    Play
+                  </PixelButton>
+                  <PixelButton variant="secondary" aria-pressed={!playing} onClick={() => setMode("view")}>
+                    View
+                  </PixelButton>
+                </div>
               )}
+              {playing && room.data && (
+                <Suspense fallback={<Loading label="Opening Play" />}>
+                  <ReefStage room={room.data} own={house.data.scope === "own"} />
+                </Suspense>
+              )}
+              {!playing &&
+                (room.isPending || art.isPending || (room.isSuccess && sprites.isPending)) &&
+                !art.isError && <Loading label="Drawing the room" />}
               {room.isError && <Problem error={room.error} />}
-              {art.isError && <Problem error={art.error} />}
+              {!playing && art.isError && <Problem error={art.error} />}
               {drawn && summary && (
                 <>
                   <RoomStage

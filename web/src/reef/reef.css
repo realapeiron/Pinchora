@@ -1,0 +1,62 @@
+.reef {
+  border: 1px solid var(--border, #44445c);
+  padding: 12px;
+  background: #191b2a;
+}
+.reef-surface {
+  width: 100%;
+  height: min(60vh, 600px);
+  min-height: 320px;
+  overflow: hidden;
+}
+.reef-canvas {
+  display: block;
+  touch-action: none;
+  image-rendering: pixelated;
+}
+.reef-surface:focus-within {
+  outline: 3px solid #ffd166;
+  outline-offset: 3px;
+}
+.reef button,
+.reef input,
+.reef summary {
+  min-height: 44px;
+}
+.reef-walk {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-block: 16px;
+}
+.reef-walk label {
+  display: grid;
+  gap: 4px;
+}
+.reef-walk input {
+  width: 84px;
+  color: inherit;
+  background: #121420;
+  border: 1px solid #74738c;
+  padding: 8px;
+}
+.reef-objects {
+  padding: 0;
+  list-style: none;
+}
+.reef-objects li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #44445c;
+  padding-block: 8px;
+}
+.house-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.house-tabs > button {
+  flex-shrink: 0;
+}

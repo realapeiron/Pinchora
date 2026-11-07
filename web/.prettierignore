@@ -8,3 +8,8 @@ src/lib/rules.json
 src/lib/commands.json
 src/lib/facts.json
 src/iso/fixtures
+
+# Deterministic Reef builder output
+public/assets/reef
+src/reef/palettes.json
+src/reef/manifest-url.json

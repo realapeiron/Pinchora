@@ -1,0 +1,2023 @@
+{
+  "look": "bobbin",
+  "approval": "PENDING OWNER REVIEW \u2014 not approved for 24-look production",
+  "sheet_size": [
+    768,
+    512
+  ],
+  "cell_size": [
+    96,
+    128
+  ],
+  "rows": [
+    "SW",
+    "SE",
+    "NW",
+    "NE"
+  ],
+  "columns": [
+    "idle",
+    "walk1",
+    "walk2",
+    "walk3",
+    "walk4",
+    "sit",
+    "use1",
+    "use2"
+  ],
+  "foot_anchor": [
+    48,
+    120
+  ],
+  "frames": [
+    {
+      "direction": "SW",
+      "pose": "idle",
+      "rect": [
+        0,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        32,
+        26,
+        71,
+        120
+      ],
+      "head": [
+        52,
+        41
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          112
+        ],
+        "screen_right": [
+          54,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          45,
+          99
+        ],
+        "screen_right": [
+          55,
+          99
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          52,
+          26
+        ],
+        "head": [
+          52,
+          41
+        ],
+        "torso": [
+          48,
+          101
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "original standing sprite, exact source pixels"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk1",
+      "rect": [
+        96,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        30,
+        26,
+        68,
+        120
+      ],
+      "head": [
+        50,
+        41
+      ],
+      "feet": {
+        "screen_left": [
+          38,
+          114
+        ],
+        "screen_right": [
+          58,
+          112
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          45,
+          99
+        ],
+        "screen_right": [
+          56,
+          98
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          50,
+          26
+        ],
+        "head": [
+          50,
+          41
+        ],
+        "torso": [
+          48,
+          101
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk2",
+      "rect": [
+        192,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        30,
+        26,
+        68,
+        120
+      ],
+      "head": [
+        50,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          115
+        ],
+        "screen_right": [
+          51,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": null,
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          50,
+          26
+        ],
+        "head": [
+          50,
+          42
+        ],
+        "torso": [
+          48,
+          107
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk3",
+      "rect": [
+        288,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        29,
+        26,
+        67,
+        120
+      ],
+      "head": [
+        49,
+        41
+      ],
+      "feet": {
+        "screen_left": [
+          41,
+          114
+        ],
+        "screen_right": [
+          56,
+          111
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          37,
+          75
+        ],
+        "screen_right": [
+          59,
+          81
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          49,
+          26
+        ],
+        "head": [
+          49,
+          41
+        ],
+        "torso": [
+          48,
+          69
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk4",
+      "rect": [
+        384,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        28,
+        26,
+        66,
+        120
+      ],
+      "head": [
+        48,
+        41
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          115
+        ],
+        "screen_right": [
+          51,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          37,
+          79
+        ],
+        "screen_right": [
+          56,
+          82
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          48,
+          26
+        ],
+        "head": [
+          48,
+          41
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SW",
+      "pose": "sit",
+      "rect": [
+        480,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        36,
+        42,
+        75,
+        120
+      ],
+      "head": [
+        57,
+        57
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          113
+        ],
+        "screen_right": [
+          54,
+          115
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          45,
+          94
+        ],
+        "screen_right": [
+          57,
+          94
+        ]
+      },
+      "seat_contact": [
+        48,
+        101
+      ],
+      "accessory_anchors": {
+        "hat": [
+          57,
+          42
+        ],
+        "head": [
+          57,
+          57
+        ],
+        "torso": [
+          48,
+          85
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SW",
+      "pose": "use1",
+      "rect": [
+        576,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        27,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        50,
+        41
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          113
+        ],
+        "screen_right": [
+          53,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          35,
+          76
+        ],
+        "screen_right": [
+          60,
+          81
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          50,
+          26
+        ],
+        "head": [
+          50,
+          41
+        ],
+        "torso": [
+          48,
+          71
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SW",
+      "pose": "use2",
+      "rect": [
+        672,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        22,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        51,
+        41
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          113
+        ],
+        "screen_right": [
+          53,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          44,
+          99
+        ],
+        "screen_right": [
+          60,
+          86
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51,
+          26
+        ],
+        "head": [
+          51,
+          41
+        ],
+        "torso": [
+          48,
+          91
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "idle",
+      "rect": [
+        0,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        26,
+        26,
+        65,
+        120
+      ],
+      "head": [
+        44,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          114
+        ],
+        "screen_right": [
+          54,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": null,
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          44,
+          26
+        ],
+        "head": [
+          44,
+          42
+        ],
+        "torso": [
+          48,
+          107
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk1",
+      "rect": [
+        96,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        28,
+        26,
+        67,
+        120
+      ],
+      "head": [
+        46,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          37,
+          111
+        ],
+        "screen_right": [
+          58,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          40,
+          99
+        ],
+        "screen_right": [
+          51,
+          99
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          46,
+          26
+        ],
+        "head": [
+          46,
+          42
+        ],
+        "torso": [
+          48,
+          101
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk2",
+      "rect": [
+        192,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        30,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        48,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          45,
+          113
+        ],
+        "screen_right": [
+          51,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          44,
+          99
+        ],
+        "screen_right": [
+          55,
+          99
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          48,
+          26
+        ],
+        "head": [
+          48,
+          42
+        ],
+        "torso": [
+          48,
+          105
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk3",
+      "rect": [
+        288,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        29,
+        26,
+        68,
+        120
+      ],
+      "head": [
+        47,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          39,
+          110
+        ],
+        "screen_right": [
+          55,
+          115
+        ]
+      },
+      "hands": {
+        "screen_left": null,
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          47,
+          26
+        ],
+        "head": [
+          47,
+          42
+        ],
+        "torso": [
+          48,
+          107
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk4",
+      "rect": [
+        384,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        30,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        48,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          44,
+          112
+        ],
+        "screen_right": [
+          52,
+          115
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          40,
+          90
+        ],
+        "screen_right": [
+          54,
+          99
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          48,
+          26
+        ],
+        "head": [
+          48,
+          42
+        ],
+        "torso": [
+          48,
+          96
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "sit",
+      "rect": [
+        480,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        23,
+        41,
+        62,
+        120
+      ],
+      "head": [
+        40,
+        56
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          114
+        ],
+        "screen_right": [
+          53,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          37,
+          94
+        ],
+        "screen_right": [
+          51,
+          94
+        ]
+      },
+      "seat_contact": [
+        48,
+        101
+      ],
+      "accessory_anchors": {
+        "hat": [
+          40,
+          41
+        ],
+        "head": [
+          40,
+          56
+        ],
+        "torso": [
+          48,
+          87
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "use1",
+      "rect": [
+        576,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        27,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        45,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          114
+        ],
+        "screen_right": [
+          53,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          36,
+          83
+        ],
+        "screen_right": [
+          60,
+          76
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          45,
+          26
+        ],
+        "head": [
+          45,
+          42
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "SE",
+      "pose": "use2",
+      "rect": [
+        672,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        27,
+        26,
+        74,
+        120
+      ],
+      "head": [
+        45,
+        42
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          114
+        ],
+        "screen_right": [
+          53,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          36,
+          83
+        ],
+        "screen_right": [
+          64,
+          68
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          45,
+          26
+        ],
+        "head": [
+          45,
+          42
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "idle",
+      "rect": [
+        0,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        32,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        50,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          40,
+          115
+        ],
+        "screen_right": [
+          54,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          40,
+          82
+        ],
+        "screen_right": [
+          60,
+          81
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          50,
+          26
+        ],
+        "head": [
+          50,
+          44
+        ],
+        "torso": [
+          48,
+          73
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk1",
+      "rect": [
+        96,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        31,
+        26,
+        68,
+        120
+      ],
+      "head": [
+        49,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          40,
+          111
+        ],
+        "screen_right": [
+          58,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          42,
+          99
+        ],
+        "screen_right": [
+          54,
+          99
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          49,
+          26
+        ],
+        "head": [
+          49,
+          44
+        ],
+        "torso": [
+          48,
+          91
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk2",
+      "rect": [
+        192,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        30,
+        26,
+        67,
+        120
+      ],
+      "head": [
+        48,
+        43
+      ],
+      "feet": {
+        "screen_left": [
+          44,
+          112
+        ],
+        "screen_right": [
+          51,
+          113
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          37,
+          82
+        ],
+        "screen_right": [
+          54,
+          81
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          48,
+          26
+        ],
+        "head": [
+          48,
+          43
+        ],
+        "torso": [
+          48,
+          73
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk3",
+      "rect": [
+        288,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        31,
+        26,
+        68,
+        120
+      ],
+      "head": [
+        49,
+        43
+      ],
+      "feet": {
+        "screen_left": [
+          40,
+          112
+        ],
+        "screen_right": [
+          57,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          37,
+          78
+        ],
+        "screen_right": [
+          60,
+          80
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          49,
+          26
+        ],
+        "head": [
+          49,
+          43
+        ],
+        "torso": [
+          48,
+          73
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk4",
+      "rect": [
+        384,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        32,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        50,
+        43
+      ],
+      "feet": {
+        "screen_left": [
+          44,
+          112
+        ],
+        "screen_right": [
+          52,
+          113
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          40,
+          81
+        ],
+        "screen_right": [
+          59,
+          82
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          50,
+          26
+        ],
+        "head": [
+          50,
+          43
+        ],
+        "torso": [
+          48,
+          69
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "sit",
+      "rect": [
+        480,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        33,
+        41,
+        73,
+        120
+      ],
+      "head": [
+        54,
+        58
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          115
+        ],
+        "screen_right": [
+          52,
+          113
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          41,
+          97
+        ],
+        "screen_right": null
+      },
+      "seat_contact": [
+        48,
+        101
+      ],
+      "accessory_anchors": {
+        "hat": [
+          54,
+          41
+        ],
+        "head": [
+          54,
+          58
+        ],
+        "torso": [
+          48,
+          102
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "use1",
+      "rect": [
+        576,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        26,
+        26,
+        70,
+        120
+      ],
+      "head": [
+        51,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          115
+        ],
+        "screen_right": [
+          55,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          34,
+          79
+        ],
+        "screen_right": [
+          61,
+          81
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51,
+          26
+        ],
+        "head": [
+          51,
+          44
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NW",
+      "pose": "use2",
+      "rect": [
+        672,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        24,
+        26,
+        71,
+        120
+      ],
+      "head": [
+        52,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          43,
+          114
+        ],
+        "screen_right": [
+          55,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          33,
+          69
+        ],
+        "screen_right": [
+          62,
+          81
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          52,
+          26
+        ],
+        "head": [
+          52,
+          44
+        ],
+        "torso": [
+          48,
+          73
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "idle",
+      "rect": [
+        0,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        26,
+        26,
+        63,
+        120
+      ],
+      "head": [
+        44,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          41,
+          114
+        ],
+        "screen_right": [
+          54,
+          116
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          34,
+          82
+        ],
+        "screen_right": [
+          56,
+          82
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          44,
+          26
+        ],
+        "head": [
+          44,
+          44
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk1",
+      "rect": [
+        96,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        28,
+        26,
+        65,
+        120
+      ],
+      "head": [
+        45,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          38,
+          114
+        ],
+        "screen_right": [
+          56,
+          113
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          36,
+          81
+        ],
+        "screen_right": [
+          58,
+          79
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          45,
+          26
+        ],
+        "head": [
+          45,
+          44
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk2",
+      "rect": [
+        192,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        31,
+        26,
+        67,
+        120
+      ],
+      "head": [
+        48,
+        43
+      ],
+      "feet": {
+        "screen_left": [
+          45,
+          113
+        ],
+        "screen_right": [
+          51,
+          114
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          39,
+          82
+        ],
+        "screen_right": [
+          56,
+          86
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          48,
+          26
+        ],
+        "head": [
+          48,
+          43
+        ],
+        "torso": [
+          48,
+          72
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk3",
+      "rect": [
+        288,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        32,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        49,
+        43
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          113
+        ],
+        "screen_right": [
+          54,
+          112
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          41,
+          90
+        ],
+        "screen_right": [
+          50,
+          99
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          49,
+          26
+        ],
+        "head": [
+          49,
+          43
+        ],
+        "torso": [
+          48,
+          90
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk4",
+      "rect": [
+        384,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        31,
+        26,
+        67,
+        120
+      ],
+      "head": [
+        48,
+        43
+      ],
+      "feet": {
+        "screen_left": [
+          45,
+          113
+        ],
+        "screen_right": [
+          51,
+          113
+        ]
+      },
+      "hands": {
+        "screen_left": null,
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          48,
+          26
+        ],
+        "head": [
+          48,
+          43
+        ],
+        "torso": [
+          48,
+          106
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "sit",
+      "rect": [
+        480,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        26,
+        41,
+        66,
+        120
+      ],
+      "head": [
+        43,
+        58
+      ],
+      "feet": {
+        "screen_left": [
+          45,
+          113
+        ],
+        "screen_right": [
+          56,
+          115
+        ]
+      },
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          54,
+          94
+        ]
+      },
+      "seat_contact": [
+        48,
+        101
+      ],
+      "accessory_anchors": {
+        "hat": [
+          43,
+          41
+        ],
+        "head": [
+          43,
+          58
+        ],
+        "torso": [
+          48,
+          84
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "use1",
+      "rect": [
+        576,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        26,
+        26,
+        69,
+        120
+      ],
+      "head": [
+        43,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          114
+        ],
+        "screen_right": [
+          54,
+          115
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          35,
+          82
+        ],
+        "screen_right": [
+          60,
+          78
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43,
+          26
+        ],
+        "head": [
+          43,
+          44
+        ],
+        "torso": [
+          48,
+          70
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    },
+    {
+      "direction": "NE",
+      "pose": "use2",
+      "rect": [
+        672,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        26,
+        26,
+        71,
+        120
+      ],
+      "head": [
+        43,
+        44
+      ],
+      "feet": {
+        "screen_left": [
+          42,
+          114
+        ],
+        "screen_right": [
+          55,
+          116
+        ]
+      },
+      "hands": {
+        "screen_left": [
+          33,
+          85
+        ],
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43,
+          26
+        ],
+        "head": [
+          43,
+          44
+        ],
+        "torso": [
+          48,
+          89
+        ]
+      },
+      "landmark_status": "head/hands/seat/accessories inferred; owner/compositor review required",
+      "source": "AI drawn; nearest-neighbor scaled and nearest-source-palette quantized"
+    }
+  ],
+  "source_palette": [
+    "#0b5e6b",
+    "#0f8a9a",
+    "#19b8c8",
+    "#1b1d2b",
+    "#1d2b53",
+    "#2e3d75",
+    "#3b1f6b",
+    "#3b2a24",
+    "#4a5ba3",
+    "#5e35a8",
+    "#6b4a3a",
+    "#6fe0ea",
+    "#8a4b3b",
+    "#8a5ad8",
+    "#8fa0d8",
+    "#a0705a",
+    "#b994f0",
+    "#c0f6fa",
+    "#c97a5c",
+    "#c98a1e",
+    "#f0a98a",
+    "#ffd166",
+    "#ffd8c2",
+    "#fff1e8"
+  ],
+  "checks": {
+    "frame_count": 32,
+    "palette_exact": true,
+    "binary_alpha": true,
+    "original_idle_pixel_exact": true,
+    "unique_walk_frames_per_direction": 4,
+    "preview_scale": 3,
+    "preview_average_fps": 8,
+    "preview_frame_durations_ms": [
+      120,
+      130,
+      120,
+      130
+    ]
+  },
+  "visual_review": {
+    "status": "REVIEW PILOT; visual issues remain",
+    "issues": [
+      "Walk contact poses 1 and 3 remain too similar; gait reads stiff.",
+      "AI face has larger eyes and altered bangs relative to the exact original idle.",
+      "Minor head/torso silhouette and horizontal motion drift remains across poses.",
+      "Seat and accessory landmarks are provisional; no furniture/accessory integration approval."
+    ],
+    "rejected_iteration": "look01_walk_redraw_rejected.png: thicker outlines and larger heads",
+    "inspected": [
+      "sheet",
+      "contact sheet",
+      "GIF and all four decoded GIF frames",
+      "source comparison"
+    ]
+  },
+  "input_sha256": "7b9c889bd97cd267a6f9e55c3de8e99c42d867f8d389d0662f935a1feb6bd26a"
+}

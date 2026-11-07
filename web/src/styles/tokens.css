@@ -45,3 +45,7 @@
 
   color-scheme: dark;
 }
+
+:root[data-reef-play="true"] {
+  --font-body: system-ui, sans-serif;
+}

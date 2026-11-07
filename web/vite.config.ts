@@ -46,6 +46,8 @@ function publicPages(): Plugin {
 }
 
 export default defineConfig({
+  // Do not load local dotenv files; backend configuration stays with the Rust process.
+  envDir: "/nonexistent/pinchora-vite-env",
   plugins: [react(), publicPages()],
   server: {
     port: 5173,

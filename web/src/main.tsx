@@ -29,6 +29,17 @@ const queryClient = new QueryClient({
   },
 });
 
+// Play starts with system body text so the two 600KB TTFs do not spend the cold art budget.
+const playFonts = () => {
+  const location = router.state.location;
+  document.documentElement.dataset.reefPlay = String(
+    /^\/(me\/house|house\/[^/]+)$/.test(location.pathname) &&
+      new URLSearchParams(location.search).get("play") === "1",
+  );
+};
+playFonts();
+router.subscribe(playFonts);
+
 // The tab title and tags follow the page the router is on.
 watchMeta(router);
 

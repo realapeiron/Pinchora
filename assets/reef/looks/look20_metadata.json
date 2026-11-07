@@ -1,0 +1,2061 @@
+{
+  "look_number": 20,
+  "look": "starlet",
+  "status": "DELIVERED REVIEW CANDIDATE \u2014 NOT PRODUCTION CLEARED",
+  "sheet_size": [
+    768,
+    512
+  ],
+  "cell_size": [
+    96,
+    128
+  ],
+  "rows": [
+    "SW",
+    "SE",
+    "NW",
+    "NE"
+  ],
+  "columns": [
+    "idle",
+    "walk1",
+    "walk2",
+    "walk3",
+    "walk4",
+    "sit",
+    "use1",
+    "use2"
+  ],
+  "foot_anchor": [
+    48,
+    120
+  ],
+  "source_palette": [
+    "#0b5e6b",
+    "#0f8a9a",
+    "#19b8c8",
+    "#1b1d2b",
+    "#1d2b53",
+    "#2e3d75",
+    "#3b1f6b",
+    "#3b2a24",
+    "#4a5ba3",
+    "#5e35a8",
+    "#6b4a3a",
+    "#6fe0ea",
+    "#8a4b3b",
+    "#8a5ad8",
+    "#8fa0d8",
+    "#a0705a",
+    "#b994f0",
+    "#c0f6fa",
+    "#c97a5c",
+    "#f0a98a",
+    "#ffd166",
+    "#ffd8c2",
+    "#fff1e8"
+  ],
+  "palette_source": "assets/sprites/avatar_palette.hex (requested tools/art path absent)",
+  "original_source": "assets/sprites/src/a_starlet.png",
+  "source_sha256": "6d734540c0c9c2171a8462857dc85f7e0a58e550846daddb6d8ccce6f18b21df",
+  "generation_tool": "built-in image_gen",
+  "generation_input_sha256": "4a330f46cb21912ede835fb6f388e34af35581ff851ea0f278d2a56fc1b8daf3",
+  "processing": [
+    "green key; connected silhouette",
+    "NEAREST pixel snap; per-look exact palette",
+    "original SW idle copied pixel-for-pixel",
+    "front original head pixels reused; SE mirror",
+    "AI rear idle canonical head and torso locked",
+    "two source-pixel leg layers articulated for opposite contacts/passing",
+    "AI sit/use body with identity restoration",
+    "reviewed sit contour at y99; upper body translated, lower legs NEAREST aligned to ground120",
+    "Starlet hem sway uses integer pixel row offsets"
+  ],
+  "frames": [
+    {
+      "direction": "SW",
+      "pose": "idle",
+      "rect": [
+        0,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        22,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.84,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          31.94,
+          78.49
+        ],
+        "screen_right": [
+          58.15,
+          81.98
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          39.18,
+          114.82
+        ],
+        "screen_right": [
+          51.17,
+          115.67
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.84,
+          22
+        ],
+        "head": [
+          51.84,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "original source pixels"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk1",
+      "rect": [
+        96,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        22,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.84,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          31.92,
+          78.49
+        ],
+        "screen_right": [
+          58.15,
+          81.98
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          43.17,
+          117.0
+        ],
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.84,
+          22
+        ],
+        "head": [
+          51.84,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_near_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk2",
+      "rect": [
+        192,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        22,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.84,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          31.94,
+          78.49
+        ],
+        "screen_right": [
+          58.15,
+          81.98
+        ]
+      },
+      "feet": {
+        "screen_left": null,
+        "screen_right": [
+          50.5,
+          117.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.84,
+          22
+        ],
+        "head": [
+          51.84,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_far",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk3",
+      "rect": [
+        288,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        22,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.84,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          31.96,
+          78.49
+        ],
+        "screen_right": [
+          58.15,
+          81.98
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          39.2,
+          115.0
+        ],
+        "screen_right": [
+          48.8,
+          115.6
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.84,
+          22
+        ],
+        "head": [
+          51.84,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_far_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SW",
+      "pose": "walk4",
+      "rect": [
+        384,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        22,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.84,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          31.94,
+          78.49
+        ],
+        "screen_right": [
+          58.15,
+          81.98
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          37.73,
+          114.0
+        ],
+        "screen_right": [
+          51.43,
+          116.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.84,
+          22
+        ],
+        "head": [
+          51.84,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_near",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SW",
+      "pose": "sit",
+      "rect": [
+        480,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        21,
+        27,
+        77,
+        120
+      ],
+      "head": [
+        50.91,
+        50.79
+      ],
+      "hands": {
+        "screen_left": [
+          35.6,
+          87.49
+        ],
+        "screen_right": [
+          50.12,
+          74.27
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          32.28,
+          113.94
+        ],
+        "screen_right": null
+      },
+      "seat_contact": [
+        48,
+        99
+      ],
+      "accessory_anchors": {
+        "hat": [
+          50.91,
+          27
+        ],
+        "head": [
+          50.91,
+          50.79
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "SW",
+      "pose": "use1",
+      "rect": [
+        576,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        14,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.15,
+        45.45
+      ],
+      "hands": {
+        "screen_left": [
+          24.3,
+          72.44
+        ],
+        "screen_right": [
+          52.55,
+          80.07
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          37.56,
+          114.56
+        ],
+        "screen_right": [
+          50.4,
+          114.1
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.15,
+          22
+        ],
+        "head": [
+          51.15,
+          45.45
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "SW",
+      "pose": "use2",
+      "rect": [
+        672,
+        0,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        16,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        51.65,
+        45.82
+      ],
+      "hands": {
+        "screen_left": [
+          35.27,
+          80.4
+        ],
+        "screen_right": [
+          54.39,
+          79.75
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          38.85,
+          114.9
+        ],
+        "screen_right": [
+          50.06,
+          115.06
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          51.65,
+          22
+        ],
+        "head": [
+          51.65,
+          45.82
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "SE",
+      "pose": "idle",
+      "rect": [
+        0,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        74,
+        120
+      ],
+      "head": [
+        43.16,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          36.85,
+          81.98
+        ],
+        "screen_right": [
+          63.06,
+          78.49
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          43.83,
+          115.67
+        ],
+        "screen_right": [
+          55.82,
+          114.82
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.16,
+          22
+        ],
+        "head": [
+          43.16,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "mirrored original source pixels"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk1",
+      "rect": [
+        96,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        74,
+        120
+      ],
+      "head": [
+        43.16,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          36.85,
+          81.98
+        ],
+        "screen_right": [
+          63.08,
+          78.49
+        ]
+      },
+      "feet": {
+        "screen_left": null,
+        "screen_right": [
+          51.83,
+          117.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.16,
+          22
+        ],
+        "head": [
+          43.16,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_near_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk2",
+      "rect": [
+        192,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        74,
+        120
+      ],
+      "head": [
+        43.16,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          36.85,
+          81.98
+        ],
+        "screen_right": [
+          63.06,
+          78.49
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          44.5,
+          117.0
+        ],
+        "screen_right": null
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.16,
+          22
+        ],
+        "head": [
+          43.16,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_far",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk3",
+      "rect": [
+        288,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        74,
+        120
+      ],
+      "head": [
+        43.16,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          36.85,
+          81.98
+        ],
+        "screen_right": [
+          63.04,
+          78.49
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          46.2,
+          115.6
+        ],
+        "screen_right": [
+          55.8,
+          115.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.16,
+          22
+        ],
+        "head": [
+          43.16,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_far_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SE",
+      "pose": "walk4",
+      "rect": [
+        384,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        74,
+        120
+      ],
+      "head": [
+        43.16,
+        45.71
+      ],
+      "hands": {
+        "screen_left": [
+          36.85,
+          81.98
+        ],
+        "screen_right": [
+          63.06,
+          78.49
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          43.57,
+          116.0
+        ],
+        "screen_right": [
+          57.27,
+          114.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.16,
+          22
+        ],
+        "head": [
+          43.16,
+          45.71
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_near",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "SE",
+      "pose": "sit",
+      "rect": [
+        480,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        27,
+        76,
+        120
+      ],
+      "head": [
+        44.21,
+        51.34
+      ],
+      "hands": {
+        "screen_left": [
+          45.1,
+          72.9
+        ],
+        "screen_right": [
+          60.02,
+          87.14
+        ]
+      },
+      "feet": {
+        "screen_left": null,
+        "screen_right": [
+          65.09,
+          113.02
+        ]
+      },
+      "seat_contact": [
+        48,
+        99
+      ],
+      "accessory_anchors": {
+        "hat": [
+          44.21,
+          27
+        ],
+        "head": [
+          44.21,
+          51.34
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "SE",
+      "pose": "use1",
+      "rect": [
+        576,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        80,
+        120
+      ],
+      "head": [
+        43.63,
+        45.56
+      ],
+      "hands": {
+        "screen_left": [
+          41.39,
+          79.94
+        ],
+        "screen_right": [
+          68.18,
+          72.24
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          46.33,
+          115.67
+        ],
+        "screen_right": [
+          58.3,
+          115.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.63,
+          22
+        ],
+        "head": [
+          43.63,
+          45.56
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "SE",
+      "pose": "use2",
+      "rect": [
+        672,
+        128,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        80,
+        120
+      ],
+      "head": [
+        43.62,
+        45.88
+      ],
+      "hands": {
+        "screen_left": [
+          42.06,
+          79.91
+        ],
+        "screen_right": [
+          58.58,
+          81.79
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          44.71,
+          114.0
+        ],
+        "screen_right": [
+          58.14,
+          114.72
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          43.62,
+          22
+        ],
+        "head": [
+          43.62,
+          45.88
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "NW",
+      "pose": "idle",
+      "rect": [
+        0,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        28,
+        22,
+        76,
+        120
+      ],
+      "head": [
+        53.35,
+        50.34
+      ],
+      "hands": {
+        "screen_left": [
+          34.55,
+          80.77
+        ],
+        "screen_right": [
+          54.0,
+          86.5
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          37.93,
+          115.86
+        ],
+        "screen_right": [
+          52.21,
+          115.47
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.35,
+          22
+        ],
+        "head": [
+          53.35,
+          50.34
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI rear idle; NEAREST + source palette"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk1",
+      "rect": [
+        96,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        25,
+        22,
+        76,
+        120
+      ],
+      "head": [
+        53.35,
+        50.34
+      ],
+      "hands": {
+        "screen_left": [
+          34.54,
+          80.77
+        ],
+        "screen_right": [
+          54.0,
+          86.5
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          42.61,
+          116.56
+        ],
+        "screen_right": [
+          53.5,
+          114.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.35,
+          22
+        ],
+        "head": [
+          53.35,
+          50.34
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_near_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk2",
+      "rect": [
+        192,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        27,
+        22,
+        76,
+        120
+      ],
+      "head": [
+        53.35,
+        50.34
+      ],
+      "hands": {
+        "screen_left": [
+          34.55,
+          80.77
+        ],
+        "screen_right": [
+          54.0,
+          86.5
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          46.0,
+          117.0
+        ],
+        "screen_right": [
+          51.43,
+          116.0
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.35,
+          22
+        ],
+        "head": [
+          53.35,
+          50.34
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_far",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk3",
+      "rect": [
+        288,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        29,
+        22,
+        76,
+        120
+      ],
+      "head": [
+        53.35,
+        50.34
+      ],
+      "hands": {
+        "screen_left": [
+          34.56,
+          80.77
+        ],
+        "screen_right": [
+          54.0,
+          86.5
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          37.93,
+          115.86
+        ],
+        "screen_right": [
+          58.0,
+          112.5
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.35,
+          22
+        ],
+        "head": [
+          53.35,
+          50.34
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_far_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NW",
+      "pose": "walk4",
+      "rect": [
+        384,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        29,
+        22,
+        76,
+        120
+      ],
+      "head": [
+        53.35,
+        50.34
+      ],
+      "hands": {
+        "screen_left": [
+          34.55,
+          80.77
+        ],
+        "screen_right": [
+          54.0,
+          86.5
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          41.79,
+          115.79
+        ],
+        "screen_right": [
+          51.4,
+          115.4
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.35,
+          22
+        ],
+        "head": [
+          53.35,
+          50.34
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_near",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NW",
+      "pose": "sit",
+      "rect": [
+        480,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        21,
+        26,
+        76,
+        120
+      ],
+      "head": [
+        52.44,
+        52.8
+      ],
+      "hands": {
+        "screen_left": [
+          33.03,
+          91.35
+        ],
+        "screen_right": null
+      },
+      "feet": {
+        "screen_left": [
+          31.73,
+          112.0
+        ],
+        "screen_right": null
+      },
+      "seat_contact": [
+        48,
+        99
+      ],
+      "accessory_anchors": {
+        "hat": [
+          52.44,
+          26
+        ],
+        "head": [
+          52.44,
+          52.8
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "NW",
+      "pose": "use1",
+      "rect": [
+        576,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        19,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        53.38,
+        49.45
+      ],
+      "hands": {
+        "screen_left": [
+          29.64,
+          72.56
+        ],
+        "screen_right": [
+          52.5,
+          92.0
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          38.25,
+          115.46
+        ],
+        "screen_right": [
+          52.27,
+          115.6
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.38,
+          22
+        ],
+        "head": [
+          53.38,
+          49.45
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "NW",
+      "pose": "use2",
+      "rect": [
+        672,
+        256,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        53.45,
+        49.79
+      ],
+      "hands": {
+        "screen_left": [
+          43.83,
+          90.67
+        ],
+        "screen_right": [
+          55.83,
+          92.5
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          39.04,
+          115.56
+        ],
+        "screen_right": [
+          52.29,
+          115.82
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          53.45,
+          22
+        ],
+        "head": [
+          53.45,
+          49.79
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "NE",
+      "pose": "idle",
+      "rect": [
+        0,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        69,
+        120
+      ],
+      "head": [
+        42.72,
+        49.98
+      ],
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          61.84,
+          79.67
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          42.38,
+          114.75
+        ],
+        "screen_right": [
+          56.54,
+          115.38
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.72,
+          22
+        ],
+        "head": [
+          42.72,
+          49.98
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI rear idle; NEAREST + source palette"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk1",
+      "rect": [
+        96,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        72,
+        120
+      ],
+      "head": [
+        42.72,
+        49.98
+      ],
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          61.84,
+          79.67
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          35.0,
+          110.5
+        ],
+        "screen_right": [
+          52.33,
+          116.2
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.72,
+          22
+        ],
+        "head": [
+          42.72,
+          49.98
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_near_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk2",
+      "rect": [
+        192,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        70,
+        120
+      ],
+      "head": [
+        42.72,
+        49.98
+      ],
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          61.84,
+          79.67
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          42.85,
+          115.23
+        ],
+        "screen_right": [
+          48.5,
+          116.5
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.72,
+          22
+        ],
+        "head": [
+          42.72,
+          49.98
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_far",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk3",
+      "rect": [
+        288,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        69,
+        120
+      ],
+      "head": [
+        42.72,
+        49.98
+      ],
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          61.84,
+          79.67
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          29.0,
+          110.5
+        ],
+        "screen_right": [
+          56.54,
+          115.38
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.72,
+          22
+        ],
+        "head": [
+          42.72,
+          49.98
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "contact_far_forward",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NE",
+      "pose": "walk4",
+      "rect": [
+        384,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        69,
+        120
+      ],
+      "head": [
+        42.72,
+        49.98
+      ],
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          61.84,
+          79.67
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          41.17,
+          114.33
+        ],
+        "screen_right": [
+          52.83,
+          115.29
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.72,
+          22
+        ],
+        "head": [
+          42.72,
+          49.98
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": "passing_near",
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+    },
+    {
+      "direction": "NE",
+      "pose": "sit",
+      "rect": [
+        480,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        26,
+        76,
+        120
+      ],
+      "head": [
+        43.74,
+        52.84
+      ],
+      "hands": {
+        "screen_left": null,
+        "screen_right": [
+          63.95,
+          91.91
+        ]
+      },
+      "feet": {
+        "screen_left": null,
+        "screen_right": [
+          64.58,
+          112.19
+        ]
+      },
+      "seat_contact": [
+        48,
+        99
+      ],
+      "accessory_anchors": {
+        "hat": [
+          43.74,
+          26
+        ],
+        "head": [
+          43.74,
+          52.84
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "NE",
+      "pose": "use1",
+      "rect": [
+        576,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        78,
+        120
+      ],
+      "head": [
+        42.65,
+        49.67
+      ],
+      "hands": {
+        "screen_left": [
+          38.0,
+          90.67
+        ],
+        "screen_right": [
+          66.6,
+          72.8
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          43.14,
+          115.0
+        ],
+        "screen_right": [
+          56.91,
+          115.54
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.65,
+          22
+        ],
+        "head": [
+          42.65,
+          49.67
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    },
+    {
+      "direction": "NE",
+      "pose": "use2",
+      "rect": [
+        672,
+        384,
+        96,
+        128
+      ],
+      "foot_anchor": [
+        48,
+        120
+      ],
+      "silhouette_bbox": [
+        20,
+        22,
+        77,
+        120
+      ],
+      "head": [
+        42.56,
+        49.9
+      ],
+      "hands": {
+        "screen_left": [
+          38.0,
+          94.0
+        ],
+        "screen_right": [
+          59.0,
+          77.0
+        ]
+      },
+      "feet": {
+        "screen_left": [
+          43.06,
+          114.94
+        ],
+        "screen_right": [
+          56.77,
+          115.6
+        ]
+      },
+      "seat_contact": null,
+      "accessory_anchors": {
+        "hat": [
+          42.56,
+          22
+        ],
+        "head": [
+          42.56,
+          49.9
+        ],
+        "torso": [
+          48,
+          94
+        ]
+      },
+      "gait_phase": null,
+      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
+      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+    }
+  ],
+  "checks": {
+    "frame_count": 32,
+    "original_idle_pixel_exact": true,
+    "palette_exact": true,
+    "binary_alpha": true,
+    "unique_walk_frames_per_direction": 4,
+    "fixed_walk_upper_body_pixel_exact": true,
+    "preview_scale": 3,
+    "preview_average_fps": 8,
+    "preview_frame_durations_ms": [
+      120,
+      130,
+      120,
+      130
+    ],
+    "all_final_mechanical_checks_pass": true,
+    "natural_anatomical_gait_approved": false,
+    "seat_footwear_preserved_during_shin_alignment": true,
+    "seat_plane_y": 99
+  },
+  "visual_review": {
+    "status": "further art work required",
+    "production_ready": false,
+    "notes": [
+      "Original front face and star dress palette preserved; hem now sways with alternating foot layers.",
+      "NOT RESOLVED: long hem still hides a convincing anatomical gait; seated dress is too short and the hair/body join needs a redraw."
+    ],
+    "inspected": [
+      "final contact sheet opened",
+      "preview GIF opened",
+      "all four walk preview frames opened as walk_review.png"
+    ],
+    "unresolved_critical": true
+  }
+}

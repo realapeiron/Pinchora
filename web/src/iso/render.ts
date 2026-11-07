@@ -33,7 +33,7 @@ const f32 = Math.fround;
 export interface Rendered {
   image: Img;
   /** Per pixel: 1 + the index in `scene.items` of the item drawn there last, 0 for none. */
-  hit: Int32Array;
+  hit: Int32Array<ArrayBuffer>;
 }
 
 type Box = [number, number, number, number];
@@ -76,7 +76,7 @@ class Canvas {
   readonly img: Img;
   readonly ox: number;
   readonly oy: number;
-  readonly hit: Int32Array;
+  readonly hit: Int32Array<ArrayBuffer>;
   /** 1 + the index of the item being drawn, or 0 while drawing the room itself. */
   tag = 0;
 
@@ -154,52 +154,64 @@ function texel(tex: Img, u: number, v: number): Rgba {
 
 const sideOf = (item: SceneItem): WallSide => (item.flipped ? "left" : "right");
 
-export function renderRoom(scene: Scene): Rendered {
+export function renderRoom(
+  scene: Scene,
+  pass: "all" | "background" | "foreground" = "all",
+  fixedBounds?: Box,
+  underlay?: Img,
+): Rendered {
   // Floor, surface and figure sprites are mirrored when flipped; wall items hang on the other wall instead.
   const sprites = scene.items.map((item) =>
     item.flipped && standing(item) ? flipHorizontal(item.sprite) : item.sprite,
   );
-  const [minX, minY, maxX, maxY] = bounds(scene, sprites);
+  const [minX, minY, maxX, maxY] = fixedBounds ?? bounds(scene, sprites);
   const [cw, ch] = [maxX - minX + 2 * MARGIN, maxY - minY + 2 * MARGIN];
-  const img = blank(cw, ch);
-  for (let y = 0; y < ch; y++) {
-    const t = f32(y / ch);
-    const u = f32(1 - t);
-    const mix = (a: number, b: number) => Math.trunc(f32(f32(a * u) + f32(b * t)));
-    const c: Rgba = [mix(0x2a, 0x12), mix(0x2c, 0x14), mix(0x48, 0x20), 255];
-    for (let x = 0; x < cw; x++) img.data.set(c, (y * cw + x) * 4);
-  }
+  const img = underlay ?? blank(cw, ch);
+  if (pass !== "foreground")
+    for (let y = 0; y < ch; y++) {
+      const t = f32(y / ch);
+      const u = f32(1 - t);
+      const mix = (a: number, b: number) => Math.trunc(f32(f32(a * u) + f32(b * t)));
+      const c: Rgba = [mix(0x2a, 0x12), mix(0x2c, 0x14), mix(0x48, 0x20), 255];
+      for (let x = 0; x < cw; x++) img.data.set(c, (y * cw + x) * 4);
+    }
   const cv = new Canvas(img, MARGIN - minX, MARGIN - minY);
 
-  drawWalls(cv, scene);
-  drawFloor(cv, scene);
-  scene.items.forEach((item, i) => {
-    if (item.layer !== "rug") return;
-    cv.tag = i + 1;
-    drawRug(cv, item);
-  });
-  cv.tag = 0;
-  if (scene.grid) drawGrid(cv, scene);
-  scene.items.forEach((item, i) => {
-    cv.tag = i + 1;
-    drawShadow(cv, item);
-  });
-  scene.items.forEach((item, i) => {
-    if (item.layer !== "wall") return;
-    cv.tag = i + 1;
-    drawWallItem(cv, item, sprites[i]!);
-  });
-  const on: number[] = [];
-  scene.items.forEach((item, i) => standing(item) && on.push(i));
-  for (const i of drawOrder(scene.items, on)) {
-    const [left, top] = anchor(scene.items[i]!, sprites[i]!);
-    cv.tag = i + 1;
-    cv.sprite(sprites[i]!, left, top);
+  if (pass !== "foreground") {
+    drawWalls(cv, scene);
+    drawFloor(cv, scene);
+    scene.items.forEach((item, i) => {
+      if (item.layer !== "rug") return;
+      cv.tag = i + 1;
+      drawRug(cv, item);
+    });
+    cv.tag = 0;
+    if (scene.grid) drawGrid(cv, scene);
+    scene.items.forEach((item, i) => {
+      cv.tag = i + 1;
+      drawShadow(cv, item);
+    });
+    scene.items.forEach((item, i) => {
+      if (item.layer !== "wall") return;
+      cv.tag = i + 1;
+      drawWallItem(cv, item, sprites[i]!);
+    });
+  }
+  if (pass === "all") {
+    const on: number[] = [];
+    scene.items.forEach((item, i) => standing(item) && on.push(i));
+    for (const i of drawOrder(scene.items, on)) {
+      const [left, top] = anchor(scene.items[i]!, sprites[i]!);
+      cv.tag = i + 1;
+      cv.sprite(sprites[i]!, left, top);
+    }
   }
   cv.tag = 0;
-  for (const item of scene.items) if (item.selected) outlineItem(cv, item, GOLD);
-  if (scene.cursor) drawCursor(cv, scene.cursor);
-  if (scene.grid) drawLabels(cv, scene);
+  if (pass !== "background") {
+    for (const item of scene.items) if (item.selected) outlineItem(cv, item, GOLD);
+    if (scene.cursor) drawCursor(cv, scene.cursor);
+    if (scene.grid) drawLabels(cv, scene);
+  }
   return { image: img, hit: cv.hit };
 }
 
