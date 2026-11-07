@@ -9,6 +9,7 @@ mod content;
 pub mod fleet;
 pub mod hangman;
 pub mod picross;
+pub mod quick;
 pub mod rps;
 pub mod tide2048;
 pub mod trivia;
@@ -49,10 +50,19 @@ pub enum Game {
     WordRace,
     WouldYouRather,
     TruthOrDare,
+    Memory,
+    Minesweeper,
+    HigherLower,
+    Anagram,
+    Typing,
+    GuessNumber,
+    Othello,
+    NeverHaveIEver,
+    MagicConch,
 }
 
 impl Game {
-    pub const ALL: [Game; 26] = [
+    pub const ALL: [Game; 35] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
@@ -79,6 +89,15 @@ impl Game {
         Self::WordRace,
         Self::WouldYouRather,
         Self::TruthOrDare,
+        Self::Memory,
+        Self::Minesweeper,
+        Self::HigherLower,
+        Self::Anagram,
+        Self::Typing,
+        Self::GuessNumber,
+        Self::Othello,
+        Self::NeverHaveIEver,
+        Self::MagicConch,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -110,6 +129,15 @@ impl Game {
             Self::WordRace => "wordrace",
             Self::WouldYouRather => "wouldyourrather",
             Self::TruthOrDare => "truthordare",
+            Self::Memory => "memory",
+            Self::Minesweeper => "minesweeper",
+            Self::HigherLower => "higherlower",
+            Self::Anagram => "anagram",
+            Self::Typing => "typing",
+            Self::GuessNumber => "guessnumber",
+            Self::Othello => "othello",
+            Self::NeverHaveIEver => "nhie",
+            Self::MagicConch => "fun",
         }
     }
 
@@ -141,6 +169,15 @@ impl Game {
             Self::WordRace => "Wordle Race",
             Self::WouldYouRather => "Would You Rather",
             Self::TruthOrDare => "Truth or Dare",
+            Self::Memory => "Shell Match",
+            Self::Minesweeper => "Sea Mines",
+            Self::HigherLower => "Tide Table",
+            Self::Anagram => "Scrambled Shells",
+            Self::Typing => "Type the Tide",
+            Self::GuessNumber => "Hot and Cold",
+            Self::Othello => "Pearl Flip",
+            Self::NeverHaveIEver => "Never Have I Ever",
+            Self::MagicConch => "Magic Conch",
         }
     }
 
@@ -177,6 +214,15 @@ impl Game {
             Self::WordRace => "🏁",
             Self::WouldYouRather => "⚖️",
             Self::TruthOrDare => "🎲",
+            Self::Memory => "🐚",
+            Self::Minesweeper => "💣",
+            Self::HigherLower => "🌊",
+            Self::Anagram => "🔤",
+            Self::Typing => "⌨️",
+            Self::GuessNumber => "🔢",
+            Self::Othello => "⚪",
+            Self::NeverHaveIEver => "🦪",
+            Self::MagicConch => "🔮",
         }
     }
 
@@ -217,6 +263,15 @@ impl Game {
             Self::WordRace => 25,
             Self::WouldYouRather => 1,
             Self::TruthOrDare => 4,
+            Self::Memory
+            | Self::Minesweeper
+            | Self::HigherLower
+            | Self::Anagram
+            | Self::Typing
+            | Self::GuessNumber
+            | Self::NeverHaveIEver
+            | Self::MagicConch => 8,
+            Self::Othello => 20,
         }
     }
 
@@ -247,6 +302,15 @@ impl Game {
             Self::WordRace => 6,
             Self::WouldYouRather => 10,
             Self::TruthOrDare => 5,
+            Self::Memory
+            | Self::Minesweeper
+            | Self::HigherLower
+            | Self::Anagram
+            | Self::Typing
+            | Self::GuessNumber
+            | Self::Othello
+            | Self::NeverHaveIEver
+            | Self::MagicConch => 5,
         }
     }
 
@@ -258,6 +322,7 @@ impl Game {
             Self::Chess => 10,
             Self::Checkers => 6,
             Self::SeaFleet => 10,
+            Self::Othello => 8,
             _ => 0,
         }
     }
@@ -291,7 +356,7 @@ mod tests {
     #[test]
     fn only_the_two_player_board_games_ask_for_a_minimum_of_moves() {
         let asking: Vec<_> = Game::ALL.into_iter().filter(|g| g.min_moves() > 0).collect();
-        assert_eq!(asking, [Game::SeaFleet, Game::Checkers, Game::Chess]);
+        assert_eq!(asking, [Game::SeaFleet, Game::Checkers, Game::Chess, Game::Othello]);
         assert_eq!(
             (
                 Game::Chess.min_moves(),

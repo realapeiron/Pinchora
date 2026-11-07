@@ -12,10 +12,10 @@ use pinchora_render::{
     HeistCard, HelpCard, HelpRow, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LettersCard,
     LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PartyLobbyCard, PearlCard, PearlSeat, PetCard, PetStatus,
     PickView, PicrossCard, PollCard, PollOption, PostcardCard, PotCard, PotState, ProfileCard, PromptCard, PromptTone,
-    RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer, Reveal, SeaView, ShareGrabCard, ShellCard,
-    ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow, StandingsCard, SurgeCard, SurgeState,
-    Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish, WrappedHouse,
-    WrappedTotals, encode_png, templates,
+    QuickCard, RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer, Reveal, SeaView, ShareGrabCard,
+    ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow, StandingsCard, SurgeCard,
+    SurgeState, Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish,
+    WrappedHouse, WrappedTotals, encode_png, templates,
 };
 
 /// Emoji, a Chinese letter, markup, then code points XML 1.0 forbids or a parser may refuse: U+FFFE, U+FFFF, a
@@ -936,6 +936,23 @@ fn hostile_text_renders_on_every_card() {
             }),
             backdrop: Some(backdrop()),
             theme: t(),
+        }),
+    ));
+
+    drawn.push((
+        "quick",
+        r.quick_card(&QuickCard {
+            kind: pinchora_render::QuickKind::Typing,
+            details: Default::default(),
+            lang: pinchora_core::i18n::Lang::Tr,
+            title: HOSTILE,
+            subtitle: HOSTILE,
+            cells: &[],
+            columns: 0,
+            prompt: HOSTILE,
+            status: HOSTILE,
+            theme: t(),
+            distort: true,
         }),
     ));
 

@@ -105,12 +105,19 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "bs" => "duel seafleet",
         "ck" => "duel checkers",
         "cc" => "duel chess",
+        "of" => "duel othello",
         "sh" => "duel share",
         "pz" => "play picross",
         "tz" => "play 2048",
         "hm" => "play hangman",
         "wo" => "play wordle",
         "tv" => "play trivia",
+        "mm" => "play memory",
+        "mi" => "play minesweeper",
+        "yl" => "play higherlower",
+        "ag" => "play anagram",
+        "yt" => "play typing",
+        "gn" => "play guessnumber",
         "dy" => "play derby",
         "sz" => "play shells",
         "hs" => "play heist",
@@ -121,6 +128,7 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "wx" => "party wordrace",
         "wy" => "party wouldyourrather",
         "td" => "party truthordare",
+        "ni" => "party nhie",
         "cd" | "mb" => "critterdrop",
         "bc" => "dex",
         "kp" => "crabpot",
@@ -358,6 +366,24 @@ mod tests {
         }
         assert!(invalid.is_empty(), "invalid component owners: {invalid:?}");
     }
+    #[test]
+    fn quick_game_buttons_follow_subcommand_rules() {
+        let catalog = control_catalog();
+        for (prefix, path) in [
+            ("mm", "play memory"),
+            ("mi", "play minesweeper"),
+            ("yl", "play higherlower"),
+            ("ag", "play anagram"),
+            ("yt", "play typing"),
+            ("gn", "play guessnumber"),
+            ("of", "duel othello"),
+            ("ni", "party nhie"),
+        ] {
+            assert_eq!(owner(prefix), Some(path));
+            assert!(catalog.iter().any(|command| command.path == path));
+        }
+    }
+
     #[test]
     fn aliases_cannot_shadow_names_or_chain() {
         use pinchora_core::{command_control::Config, i18n::Lang};

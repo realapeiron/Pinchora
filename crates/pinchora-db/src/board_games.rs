@@ -54,6 +54,64 @@ macro_rules! solo_columns {
 }
 
 impl Db {
+    /// Finish one timed-out solo round exactly once, before it is replaced.
+    pub async fn expire_solo(&self, user: u64, game: &str, state: &str) -> anyhow::Result<bool> {
+        Ok(sqlx::query(
+            "UPDATE solo_games SET status = 'over', updated_at = now()
+             WHERE user_id = $1 AND game = $2 AND state = $3 AND status = 'playing'",
+        )
+        .bind(sql_id(user))
+        .bind(game)
+        .bind(state)
+        .execute(self.pool())
+        .await?
+        .rows_affected()
+            == 1)
+    }
+
+    /// Start a replacement only if the displayed finished board is still current.
+    pub async fn restart_solo(
+        &self,
+        user: u64,
+        game: &str,
+        old_state: &str,
+        from_moves: i32,
+        new_state: &str,
+    ) -> anyhow::Result<bool> {
+        Ok(sqlx::query(
+            "UPDATE solo_games SET state = $5, score = 0, moves = 0, status = 'playing', updated_at = now()
+             WHERE user_id = $1 AND game = $2 AND state = $3 AND moves = $4 AND status = 'over'",
+        )
+        .bind(sql_id(user))
+        .bind(game)
+        .bind(old_state)
+        .bind(from_moves)
+        .bind(new_state)
+        .execute(self.pool())
+        .await?
+        .rows_affected()
+            == 1)
+    }
+
+    /// The janitor claims expired quick rounds once. Their state contains the server-side deadline.
+    pub async fn expire_quick_solos(&self, now: i64) -> anyhow::Result<Vec<(u64, String)>> {
+        let rows: Vec<(i64, String)> = sqlx::query_as(
+            "UPDATE solo_games SET status = 'over', updated_at = now()
+             WHERE (user_id, game) IN (
+                 SELECT user_id, game FROM solo_games
+                 WHERE game IN ('memory','minesweeper','higherlower','anagram','typing','guessnumber')
+                   AND status = 'playing'
+                   AND (state::jsonb->>'expires')::bigint <= $1
+                 LIMIT 50 FOR UPDATE SKIP LOCKED
+             )
+             RETURNING user_id, game",
+        )
+        .bind(now)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(u, g)| (u as u64, g)).collect())
+    }
+
     /// Counts a finished game for a player and keeps their highest score.
     pub async fn record_game_score(&self, user: u64, game: &str, won: bool, score: i32) -> anyhow::Result<()> {
         sqlx::query(

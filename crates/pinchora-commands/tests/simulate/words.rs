@@ -1496,18 +1496,20 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
         .iter()
         .map(|o| o["name"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        subs,
-        [
-            "hotpearl",
-            "acronym",
-            "postcard",
-            "wordrace",
-            "wouldyourrather",
-            "truthordare",
-            "stop"
-        ]
-    );
+    assert!(subs.len() <= 25);
+    for name in [
+        "hotpearl",
+        "acronym",
+        "postcard",
+        "wordrace",
+        "wouldyourrather",
+        "truthordare",
+        "nhie",
+        "fun",
+        "stop",
+    ] {
+        assert!(subs.contains(&name), "{name} missing from /party");
+    }
     for sub in party["options"].as_array().unwrap() {
         assert!(sub["description"].as_str().unwrap().len() <= 100, "{}", sub["name"]);
         for option in sub["options"].as_array().into_iter().flatten() {
@@ -1528,7 +1530,12 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
     };
     let help = sim.command(unique(), "help", json!([])).await;
     let areas = super::help_areas(&help);
-    assert!(areas.iter().any(|a| a == "Puzzles & word games"), "{areas:?}");
+    assert!(
+        areas
+            .iter()
+            .any(|a| a == "Puzzles & word games" || a.starts_with("Puzzles & word games (")),
+        "{areas:?}"
+    );
     // Like the rest of /config, it is for managers: Discord keeps it from everyone else.
     assert!(config["default_member_permissions"].is_string(), "{config}");
 }

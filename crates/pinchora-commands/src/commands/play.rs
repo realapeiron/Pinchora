@@ -8,7 +8,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooter
 
 use super::{
     board::{picross, tide2048},
-    derby, hangman, heist, shells, trivia, wordle,
+    derby, hangman, heist, quick, shells, trivia, wordle,
 };
 use crate::{
     Cx,
@@ -44,6 +44,53 @@ pub enum PlayCommand {
     Shells(PlayShells),
     #[command(name = "stats")]
     Stats(PlayStats),
+    #[command(name = "memory")]
+    Memory(PlayQuick),
+    #[command(name = "minesweeper")]
+    Minesweeper(PlayMines),
+    #[command(name = "higherlower")]
+    HigherLower(PlayHigherLower),
+    #[command(name = "anagram")]
+    Anagram(PlayAnagram),
+    #[command(name = "typing")]
+    Typing(PlayTyping),
+    #[command(name = "guessnumber")]
+    GuessNumber(PlayGuessNumber),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "memory", desc = "Find all eight shell pairs on a pixel grid")]
+pub struct PlayQuick;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "higherlower", desc = "Guess whether the next tide card is higher or lower")]
+pub struct PlayHigherLower;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "anagram", desc = "Unscramble the sea word")]
+pub struct PlayAnagram;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "typing", desc = "Type the sentence on the pixel card accurately and quickly")]
+pub struct PlayTyping;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "guessnumber", desc = "Find the secret number using hot and cold clues")]
+pub struct PlayGuessNumber;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "minesweeper", desc = "Reveal the safe sea squares, or flag the mines")]
+pub struct PlayMines {
+    /// Board side length, 8 by default; 10 for a longer puzzle
+    size: Option<MineSize>,
+}
+
+#[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MineSize {
+    #[option(name = "8 × 8", value = 8)]
+    Eight,
+    #[option(name = "10 × 10", value = 10)]
+    Ten,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -183,6 +230,19 @@ impl PlayCommand {
             Self::Heist(_) => heist::start(cx).await,
             Self::Shells(c) => shells::start(cx, c.bet).await,
             Self::Stats(c) => stats(cx, c.user).await,
+            Self::Memory(_) => quick::start(cx, quick::Kind::Memory, 8).await,
+            Self::Minesweeper(c) => {
+                quick::start(
+                    cx,
+                    quick::Kind::Mines,
+                    if c.size == Some(MineSize::Ten) { 10 } else { 8 },
+                )
+                .await
+            }
+            Self::HigherLower(_) => quick::start(cx, quick::Kind::HigherLower, 8).await,
+            Self::Anagram(_) => quick::start(cx, quick::Kind::Anagram, 8).await,
+            Self::Typing(_) => quick::start(cx, quick::Kind::Typing, 8).await,
+            Self::GuessNumber(_) => quick::start(cx, quick::Kind::GuessNumber, 8).await,
         }
     }
 }

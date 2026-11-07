@@ -1,0 +1,15 @@
+[fun]
+subtitle = "Kabuk konuştu"
+ask = "Denize küçük bir soru"
+result = "Küçük bir şans dalgası"
+need-choices = "Virgülle ayrılmış en az iki seçenek gir."
+
+[fun.answers]
+item-0 = "Evet."
+item-1 = "Belki sonra."
+item-2 = "Bir arkadaşına sor."
+item-3 = "Gelgit hayır diyor."
+item-4 = "Bir dene."
+item-5 = "Bir sürpriz yakında."
+item-6 = "Biraz mola ver."
+item-7 = "Merakına güven."

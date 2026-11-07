@@ -1,0 +1,15 @@
+[fun]
+subtitle = "The shell has spoken"
+ask = "A little question for the sea"
+result = "A tiny tide of chance"
+need-choices = "Give at least two comma-separated choices."
+
+[fun.answers]
+item-0 = "Yes."
+item-1 = "Maybe later."
+item-2 = "Ask a friend."
+item-3 = "The tide says no."
+item-4 = "Give it a try."
+item-5 = "A surprise is near."
+item-6 = "Take a little break."
+item-7 = "Trust your curiosity."

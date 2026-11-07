@@ -20,6 +20,7 @@ use crate::{App, Cx, util::thousands_in};
 pub(crate) mod checkers;
 pub(crate) mod chess;
 pub(crate) mod fleet;
+pub(crate) mod othello;
 pub(crate) mod picross;
 pub(crate) mod tide2048;
 

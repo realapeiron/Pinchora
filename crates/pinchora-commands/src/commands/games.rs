@@ -189,7 +189,9 @@ pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
     let mut ended = 0;
     for session in app.db.late_games(50).await? {
         let result = match session.kind.as_str() {
-            "connect4" | "rps" | "seafleet" | "checkers" | "chess" => super::duel::time_out(app, &session).await,
+            "connect4" | "rps" | "seafleet" | "checkers" | "chess" | "othello" => {
+                super::duel::time_out(app, &session).await
+            }
             "sharegrab" => super::share::time_out(app, &session).await,
             "derby" => super::derby::time_out(app, &session).await,
             "heist" => super::heist::time_out(app, &session).await,
@@ -214,6 +216,12 @@ pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
     // Timed storm surges start, and running ones show their wall.
     if let Err(error) = super::surge::tick(app).await {
         tracing::warn!(%error, "storm tick failed");
+    }
+    for (user, game) in app.db.expire_quick_solos(app.now().timestamp()).await? {
+        if let Err(error) = app.db.record_game(user, &game, false).await {
+            tracing::warn!(%error, user, game, "timed-out quick game not counted");
+        }
+        ended += 1;
     }
     Ok(ended)
 }

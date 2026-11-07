@@ -351,7 +351,10 @@ async fn help_and_stats_list_the_board_games() {
     let help = sim.command(user, "help", json!([])).await;
     let areas = super::help_areas(&help);
     for area in ["Duels", "Puzzles & word games"] {
-        assert!(areas.iter().any(|a| a == area), "{area} in {areas:?}");
+        assert!(
+            areas.iter().any(|a| a == area || a.starts_with(&format!("{area} ("))),
+            "{area} in {areas:?}"
+        );
     }
     let stats = sim.command(user, "play", json!([super::sub("stats", vec![])])).await;
     for game in [

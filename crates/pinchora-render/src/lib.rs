@@ -42,6 +42,7 @@ pub use cards::{
 };
 pub use cards::{HelpCard, HelpRow};
 pub use cards::{IDLE_KEY, WRONG_LETTER};
+pub use cards::{QuickCard, QuickDetails, QuickHeat, QuickKind};
 pub use derby::{DerbyScene, LANES as DERBY_LANES, derby_gif, derby_still, tint_crab};
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
@@ -113,6 +114,10 @@ impl Renderer {
 
     pub fn svg_to_png(&self, svg: &str) -> anyhow::Result<Vec<u8>> {
         Ok(self.svg_to_pixmap(svg)?.encode_png()?)
+    }
+
+    pub fn quick_card(&self, card: &QuickCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
     }
 
     fn svg_to_pixmap(&self, svg: &str) -> anyhow::Result<tiny_skia::Pixmap> {

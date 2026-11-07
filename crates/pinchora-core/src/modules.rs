@@ -490,11 +490,14 @@ impl Module {
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
-                Some("seafleet" | "checkers" | "chess") => Self::BoardGames,
+                Some("seafleet" | "checkers" | "chess" | "othello") => Self::BoardGames,
                 _ => return None,
             },
             "play" => match sub {
-                Some("hangman" | "wordle" | "trivia") => Self::Puzzles,
+                Some(
+                    "hangman" | "wordle" | "trivia" | "memory" | "minesweeper" | "higherlower" | "anagram" | "typing"
+                    | "guessnumber",
+                ) => Self::Puzzles,
                 Some("picross" | "2048") => Self::BoardGames,
                 Some("derby" | "heist" | "shells") => Self::Party,
                 Some("stats") => Self::Profile,
@@ -523,10 +526,10 @@ impl Module {
             "fr" | "fx" | "fz" => Self::Fishing,
             "qc" => Self::Quests,
             "tt" | "c4" | "rp" => Self::Duels,
-            "bs" | "ck" | "cc" | "pz" | "tz" => Self::BoardGames,
-            "hm" | "wo" | "tv" => Self::Puzzles,
+            "bs" | "ck" | "cc" | "of" | "pz" | "tz" => Self::BoardGames,
+            "hm" | "wo" | "tv" | "mm" | "mi" | "yl" | "ag" | "yt" | "gn" => Self::Puzzles,
             "dy" | "sh" | "sz" | "ss" | "hs" => Self::Party,
-            "hl" | "ac" | "cn" | "wx" | "wy" | "td" => Self::PartyGames,
+            "hl" | "ac" | "cn" | "wx" | "wy" | "td" | "ni" => Self::PartyGames,
             "cd" | "mb" | "bc" | "kp" => Self::Collection,
             "st" => Self::Store,
             "rr" | "rb" | "rs" => Self::RolePanels,

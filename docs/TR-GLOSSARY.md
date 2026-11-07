@@ -17,6 +17,9 @@ Oyuncuya görünen metinlerde aşağıdaki karşılıkları tutarlı kullanın. 
 | Tidepool Dex | Gelgit Havuzu Defteri | Yaratık ve buluntu koleksiyonu. |
 | fragment | parçacık | Tekrarların dönüştüğü takas birimi. |
 | Moonpearl Isles | Ay İncisi Adaları | Evcil hayvan gezisi. |
+| Shell Match / Sea Mines | Kabuk Eşleştirme / Deniz Mayınları | Kısa piksel bulmacaları. |
+| Pearl Flip | İnci Çevirme | Othello oyununun Pinchora adı. |
+| Never Have I Ever | Ben Hiç | Aile dostu grup soruları. |
 | Starfall Sandbar | Yıldız Yağmuru Kumluğu | Evcil hayvan gezisi. |
 
 Kullanıcı adı, eşya adı ve özel ad gibi yer tutuculara Türkçe ek yapıştırmayın; `**{name}** adlı yaratık` gibi yapıları tercih edin. Türkçe sayılarda binlik ayırıcı `.` ve ondalık ayırıcı `,` kullanılır; İngilizce biçim korunur.

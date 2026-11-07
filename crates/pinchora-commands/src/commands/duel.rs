@@ -13,7 +13,7 @@ use twilight_model::{
 };
 
 use super::{
-    board::{self, checkers, chess, fleet},
+    board::{self, checkers, chess, fleet, othello},
     connect4,
     games::{button, channel_lang, channel_of, edit_message, location, pack, record, track_message, unpack},
     rps, share,
@@ -43,6 +43,21 @@ pub enum DuelCommand {
     Checkers(DuelCheckers),
     #[command(name = "chess")]
     Chess(DuelChess),
+    #[command(name = "othello")]
+    Othello(DuelOthello),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "othello",
+    desc = "Pearl Flip on an 8 by 8 board; flip the other player's pearls"
+)]
+pub struct DuelOthello {
+    /// Your opponent
+    user: ResolvedUser,
+    /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -162,6 +177,7 @@ impl DuelCommand {
             Self::SeaFleet(c) => challenge(cx, Kind::SeaFleet, &c.user, 0, c.bet).await,
             Self::Checkers(c) => challenge(cx, Kind::Checkers, &c.user, 0, c.bet).await,
             Self::Chess(c) => challenge(cx, Kind::Chess, &c.user, 0, c.bet).await,
+            Self::Othello(c) => challenge(cx, Kind::Othello, &c.user, 0, c.bet).await,
         }
     }
 }
@@ -367,6 +383,7 @@ pub(crate) enum Kind {
     SeaFleet,
     Checkers,
     Chess,
+    Othello,
 }
 
 impl Kind {
@@ -378,6 +395,7 @@ impl Kind {
             Self::SeaFleet => "seafleet",
             Self::Checkers => "checkers",
             Self::Chess => "chess",
+            Self::Othello => "othello",
         }
     }
 
@@ -389,6 +407,7 @@ impl Kind {
             "seafleet" => Some(Self::SeaFleet),
             "checkers" => Some(Self::Checkers),
             "chess" => Some(Self::Chess),
+            "othello" => Some(Self::Othello),
             _ => None,
         }
     }
@@ -402,6 +421,7 @@ impl Kind {
             Self::SeaFleet => Play::SeaFleet,
             Self::Checkers => Play::Checkers,
             Self::Chess => Play::Chess,
+            Self::Othello => Play::Othello,
         }
     }
 
@@ -414,6 +434,7 @@ impl Kind {
             Self::SeaFleet => "bs",
             Self::Checkers => "ck",
             Self::Chess => "cc",
+            Self::Othello => "of",
         }
     }
 
@@ -429,7 +450,7 @@ impl Kind {
             Self::Connect4 | Self::Rps => TURN_SECS,
             Self::ShareGrab => pinchora_game::party::share::PICK_SECS,
             Self::SeaFleet => board::FLEET_PLACE_SECS,
-            Self::Checkers => board::CHECKERS_SECS,
+            Self::Checkers | Self::Othello => board::CHECKERS_SECS,
             Self::Chess => board::CHESS_SECS,
         }
     }
@@ -622,6 +643,7 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
         Kind::SeaFleet => fleet::initial_fields(),
         Kind::Checkers => checkers::initial_fields(),
         Kind::Chess => chess::initial_fields(),
+        Kind::Othello => othello::initial_fields(),
     };
     let packed = pack(&machine, [&names[0], &names[1]]);
     match cx
@@ -637,6 +659,7 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
             Kind::SeaFleet => fleet::begin(cx, &started).await,
             Kind::Checkers => checkers::begin(cx, &started).await,
             Kind::Chess => chess::begin(cx, &started).await,
+            Kind::Othello => othello::begin(cx, &started).await,
         },
         DuelStart::Gone => cx.reply_ephemeral(t!(lang, "duel.challenge-over")).await,
         DuelStart::NotInvited => cx.reply_ephemeral(t!(lang, "duel.not-for-you")).await,
@@ -668,6 +691,7 @@ pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::R
     let Some(before) = app.db.settle_game(session.id, from, "timeout", payout, true).await? else {
         return Ok(false);
     };
+    record_othello_timeout(app, &before).await;
     // Nobody clicked: the message is in the server's language.
     let text = timeout_text(&before, app.guild_lang(before.guild_id as u64).await);
     if let Some((channel, message)) = location(&before) {
@@ -683,6 +707,7 @@ pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Resul
     let (payout, from) = timeout_settlement(session);
     match cx.app.db.settle_game(session.id, from, "timeout", payout, true).await? {
         Some(before) => {
+            record_othello_timeout(&cx.app, &before).await;
             let clicked = cx.interaction.message.as_ref().map(|m| m.id.get());
             // The public message is the server's language whoever clicked it; a private one is the clicker's.
             let board = timeout_text(&before, cx.app.guild_lang(before.guild_id as u64).await);
@@ -706,6 +731,16 @@ pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Resul
             .await
         }
         None => cx.reply_ephemeral(t!(cx.lang(), "duel.game-over")).await,
+    }
+}
+
+async fn record_othello_timeout(app: &App, session: &GameSession) {
+    if session.kind != Kind::Othello.key() || session.status != ACTIVE {
+        return;
+    }
+    let slow = slow_players(session);
+    for user in [session.host_id as u64, session.guest_id.unwrap_or(0) as u64] {
+        record(app, Play::Othello, user, slow.len() == 1 && slow[0] != user).await;
     }
 }
 
@@ -739,6 +774,7 @@ fn slow_players(session: &GameSession) -> Vec<u64> {
         Some(Kind::SeaFleet) => fleet::slow_players(session),
         Some(Kind::Checkers) => checkers::slow_players(session),
         Some(Kind::Chess) => chess::slow_players(session),
+        Some(Kind::Othello) => othello::slow_players(session),
         None => Vec::new(),
     }
 }
