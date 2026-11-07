@@ -209,6 +209,9 @@ async fn safety_copy_and_expired_links_use_the_selected_language() {
     let response = browser.get(&format!("/api/guilds/{guild}/safety")).await;
     assert_eq!(response.json()["language"], "tr");
     assert_eq!(response.json()["strings"]["title"], "Güvenlik");
+    let overview = browser.get(&format!("/api/guilds/{guild}")).await;
+    assert_eq!(overview.json()["navigation"]["invites"], "Davetler");
+    assert_eq!(overview.json()["navigation"]["safety"], "Güvenlik");
     let expired = browser.get("/api/verify/expired").await;
     assert!(!expired.status.is_success());
     assert!(

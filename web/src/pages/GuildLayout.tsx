@@ -79,7 +79,16 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const overview = useOverview(guildId);
   const nav = useRef<HTMLElement>(null);
   const [filter, setFilter] = useState("");
-  const shown = visibleNav(NAV, filter);
+  const shown = visibleNav(
+    NAV.map((group) => ({
+      ...group,
+      pages: group.pages.map((page) => ({
+        ...page,
+        label: overview.data?.navigation?.[page.to] ?? page.label,
+      })),
+    })),
+    filter,
+  );
   const { pathname } = useLocation();
   // On a phone the links are one sideways strip: keep the open page's tab in sight.
   useEffect(() => {

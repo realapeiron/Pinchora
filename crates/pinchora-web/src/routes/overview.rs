@@ -1,6 +1,7 @@
 //! `GET /api/guilds/{g}`: the server, its settings and its latest changes.
 
 use axum::{Json, extract::State};
+use pinchora_core::t;
 use serde_json::{Value, json};
 
 use super::{
@@ -13,6 +14,7 @@ use crate::{error::ApiResult, extract::ManagedGuild, state::WebState};
 const RECENT_CHANGES: i64 = 5;
 
 pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Json<Value>> {
+    let lang = state.app.guild_lang(managed.id).await;
     let db = &state.app.db;
     let settings = db.guild_settings(managed.id).await?;
     let audit: Vec<AuditView> = db
@@ -26,5 +28,9 @@ pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> A
         "settings": SettingsView::from(settings),
         "modules": module_list(&state, managed.id).await?,
         "audit": audit,
+        "navigation": {
+            "invites": t!(lang, "module.invites"),
+            "safety": t!(lang, "verification.ui.title"),
+        },
     })))
 }

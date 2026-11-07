@@ -181,6 +181,7 @@ export interface AuditEntry {
 }
 
 export interface Overview {
+  navigation?: Record<string, string>;
   guild: { id: string; name: string; icon_url: string | null };
   settings: Settings;
   modules: ModuleEntry[];
