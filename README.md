@@ -705,7 +705,16 @@ Attribution compares Discord invite uses on each join, with a Redis snapshot per
 
 ### Achievements
 
-<!-- F8: the Achievements package replaces this heading's section; keep it one `###` section. -->
+Servers can configure up to 25 achievements. Members see earned and locked milestones on a paged pixel card, with a progress bar for each visible rule. Secret achievements appear only after they are earned. Progress is checked at most once per member per minute after accepted chat, and immediately on level-up; rules are cached for 60 seconds. A milestone can give server points, a safe role, and an announcement. It never mints shells.
+
+| Command | What it does |
+|---|---|
+| `/achievements [user]` | Show the member's server achievement card. Private profiles remain private. |
+| `/achievementadmin add name kind target [description] [icon] [role] [points] [announce_channel] [secret]` | Add a milestone (Manage Server). |
+| `/achievementadmin edit id […]`, `/achievementadmin remove id`, `/achievementadmin list` | Change, remove, or list milestones (Manage Server). |
+| `/achievementadmin grant id user` | Grant a custom achievement once (Manage Server). |
+
+Kinds: messages, voice minutes, level, active days, invites, stars received, tickets closed, reputation, games won, fish caught, and custom. A kind whose source module is off is hidden and does not grant. The dashboard's **Achievements** page edits cards, picks icons from the existing glyphs and badge atlas, previews a card, and lists members who earned one. Grants are unique in `member_achievements`; point rewards and the grant commit together under the player lock. `server_achievements` holds the server's rules.
 
 ### Stats
 

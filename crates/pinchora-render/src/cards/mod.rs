@@ -1,3 +1,4 @@
+mod achievements;
 mod badges;
 mod boards;
 mod character;
@@ -31,6 +32,7 @@ mod welcome;
 mod wordle;
 mod wrapped;
 
+pub use achievements::{AchievementCell, AchievementsCard};
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use character::{CharacterCard, EditorCell, EditorSection};
 pub use checkers::CheckersCard;

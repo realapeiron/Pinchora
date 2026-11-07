@@ -1100,6 +1100,8 @@
       "ends_with"
     ],
     "reserved": [
+      "achievements",
+      "achievementadmin",
       "ping",
       "help",
       "profile",

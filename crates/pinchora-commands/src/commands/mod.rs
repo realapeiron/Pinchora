@@ -1,3 +1,4 @@
+pub(crate) mod achievements;
 pub(crate) mod automod;
 mod bio;
 pub(crate) mod board;
@@ -105,6 +106,8 @@ macro_rules! commands {
 }
 
 commands!(
+    achievements::AchievementsCommand,
+    achievements::AchievementAdmin,
     ping::Ping,
     help::Help,
     profile::Profile,

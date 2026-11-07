@@ -30,6 +30,7 @@ pub use cards::{
     Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish, WrappedHouse,
     WrappedTotals,
 };
+pub use cards::{AchievementCell, AchievementsCard};
 pub use cards::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
@@ -129,6 +130,10 @@ impl Renderer {
     }
 
     pub fn profile_card(&self, card: &ProfileCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn achievements_card(&self, card: &AchievementsCard) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 

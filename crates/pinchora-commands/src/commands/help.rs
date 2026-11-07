@@ -68,7 +68,16 @@ pub(crate) const AREAS: &[Area] = &[
     },
     Area {
         key: "profile",
-        covers: &["bio", "character", "customize", "wrapped", "privacy", "play stats"],
+        covers: &[
+            "bio",
+            "character",
+            "customize",
+            "wrapped",
+            "privacy",
+            "play stats",
+            "achievements",
+            "achievementadmin",
+        ],
     },
     Area {
         key: "rewards",

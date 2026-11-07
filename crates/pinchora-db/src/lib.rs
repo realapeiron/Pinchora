@@ -1,3 +1,4 @@
+mod achievements;
 mod activity;
 mod audit;
 mod board_games;
@@ -54,6 +55,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use achievements::{AchievementDraft, AchievementRow, AchievementSave};
 pub use activity::{Activity, Counter};
 pub use audit::{AuditRow, AuditSource, NewAudit};
 pub use board_games::{PicrossGame, SoloGame, SoloStep};

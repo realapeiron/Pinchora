@@ -61,6 +61,8 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     crate::starboard::on_message(app, msg).await;
     // F9 stats counts the message.
     crate::stats::count_message(app, msg).await;
+    crate::commands::achievements::on_message(app, msg.guild_id.expect("guild message").get(), msg.author.id.get())
+        .await;
     // F19 AFK and sticky messages come after F1.
     // F15 AI characters answer mentions.
     Verdict::Continue
@@ -110,6 +112,7 @@ pub(crate) async fn on_dm(_app: &Arc<App>, _msg: &Message) {
 /// A member gained a level, after their level roles were given. `role` is the role they earned, if any.
 pub(crate) async fn on_level_up(_app: &Arc<App>, _guild: u64, _user: u64, _level: u32, _role: Option<u64>) {
     // F8 achievements (the level kind).
+    crate::commands::achievements::on_level_up(_app, _guild, _user).await;
     // F13 workflows' level-up trigger.
 }
 

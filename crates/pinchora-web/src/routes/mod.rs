@@ -1,5 +1,6 @@
 //! The dashboard's routes and the headers every response carries.
 
+mod achievements;
 mod audit_log;
 mod automod;
 mod cards;

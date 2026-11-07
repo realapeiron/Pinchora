@@ -129,11 +129,12 @@ pub enum Module {
     Invites,
     Verification,
     AntiRaid,
+    Achievements,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 41] = [
+    pub const ALL: [Self; 42] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -175,6 +176,7 @@ impl Module {
         Self::Invites,
         Self::Verification,
         Self::AntiRaid,
+        Self::Achievements,
     ];
 
     /// The key stored in the database and used in the API.
@@ -221,6 +223,7 @@ impl Module {
             Self::Invites => "invites",
             Self::Verification => "verification",
             Self::AntiRaid => "anti_raid",
+            Self::Achievements => "achievements",
         }
     }
 
@@ -271,6 +274,7 @@ impl Module {
             Self::Invites => "Invites",
             Self::Verification => "Verification",
             Self::AntiRaid => "Raid protection",
+            Self::Achievements => "Achievements",
         }
     }
 
@@ -331,6 +335,7 @@ impl Module {
             Self::AutoMod => "Automatic message rules and moderation actions.",
             Self::Verification => "Join gate and pixel captcha verification.",
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
+            Self::Achievements => "Server achievements and their rewards.",
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -374,6 +379,7 @@ impl Module {
             Self::Starboard => Group::Community,
             Self::Verification => Group::Safety,
             Self::AntiRaid => Group::Safety,
+            Self::Achievements => Group::Players,
         }
     }
 
@@ -388,6 +394,7 @@ impl Module {
             Self::Invites => Scope::Server,
             Self::Verification => Scope::Server,
             Self::AntiRaid => Scope::Server,
+            Self::Achievements => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -454,6 +461,7 @@ impl Module {
             "voice" => Self::TempVoice,
             "verify" | "verification" => Self::Verification,
             "raid" => Self::AntiRaid,
+            "achievements" | "achievementadmin" => Self::Achievements,
             _ => return None,
         })
     }
@@ -487,6 +495,7 @@ impl Module {
             "am" | "ax" => Self::AutoMod,
             "vf" | "cq" => Self::Verification,
             "rd" => Self::AntiRaid,
+            "ah" => Self::Achievements,
             "sn" => Self::Feeds,
             "vc" | "vo" => Self::TempVoice,
             "nf" => Self::Info,
