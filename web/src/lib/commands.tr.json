@@ -3,6 +3,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Bir profil kartı gösterir",
           "manager": false,
           "options": [
@@ -16,6 +17,7 @@
           "usage": "/profile [user]"
         },
         {
+          "aliases": [],
           "description": "Sunucu seviye kartını gösterir",
           "manager": false,
           "options": [
@@ -29,6 +31,7 @@
           "usage": "/rank [user]"
         },
         {
+          "aliases": [],
           "description": "XP, kabuk, sunucu puanı ya da en büyük avda en iyiler",
           "manager": false,
           "options": [
@@ -50,6 +53,7 @@
           "usage": "/leaderboard [board]"
         },
         {
+          "aliases": [],
           "description": "Günlük kabuklarını topla",
           "manager": false,
           "options": [],
@@ -57,6 +61,7 @@
           "usage": "/daily"
         },
         {
+          "aliases": [],
           "description": "Bir kabuk cüzdanını gösterir",
           "manager": false,
           "options": [
@@ -70,6 +75,7 @@
           "usage": "/balance [user]"
         },
         {
+          "aliases": [],
           "description": "Bugünün üç görevi ve ödülleri",
           "manager": false,
           "options": [],
@@ -77,6 +83,7 @@
           "usage": "/quests"
         },
         {
+          "aliases": [],
           "description": "Pinchora neler yapabilir",
           "manager": false,
           "options": [],
@@ -84,6 +91,7 @@
           "usage": "/help"
         },
         {
+          "aliases": [],
           "description": "Dilini seç ya da Discord dilini takip et",
           "manager": false,
           "options": [
@@ -102,6 +110,7 @@
           "usage": "/language set <language>"
         },
         {
+          "aliases": [],
           "description": "Pinchora uyanık mı, ne kadar hızlı yanıt veriyor, bak",
           "manager": false,
           "options": [],
@@ -116,6 +125,9 @@
     {
       "commands": [
         {
+          "aliases": [
+            "bio"
+          ],
           "description": "Profil kartındaki hakkımda yazını ayarla",
           "manager": false,
           "options": [
@@ -125,10 +137,11 @@
               "required": true
             }
           ],
-          "path": "bio",
-          "usage": "/bio <text>"
+          "path": "customize bio",
+          "usage": "/customize bio <text>"
         },
         {
+          "aliases": [],
           "description": "Piksel karakterini tasarla: görünüş, renkler, aksesuarlar ve kıyafetler",
           "manager": false,
           "options": [],
@@ -136,6 +149,7 @@
           "usage": "/character"
         },
         {
+          "aliases": [],
           "description": "Profil, sıra ve cüzdan kartların için bir arka plan al ve kullan",
           "manager": false,
           "options": [],
@@ -143,6 +157,7 @@
           "usage": "/customize background"
         },
         {
+          "aliases": [],
           "description": "Rozet koleksiyonun: profil kartındaki rozetleri kazan, al ve tak",
           "manager": false,
           "options": [],
@@ -150,6 +165,7 @@
           "usage": "/customize badges"
         },
         {
+          "aliases": [],
           "description": "Profil ve sıra kartlarında adının altındaki unvanı seç",
           "manager": false,
           "options": [],
@@ -157,6 +173,7 @@
           "usage": "/customize title"
         },
         {
+          "aliases": [],
           "description": "Profil, sıra ve cüzdan kartların için vurgu rengi, panel saydamlığı ve çerçeve",
           "manager": false,
           "options": [],
@@ -164,6 +181,7 @@
           "usage": "/customize style"
         },
         {
+          "aliases": [],
           "description": "Profil kartına sevdiğin bir balığı, hayvanı, mobilyayı ve evini koy",
           "manager": false,
           "options": [],
@@ -171,6 +189,9 @@
           "usage": "/customize showcase"
         },
         {
+          "aliases": [
+            "wrapped"
+          ],
           "description": "Yılın sayılarla (1 Aralık - 31 Ocak arası açık)",
           "manager": false,
           "options": [
@@ -180,10 +201,11 @@
               "required": false
             }
           ],
-          "path": "wrapped",
-          "usage": "/wrapped [year]"
+          "path": "info wrapped",
+          "usage": "/info wrapped [year]"
         },
         {
+          "aliases": [],
           "description": "Başkalarının senden ne göreceğini, sunucuların sana DM atıp atamayacağını seç ya da verilerini sil",
           "manager": false,
           "options": [
@@ -197,6 +219,7 @@
           "usage": "/privacy [server_dms]"
         },
         {
+          "aliases": [],
           "description": "Biri kaç oyun oynamış ve kazanmış",
           "manager": false,
           "options": [
@@ -210,6 +233,7 @@
           "usage": "/play stats [user]"
         },
         {
+          "aliases": [],
           "description": "Sunucu başarımlarını göster",
           "manager": false,
           "options": [
@@ -223,6 +247,9 @@
           "usage": "/achievements [user]"
         },
         {
+          "aliases": [
+            "achievementadmin add"
+          ],
           "description": "Başarım oluştur (en fazla 25)",
           "manager": true,
           "options": [
@@ -285,10 +312,13 @@
               "required": false
             }
           ],
-          "path": "achievementadmin add",
-          "usage": "/achievementadmin add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
+          "path": "progression achievements add",
+          "usage": "/progression achievements add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
         },
         {
+          "aliases": [
+            "achievementadmin edit"
+          ],
           "description": "Başarımı düzenle",
           "manager": true,
           "options": [
@@ -371,30 +401,13 @@
               "required": false
             }
           ],
-          "path": "achievementadmin edit",
-          "usage": "/achievementadmin edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
+          "path": "progression achievements edit",
+          "usage": "/progression achievements edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
         },
         {
-          "description": "Başarımı ve kazanım kayıtlarını sil",
-          "manager": true,
-          "options": [
-            {
-              "description": "Başarım kimliği",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "achievementadmin grant"
           ],
-          "path": "achievementadmin remove",
-          "usage": "/achievementadmin remove <id>"
-        },
-        {
-          "description": "Tanımlı başarımları listele",
-          "manager": true,
-          "options": [],
-          "path": "achievementadmin list",
-          "usage": "/achievementadmin list"
-        },
-        {
           "description": "Özel başarımı bir üyeye ver",
           "manager": true,
           "options": [
@@ -409,8 +422,34 @@
               "required": true
             }
           ],
-          "path": "achievementadmin grant",
-          "usage": "/achievementadmin grant <id> <user>"
+          "path": "progression achievements grant",
+          "usage": "/progression achievements grant <id> <user>"
+        },
+        {
+          "aliases": [
+            "achievementadmin list"
+          ],
+          "description": "Tanımlı başarımları listele",
+          "manager": true,
+          "options": [],
+          "path": "progression achievements list",
+          "usage": "/progression achievements list"
+        },
+        {
+          "aliases": [
+            "achievementadmin remove"
+          ],
+          "description": "Başarımı ve kazanım kayıtlarını sil",
+          "manager": true,
+          "options": [
+            {
+              "description": "Başarım kimliği",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "progression achievements remove",
+          "usage": "/progression achievements remove <id>"
         }
       ],
       "intro": "Görünüşün, karakterin ve başkalarının senden neler görebileceği.",
@@ -420,20 +459,27 @@
     {
       "commands": [
         {
+          "aliases": [
+            "weekly"
+          ],
           "description": "Haftalık kabuklarını topla (7 günde bir)",
           "manager": false,
           "options": [],
-          "path": "weekly",
-          "usage": "/weekly"
+          "path": "rewards weekly",
+          "usage": "/rewards weekly"
         },
         {
+          "aliases": [
+            "monthly"
+          ],
           "description": "Aylık kabuklarını topla (30 günde bir)",
           "manager": false,
           "options": [],
-          "path": "monthly",
-          "usage": "/monthly"
+          "path": "rewards monthly",
+          "usage": "/rewards monthly"
         },
         {
+          "aliases": [],
           "description": "Birine kabuk gönder",
           "manager": false,
           "options": [
@@ -452,6 +498,7 @@
           "usage": "/give <user> <amount>"
         },
         {
+          "aliases": [],
           "description": "Birine itibar puanı ver (günde bir kez)",
           "manager": false,
           "options": [
@@ -465,6 +512,7 @@
           "usage": "/rep <user>"
         },
         {
+          "aliases": [],
           "description": "Bir ödül, hayvanım ya da bir hayvan gezisi hazır olunca bana yaz",
           "manager": false,
           "options": [
@@ -494,6 +542,7 @@
           "usage": "/remind me when <what> <state>"
         },
         {
+          "aliases": [],
           "description": "Bir süre sonra bana yaz: 45m, 2h30m, 3d",
           "manager": false,
           "options": [
@@ -512,6 +561,7 @@
           "usage": "/remind me in <duration> <text>"
         },
         {
+          "aliases": [],
           "description": "Hatırlatıcıların ve hangi bildirimlerin açık olduğu",
           "manager": false,
           "options": [],
@@ -519,6 +569,7 @@
           "usage": "/remind list"
         },
         {
+          "aliases": [],
           "description": "/remind me in ile kurduğun bir hatırlatıcıyı iptal et",
           "manager": false,
           "options": [
@@ -532,6 +583,7 @@
           "usage": "/remind cancel <id>"
         },
         {
+          "aliases": [],
           "description": "Doğum gününü gizlilik seçimlerinle kaydet",
           "manager": false,
           "options": [
@@ -570,6 +622,7 @@
           "usage": "/birthday set <day> <month> [year] [timezone] [public] [show_age]"
         },
         {
+          "aliases": [],
           "description": "Doğum gününü sil ve kutlamaları durdur",
           "manager": false,
           "options": [],
@@ -577,6 +630,7 @@
           "usage": "/birthday remove"
         },
         {
+          "aliases": [],
           "description": "Kaydettiğin tarihi ve gizlilik seçimlerini gör",
           "manager": false,
           "options": [],
@@ -584,6 +638,7 @@
           "usage": "/birthday me"
         },
         {
+          "aliases": [],
           "description": "Paylaşmışsa bir üyenin doğum gününü gör",
           "manager": false,
           "options": [
@@ -597,6 +652,7 @@
           "usage": "/birthday view <user>"
         },
         {
+          "aliases": [],
           "description": "Bu sunucudaki sıradaki paylaşılan doğum günü",
           "manager": false,
           "options": [],
@@ -604,6 +660,7 @@
           "usage": "/birthday next"
         },
         {
+          "aliases": [],
           "description": "Bu sunucudaki paylaşılan doğum günleri",
           "manager": false,
           "options": [
@@ -624,6 +681,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Saatlik pazar: dünya çapında sınırlı stoklu nadir parçalar",
           "manager": false,
           "options": [],
@@ -631,6 +689,7 @@
           "usage": "/shop market"
         },
         {
+          "aliases": [],
           "description": "Mobilya kataloğuna göz at",
           "manager": false,
           "options": [
@@ -644,6 +703,7 @@
           "usage": "/shop catalog [category]"
         },
         {
+          "aliases": [],
           "description": "Sahip olduğun ama yerleştirmediğin mobilyalar",
           "manager": false,
           "options": [],
@@ -651,6 +711,7 @@
           "usage": "/inventory"
         },
         {
+          "aliases": [],
           "description": "Bir arkadaşına mobilya gönder",
           "manager": false,
           "options": [
@@ -664,6 +725,7 @@
           "usage": "/gift <user>"
         },
         {
+          "aliases": [],
           "description": "Bir oyuncunun tezgâhına göz at",
           "manager": false,
           "options": [
@@ -677,6 +739,7 @@
           "usage": "/stall view [user]"
         },
         {
+          "aliases": [],
           "description": "Envanterindeki bir eşyayı tezgâhına koy",
           "manager": false,
           "options": [
@@ -690,6 +753,7 @@
           "usage": "/stall sell <price>"
         },
         {
+          "aliases": [],
           "description": "Tezgâhındaki eşyaları geri al",
           "manager": false,
           "options": [],
@@ -704,6 +768,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Evine bir bak",
           "manager": false,
           "options": [
@@ -717,6 +782,7 @@
           "usage": "/house view [room]"
         },
         {
+          "aliases": [],
           "description": "Birinin evini ziyaret et (her günün ilk ziyareti kabuk kazandırır)",
           "manager": false,
           "options": [
@@ -735,6 +801,7 @@
           "usage": "/house visit [user] [room]"
         },
         {
+          "aliases": [],
           "description": "Bir odayı döşe: imleci gezdir, mobilya seç, yerleştir",
           "manager": false,
           "options": [
@@ -753,6 +820,7 @@
           "usage": "/house edit [room] [owner]"
         },
         {
+          "aliases": [],
           "description": "Daha büyük bir eve taşın (mobilyaların seninle gelir)",
           "manager": false,
           "options": [],
@@ -760,6 +828,7 @@
           "usage": "/house upgrade"
         },
         {
+          "aliases": [],
           "description": "Evini ziyaretçilere kilitle ya da aç",
           "manager": false,
           "options": [
@@ -773,6 +842,7 @@
           "usage": "/house lock <locked>"
         },
         {
+          "aliases": [],
           "description": "Birinin evine beğeni bırak (günde bir kez)",
           "manager": false,
           "options": [
@@ -786,6 +856,7 @@
           "usage": "/house like <user>"
         },
         {
+          "aliases": [],
           "description": "Bir odanın duvar kâğıdını ve zeminini değiştir",
           "manager": false,
           "options": [
@@ -799,6 +870,7 @@
           "usage": "/house decorate [room]"
         },
         {
+          "aliases": [],
           "description": "Bir evin ziyaretçi defterini oku, kimlerin geldiğine bak",
           "manager": false,
           "options": [
@@ -812,6 +884,7 @@
           "usage": "/house guestbook [user]"
         },
         {
+          "aliases": [],
           "description": "Bu haftanın teması, kalan süre, katılanlar ve geçen haftanın kazananları",
           "manager": false,
           "options": [],
@@ -819,6 +892,7 @@
           "usage": "/house contest view"
         },
         {
+          "aliases": [],
           "description": "Bir odayı şu anki haliyle yarışmaya sok (tekrar katılmak onu günceller)",
           "manager": false,
           "options": [
@@ -832,6 +906,7 @@
           "usage": "/house contest enter [room]"
         },
         {
+          "aliases": [],
           "description": "Diğer üyelerin katıldığı odaları puanla",
           "manager": false,
           "options": [],
@@ -839,6 +914,7 @@
           "usage": "/house contest vote"
         },
         {
+          "aliases": [],
           "description": "Geçen haftanın kazanan odası",
           "manager": false,
           "options": [],
@@ -846,6 +922,7 @@
           "usage": "/house contest winners"
         },
         {
+          "aliases": [],
           "description": "Sunucu meydanında bir tur at",
           "manager": false,
           "options": [],
@@ -853,6 +930,7 @@
           "usage": "/plaza view"
         },
         {
+          "aliases": [],
           "description": "Sunucu meydanına bir mobilya bağışla",
           "manager": false,
           "options": [],
@@ -860,11 +938,14 @@
           "usage": "/plaza donate"
         },
         {
+          "aliases": [
+            "plaza edit"
+          ],
           "description": "Meydana bağışlanan mobilyaları düzenle (Sunucuyu Yönet)",
           "manager": true,
           "options": [],
-          "path": "plaza edit",
-          "usage": "/plaza edit"
+          "path": "community server plaza-edit",
+          "usage": "/community server plaza-edit"
         }
       ],
       "intro": "Kendi piksel evin, haftalık oda yarışması ve tüm sunucunun paylaştığı meydan.",
@@ -874,6 +955,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Aktif hayvanını gör ve ona bak",
           "manager": false,
           "options": [],
@@ -881,6 +963,7 @@
           "usage": "/pet view"
         },
         {
+          "aliases": [],
           "description": "İlk hayvanını ücretsiz sahiplen",
           "manager": false,
           "options": [],
@@ -888,6 +971,7 @@
           "usage": "/pet adopt"
         },
         {
+          "aliases": [],
           "description": "Rastgele bir hayvan için hayvan kapsülü aç (1.500 kabuk)",
           "manager": false,
           "options": [],
@@ -895,6 +979,7 @@
           "usage": "/pet capsule"
         },
         {
+          "aliases": [],
           "description": "Yuvan: tüm hayvanların bir bakışta; birini aç ya da aktif hayvanını seç",
           "manager": false,
           "options": [],
@@ -902,6 +987,7 @@
           "usage": "/pet list"
         },
         {
+          "aliases": [],
           "description": "Aktif hayvanının adını değiştir",
           "manager": false,
           "options": [
@@ -915,6 +1001,7 @@
           "usage": "/pet rename <name>"
         },
         {
+          "aliases": [],
           "description": "Bir hayvanı 1, 4 ya da 8 saatliğine gönder; kabuk ve bazen mobilya getirir",
           "manager": false,
           "options": [
@@ -943,6 +1030,7 @@
           "usage": "/pet trip go <destination> [pet]"
         },
         {
+          "aliases": [],
           "description": "Dönen hayvanların hatıralarını topla ya da kimin hâlâ yolda olduğuna bak",
           "manager": false,
           "options": [],
@@ -957,6 +1045,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Olta at (sade yem 10 kabuk). Bir şey vurduğu an Çek'e bas!",
           "manager": false,
           "options": [
@@ -977,6 +1066,7 @@
           "usage": "/fish cast [spot]"
         },
         {
+          "aliases": [],
           "description": "Kabukla olta ve yem al",
           "manager": false,
           "options": [],
@@ -984,6 +1074,7 @@
           "usage": "/fish shop"
         },
         {
+          "aliases": [],
           "description": "Yerini, oltanı ve yemini seç",
           "manager": false,
           "options": [],
@@ -991,6 +1082,7 @@
           "usage": "/fish gear"
         },
         {
+          "aliases": [],
           "description": "Kovandaki balıkları kabuk karşılığı sat",
           "manager": false,
           "options": [],
@@ -998,6 +1090,7 @@
           "usage": "/fish sell"
         },
         {
+          "aliases": [],
           "description": "Balık defterin: her tür, rekor boylar ve kilometre taşı ödülleri",
           "manager": false,
           "options": [],
@@ -1012,6 +1105,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Birine arkadaşın olmasını teklif et",
           "manager": false,
           "options": [
@@ -1025,6 +1119,7 @@
           "usage": "/friends add <user>"
         },
         {
+          "aliases": [],
           "description": "Biriyle arkadaşlığı bitir",
           "manager": false,
           "options": [
@@ -1038,6 +1133,7 @@
           "usage": "/friends remove <user>"
         },
         {
+          "aliases": [],
           "description": "Senin ya da başka birinin arkadaşları",
           "manager": false,
           "options": [
@@ -1051,6 +1147,7 @@
           "usage": "/friends list [user]"
         },
         {
+          "aliases": [],
           "description": "Birine partnerin olmasını teklif et",
           "manager": false,
           "options": [
@@ -1064,6 +1161,7 @@
           "usage": "/partner propose <user>"
         },
         {
+          "aliases": [],
           "description": "Bir çifte bak: ne zamandan beri, kaç gün birlikte, neleri paylaşıyorlar",
           "manager": false,
           "options": [
@@ -1077,6 +1175,7 @@
           "usage": "/partner view [user]"
         },
         {
+          "aliases": [],
           "description": "Partnerliğini bitir",
           "manager": false,
           "options": [],
@@ -1084,6 +1183,7 @@
           "usage": "/partner leave"
         },
         {
+          "aliases": [],
           "description": "Birine sarıl",
           "manager": false,
           "options": [
@@ -1097,6 +1197,7 @@
           "usage": "/hug <user>"
         },
         {
+          "aliases": [],
           "description": "Birinin başını okşa",
           "manager": false,
           "options": [
@@ -1110,6 +1211,7 @@
           "usage": "/pat <user>"
         },
         {
+          "aliases": [],
           "description": "Birine el salla",
           "manager": false,
           "options": [
@@ -1123,6 +1225,7 @@
           "usage": "/wave <user>"
         },
         {
+          "aliases": [],
           "description": "Biriyle çak bir beşlik",
           "manager": false,
           "options": [
@@ -1143,6 +1246,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Düğmelerle XOX; kazanan kabuk kazanır",
           "manager": false,
           "options": [
@@ -1156,6 +1260,7 @@
           "usage": "/duel tictactoe <user>"
         },
         {
+          "aliases": [],
           "description": "Piksel tahtada Dört Bağla; kazanan kabuk ya da potu alır",
           "manager": false,
           "options": [
@@ -1174,6 +1279,7 @@
           "usage": "/duel connect4 <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Gizlice seçilen taş kâğıt makas; kazanan kabuk ya da potu alır",
           "manager": false,
           "options": [
@@ -1202,6 +1308,7 @@
           "usage": "/duel rps <user> [rounds] [bet]"
         },
         {
+          "aliases": [],
           "description": "Paylaş ya da Kap: havuzu bölüş ya da hepsini kap ve onun paylaşmasını um",
           "manager": false,
           "options": [
@@ -1220,6 +1327,7 @@
           "usage": "/duel share <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Deniz Filosu: gemilerini sakla, onunkileri batır; kazanan kabuk ya da potu alır",
           "manager": false,
           "options": [
@@ -1238,6 +1346,7 @@
           "usage": "/duel seafleet <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Piksel tahtada İnci Dama; kazanan kabuk ya da potu alır",
           "manager": false,
           "options": [
@@ -1256,6 +1365,7 @@
           "usage": "/duel checkers <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Piksel tahtada Resif Satrancı; kazanan kabuk ya da potu alır",
           "manager": false,
           "options": [
@@ -1274,6 +1384,7 @@
           "usage": "/duel chess <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "8×8 tahtada İnci Çevirme; rakibin incilerini çevir",
           "manager": false,
           "options": [
@@ -1299,6 +1410,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Dalgalar kumdan kaleyi almadan kelimeyi bul",
           "manager": false,
           "options": [],
@@ -1306,6 +1418,7 @@
           "usage": "/play hangman"
         },
         {
+          "aliases": [],
           "description": "Beş harfli kelimeyi altı denemede bul",
           "manager": false,
           "options": [
@@ -1323,6 +1436,7 @@
           "usage": "/play wordle [mode]"
         },
         {
+          "aliases": [],
           "description": "Kanal için bir bilgi yarışması turu: 20 saniye, herkes cevaplayabilir",
           "manager": false,
           "options": [
@@ -1346,6 +1460,7 @@
           "usage": "/play trivia [category]"
         },
         {
+          "aliases": [],
           "description": "Piksel Picross: ipuçlarından ızgarayı doldur, deniz canlısını bul",
           "manager": false,
           "options": [
@@ -1363,6 +1478,7 @@
           "usage": "/play picross [mode]"
         },
         {
+          "aliases": [],
           "description": "Gelgit 2048: deniz canlılarını kaydır, birleştirip büyüt",
           "manager": false,
           "options": [],
@@ -1370,6 +1486,7 @@
           "usage": "/play 2048"
         },
         {
+          "aliases": [],
           "description": "Piksel ızgaradaki sekiz kabuk çiftini bul",
           "manager": false,
           "options": [],
@@ -1377,6 +1494,7 @@
           "usage": "/play memory"
         },
         {
+          "aliases": [],
           "description": "Güvenli kareleri aç ya da mayınları işaretle",
           "manager": false,
           "options": [
@@ -1394,6 +1512,7 @@
           "usage": "/play minesweeper [size]"
         },
         {
+          "aliases": [],
           "description": "Sıradaki gelgit kartı daha yüksek mi düşük mü",
           "manager": false,
           "options": [],
@@ -1401,6 +1520,7 @@
           "usage": "/play higherlower"
         },
         {
+          "aliases": [],
           "description": "Karışık harflerden sözcüğü bul",
           "manager": false,
           "options": [],
@@ -1408,6 +1528,7 @@
           "usage": "/play anagram"
         },
         {
+          "aliases": [],
           "description": "Piksel karttaki cümleyi hızlı ve doğru yaz",
           "manager": false,
           "options": [],
@@ -1415,6 +1536,7 @@
           "usage": "/play typing"
         },
         {
+          "aliases": [],
           "description": "Sıcak soğuk ipuçlarıyla gizli sayıyı bul",
           "manager": false,
           "options": [],
@@ -1422,6 +1544,7 @@
           "usage": "/play guessnumber"
         },
         {
+          "aliases": [],
           "description": "İnci patlamadan heceyi içeren bir kelime yaz; canı kalan son kişi kazanır",
           "manager": false,
           "options": [
@@ -1435,6 +1558,7 @@
           "usage": "/party hotpearl [lives]"
         },
         {
+          "aliases": [],
           "description": "Birkaç harften bir cümle kur, sonra en iyisine oy ver",
           "manager": false,
           "options": [
@@ -1448,6 +1572,7 @@
           "usage": "/party acronym [rounds]"
         },
         {
+          "aliases": [],
           "description": "Piksel bir kartpostala altyazı yaz, sonra en komiğine oy ver",
           "manager": false,
           "options": [
@@ -1461,6 +1586,7 @@
           "usage": "/party postcard [rounds]"
         },
         {
+          "aliases": [],
           "description": "İki ila dört oyuncu, gizli tahtalarda aynı beş harfli kelimeyi bulmak için yarışır",
           "manager": false,
           "options": [],
@@ -1468,6 +1594,7 @@
           "usage": "/party wordrace"
         },
         {
+          "aliases": [],
           "description": "Kanalın oylaması için bir \"hangisini seçerdin\" sorusu gönder",
           "manager": false,
           "options": [
@@ -1489,6 +1616,7 @@
           "usage": "/party wouldyourrather [topic]"
         },
         {
+          "aliases": [],
           "description": "Sırayla doğruluk ya da cesaret seçin; her tur rastgele bir oyuncu seçilir",
           "manager": false,
           "options": [
@@ -1510,6 +1638,7 @@
           "usage": "/party truthordare [topic]"
         },
         {
+          "aliases": [],
           "description": "Bu kanalda süren parti oyununu durdur (kurucusu ya da bir sunucu yöneticisi)",
           "manager": false,
           "options": [],
@@ -1517,6 +1646,7 @@
           "usage": "/party stop"
         },
         {
+          "aliases": [],
           "description": "Ben Hiç: aile dostu bir grup sorusu",
           "manager": false,
           "options": [],
@@ -1524,6 +1654,7 @@
           "usage": "/party nhie"
         },
         {
+          "aliases": [],
           "description": "Sihirli Deniz Kabuğu'na sor, seçenek seç ya da zar at",
           "manager": false,
           "options": [
@@ -1559,6 +1690,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Keşiş Yengeç Yarışı: herkes bir yengeç seçip yarışı izler; kazananlar potu paylaşır",
           "manager": false,
           "options": [
@@ -1572,6 +1704,7 @@
           "usage": "/play derby [bet]"
         },
         {
+          "aliases": [],
           "description": "Hazine Soygunu: batık bir kasaya karşı ekip kur, kimse kabuk kaybetmez",
           "manager": false,
           "options": [],
@@ -1579,6 +1712,7 @@
           "usage": "/play heist"
         },
         {
+          "aliases": [],
           "description": "Kabuk Oyunu: üç kabuktan birinin altındaki inciyi bul (şans oyunları açık olmalı)",
           "manager": false,
           "options": [
@@ -1592,6 +1726,7 @@
           "usage": "/play shells <bet>"
         },
         {
+          "aliases": [],
           "description": "Tüm sunucunun durdurması gereken bir fırtına kabarması çağır (yöneticiler)",
           "manager": true,
           "options": [],
@@ -1599,6 +1734,7 @@
           "usage": "/surge"
         },
         {
+          "aliases": [],
           "description": "Kabuk, deniz camı ve yaratıklar için sahilde yürü (20 dakikada bir)",
           "manager": false,
           "options": [],
@@ -1606,6 +1742,7 @@
           "usage": "/beachcomb"
         },
         {
+          "aliases": [],
           "description": "Birkaç saatliğine yengeç kafesi kur, sonra yakaladıklarını çek",
           "manager": false,
           "options": [],
@@ -1613,6 +1750,7 @@
           "usage": "/crabpot"
         },
         {
+          "aliases": [],
           "description": "Herkes kapsın diye bu kanalda üç yaratık belirlesin",
           "manager": false,
           "options": [],
@@ -1620,6 +1758,7 @@
           "usage": "/critterdrop"
         },
         {
+          "aliases": [],
           "description": "Gelgit Havuzu Defterin: topladığın her yaratık ve buluntu",
           "manager": false,
           "options": [
@@ -1649,6 +1788,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Sunucuya en fazla beş cevaplı bir soru sor",
           "manager": false,
           "options": [
@@ -1672,6 +1812,7 @@
           "usage": "/poll <question> <options> [duration]"
         },
         {
+          "aliases": [],
           "description": "Bu sunucu için bir öneride bulun",
           "manager": false,
           "options": [
@@ -1685,6 +1826,9 @@
           "usage": "/suggest <text>"
         },
         {
+          "aliases": [
+            "suggestion approve"
+          ],
           "description": "Bir öneriyi onayla ve sahibine haber ver",
           "manager": true,
           "options": [
@@ -1699,10 +1843,13 @@
               "required": false
             }
           ],
-          "path": "suggestion approve",
-          "usage": "/suggestion approve <id> [reason]"
+          "path": "mod suggestion approve",
+          "usage": "/mod suggestion approve <id> [reason]"
         },
         {
+          "aliases": [
+            "suggestion deny"
+          ],
           "description": "Bir öneriyi reddet ve sahibine haber ver",
           "manager": true,
           "options": [
@@ -1717,10 +1864,11 @@
               "required": false
             }
           ],
-          "path": "suggestion deny",
-          "usage": "/suggestion deny <id> [reason]"
+          "path": "mod suggestion deny",
+          "usage": "/mod suggestion deny <id> [reason]"
         },
         {
+          "aliases": [],
           "description": "Bir çekiliş başlat",
           "manager": true,
           "options": [
@@ -1759,6 +1907,7 @@
           "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role]"
         },
         {
+          "aliases": [],
           "description": "Süren bir çekilişi şimdi bitir ve kazananları seç",
           "manager": true,
           "options": [
@@ -1772,6 +1921,7 @@
           "usage": "/giveaway end <id>"
         },
         {
+          "aliases": [],
           "description": "Biten bir çekiliş için yeni kazananlar seç",
           "manager": true,
           "options": [
@@ -1790,6 +1940,7 @@
           "usage": "/giveaway reroll <id> [winners]"
         },
         {
+          "aliases": [],
           "description": "Bu sunucuda süren çekilişler",
           "manager": true,
           "options": [],
@@ -1797,6 +1948,45 @@
           "usage": "/giveaway list"
         },
         {
+          "aliases": [
+            "roles add"
+          ],
+          "description": "Bir panele rol ekle (en fazla 25) ya da etiketini değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin başlığı ya da numarası",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Düğmenin verip aldığı rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Düğmenin üstündeki yazı",
+              "name": "label",
+              "required": true
+            },
+            {
+              "description": "Düğmedeki emoji: Unicode ya da özel bir emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Menüde etiketin altındaki satır",
+              "name": "description",
+              "required": false
+            }
+          ],
+          "path": "setup roles panel-add",
+          "usage": "/setup roles panel-add <panel> <role> <label> [emoji] [description]"
+        },
+        {
+          "aliases": [
+            "roles panel"
+          ],
           "description": "Bir rol paneli başlat ya da yazısını, stilini ve kurallarını değiştir",
           "manager": true,
           "options": [
@@ -1841,61 +2031,13 @@
               "required": false
             }
           ],
-          "path": "roles panel",
-          "usage": "/roles panel <title> [description] [style] [exclusive] [required] [min] [max]"
+          "path": "setup roles panel-create",
+          "usage": "/setup roles panel-create <title> [description] [style] [exclusive] [required] [min] [max]"
         },
         {
-          "description": "Bir panele rol ekle (en fazla 25) ya da etiketini değiştir",
-          "manager": true,
-          "options": [
-            {
-              "description": "Panelin başlığı ya da numarası",
-              "name": "panel",
-              "required": true
-            },
-            {
-              "description": "Düğmenin verip aldığı rol",
-              "name": "role",
-              "required": true
-            },
-            {
-              "description": "Düğmenin üstündeki yazı",
-              "name": "label",
-              "required": true
-            },
-            {
-              "description": "Düğmedeki emoji: Unicode ya da özel bir emoji",
-              "name": "emoji",
-              "required": false
-            },
-            {
-              "description": "Menüde etiketin altındaki satır",
-              "name": "description",
-              "required": false
-            }
+          "aliases": [
+            "roles post"
           ],
-          "path": "roles add",
-          "usage": "/roles add <panel> <role> <label> [emoji] [description]"
-        },
-        {
-          "description": "Bir panelden rolü kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Panelin başlığı ya da numarası",
-              "name": "panel",
-              "required": true
-            },
-            {
-              "description": "Kaldırılacak rol",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "roles remove",
-          "usage": "/roles remove <panel> <role>"
-        },
-        {
           "description": "Bir paneli bir kanala gönder ya da zaten oradaysa güncelle",
           "manager": true,
           "options": [
@@ -1910,10 +2052,34 @@
               "required": true
             }
           ],
-          "path": "roles post",
-          "usage": "/roles post <panel> <channel>"
+          "path": "setup roles panel-post",
+          "usage": "/setup roles panel-post <panel> <channel>"
         },
         {
+          "aliases": [
+            "roles remove"
+          ],
+          "description": "Bir panelden rolü kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin başlığı ya da numarası",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Kaldırılacak rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup roles panel-remove",
+          "usage": "/setup roles panel-remove <panel> <role>"
+        },
+        {
+          "aliases": [
+            "roles temp"
+          ],
           "description": "Panelden alınan rolün yalnızca bir süre kalmasını sağla",
           "manager": true,
           "options": [
@@ -1933,10 +2099,11 @@
               "required": false
             }
           ],
-          "path": "roles temp",
-          "usage": "/roles temp <role> <duration> [panel]"
+          "path": "setup roles panel-temp",
+          "usage": "/setup roles panel-temp <role> <duration> [panel]"
         },
         {
+          "aliases": [],
           "description": "Bir sunucu puanı bakiyesini gösterir",
           "manager": false,
           "options": [
@@ -1950,6 +2117,9 @@
           "usage": "/points show [user]"
         },
         {
+          "aliases": [
+            "points give"
+          ],
           "description": "Birine sunucu puanı ver (Sunucuyu Yönet)",
           "manager": true,
           "options": [
@@ -1964,10 +2134,13 @@
               "required": true
             }
           ],
-          "path": "points give",
-          "usage": "/points give <user> <amount>"
+          "path": "progression economy points-give",
+          "usage": "/progression economy points-give <user> <amount>"
         },
         {
+          "aliases": [
+            "points take"
+          ],
           "description": "Birinden sunucu puanı al (Sunucuyu Yönet)",
           "manager": true,
           "options": [
@@ -1982,10 +2155,11 @@
               "required": true
             }
           ],
-          "path": "points take",
-          "usage": "/points take <user> <amount>"
+          "path": "progression economy points-take",
+          "usage": "/progression economy points-take <user> <amount>"
         },
         {
+          "aliases": [],
           "description": "Sunucu puanlarını rollere harca",
           "manager": false,
           "options": [],
@@ -1993,6 +2167,7 @@
           "usage": "/store"
         },
         {
+          "aliases": [],
           "description": "Bu sunucunun özel komutlarından birini çalıştır",
           "manager": false,
           "options": [
@@ -2011,6 +2186,9 @@
           "usage": "/tag <name> [args]"
         },
         {
+          "aliases": [
+            "customcommand create"
+          ],
           "description": "Yeni bir özel komut yaz (yanıtını bir form sorar)",
           "manager": true,
           "options": [
@@ -2030,10 +2208,29 @@
               "required": false
             }
           ],
-          "path": "customcommand create",
-          "usage": "/customcommand create <name> [description] [private]"
+          "path": "setup commands custom-create",
+          "usage": "/setup commands custom-create <name> [description] [private]"
         },
         {
+          "aliases": [
+            "customcommand delete"
+          ],
+          "description": "Bir özel komutu kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kaldırılacak komut (adını yazmaya başla)",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup commands custom-delete",
+          "usage": "/setup commands custom-delete <name>"
+        },
+        {
+          "aliases": [
+            "customcommand edit"
+          ],
           "description": "Bir özel komutun yanıtını, açıklamasını ya da bekleme süresini değiştir",
           "manager": true,
           "options": [
@@ -2048,30 +2245,13 @@
               "required": false
             }
           ],
-          "path": "customcommand edit",
-          "usage": "/customcommand edit <name> [private]"
+          "path": "setup commands custom-edit",
+          "usage": "/setup commands custom-edit <name> [private]"
         },
         {
-          "description": "Bir özel komutu kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Kaldırılacak komut (adını yazmaya başla)",
-              "name": "name",
-              "required": true
-            }
+          "aliases": [
+            "customcommand info"
           ],
-          "path": "customcommand delete",
-          "usage": "/customcommand delete <name>"
-        },
-        {
-          "description": "Bu sunucunun bütün özel komutları",
-          "manager": true,
-          "options": [],
-          "path": "customcommand list",
-          "usage": "/customcommand list"
-        },
-        {
           "description": "Bir özel komutun nasıl ayarlandığına bak",
           "manager": true,
           "options": [
@@ -2081,10 +2261,21 @@
               "required": true
             }
           ],
-          "path": "customcommand info",
-          "usage": "/customcommand info <name>"
+          "path": "setup commands custom-info",
+          "usage": "/setup commands custom-info <name>"
         },
         {
+          "aliases": [
+            "customcommand list"
+          ],
+          "description": "Bu sunucunun bütün özel komutları",
+          "manager": true,
+          "options": [],
+          "path": "setup commands custom-list",
+          "usage": "/setup commands custom-list"
+        },
+        {
+          "aliases": [],
           "description": "Odana yeni kimsenin girmesini engelle",
           "manager": false,
           "options": [],
@@ -2092,6 +2283,7 @@
           "usage": "/voice lock"
         },
         {
+          "aliases": [],
           "description": "Odanı yeniden herkese aç",
           "manager": false,
           "options": [],
@@ -2099,6 +2291,7 @@
           "usage": "/voice unlock"
         },
         {
+          "aliases": [],
           "description": "Odanın kaç kişi alacağını ayarla",
           "manager": false,
           "options": [
@@ -2112,6 +2305,7 @@
           "usage": "/voice limit <people>"
         },
         {
+          "aliases": [],
           "description": "Odanı yeniden adlandır",
           "manager": false,
           "options": [
@@ -2125,6 +2319,7 @@
           "usage": "/voice rename <name>"
         },
         {
+          "aliases": [],
           "description": "Birini odandan at ve geri girmesini engelle",
           "manager": false,
           "options": [
@@ -2138,6 +2333,7 @@
           "usage": "/voice kick <user>"
         },
         {
+          "aliases": [],
           "description": "Odanı içindeki birine devret",
           "manager": false,
           "options": [
@@ -2151,6 +2347,7 @@
           "usage": "/voice transfer <user>"
         },
         {
+          "aliases": [],
           "description": "Sahibi ayrılmış bir odayı devral",
           "manager": false,
           "options": [],
@@ -2158,6 +2355,7 @@
           "usage": "/voice claim"
         },
         {
+          "aliases": [],
           "description": "Odanı içinde olmayanlardan gizle",
           "manager": false,
           "options": [],
@@ -2165,6 +2363,7 @@
           "usage": "/voice hide"
         },
         {
+          "aliases": [],
           "description": "Gizli odanı herkese yeniden göster",
           "manager": false,
           "options": [],
@@ -2172,6 +2371,7 @@
           "usage": "/voice show"
         },
         {
+          "aliases": [],
           "description": "Birini odana al; oda kilitliyse ya da o atılmışsa bile",
           "manager": false,
           "options": [
@@ -2185,6 +2385,7 @@
           "usage": "/voice invite <user>"
         },
         {
+          "aliases": [],
           "description": "Odanı yöneten düğmeleri göster",
           "manager": false,
           "options": [],
@@ -2192,6 +2393,9 @@
           "usage": "/voice panel"
         },
         {
+          "aliases": [
+            "voice creators add"
+          ],
           "description": "Bir ses kanalını oluşturucu yap ya da değiştir (Sunucuyu Yönet)",
           "manager": true,
           "options": [
@@ -2216,10 +2420,23 @@
               "required": false
             }
           ],
-          "path": "voice creators add",
-          "usage": "/voice creators add <channel> [category] [limit] [template]"
+          "path": "community utility voice-add",
+          "usage": "/community utility voice-add <channel> [category] [limit] [template]"
         },
         {
+          "aliases": [
+            "voice creators list"
+          ],
+          "description": "Bu sunucudaki oluşturucu kanallar (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [],
+          "path": "community utility voice-list",
+          "usage": "/community utility voice-list"
+        },
+        {
+          "aliases": [
+            "voice creators remove"
+          ],
           "description": "Bir kanalın oda açmasını durdur (Sunucuyu Yönet)",
           "manager": true,
           "options": [
@@ -2229,17 +2446,13 @@
               "required": true
             }
           ],
-          "path": "voice creators remove",
-          "usage": "/voice creators remove <channel>"
+          "path": "community utility voice-remove",
+          "usage": "/community utility voice-remove <channel>"
         },
         {
-          "description": "Bu sunucudaki oluşturucu kanallar (Sunucuyu Yönet)",
-          "manager": true,
-          "options": [],
-          "path": "voice creators list",
-          "usage": "/voice creators list"
-        },
-        {
+          "aliases": [
+            "feeds add"
+          ],
           "description": "Bir kaynağı takip et ve yeni paylaşımları bir kanala gönder",
           "manager": true,
           "options": [
@@ -2276,17 +2489,13 @@
               "required": false
             }
           ],
-          "path": "feeds add",
-          "usage": "/feeds add <kind> <source> <channel> [message] [role]"
+          "path": "integrations feeds add",
+          "usage": "/integrations feeds add <kind> <source> <channel> [message] [role]"
         },
         {
-          "description": "Bu sunucunun takip ettiği akışlar ve durumları",
-          "manager": true,
-          "options": [],
-          "path": "feeds list",
-          "usage": "/feeds list"
-        },
-        {
+          "aliases": [
+            "feeds edit"
+          ],
           "description": "Bir akışın kanalını, mesajını, rolünü, kartını ya da süzgeçlerini değiştir",
           "manager": true,
           "options": [
@@ -2336,23 +2545,23 @@
               "required": false
             }
           ],
-          "path": "feeds edit",
-          "usage": "/feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+          "path": "integrations feeds edit",
+          "usage": "/integrations feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
         },
         {
-          "description": "Kaynağın son paylaşımını şimdi akışın kanalına gönder",
-          "manager": true,
-          "options": [
-            {
-              "description": "Akışın numarası (/feeds list'te yazar)",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "feeds list"
           ],
-          "path": "feeds test",
-          "usage": "/feeds test <id>"
+          "description": "Bu sunucunun takip ettiği akışlar ve durumları",
+          "manager": true,
+          "options": [],
+          "path": "integrations feeds list",
+          "usage": "/integrations feeds list"
         },
         {
+          "aliases": [
+            "feeds remove"
+          ],
           "description": "Bir kaynağı takip etmeyi bırak",
           "manager": true,
           "options": [
@@ -2362,10 +2571,29 @@
               "required": true
             }
           ],
-          "path": "feeds remove",
-          "usage": "/feeds remove <id>"
+          "path": "integrations feeds remove",
+          "usage": "/integrations feeds remove <id>"
         },
         {
+          "aliases": [
+            "feeds test"
+          ],
+          "description": "Kaynağın son paylaşımını şimdi akışın kanalına gönder",
+          "manager": true,
+          "options": [
+            {
+              "description": "Akışın numarası (/feeds list'te yazar)",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "integrations feeds test",
+          "usage": "/integrations feeds test <id>"
+        },
+        {
+          "aliases": [
+            "autoroles add"
+          ],
           "description": "Katılan herkese bir rol ver (en fazla 10) ya da bir rolü değiştir",
           "manager": true,
           "options": [
@@ -2395,10 +2623,23 @@
               "required": false
             }
           ],
-          "path": "autoroles add",
-          "usage": "/autoroles add <role> [kind] [delay] [remove_after]"
+          "path": "setup roles auto-add",
+          "usage": "/setup roles auto-add <role> [kind] [delay] [remove_after]"
         },
         {
+          "aliases": [
+            "autoroles list"
+          ],
+          "description": "Otomatik rolleri ve kalıcı rollerin açık olup olmadığını göster",
+          "manager": true,
+          "options": [],
+          "path": "setup roles auto-list",
+          "usage": "/setup roles auto-list"
+        },
+        {
+          "aliases": [
+            "autoroles remove"
+          ],
           "description": "Bir rolü otomatik vermeyi bırak",
           "manager": true,
           "options": [
@@ -2418,17 +2659,13 @@
               "required": false
             }
           ],
-          "path": "autoroles remove",
-          "usage": "/autoroles remove <role> [kind]"
+          "path": "setup roles auto-remove",
+          "usage": "/setup roles auto-remove <role> [kind]"
         },
         {
-          "description": "Otomatik rolleri ve kalıcı rollerin açık olup olmadığını göster",
-          "manager": true,
-          "options": [],
-          "path": "autoroles list",
-          "usage": "/autoroles list"
-        },
-        {
+          "aliases": [
+            "autoroles sticky"
+          ],
           "description": "Üyelere ayrılıp dönünce rollerini geri ver",
           "manager": true,
           "options": [
@@ -2438,10 +2675,11 @@
               "required": true
             }
           ],
-          "path": "autoroles sticky",
-          "usage": "/autoroles sticky <enabled>"
+          "path": "setup roles auto-sticky",
+          "usage": "/setup roles auto-sticky <enabled>"
         },
         {
+          "aliases": [],
           "description": "Menüden ismin için bir renk seç",
           "manager": false,
           "options": [],
@@ -2449,6 +2687,7 @@
           "usage": "/color pick"
         },
         {
+          "aliases": [],
           "description": "Sunucu izin veriyorsa ismini istediğin hex koduyla renklendir",
           "manager": false,
           "options": [
@@ -2462,6 +2701,7 @@
           "usage": "/color set <hex>"
         },
         {
+          "aliases": [],
           "description": "İsim rengini kaldır",
           "manager": false,
           "options": [],
@@ -2469,6 +2709,7 @@
           "usage": "/color remove"
         },
         {
+          "aliases": [],
           "description": "Bu sunucunun sunduğu renkleri göster",
           "manager": false,
           "options": [],
@@ -2476,8 +2717,11 @@
           "usage": "/color list"
         },
         {
+          "aliases": [
+            "color setup"
+          ],
           "description": "Renk rollerini kur: aç, kimler seçebilir, hangi roller",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Renk rollerini aç ya da kapat",
@@ -2514,10 +2758,11 @@
               "required": false
             }
           ],
-          "path": "color setup",
-          "usage": "/color setup [enabled] [mode] [allow] [disallow] [anchor] [roles]"
+          "path": "setup roles color-setup",
+          "usage": "/setup roles color-setup [enabled] [mode] [allow] [disallow] [anchor] [roles]"
         },
         {
+          "aliases": [],
           "description": "Bu sunucunun hareketi, en aktif kanalları ve üyeleri",
           "manager": false,
           "options": [
@@ -2536,6 +2781,7 @@
           "usage": "/stats server [period]"
         },
         {
+          "aliases": [],
           "description": "Bu sunucudaki mesajların ve sesteki süren",
           "manager": false,
           "options": [
@@ -2554,6 +2800,7 @@
           "usage": "/stats me [period]"
         },
         {
+          "aliases": [],
           "description": "Tek bir kanalın mesajları ve sesteki süresi",
           "manager": false,
           "options": [
@@ -2577,6 +2824,7 @@
           "usage": "/stats channel <channel> [period]"
         },
         {
+          "aliases": [],
           "description": "Yeni etkinlik için form aç",
           "manager": true,
           "options": [],
@@ -2584,6 +2832,7 @@
           "usage": "/event create"
         },
         {
+          "aliases": [],
           "description": "Yaklaşan etkinlikleri listele",
           "manager": true,
           "options": [],
@@ -2591,6 +2840,7 @@
           "usage": "/event list"
         },
         {
+          "aliases": [],
           "description": "Etkinliğin saatini, kapasitesini veya tekrarını değiştir",
           "manager": true,
           "options": [
@@ -2679,6 +2929,7 @@
           "usage": "/event edit <id> [title] [when] [duration] [description] [capacity] [maybe_capacity] [declined_capacity] [custom_one] [custom_one_capacity] [custom_two] [custom_two_capacity] [role] [repeat] [until] [sync]"
         },
         {
+          "aliases": [],
           "description": "Etkinliği iptal et",
           "manager": true,
           "options": [
@@ -2692,6 +2943,7 @@
           "usage": "/event cancel <id>"
         },
         {
+          "aliases": [],
           "description": "Katılım yanıtlarını sayfa sayfa göster",
           "manager": true,
           "options": [
@@ -2705,6 +2957,7 @@
           "usage": "/event attendees <id>"
         },
         {
+          "aliases": [],
           "description": "Etkinlik hatırlatmalarını yeniden ayarla",
           "manager": true,
           "options": [
@@ -2718,13 +2971,17 @@
           "usage": "/event remind <id>"
         },
         {
+          "aliases": [
+            "event template"
+          ],
           "description": "Etkinlik şablonunu ve oluşturma düğmesini göster",
           "manager": true,
           "options": [],
-          "path": "event template",
-          "usage": "/event template"
+          "path": "community events template",
+          "usage": "/community events template"
         },
         {
+          "aliases": [],
           "description": "Bu talebi kapat ve dökümünü sakla",
           "manager": false,
           "options": [
@@ -2738,6 +2995,7 @@
           "usage": "/ticket close [reason]"
         },
         {
+          "aliases": [],
           "description": "Bu taleple senin ilgilendiğini duyur (yetkililer)",
           "manager": false,
           "options": [],
@@ -2745,6 +3003,7 @@
           "usage": "/ticket claim"
         },
         {
+          "aliases": [],
           "description": "Bu talebi sıraya geri bırak (yetkililer)",
           "manager": false,
           "options": [],
@@ -2752,6 +3011,7 @@
           "usage": "/ticket unclaim"
         },
         {
+          "aliases": [],
           "description": "Bir üyenin bu talebi görüp yazabilmesini sağla (yetkililer)",
           "manager": false,
           "options": [
@@ -2765,6 +3025,7 @@
           "usage": "/ticket add <user>"
         },
         {
+          "aliases": [],
           "description": "Bir üyeyi bu talepten çıkar (yetkililer)",
           "manager": false,
           "options": [
@@ -2778,6 +3039,7 @@
           "usage": "/ticket remove <user>"
         },
         {
+          "aliases": [],
           "description": "Bu talebin kanalını yeniden adlandır (yetkililer)",
           "manager": false,
           "options": [
@@ -2791,6 +3053,7 @@
           "usage": "/ticket rename <name>"
         },
         {
+          "aliases": [],
           "description": "Bu talebin mesajlarını yalnızca sana özel bir web sayfası olarak al",
           "manager": false,
           "options": [],
@@ -2798,6 +3061,7 @@
           "usage": "/ticket transcript"
         },
         {
+          "aliases": [],
           "description": "Kapanmış bu talebi yeniden aç (yetkililer)",
           "manager": false,
           "options": [],
@@ -2805,6 +3069,7 @@
           "usage": "/ticket reopen"
         },
         {
+          "aliases": [],
           "description": "Bu talebin kanalını başka bir kategoriye taşı (yetkililer)",
           "manager": false,
           "options": [
@@ -2818,6 +3083,9 @@
           "usage": "/ticket move <category>"
         },
         {
+          "aliases": [
+            "tickets panel create"
+          ],
           "description": "Panel oluştur (en fazla 10); /tickets panel post ile paylaş",
           "manager": true,
           "options": [
@@ -2861,10 +3129,29 @@
               "required": false
             }
           ],
-          "path": "tickets panel create",
-          "usage": "/tickets panel create <name> <channel> [title] [description] [topics] [style] [support_role]"
+          "path": "community tickets panel-create",
+          "usage": "/community tickets panel-create <name> <channel> [title] [description] [topics] [style] [support_role]"
         },
         {
+          "aliases": [
+            "tickets panel delete"
+          ],
+          "description": "Paneli sil; talepleri durur",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin adı ya da numarası",
+              "name": "panel",
+              "required": true
+            }
+          ],
+          "path": "community tickets panel-delete",
+          "usage": "/community tickets panel-delete <panel>"
+        },
+        {
+          "aliases": [
+            "tickets panel edit"
+          ],
           "description": "Paneli değiştir; paylaşılmışsa güncellemek için yeniden paylaş",
           "manager": true,
           "options": [
@@ -2923,10 +3210,23 @@
               "required": false
             }
           ],
-          "path": "tickets panel edit",
-          "usage": "/tickets panel edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
+          "path": "community tickets panel-edit",
+          "usage": "/community tickets panel-edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
         },
         {
+          "aliases": [
+            "tickets panel list"
+          ],
+          "description": "Sunucunun panelleri",
+          "manager": true,
+          "options": [],
+          "path": "community tickets panel-list",
+          "usage": "/community tickets panel-list"
+        },
+        {
+          "aliases": [
+            "tickets panel post"
+          ],
           "description": "Paneli paylaş ya da olduğu yerde güncelle",
           "manager": true,
           "options": [
@@ -2936,30 +3236,13 @@
               "required": true
             }
           ],
-          "path": "tickets panel post",
-          "usage": "/tickets panel post <panel>"
+          "path": "community tickets panel-post",
+          "usage": "/community tickets panel-post <panel>"
         },
         {
-          "description": "Paneli sil; talepleri durur",
-          "manager": true,
-          "options": [
-            {
-              "description": "Panelin adı ya da numarası",
-              "name": "panel",
-              "required": true
-            }
+          "aliases": [
+            "tickets settings"
           ],
-          "path": "tickets panel delete",
-          "usage": "/tickets panel delete <panel>"
-        },
-        {
-          "description": "Sunucunun panelleri",
-          "manager": true,
-          "options": [],
-          "path": "tickets panel list",
-          "usage": "/tickets panel list"
-        },
-        {
           "description": "Taleplerin işleyişi; seçeneksiz kullanırsan ayarları gösterir",
           "manager": true,
           "options": [
@@ -3024,78 +3307,13 @@
               "required": false
             }
           ],
-          "path": "tickets settings",
-          "usage": "/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
+          "path": "community tickets settings",
+          "usage": "/community tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
         },
         {
-          "description": "Yıldız panosu kur (en fazla üç pano).",
-          "manager": true,
-          "options": [
-            {
-              "description": "Panonun adı",
-              "name": "name",
-              "required": true
-            },
-            {
-              "description": "Pano kanalı",
-              "name": "channel",
-              "required": true
-            },
-            {
-              "description": "Özel emoji de kullanılabilen yıldız emojisi",
-              "name": "emoji",
-              "required": false
-            },
-            {
-              "description": "Paylaşımın panoya çıkması için gereken yıldız sayısı (1–50)",
-              "name": "threshold",
-              "required": false
-            },
-            {
-              "description": "Üyeler kendi paylaşımlarını yıldızlayabilsin",
-              "name": "self_star",
-              "required": false
-            },
-            {
-              "description": "Bot paylaşımlarındaki yıldızları say",
-              "name": "allow_bots",
-              "required": false
-            },
-            {
-              "description": "Görsel zorunlu olsun",
-              "name": "require_image",
-              "required": false
-            },
-            {
-              "description": "Yıldız sayısı eşiğin altına düşünce pano paylaşımını sil",
-              "name": "remove_below",
-              "required": false
-            },
-            {
-              "description": "Kaynak kanalları virgülle ayırarak yaz veya etiketle",
-              "name": "only_channels",
-              "required": false
-            },
-            {
-              "description": "Hariç tutulan kanalları virgülle ayırarak yaz veya etiketle",
-              "name": "except_channels",
-              "required": false
-            },
-            {
-              "description": "Rol kimliği=ağırlık çiftlerini virgülle ayırarak yaz",
-              "name": "role_weights",
-              "required": false
-            },
-            {
-              "description": "Pano rengi; örnek: #ffc857",
-              "name": "color",
-              "required": false
-            }
+          "aliases": [
+            "starboard edit"
           ],
-          "path": "starboard setup",
-          "usage": "/starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
-        },
-        {
           "description": "Panonun eşiğini, emojisini veya kurallarını değiştir.",
           "manager": true,
           "options": [
@@ -3165,10 +3383,23 @@
               "required": false
             }
           ],
-          "path": "starboard edit",
-          "usage": "/starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
+          "path": "community starboard edit",
+          "usage": "/community starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
         },
         {
+          "aliases": [
+            "starboard list"
+          ],
+          "description": "Sunucunun yıldız panolarını listele.",
+          "manager": true,
+          "options": [],
+          "path": "community starboard list",
+          "usage": "/community starboard list"
+        },
+        {
+          "aliases": [
+            "starboard remove"
+          ],
           "description": "Yıldız panosunu kaldır.",
           "manager": true,
           "options": [
@@ -3178,17 +3409,84 @@
               "required": true
             }
           ],
-          "path": "starboard remove",
-          "usage": "/starboard remove <id>"
+          "path": "community starboard remove",
+          "usage": "/community starboard remove <id>"
         },
         {
-          "description": "Sunucunun yıldız panolarını listele.",
+          "aliases": [
+            "starboard setup"
+          ],
+          "description": "Yıldız panosu kur (en fazla üç pano).",
           "manager": true,
-          "options": [],
-          "path": "starboard list",
-          "usage": "/starboard list"
+          "options": [
+            {
+              "description": "Panonun adı",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Pano kanalı",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Özel emoji de kullanılabilen yıldız emojisi",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Paylaşımın panoya çıkması için gereken yıldız sayısı (1–50)",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Üyeler kendi paylaşımlarını yıldızlayabilsin",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Bot paylaşımlarındaki yıldızları say",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Görsel zorunlu olsun",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Yıldız sayısı eşiğin altına düşünce pano paylaşımını sil",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Kaynak kanalları virgülle ayırarak yaz veya etiketle",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Hariç tutulan kanalları virgülle ayırarak yaz veya etiketle",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Rol kimliği=ağırlık çiftlerini virgülle ayırarak yaz",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Pano rengi; örnek: #ffc857",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "community starboard setup",
+          "usage": "/community starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
         },
         {
+          "aliases": [
+            "starboard top"
+          ],
           "description": "En çok yıldız alan paylaşımları ve yıldız verenleri göster.",
           "manager": true,
           "options": [
@@ -3198,10 +3496,13 @@
               "required": false
             }
           ],
-          "path": "starboard top",
-          "usage": "/starboard top [board]"
+          "path": "community starboard top",
+          "usage": "/community starboard top [board]"
         },
         {
+          "aliases": [
+            "starboard votes add"
+          ],
           "description": "Oylama kanalı ekle veya ayarlarını değiştir.",
           "manager": true,
           "options": [
@@ -3231,10 +3532,23 @@
               "required": false
             }
           ],
-          "path": "starboard votes add",
-          "usage": "/starboard votes add <channel> [up] [down] [only_media] [thread]"
+          "path": "community starboard votes-add",
+          "usage": "/community starboard votes-add <channel> [up] [down] [only_media] [thread]"
         },
         {
+          "aliases": [
+            "starboard votes list"
+          ],
+          "description": "Oylama kanallarını listele.",
+          "manager": true,
+          "options": [],
+          "path": "community starboard votes-list",
+          "usage": "/community starboard votes-list"
+        },
+        {
+          "aliases": [
+            "starboard votes remove"
+          ],
           "description": "Bir kanalda otomatik tepki eklemeyi durdur.",
           "manager": true,
           "options": [
@@ -3244,17 +3558,11 @@
               "required": true
             }
           ],
-          "path": "starboard votes remove",
-          "usage": "/starboard votes remove <channel>"
+          "path": "community starboard votes-remove",
+          "usage": "/community starboard votes-remove <channel>"
         },
         {
-          "description": "Oylama kanallarını listele.",
-          "manager": true,
-          "options": [],
-          "path": "starboard votes list",
-          "usage": "/starboard votes list"
-        },
-        {
+          "aliases": [],
           "description": "Bir üyenin davet kartını göster",
           "manager": false,
           "options": [
@@ -3268,6 +3576,7 @@
           "usage": "/invites user [user]"
         },
         {
+          "aliases": [],
           "description": "Davet sıralamasını göster",
           "manager": false,
           "options": [
@@ -3286,6 +3595,7 @@
           "usage": "/invites top [period]"
         },
         {
+          "aliases": [],
           "description": "Bir arkadaşın için kısa süreli davet bağlantısı al",
           "manager": false,
           "options": [],
@@ -3293,6 +3603,98 @@
           "usage": "/invites temp"
         },
         {
+          "aliases": [
+            "inviteadmin bonus-add"
+          ],
+          "description": "Bir üyenin davet puanına bonus ekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Eklenecek miktar",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "integrations invites bonus-add",
+          "usage": "/integrations invites bonus-add <user> <amount>"
+        },
+        {
+          "aliases": [
+            "inviteadmin bonus-remove"
+          ],
+          "description": "Bir üyenin davet puanından bonus çıkar",
+          "manager": true,
+          "options": [
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Çıkarılacak miktar",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "integrations invites bonus-remove",
+          "usage": "/integrations invites bonus-remove <user> <amount>"
+        },
+        {
+          "aliases": [
+            "inviteadmin post"
+          ],
+          "description": "Bu kanala Arkadaşını davet et düğmesi gönder",
+          "manager": true,
+          "options": [],
+          "path": "integrations invites post",
+          "usage": "/integrations invites post"
+        },
+        {
+          "aliases": [
+            "inviteadmin reward-add"
+          ],
+          "description": "Davet eşiğine kalıcı rol ödülü ekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Gereken davet sayısı",
+              "name": "invites",
+              "required": true
+            },
+            {
+              "description": "Verilecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "integrations invites reward-add",
+          "usage": "/integrations invites reward-add <invites> <role>"
+        },
+        {
+          "aliases": [
+            "inviteadmin reward-remove"
+          ],
+          "description": "Bir davet rolü ödülünü kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Davet eşiği",
+              "name": "invites",
+              "required": true
+            }
+          ],
+          "path": "integrations invites reward-remove",
+          "usage": "/integrations invites reward-remove <invites>"
+        },
+        {
+          "aliases": [
+            "inviteadmin settings"
+          ],
           "description": "Davet takibi ve arkadaş bağlantısı ayarlarını değiştir",
           "manager": true,
           "options": [
@@ -3337,84 +3739,11 @@
               "required": false
             }
           ],
-          "path": "inviteadmin settings",
-          "usage": "/inviteadmin settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
+          "path": "integrations invites settings",
+          "usage": "/integrations invites settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
         },
         {
-          "description": "Bir üyenin davet puanına bonus ekle",
-          "manager": true,
-          "options": [
-            {
-              "description": "Üye",
-              "name": "user",
-              "required": true
-            },
-            {
-              "description": "Eklenecek miktar",
-              "name": "amount",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin bonus-add",
-          "usage": "/inviteadmin bonus-add <user> <amount>"
-        },
-        {
-          "description": "Bir üyenin davet puanından bonus çıkar",
-          "manager": true,
-          "options": [
-            {
-              "description": "Üye",
-              "name": "user",
-              "required": true
-            },
-            {
-              "description": "Çıkarılacak miktar",
-              "name": "amount",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin bonus-remove",
-          "usage": "/inviteadmin bonus-remove <user> <amount>"
-        },
-        {
-          "description": "Davet eşiğine kalıcı rol ödülü ekle",
-          "manager": true,
-          "options": [
-            {
-              "description": "Gereken davet sayısı",
-              "name": "invites",
-              "required": true
-            },
-            {
-              "description": "Verilecek rol",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin reward-add",
-          "usage": "/inviteadmin reward-add <invites> <role>"
-        },
-        {
-          "description": "Bir davet rolü ödülünü kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Davet eşiği",
-              "name": "invites",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin reward-remove",
-          "usage": "/inviteadmin reward-remove <invites>"
-        },
-        {
-          "description": "Bu kanala Arkadaşını davet et düğmesi gönder",
-          "manager": true,
-          "options": [],
-          "path": "inviteadmin post",
-          "usage": "/inviteadmin post"
-        },
-        {
+          "aliases": [],
           "description": "AFK nedenini ayarla",
           "manager": false,
           "options": [
@@ -3438,6 +3767,25 @@
           "usage": "/afk set [reason] [global] [nickname]"
         },
         {
+          "aliases": [
+            "sticky remove"
+          ],
+          "description": "Bir kanalın sabit mesajını kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sabit mesajı kaldırılacak kanal",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "community utility sticky-remove",
+          "usage": "/community utility sticky-remove <channel>"
+        },
+        {
+          "aliases": [
+            "sticky set"
+          ],
           "description": "Sabit mesaj oluştur ya da değiştir",
           "manager": true,
           "options": [
@@ -3462,30 +3810,23 @@
               "required": false
             }
           ],
-          "path": "sticky set",
-          "usage": "/sticky set <channel> <text> [messages] [seconds]"
+          "path": "community utility sticky-set",
+          "usage": "/community utility sticky-set <channel> <text> [messages] [seconds]"
         },
         {
-          "description": "Bir kanalın sabit mesajını kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Sabit mesajı kaldırılacak kanal",
-              "name": "channel",
-              "required": true
-            }
+          "aliases": [
+            "sticky show"
           ],
-          "path": "sticky remove",
-          "usage": "/sticky remove <channel>"
-        },
-        {
           "description": "Sabit mesajları göster",
           "manager": true,
           "options": [],
-          "path": "sticky show",
-          "usage": "/sticky show"
+          "path": "community utility sticky-show",
+          "usage": "/community utility sticky-show"
         },
         {
+          "aliases": [
+            "schedule add"
+          ],
           "description": "Tek seferlik ya da yinelenen mesaj kaydet",
           "manager": true,
           "options": [
@@ -3515,30 +3856,23 @@
               "required": false
             }
           ],
-          "path": "schedule add",
-          "usage": "/schedule add <channel> <text> <when> [every] [tz]"
+          "path": "community utility schedule-add",
+          "usage": "/community utility schedule-add <channel> <text> <when> [every] [tz]"
         },
         {
+          "aliases": [
+            "schedule list"
+          ],
           "description": "Zamanlanmış mesajları göster",
           "manager": true,
           "options": [],
-          "path": "schedule list",
-          "usage": "/schedule list"
+          "path": "community utility schedule-list",
+          "usage": "/community utility schedule-list"
         },
         {
-          "description": "Zamanlanmış mesajı kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Mesaj numarası",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "schedule pause"
           ],
-          "path": "schedule remove",
-          "usage": "/schedule remove <id>"
-        },
-        {
           "description": "Zamanlanmış mesajı duraklat",
           "manager": true,
           "options": [
@@ -3548,36 +3882,13 @@
               "required": true
             }
           ],
-          "path": "schedule pause",
-          "usage": "/schedule pause <id>"
+          "path": "community utility schedule-pause",
+          "usage": "/community utility schedule-pause <id>"
         },
         {
-          "description": "Zamanlanmış mesajı yeniden başlat",
-          "manager": true,
-          "options": [
-            {
-              "description": "Mesaj numarası",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "schedule preview"
           ],
-          "path": "schedule resume",
-          "usage": "/schedule resume <id>"
-        },
-        {
-          "description": "Zamanlanmış mesajı şimdi gönder",
-          "manager": true,
-          "options": [
-            {
-              "description": "Mesaj numarası",
-              "name": "id",
-              "required": true
-            }
-          ],
-          "path": "schedule run-now",
-          "usage": "/schedule run-now <id>"
-        },
-        {
           "description": "Sonraki beş gönderimi göster",
           "manager": true,
           "options": [
@@ -3587,8 +3898,56 @@
               "required": true
             }
           ],
-          "path": "schedule preview",
-          "usage": "/schedule preview <id>"
+          "path": "community utility schedule-preview",
+          "usage": "/community utility schedule-preview <id>"
+        },
+        {
+          "aliases": [
+            "schedule remove"
+          ],
+          "description": "Zamanlanmış mesajı kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community utility schedule-remove",
+          "usage": "/community utility schedule-remove <id>"
+        },
+        {
+          "aliases": [
+            "schedule resume"
+          ],
+          "description": "Zamanlanmış mesajı yeniden başlat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community utility schedule-resume",
+          "usage": "/community utility schedule-resume <id>"
+        },
+        {
+          "aliases": [
+            "schedule run-now"
+          ],
+          "description": "Zamanlanmış mesajı şimdi gönder",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community utility schedule-run-now",
+          "usage": "/community utility schedule-run-now <id>"
         }
       ],
       "intro": "Anketler, öneriler, çekilişler, rol düğmeleri, sunucu puanları ve özel komutlar.",
@@ -3598,67 +3957,9 @@
     {
       "commands": [
         {
-          "description": "AutoMod profilini ve açık kuralları göster",
-          "manager": true,
-          "options": [],
-          "path": "automod show",
-          "usage": "/automod show"
-        },
-        {
-          "description": "Esnek, standart (48 saat gözlem), sıkı veya kapalı profilini uygula",
-          "manager": true,
-          "options": [
-            {
-              "description": "relaxed, standard, strict veya off",
-              "name": "name",
-              "required": true
-            }
+          "aliases": [
+            "automod exempt channel"
           ],
-          "path": "automod profile",
-          "usage": "/automod profile <name>"
-        },
-        {
-          "description": "Bir kuralı aç veya kapat",
-          "manager": true,
-          "options": [
-            {
-              "description": "Kural adı veya kimliği",
-              "name": "rule",
-              "required": true
-            },
-            {
-              "description": "Bu kural açık olsun mu",
-              "name": "enabled",
-              "required": true
-            }
-          ],
-          "path": "automod toggle",
-          "usage": "/automod toggle <rule> <enabled>"
-        },
-        {
-          "description": "Muaf rol ekle veya kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Eklemek için add, kaldırmak için remove",
-              "name": "action",
-              "required": true
-            },
-            {
-              "description": "Muaf tutulacak rol",
-              "name": "role",
-              "required": true
-            },
-            {
-              "description": "Kural adı (tüm kurallar için boş bırak)",
-              "name": "rule",
-              "required": false
-            }
-          ],
-          "path": "automod exempt role",
-          "usage": "/automod exempt role <action> <role> [rule]"
-        },
-        {
           "description": "Muaf kanal ekle veya kaldır",
           "manager": true,
           "options": [
@@ -3678,10 +3979,65 @@
               "required": false
             }
           ],
-          "path": "automod exempt channel",
-          "usage": "/automod exempt channel <action> <channel> [rule]"
+          "path": "safety automod exempt-channel",
+          "usage": "/safety automod exempt-channel <action> <channel> [rule]"
         },
         {
+          "aliases": [
+            "automod exempt role"
+          ],
+          "description": "Muaf rol ekle veya kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Eklemek için add, kaldırmak için remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Muaf tutulacak rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Kural adı (tüm kurallar için boş bırak)",
+              "name": "rule",
+              "required": false
+            }
+          ],
+          "path": "safety automod exempt-role",
+          "usage": "/safety automod exempt-role <action> <role> [rule]"
+        },
+        {
+          "aliases": [
+            "automod profile"
+          ],
+          "description": "Esnek, standart (48 saat gözlem), sıkı veya kapalı profilini uygula",
+          "manager": true,
+          "options": [
+            {
+              "description": "relaxed, standard, strict veya off",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "safety automod profile",
+          "usage": "/safety automod profile <name>"
+        },
+        {
+          "aliases": [
+            "automod show"
+          ],
+          "description": "AutoMod profilini ve açık kuralları göster",
+          "manager": true,
+          "options": [],
+          "path": "safety automod show",
+          "usage": "/safety automod show"
+        },
+        {
+          "aliases": [
+            "automod test"
+          ],
           "description": "Yaptırım uygulamadan ve ihlal eklemeden metni özel olarak test et",
           "manager": true,
           "options": [
@@ -3691,17 +4047,71 @@
               "required": true
             }
           ],
-          "path": "automod test",
-          "usage": "/automod test <text>"
+          "path": "safety automod test",
+          "usage": "/safety automod test <text>"
         },
         {
-          "description": "Komut denetimi ayarlarını gösterir",
+          "aliases": [
+            "automod toggle"
+          ],
+          "description": "Bir kuralı aç veya kapat",
           "manager": true,
-          "options": [],
-          "path": "commandcontrol show",
-          "usage": "/commandcontrol show"
+          "options": [
+            {
+              "description": "Kural adı veya kimliği",
+              "name": "rule",
+              "required": true
+            },
+            {
+              "description": "Bu kural açık olsun mu",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "safety automod toggle",
+          "usage": "/safety automod toggle <rule> <enabled>"
         },
         {
+          "aliases": [
+            "commandcontrol alias"
+          ],
+          "description": "Kısayol ekler; komut belirtilmezse kısayolu kaldırır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kısayol adı",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Hedef komut yolu",
+              "name": "command",
+              "required": false
+            }
+          ],
+          "path": "setup commands alias",
+          "usage": "/setup commands alias <name> [command]"
+        },
+        {
+          "aliases": [
+            "commandcontrol reset"
+          ],
+          "description": "Bir komutun ek ayarlarını kaldırır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Komut yolu",
+              "name": "command",
+              "required": true
+            }
+          ],
+          "path": "setup commands reset",
+          "usage": "/setup commands reset <command>"
+        },
+        {
+          "aliases": [
+            "commandcontrol set"
+          ],
           "description": "Bir komuta veya alt komuta ek kısıtlamalar uygular",
           "manager": true,
           "options": [
@@ -3756,55 +4166,53 @@
               "required": false
             }
           ],
-          "path": "commandcontrol set",
-          "usage": "/commandcontrol set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
+          "path": "setup commands set",
+          "usage": "/setup commands set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
         },
         {
-          "description": "Bir komutun ek ayarlarını kaldırır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Komut yolu",
-              "name": "command",
-              "required": true
-            }
+          "aliases": [
+            "commandcontrol show"
           ],
-          "path": "commandcontrol reset",
-          "usage": "/commandcontrol reset <command>"
-        },
-        {
-          "description": "Kısayol ekler; komut belirtilmezse kısayolu kaldırır",
+          "description": "Komut denetimi ayarlarını gösterir",
           "manager": true,
-          "options": [
-            {
-              "description": "Kısayol adı",
-              "name": "name",
-              "required": true
-            },
-            {
-              "description": "Hedef komut yolu",
-              "name": "command",
-              "required": false
-            }
-          ],
-          "path": "commandcontrol alias",
-          "usage": "/commandcontrol alias <name> [command]"
+          "options": [],
+          "path": "setup commands show",
+          "usage": "/setup commands show"
         },
         {
+          "aliases": [
+            "backup export"
+          ],
           "description": "Sürümlü JSON ayar yedeğini indirir",
           "manager": true,
           "options": [],
-          "path": "backup export",
-          "usage": "/backup export"
+          "path": "setup backup export",
+          "usage": "/setup backup export"
         },
         {
+          "aliases": [
+            "backup import"
+          ],
+          "description": "JSON yedeğini önizlemek ve içe aktarmak için paneli açar",
+          "manager": true,
+          "options": [],
+          "path": "setup backup import",
+          "usage": "/setup backup import"
+        },
+        {
+          "aliases": [
+            "backup list"
+          ],
           "description": "Son on otomatik geri yükleme noktasını listeler",
           "manager": true,
           "options": [],
-          "path": "backup list",
-          "usage": "/backup list"
+          "path": "setup backup list",
+          "usage": "/setup backup list"
         },
         {
+          "aliases": [
+            "backup restore"
+          ],
           "description": "Geri yükleme noktasını uygulamadan önce önizler",
           "manager": true,
           "options": [
@@ -3814,17 +4222,11 @@
               "required": true
             }
           ],
-          "path": "backup restore",
-          "usage": "/backup restore <id>"
+          "path": "setup backup restore",
+          "usage": "/setup backup restore <id>"
         },
         {
-          "description": "JSON yedeğini önizlemek ve içe aktarmak için paneli açar",
-          "manager": true,
-          "options": [],
-          "path": "backup import",
-          "usage": "/backup import"
-        },
-        {
+          "aliases": [],
           "description": "Bu sunucunun katılım doğrulamasını geç",
           "manager": false,
           "options": [],
@@ -3832,6 +4234,51 @@
           "usage": "/verify"
         },
         {
+          "aliases": [
+            "verification message"
+          ],
+          "description": "Doğrulama düğmesinin üstündeki mesajı düzenle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Gösterilecek mesaj",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "safety verification message",
+          "usage": "/safety verification message <text>"
+        },
+        {
+          "aliases": [
+            "verification mode"
+          ],
+          "description": "Düğme, piksel kartı veya web doğrulamasını seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "button, captcha veya web",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "safety verification mode",
+          "usage": "/safety verification mode <mode>"
+        },
+        {
+          "aliases": [
+            "verification post"
+          ],
+          "description": "Doğrulama panelini seçili kanala gönder",
+          "manager": true,
+          "options": [],
+          "path": "safety verification post",
+          "usage": "/safety verification post"
+        },
+        {
+          "aliases": [
+            "verification setup"
+          ],
           "description": "Katılım kapısını aç veya kapat; güvenli rolleri seç",
           "manager": true,
           "options": [
@@ -3861,43 +4308,13 @@
               "required": false
             }
           ],
-          "path": "verification setup",
-          "usage": "/verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
+          "path": "safety verification setup",
+          "usage": "/safety verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
         },
         {
-          "description": "Düğme, piksel kartı veya web doğrulamasını seç",
-          "manager": true,
-          "options": [
-            {
-              "description": "button, captcha veya web",
-              "name": "mode",
-              "required": true
-            }
+          "aliases": [
+            "raid lockdown"
           ],
-          "path": "verification mode",
-          "usage": "/verification mode <mode>"
-        },
-        {
-          "description": "Doğrulama düğmesinin üstündeki mesajı düzenle",
-          "manager": true,
-          "options": [
-            {
-              "description": "Gösterilecek mesaj",
-              "name": "text",
-              "required": true
-            }
-          ],
-          "path": "verification message",
-          "usage": "/verification message <text>"
-        },
-        {
-          "description": "Doğrulama panelini seçili kanala gönder",
-          "manager": true,
-          "options": [],
-          "path": "verification post",
-          "usage": "/verification post"
-        },
-        {
           "description": "Piksel doğrulamayı zorunlu kıl ve sunucuyu geçici olarak kısıtla",
           "manager": true,
           "options": [
@@ -3907,38 +4324,51 @@
               "required": false
             }
           ],
-          "path": "raid lockdown",
-          "usage": "/raid lockdown [minutes]"
+          "path": "mod raid lockdown",
+          "usage": "/mod raid lockdown [minutes]"
         },
         {
-          "description": "Baskını bitir ve değiştirdiği ayarları geri yükle",
-          "manager": true,
-          "options": [],
-          "path": "raid unlock",
-          "usage": "/raid unlock"
-        },
-        {
+          "aliases": [
+            "raid status"
+          ],
           "description": "Canlı baskın durumunu göster",
           "manager": true,
           "options": [],
-          "path": "raid status",
-          "usage": "/raid status"
+          "path": "mod raid status",
+          "usage": "/mod raid status"
         },
         {
+          "aliases": [
+            "raid unlock"
+          ],
+          "description": "Baskını bitir ve değiştirdiği ayarları geri yükle",
+          "manager": true,
+          "options": [],
+          "path": "mod raid unlock",
+          "usage": "/mod raid unlock"
+        },
+        {
+          "aliases": [
+            "antinuke status"
+          ],
           "description": "Koruma durumunu ve geri yükleme sınırlarını göster",
           "manager": true,
           "options": [],
-          "path": "antinuke status",
-          "usage": "/antinuke status"
+          "path": "safety antinuke status",
+          "usage": "/safety antinuke status"
         },
         {
+          "aliases": [
+            "antinuke events"
+          ],
           "description": "Son sunucu koruması olaylarını göster",
           "manager": true,
           "options": [],
-          "path": "antinuke events",
-          "usage": "/antinuke events"
+          "path": "safety antinuke events",
+          "usage": "/safety antinuke events"
         },
         {
+          "aliases": [],
           "description": "Birini kalıcı olarak ya da bir süreliğine yasakla",
           "manager": true,
           "options": [
@@ -3967,8 +4397,11 @@
           "usage": "/ban <user> [reason] [duration] [delete_days]"
         },
         {
+          "aliases": [
+            "unban"
+          ],
           "description": "Birinin yasağını kaldır",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kimin yasağı kaldırılacak (kullanıcı kimliğini yapıştır)",
@@ -3981,10 +4414,11 @@
               "required": false
             }
           ],
-          "path": "unban",
-          "usage": "/unban <user> [reason]"
+          "path": "mod unban",
+          "usage": "/mod unban <user> [reason]"
         },
         {
+          "aliases": [],
           "description": "Bir üyeyi sunucudan at (tekrar katılabilir)",
           "manager": true,
           "options": [
@@ -4003,6 +4437,7 @@
           "usage": "/kick <user> [reason]"
         },
         {
+          "aliases": [],
           "description": "Bir üyeyi bir süreliğine yazmaktan ve konuşmaktan alıkoy",
           "manager": true,
           "options": [
@@ -4026,8 +4461,11 @@
           "usage": "/timeout <user> <duration> [reason]"
         },
         {
+          "aliases": [
+            "untimeout"
+          ],
           "description": "Bir üyenin susturmasını erken bitir",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kimin susturması bitecek",
@@ -4040,10 +4478,11 @@
               "required": false
             }
           ],
-          "path": "untimeout",
-          "usage": "/untimeout <user> [reason]"
+          "path": "mod untimeout",
+          "usage": "/mod untimeout <user> [reason]"
         },
         {
+          "aliases": [],
           "description": "Bir üyeyi uyar; yeterince uyarı kendiliğinden işlem yapar",
           "manager": true,
           "options": [
@@ -4062,8 +4501,11 @@
           "usage": "/warn <user> <reason>"
         },
         {
+          "aliases": [
+            "warnings"
+          ],
           "description": "Bir üyenin hâlâ geçerli olan uyarıları",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kimin uyarıları",
@@ -4071,12 +4513,15 @@
               "required": true
             }
           ],
-          "path": "warnings",
-          "usage": "/warnings <user>"
+          "path": "mod warnings",
+          "usage": "/mod warnings <user>"
         },
         {
+          "aliases": [
+            "unwarn"
+          ],
           "description": "Bir uyarıyı geri al, artık sayılmasın",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Uyarının vaka numarası",
@@ -4089,10 +4534,11 @@
               "required": false
             }
           ],
-          "path": "unwarn",
-          "usage": "/unwarn <case> [reason]"
+          "path": "mod unwarn",
+          "usage": "/mod unwarn <case> [reason]"
         },
         {
+          "aliases": [],
           "description": "Buradaki son mesajları sil (en fazla 100)",
           "manager": true,
           "options": [
@@ -4136,8 +4582,11 @@
           "usage": "/purge <count> [user] [bots] [contains] [links] [attachments] [reason]"
         },
         {
+          "aliases": [
+            "slowmode"
+          ],
           "description": "Üyelerin bir kanalda mesajlar arasında ne kadar bekleyeceği",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "5s, 30s, 2m ya da 1h gibi (en fazla 6 saat) ya da off",
@@ -4155,12 +4604,15 @@
               "required": false
             }
           ],
-          "path": "slowmode",
-          "usage": "/slowmode <duration> [channel] [reason]"
+          "path": "mod slowmode",
+          "usage": "/mod slowmode <duration> [channel] [reason]"
         },
         {
+          "aliases": [
+            "lock"
+          ],
           "description": "Üyelerin bir kanala mesaj göndermesini durdur",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kanal (varsayılan: bu kanal)",
@@ -4173,12 +4625,15 @@
               "required": false
             }
           ],
-          "path": "lock",
-          "usage": "/lock [channel] [reason]"
+          "path": "mod lock",
+          "usage": "/mod lock [channel] [reason]"
         },
         {
+          "aliases": [
+            "unlock"
+          ],
           "description": "Kilitli bir kanalda üyeler yeniden mesaj gönderebilsin",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kanal (varsayılan: bu kanal)",
@@ -4191,12 +4646,15 @@
               "required": false
             }
           ],
-          "path": "unlock",
-          "usage": "/unlock [channel] [reason]"
+          "path": "mod unlock",
+          "usage": "/mod unlock [channel] [reason]"
         },
         {
+          "aliases": [
+            "nick"
+          ],
           "description": "Bir üyenin takma adını değiştir ya da sıfırla",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kimin takma adı",
@@ -4214,12 +4672,15 @@
               "required": false
             }
           ],
-          "path": "nick",
-          "usage": "/nick <user> [nickname] [reason]"
+          "path": "mod nick",
+          "usage": "/mod nick <user> [nickname] [reason]"
         },
         {
+          "aliases": [
+            "role add"
+          ],
           "description": "Bir üyeye rol ver",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kime verilecek",
@@ -4237,12 +4698,15 @@
               "required": false
             }
           ],
-          "path": "role add",
-          "usage": "/role add <user> <role> [reason]"
+          "path": "mod role add",
+          "usage": "/mod role add <user> <role> [reason]"
         },
         {
+          "aliases": [
+            "role remove"
+          ],
           "description": "Bir üyeden rol al",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kimden alınacak",
@@ -4260,12 +4724,15 @@
               "required": false
             }
           ],
-          "path": "role remove",
-          "usage": "/role remove <user> <role> [reason]"
+          "path": "mod role remove",
+          "usage": "/mod role remove <user> <role> [reason]"
         },
         {
+          "aliases": [
+            "case"
+          ],
           "description": "Bir moderasyon vakasına bak",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Vaka numarası",
@@ -4273,12 +4740,15 @@
               "required": true
             }
           ],
-          "path": "case",
-          "usage": "/case <id>"
+          "path": "mod case",
+          "usage": "/mod case <id>"
         },
         {
+          "aliases": [
+            "reason"
+          ],
           "description": "Bir moderasyon vakasına yeni sebep ver",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Vaka numarası",
@@ -4291,8 +4761,8 @@
               "required": true
             }
           ],
-          "path": "reason",
-          "usage": "/reason <id> <reason>"
+          "path": "mod reason",
+          "usage": "/mod reason <id> <reason>"
         }
       ],
       "intro": "Yasak, atma, susturma ve uyarılar, her biri mod kaydında bir vaka; kanal temizliği.",
@@ -4302,13 +4772,29 @@
     {
       "commands": [
         {
+          "aliases": [
+            "config show"
+          ],
           "description": "Şu anki ayarları gösterir",
           "manager": true,
           "options": [],
-          "path": "config show",
-          "usage": "/config show"
+          "path": "setup server show",
+          "usage": "/setup server show"
         },
         {
+          "aliases": [
+            "config prefix reset"
+          ],
+          "description": "Varsayılan öneke, p!'ye dön",
+          "manager": true,
+          "options": [],
+          "path": "setup server prefix-reset",
+          "usage": "/setup server prefix-reset"
+        },
+        {
+          "aliases": [
+            "config prefix set"
+          ],
           "description": "Öneki seç (1-5 karakter, boşluksuz)",
           "manager": true,
           "options": [
@@ -4318,24 +4804,23 @@
               "required": true
             }
           ],
-          "path": "config prefix set",
-          "usage": "/config prefix set <prefix>"
+          "path": "setup server prefix-set",
+          "usage": "/setup server prefix-set <prefix>"
         },
         {
-          "description": "Varsayılan öneke, p!'ye dön",
-          "manager": true,
-          "options": [],
-          "path": "config prefix reset",
-          "usage": "/config prefix reset"
-        },
-        {
+          "aliases": [
+            "config prefix show"
+          ],
           "description": "Öneki göster",
           "manager": true,
           "options": [],
-          "path": "config prefix show",
-          "usage": "/config prefix show"
+          "path": "setup server prefix-show",
+          "usage": "/setup server prefix-show"
         },
         {
+          "aliases": [
+            "config welcome"
+          ],
           "description": "Yeni üyeler için karşılama kartları",
           "manager": true,
           "options": [
@@ -4355,10 +4840,13 @@
               "required": false
             }
           ],
-          "path": "config welcome",
-          "usage": "/config welcome [enabled] [channel] [message]"
+          "path": "setup welcome message",
+          "usage": "/setup welcome message [enabled] [channel] [message]"
         },
         {
+          "aliases": [
+            "config welcome-card"
+          ],
           "description": "Karşılama kartını tasarla ve önizlemesine bak",
           "manager": true,
           "options": [
@@ -4385,10 +4873,13 @@
               "required": false
             }
           ],
-          "path": "config welcome-card",
-          "usage": "/config welcome-card [theme] [title] [color]"
+          "path": "setup welcome card",
+          "usage": "/setup welcome card [theme] [title] [color]"
         },
         {
+          "aliases": [
+            "config leveling"
+          ],
           "description": "XP ve seviye atlama mesajları",
           "manager": true,
           "options": [
@@ -4419,10 +4910,13 @@
               "required": false
             }
           ],
-          "path": "config leveling",
-          "usage": "/config leveling [enabled] [channel] [message] [mode]"
+          "path": "progression leveling settings",
+          "usage": "/progression leveling settings [enabled] [channel] [message] [mode]"
         },
         {
+          "aliases": [
+            "config join-role"
+          ],
           "description": "Her yeni üyeye bir rol ver",
           "manager": true,
           "options": [
@@ -4437,10 +4931,13 @@
               "required": false
             }
           ],
-          "path": "config join-role",
-          "usage": "/config join-role [role] [off]"
+          "path": "setup roles join-role",
+          "usage": "/setup roles join-role [role] [off]"
         },
         {
+          "aliases": [
+            "config goodbye"
+          ],
           "description": "Bir üye ayrılınca veda et",
           "manager": true,
           "options": [
@@ -4460,10 +4957,13 @@
               "required": false
             }
           ],
-          "path": "config goodbye",
-          "usage": "/config goodbye [channel] [message] [off]"
+          "path": "setup welcome goodbye",
+          "usage": "/setup welcome goodbye [channel] [message] [off]"
         },
         {
+          "aliases": [
+            "config suggestions"
+          ],
           "description": "/suggest önerilerinin gideceği yer",
           "manager": true,
           "options": [
@@ -4478,10 +4978,13 @@
               "required": false
             }
           ],
-          "path": "config suggestions",
-          "usage": "/config suggestions [channel] [off]"
+          "path": "community server suggestions",
+          "usage": "/community server suggestions [channel] [off]"
         },
         {
+          "aliases": [
+            "config language"
+          ],
           "description": "Karşılamalar, seviye atlamalar ve diğer sunucu mesajları için varsayılan dil",
           "manager": true,
           "options": [
@@ -4496,10 +4999,11 @@
               "required": true
             }
           ],
-          "path": "config language",
-          "usage": "/config language <language>"
+          "path": "setup server language",
+          "usage": "/setup server language <language>"
         },
         {
+          "aliases": [],
           "description": "Bir üyenin hesabını ve sunucu bilgilerini gösterir",
           "manager": false,
           "options": [
@@ -4513,6 +5017,7 @@
           "usage": "/info user [user]"
         },
         {
+          "aliases": [],
           "description": "Sunucu bilgilerini gösterir",
           "manager": false,
           "options": [],
@@ -4520,6 +5025,7 @@
           "usage": "/info server"
         },
         {
+          "aliases": [],
           "description": "Bir kullanıcının avatarını gösterir",
           "manager": false,
           "options": [
@@ -4538,6 +5044,7 @@
           "usage": "/info avatar [user] [server]"
         },
         {
+          "aliases": [],
           "description": "Bir kullanıcının afişini gösterir",
           "manager": false,
           "options": [
@@ -4551,6 +5058,7 @@
           "usage": "/info banner [user]"
         },
         {
+          "aliases": [],
           "description": "Bir rolün bilgilerini gösterir",
           "manager": false,
           "options": [
@@ -4564,6 +5072,7 @@
           "usage": "/info role <role>"
         },
         {
+          "aliases": [],
           "description": "Bir kanalın bilgilerini gösterir",
           "manager": false,
           "options": [
@@ -4577,6 +5086,7 @@
           "usage": "/info channel [channel]"
         },
         {
+          "aliases": [],
           "description": "Üye sayılarını gösterir",
           "manager": false,
           "options": [],
@@ -4584,6 +5094,7 @@
           "usage": "/info members"
         },
         {
+          "aliases": [],
           "description": "Bir emojinin bilgilerini gösterir",
           "manager": false,
           "options": [
@@ -4597,6 +5108,7 @@
           "usage": "/info emoji [emoji]"
         },
         {
+          "aliases": [],
           "description": "Bir davetin bilgilerini gösterir",
           "manager": false,
           "options": [
@@ -4610,6 +5122,9 @@
           "usage": "/info invite <code>"
         },
         {
+          "aliases": [
+            "counters add"
+          ],
           "description": "Bir kanalın adında sayı göster, her 10 dakikada bir güncellenir",
           "manager": true,
           "options": [
@@ -4647,10 +5162,23 @@
               "required": false
             }
           ],
-          "path": "counters add",
-          "usage": "/counters add <channel> <kind> [role] [template]"
+          "path": "integrations stats counter-add",
+          "usage": "/integrations stats counter-add <channel> <kind> [role] [template]"
         },
         {
+          "aliases": [
+            "counters list"
+          ],
+          "description": "Bu sunucunun sayaç kanalları",
+          "manager": true,
+          "options": [],
+          "path": "integrations stats counter-list",
+          "usage": "/integrations stats counter-list"
+        },
+        {
+          "aliases": [
+            "counters remove"
+          ],
           "description": "Bir sayaç kanalını güncellemeyi bırak (son adını korur)",
           "manager": true,
           "options": [
@@ -4660,15 +5188,8 @@
               "required": true
             }
           ],
-          "path": "counters remove",
-          "usage": "/counters remove <channel>"
-        },
-        {
-          "description": "Bu sunucunun sayaç kanalları",
-          "manager": true,
-          "options": [],
-          "path": "counters list",
-          "usage": "/counters list"
+          "path": "integrations stats counter-remove",
+          "usage": "/integrations stats counter-remove <channel>"
         }
       ],
       "intro": "Karşılama kartları, vedalar, öneriler, dil, metin komutu öneki ve ayarlara genel bakış.",
@@ -4678,6 +5199,19 @@
     {
       "commands": [
         {
+          "aliases": [
+            "antinuke disable"
+          ],
+          "description": "Zararlı işlem takibini duraklat",
+          "manager": true,
+          "options": [],
+          "path": "safety antinuke disable",
+          "usage": "/safety antinuke disable"
+        },
+        {
+          "aliases": [
+            "antinuke enable"
+          ],
           "description": "Korumayı aç; başka bir müdahale seçmezsen yalnızca uyarı gönderilir",
           "manager": true,
           "options": [
@@ -4717,17 +5251,13 @@
               "required": false
             }
           ],
-          "path": "antinuke enable",
-          "usage": "/antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
+          "path": "safety antinuke enable",
+          "usage": "/safety antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
         },
         {
-          "description": "Zararlı işlem takibini duraklat",
-          "manager": true,
-          "options": [],
-          "path": "antinuke disable",
-          "usage": "/antinuke disable"
-        },
-        {
+          "aliases": [
+            "antinuke limits"
+          ],
           "description": "Her üyenin belirli bir sürede yapabileceği en fazla işlem sayısını ayarla",
           "manager": true,
           "options": [
@@ -4747,10 +5277,13 @@
               "required": true
             }
           ],
-          "path": "antinuke limits",
-          "usage": "/antinuke limits <kind> <count> <seconds>"
+          "path": "safety antinuke limits",
+          "usage": "/safety antinuke limits <kind> <count> <seconds>"
         },
         {
+          "aliases": [
+            "antinuke trust add"
+          ],
           "description": "Başka bir üyeyi güven listesine ekle (yalnızca sunucu sahibi)",
           "manager": true,
           "options": [
@@ -4760,10 +5293,13 @@
               "required": true
             }
           ],
-          "path": "antinuke trust add",
-          "usage": "/antinuke trust add <user>"
+          "path": "safety antinuke trust-add",
+          "usage": "/safety antinuke trust-add <user>"
         },
         {
+          "aliases": [
+            "antinuke trust remove"
+          ],
           "description": "Bir üyeyi güven listesinden çıkar (yalnızca sunucu sahibi)",
           "manager": true,
           "options": [
@@ -4773,10 +5309,13 @@
               "required": true
             }
           ],
-          "path": "antinuke trust remove",
-          "usage": "/antinuke trust remove <user>"
+          "path": "safety antinuke trust-remove",
+          "usage": "/safety antinuke trust-remove <user>"
         },
         {
+          "aliases": [
+            "antinuke vip add"
+          ],
           "description": "Bir VIP rolünü korumaya al",
           "manager": true,
           "options": [
@@ -4786,10 +5325,13 @@
               "required": true
             }
           ],
-          "path": "antinuke vip add",
-          "usage": "/antinuke vip add <role>"
+          "path": "safety antinuke vip-add",
+          "usage": "/safety antinuke vip-add <role>"
         },
         {
+          "aliases": [
+            "antinuke vip remove"
+          ],
           "description": "Bir rolün VIP korumasını kaldır",
           "manager": true,
           "options": [
@@ -4799,10 +5341,13 @@
               "required": true
             }
           ],
-          "path": "antinuke vip remove",
-          "usage": "/antinuke vip remove <role>"
+          "path": "safety antinuke vip-remove",
+          "usage": "/safety antinuke vip-remove <role>"
         },
         {
+          "aliases": [
+            "config log"
+          ],
           "description": "Sunucu kaydının kanalı ya da bir kategorinin kendi kanalı",
           "manager": true,
           "options": [
@@ -4833,10 +5378,13 @@
               "required": false
             }
           ],
-          "path": "config log",
-          "usage": "/config log [channel] [off] [category]"
+          "path": "safety moderation log",
+          "usage": "/safety moderation log [channel] [off] [category]"
         },
         {
+          "aliases": [
+            "config log-events"
+          ],
           "description": "Sunucu kaydının neleri bildireceğini seç",
           "manager": true,
           "options": [
@@ -4896,10 +5444,13 @@
               "required": false
             }
           ],
-          "path": "config log-events",
-          "usage": "/config log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
+          "path": "safety moderation log-events",
+          "usage": "/safety moderation log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
         },
         {
+          "aliases": [
+            "config log-ignore"
+          ],
           "description": "Sunucu kaydının görmezden geldiği kişiler ve yerler",
           "manager": true,
           "options": [
@@ -4929,10 +5480,13 @@
               "required": false
             }
           ],
-          "path": "config log-ignore",
-          "usage": "/config log-ignore [channel] [role] [user] [bots] [remove]"
+          "path": "safety moderation log-ignore",
+          "usage": "/safety moderation log-ignore [channel] [role] [user] [bots] [remove]"
         },
         {
+          "aliases": [
+            "config moderation"
+          ],
           "description": "Vakaların nereye gideceği ve üyelere haber verilip verilmeyeceği",
           "manager": true,
           "options": [
@@ -4952,10 +5506,13 @@
               "required": false
             }
           ],
-          "path": "config moderation",
-          "usage": "/config moderation [channel] [off] [dm]"
+          "path": "safety moderation settings",
+          "usage": "/safety moderation settings [channel] [off] [dm]"
         },
         {
+          "aliases": [
+            "config warn-ladder"
+          ],
           "description": "Belli sayıda uyarının getirdiği ceza",
           "manager": true,
           "options": [
@@ -4985,8 +5542,8 @@
               "required": false
             }
           ],
-          "path": "config warn-ladder",
-          "usage": "/config warn-ladder [warns] [action] [duration] [remove]"
+          "path": "safety moderation warn-ladder",
+          "usage": "/safety moderation warn-ladder [warns] [action] [duration] [remove]"
         }
       ],
       "intro": "Sunucu kaydının kanalları, olayları ve yok sayılanlar; mod kaydı ve uyarı merdiveni.",
@@ -4996,6 +5553,9 @@
     {
       "commands": [
         {
+          "aliases": [
+            "config level-roles add"
+          ],
           "description": "Bir seviyeye ulaşan herkese bir rol ver",
           "manager": true,
           "options": [
@@ -5010,30 +5570,23 @@
               "required": true
             }
           ],
-          "path": "config level-roles add",
-          "usage": "/config level-roles add <level> <role>"
+          "path": "progression leveling roles-add",
+          "usage": "/progression leveling roles-add <level> <role>"
         },
         {
-          "description": "Bir seviyede rol vermeyi bırak",
-          "manager": true,
-          "options": [
-            {
-              "description": "Artık verilmeyecek rol",
-              "name": "role",
-              "required": true
-            }
+          "aliases": [
+            "config level-roles list"
           ],
-          "path": "config level-roles remove",
-          "usage": "/config level-roles remove <role>"
-        },
-        {
           "description": "Seviye rollerini gösterir",
           "manager": true,
           "options": [],
-          "path": "config level-roles list",
-          "usage": "/config level-roles list"
+          "path": "progression leveling roles-list",
+          "usage": "/progression leveling roles-list"
         },
         {
+          "aliases": [
+            "config level-roles mode"
+          ],
           "description": "Tüm seviye rolleri kalsın mı, yalnızca en yükseği mi",
           "manager": true,
           "options": [
@@ -5047,17 +5600,60 @@
               "required": true
             }
           ],
-          "path": "config level-roles mode",
-          "usage": "/config level-roles mode <mode>"
+          "path": "progression leveling roles-mode",
+          "usage": "/progression leveling roles-mode <mode>"
         },
         {
+          "aliases": [
+            "config level-roles remove"
+          ],
+          "description": "Bir seviyede rol vermeyi bırak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Artık verilmeyecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "progression leveling roles-remove",
+          "usage": "/progression leveling roles-remove <role>"
+        },
+        {
+          "aliases": [
+            "config level-roles sync"
+          ],
           "description": "Bir seviyeyi çoktan geçmiş üyelere hak ettikleri rolleri ver",
           "manager": true,
           "options": [],
-          "path": "config level-roles sync",
-          "usage": "/config level-roles sync"
+          "path": "progression leveling roles-sync",
+          "usage": "/progression leveling roles-sync"
         },
         {
+          "aliases": [
+            "config xp clear"
+          ],
+          "description": "Bir çarpanı ya da hepsini kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sıfırlanacak kanal ya da kategori",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Sıfırlanacak rol",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-clear",
+          "usage": "/progression leveling xp-clear [channel] [role]"
+        },
+        {
+          "aliases": [
+            "config xp multiplier"
+          ],
           "description": "Bir kanalın ya da rolün kazandığı XP ve puanı ölçekle",
           "manager": true,
           "options": [
@@ -5077,35 +5673,23 @@
               "required": false
             }
           ],
-          "path": "config xp multiplier",
-          "usage": "/config xp multiplier <value> [channel] [role]"
+          "path": "progression leveling xp-multiplier",
+          "usage": "/progression leveling xp-multiplier <value> [channel] [role]"
         },
         {
-          "description": "Bir çarpanı ya da hepsini kaldır",
-          "manager": true,
-          "options": [
-            {
-              "description": "Sıfırlanacak kanal ya da kategori",
-              "name": "channel",
-              "required": false
-            },
-            {
-              "description": "Sıfırlanacak rol",
-              "name": "role",
-              "required": false
-            }
+          "aliases": [
+            "config xp show"
           ],
-          "path": "config xp clear",
-          "usage": "/config xp clear [channel] [role]"
-        },
-        {
           "description": "Çarpanları ve ses XP'si ayarlarını gösterir",
           "manager": true,
           "options": [],
-          "path": "config xp show",
-          "usage": "/config xp show"
+          "path": "progression leveling xp-show",
+          "usage": "/progression leveling xp-show"
         },
         {
+          "aliases": [
+            "config xp voice"
+          ],
           "description": "Ses kanallarında geçen süreye XP ver",
           "manager": true,
           "options": [
@@ -5120,10 +5704,13 @@
               "required": false
             }
           ],
-          "path": "config xp voice",
-          "usage": "/config xp voice [enabled] [amount]"
+          "path": "progression leveling xp-voice",
+          "usage": "/progression leveling xp-voice [enabled] [amount]"
         },
         {
+          "aliases": [
+            "config rep-roles add"
+          ],
           "description": "İtibarı bir sayıya ulaşan herkese bir rol ver",
           "manager": true,
           "options": [
@@ -5138,10 +5725,23 @@
               "required": true
             }
           ],
-          "path": "config rep-roles add",
-          "usage": "/config rep-roles add <reputation> <role>"
+          "path": "progression economy rep-roles-add",
+          "usage": "/progression economy rep-roles-add <reputation> <role>"
         },
         {
+          "aliases": [
+            "config rep-roles list"
+          ],
+          "description": "İtibar rollerini gösterir",
+          "manager": true,
+          "options": [],
+          "path": "progression economy rep-roles-list",
+          "usage": "/progression economy rep-roles-list"
+        },
+        {
+          "aliases": [
+            "config rep-roles remove"
+          ],
           "description": "İtibar için rol vermeyi bırak",
           "manager": true,
           "options": [
@@ -5151,17 +5751,13 @@
               "required": true
             }
           ],
-          "path": "config rep-roles remove",
-          "usage": "/config rep-roles remove <role>"
+          "path": "progression economy rep-roles-remove",
+          "usage": "/progression economy rep-roles-remove <role>"
         },
         {
-          "description": "İtibar rollerini gösterir",
-          "manager": true,
-          "options": [],
-          "path": "config rep-roles list",
-          "usage": "/config rep-roles list"
-        },
-        {
+          "aliases": [
+            "config points"
+          ],
           "description": "Sunucu puanları: sohbetin kazandırdıkları",
           "manager": true,
           "options": [
@@ -5191,10 +5787,13 @@
               "required": false
             }
           ],
-          "path": "config points",
-          "usage": "/config points [enabled] [name] [emoji] [min] [max]"
+          "path": "progression economy points-settings",
+          "usage": "/progression economy points-settings [enabled] [name] [emoji] [min] [max]"
         },
         {
+          "aliases": [
+            "config store add"
+          ],
           "description": "Bir rolü satışa koy ya da fiyatını ve stoğunu değiştir",
           "manager": true,
           "options": [
@@ -5214,10 +5813,23 @@
               "required": false
             }
           ],
-          "path": "config store add",
-          "usage": "/config store add <role> <price> [stock]"
+          "path": "progression economy store-add",
+          "usage": "/progression economy store-add <role> <price> [stock]"
         },
         {
+          "aliases": [
+            "config store list"
+          ],
+          "description": "Satıştakileri gösterir",
+          "manager": true,
+          "options": [],
+          "path": "progression economy store-list",
+          "usage": "/progression economy store-list"
+        },
+        {
+          "aliases": [
+            "config store remove"
+          ],
           "description": "Bir rolü satıştan kaldır",
           "manager": true,
           "options": [
@@ -5227,17 +5839,13 @@
               "required": true
             }
           ],
-          "path": "config store remove",
-          "usage": "/config store remove <role>"
+          "path": "progression economy store-remove",
+          "usage": "/progression economy store-remove <role>"
         },
         {
-          "description": "Satıştakileri gösterir",
-          "manager": true,
-          "options": [],
-          "path": "config store list",
-          "usage": "/config store list"
-        },
-        {
+          "aliases": [
+            "xp add"
+          ],
           "description": "Bir üyeye sunucu XP'si ekle",
           "manager": true,
           "options": [
@@ -5252,10 +5860,33 @@
               "required": true
             }
           ],
-          "path": "xp add",
-          "usage": "/xp add <user> <amount>"
+          "path": "progression leveling xp-add",
+          "usage": "/progression leveling xp-add <user> <amount>"
         },
         {
+          "aliases": [
+            "xp import mee6"
+          ],
+          "description": "MEE6 XP'sini içe aktar (günde bir kez)",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Birleştir: yüksek XP kalsın",
+                "Değiştir: MEE6 XP'sini kullan"
+              ],
+              "description": "XP'nin mevcut XP ile nasıl birleştirileceği",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "progression leveling xp-import-mee6",
+          "usage": "/progression leveling xp-import-mee6 <mode>"
+        },
+        {
+          "aliases": [
+            "xp remove"
+          ],
           "description": "Bir üyeden sunucu XP'si çıkar",
           "manager": true,
           "options": [
@@ -5270,10 +5901,39 @@
               "required": true
             }
           ],
-          "path": "xp remove",
-          "usage": "/xp remove <user> <amount>"
+          "path": "progression leveling xp-remove",
+          "usage": "/progression leveling xp-remove <user> <amount>"
         },
         {
+          "aliases": [
+            "xp reset"
+          ],
+          "description": "Bir üyenin sunucu XP'sini sıfırla",
+          "manager": true,
+          "options": [
+            {
+              "description": "XP'si sıfırlanacak üye",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "progression leveling xp-reset",
+          "usage": "/progression leveling xp-reset <user>"
+        },
+        {
+          "aliases": [
+            "xp reset-all"
+          ],
+          "description": "Herkesin sunucu XP'sini sıfırla; iki onay gerekir",
+          "manager": true,
+          "options": [],
+          "path": "progression leveling xp-reset-all",
+          "usage": "/progression leveling xp-reset-all"
+        },
+        {
+          "aliases": [
+            "xp set"
+          ],
           "description": "Bir üyenin sunucu XP'sini ayarla",
           "manager": true,
           "options": [
@@ -5288,45 +5948,8 @@
               "required": true
             }
           ],
-          "path": "xp set",
-          "usage": "/xp set <user> <amount>"
-        },
-        {
-          "description": "Bir üyenin sunucu XP'sini sıfırla",
-          "manager": true,
-          "options": [
-            {
-              "description": "XP'si sıfırlanacak üye",
-              "name": "user",
-              "required": true
-            }
-          ],
-          "path": "xp reset",
-          "usage": "/xp reset <user>"
-        },
-        {
-          "description": "Herkesin sunucu XP'sini sıfırla; iki onay gerekir",
-          "manager": true,
-          "options": [],
-          "path": "xp reset-all",
-          "usage": "/xp reset-all"
-        },
-        {
-          "description": "MEE6 XP'sini içe aktar (günde bir kez)",
-          "manager": true,
-          "options": [
-            {
-              "choices": [
-                "Birleştir: yüksek XP kalsın",
-                "Değiştir: MEE6 XP'sini kullan"
-              ],
-              "description": "XP'nin mevcut XP ile nasıl birleştirileceği",
-              "name": "mode",
-              "required": true
-            }
-          ],
-          "path": "xp import mee6",
-          "usage": "/xp import mee6 <mode>"
+          "path": "progression leveling xp-set",
+          "usage": "/progression leveling xp-set <user> <amount>"
         }
       ],
       "intro": "Seviye rolleri, XP çarpanları, ses XP'si, itibar rolleri ve puan mağazası.",
@@ -5336,6 +5959,9 @@
     {
       "commands": [
         {
+          "aliases": [
+            "config critters"
+          ],
           "description": "Sohbette beliren yaratıkları ve kıyıya vuran şişeleri ayarla",
           "manager": true,
           "options": [
@@ -5355,10 +5981,13 @@
               "required": false
             }
           ],
-          "path": "config critters",
-          "usage": "/config critters [enabled] [channel] [anywhere]"
+          "path": "progression economy critters",
+          "usage": "/progression economy critters [enabled] [channel] [anywhere]"
         },
         {
+          "aliases": [
+            "config gambling"
+          ],
           "description": "Kabuk oyununu, bahisli yarışları ve diğer şans oyunlarını bu sunucuda aç ya da kapat",
           "manager": true,
           "options": [
@@ -5368,10 +5997,13 @@
               "required": true
             }
           ],
-          "path": "config gambling",
-          "usage": "/config gambling <enabled>"
+          "path": "progression economy gambling",
+          "usage": "/progression economy gambling <enabled>"
         },
         {
+          "aliases": [
+            "config surge"
+          ],
           "description": "Zamanlı fırtınalar: aç, kanalı ve ne sıklıkla geleceğini seç",
           "manager": true,
           "options": [
@@ -5398,10 +6030,13 @@
               "required": false
             }
           ],
-          "path": "config surge",
-          "usage": "/config surge [enabled] [channel] [every]"
+          "path": "progression economy surge",
+          "usage": "/progression economy surge [enabled] [channel] [every]"
         },
         {
+          "aliases": [
+            "config partygames"
+          ],
           "description": "Sıcak İnci, kısaltmalar ve altyazılarda kelime filtresi ne kadar sıkı",
           "manager": true,
           "options": [
@@ -5411,35 +6046,13 @@
               "required": false
             }
           ],
-          "path": "config partygames",
-          "usage": "/config partygames [strict]"
+          "path": "progression economy partygames",
+          "usage": "/progression economy partygames [strict]"
         },
         {
-          "description": "Pinchora'nın hangi bölümleri açık, nerede",
-          "manager": true,
-          "options": [],
-          "path": "config modules show",
-          "usage": "/config modules show"
-        },
-        {
-          "description": "Pinchora'nın bir bölümünü tüm sunucu için aç ya da kapat",
-          "manager": true,
-          "options": [
-            {
-              "description": "Değişecek bölüm (adını yazmaya başla)",
-              "name": "module",
-              "required": true
-            },
-            {
-              "description": "Açık ya da herkes için kapalı",
-              "name": "enabled",
-              "required": true
-            }
+          "aliases": [
+            "config modules channels"
           ],
-          "path": "config modules toggle",
-          "usage": "/config modules toggle <module> <enabled>"
-        },
-        {
           "description": "Bir bölümü bazı kanallarla sınırla ya da bazılarından uzak tut, kanal kanal",
           "manager": true,
           "options": [
@@ -5469,10 +6082,54 @@
               "required": false
             }
           ],
-          "path": "config modules channels",
-          "usage": "/config modules channels <module> <where> [channel] [remove]"
+          "path": "setup server modules-channels",
+          "usage": "/setup server modules-channels <module> <where> [channel] [remove]"
         },
         {
+          "aliases": [
+            "config modules show"
+          ],
+          "description": "Pinchora'nın hangi bölümleri açık, nerede",
+          "manager": true,
+          "options": [],
+          "path": "setup server modules-show",
+          "usage": "/setup server modules-show"
+        },
+        {
+          "aliases": [
+            "config modules toggle"
+          ],
+          "description": "Pinchora'nın bir bölümünü tüm sunucu için aç ya da kapat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Değişecek bölüm (adını yazmaya başla)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "description": "Açık ya da herkes için kapalı",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "setup server modules-toggle",
+          "usage": "/setup server modules-toggle <module> <enabled>"
+        },
+        {
+          "aliases": [
+            "birthdays preview"
+          ],
+          "description": "Doğum günü kartını ve mesajını önizle",
+          "manager": true,
+          "options": [],
+          "path": "community birthdays preview",
+          "usage": "/community birthdays preview"
+        },
+        {
+          "aliases": [
+            "birthdays settings"
+          ],
           "description": "Kutlama kanalı, rolü, mesajı ve hediyesini ayarla",
           "manager": true,
           "options": [
@@ -5527,15 +6184,8 @@
               "required": false
             }
           ],
-          "path": "birthdays settings",
-          "usage": "/birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
-        },
-        {
-          "description": "Doğum günü kartını ve mesajını önizle",
-          "manager": true,
-          "options": [],
-          "path": "birthdays preview",
-          "usage": "/birthdays preview"
+          "path": "community birthdays settings",
+          "usage": "/community birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
         }
       ],
       "intro": "Oyunları ve Pinchora'nın bütün bölümlerini sunucu ya da kanal bazında aç veya kapat.",
