@@ -689,7 +689,76 @@ site has the whole bot's totals (servers, players, houses, pets, fish, games) an
 
 ### Social feeds
 
-<!-- F12: the Social feeds package replaces this heading's section; keep it one `###` section. -->
+New YouTube videos, RSS and podcast episodes, Reddit posts and Bluesky posts, posted in a channel as they
+appear: the **Social feeds** module (group Feeds), `/feeds` in Discord and the dashboard's **Social feeds** page.
+A server follows up to 10 sources.
+
+| Command | What it does |
+|---|---|
+| `/feeds add kind source channel [message] [role]` | Follow a source. `kind` is YouTube, RSS or podcast, Reddit, Bluesky, or X/Instagram/TikTok (only with a bridge, below). `source` is a YouTube channel link, `@handle` or `UC…` id (a handle is read from the channel's page, best effort; the channel link always works), a feed address (`https://` is added when missing), `r/name` or a subreddit link, or a Bluesky handle, DID or profile link. The source is fetched once to show what it is and its latest post; what it already shows is never posted, only what comes after. `message` takes `{title}` `{url}` `{author}` `{account}` `{published}` (up to 500 characters; empty uses the kind's default, in the server's language); `role` is pinged with every new post (never `@everyone`) (Manage Server) |
+| `/feeds list` | The feeds with their number, channel, role and health: when the source was last checked and the last post went out, or why it fails (the site's error, “I need View Channel, Send Messages and Embed Links in that channel”), five per page (Manage Server) |
+| `/feeds edit id [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]` | Change a feed: another channel, the message (`-` back to the default), the role, Pinchora's card, filter words (comma-separated, `-` clears; `include` posts only titles with one of them, `exclude` never titles with one; up to 10 words of 40 characters each, any case), or switch it off and on (Manage Server) |
+| `/feeds test id` | Post the source's latest item in the feed's channel now, the way new posts look; nobody is pinged (Manage Server) |
+| `/feeds remove id` | Stop following a source (Manage Server) |
+
+**How a post looks.** The message, then (when the card is on, the default for everything but YouTube)
+Pinchora's card: the title linking to the post, the account, a summary for articles, the picture (a video's
+thumbnail, a post's first image, an episode's cover), an episode's length and audio file, the kind and the
+time. With the card on the link is posted in `<…>` so Discord adds no second preview; off, Discord shows its
+own (YouTube's player). Titles, names and summaries from the source lose their mentions and `@everyone`, and
+their markdown is escaped; links are kept only when they are plain http(s). A post pings nobody but the
+feed's role (`allowed_mentions`), and a test post pings nobody.
+
+**How sources are polled.** Every pod runs the feeds ticker every 30 seconds; it leases the sources that are
+due (`FOR UPDATE SKIP LOCKED`), so a source is fetched by one pod however many servers follow it. YouTube's
+channel feed (`videos.xml?channel_id=`) and Reddit's `/r/name/new/.rss` are read every 5 minutes, Bluesky's
+public `getAuthorFeed` (no replies, no reposts, no pinned post) every 2, an RSS feed every 5 to 15 minutes by its
+own `ttl` (10 by default). Requests carry `If-None-Match`/`If-Modified-Since` and a descriptive user agent. An item
+is new for exactly the transaction that first records it in `feed_items_seen`, which queues one post per
+subscription in `feed_outbox`; posts are leased, renewed while Discord handles them, and completed only by the
+current lease holder. Each announcement uses a stable Discord nonce with `enforce_nonce`, which deduplicates
+retries within Discord's recent-message window. A crash after Discord accepts a post but before the database
+records it can still cause a duplicate after that window; delivery is at least once in that case. At most the
+5 newest new items are posted per check, none older than 3 days, none
+published before the feed was added, so a feed that comes back after an outage or changes its ids does not
+flood the channel. A source that fails waits twice as long each time (up to 6 hours; a `Retry-After` is
+honoured) and the reason shows on `/feeds list` and the dashboard. A post Discord refuses (no permission, the
+channel gone) is reported on the feed; after 10 in a row the feed switches itself off. With the module off,
+new items are recorded but not posted. Seen item ids expire after 7 days without a fresh full response, sources nobody
+follows after a day.
+
+**What may be fetched.** Every address is checked before a connection is made: http or https only, no
+password in it, and the host must resolve to public addresses only (loopback, private, link-local, carrier
+NAT, multicast, documentation and reserved ranges are refused, IPv4-mapped and NAT64/6to4 forms included).
+The connection goes to exactly the checked addresses, so a name that changes its answer gains nothing.
+Redirects are followed by hand, at most 3, each checked again and never from https down to http; a body is read
+up to 1 MB and a fetch, redirects included, gets 10 seconds; no proxy from the environment is used. A server
+may look up 20 sources a minute (adding, checking, testing).
+
+**Dashboard.** The page, previews and feed-specific errors follow the server’s language (English or Turkish).
+The Social feeds page lists the feeds with their health (healthy, waiting for the first check,
+failing and why, can't post and why, off), `n/10 used`, an on/off switch, **Test** and **Edit**. Adding a feed:
+pick the kind, type the source and the page looks it up as you type (“FOUND: Reef Crew, latest: …”), then the
+channel, the role, the message with placeholder chips and a character count, the card switch and the filters;
+the preview on the right is drawn by the bot's own function from the source's real latest post. An existing
+feed's editor has **Send a test post**. The kind and source of a feed never change: add another feed instead.
+API: `GET/POST /api/guilds/{g}/feeds`, `POST …/feeds/check`, `POST …/feeds/preview`, `PUT/DELETE …/feeds/{id}`,
+`POST …/feeds/{id}/test`; every change is in the audit log (`feeds.add`, `feeds.edit`, `feeds.remove`, from
+Discord too).
+
+**Instance settings.** `PINCHORA_FEEDS__BRIDGE_URL` (an RSSHub-style address with `{route}`, e.g.
+`https://rss.example/{route}`) turns on X, Instagram and TikTok: the source is the route the bridge serves,
+read as RSS. Without it those stay greyed out (“not available on this instance”). The bridge's own host is
+trusted (it may be on a private network); where it redirects is checked like any other address. Reddit's RSS is
+for non-commercial use; `PINCHORA_FEEDS__REDDIT=false` stops polling existing Reddit subscriptions and drops
+their pending posts as well as preventing new ones on an instance Reddit blocks. Debug
+builds only: `PINCHORA_FEEDS__DEV_ENDPOINT=127.0.0.1:<port>` sends every feed request to a local server
+(`http://127.0.0.1:<port>/<host><path>`), which the e2e tests use.
+
+Data: `feed_sources`, `feeds`, `feed_items_seen`, `feed_outbox` (migration `0056_feeds.sql`; phase 2 only
+alters them). A feed's `created_by` becomes 0 when its author deletes their data. Code: `pinchora_core::feeds`
+(sources, addresses, filters, timing), `pinchora-commands/src/feeds/` (fetcher, parsers, message, poller),
+`commands/feeds.rs`, `pinchora-db/src/feeds.rs`, `pinchora-web/src/routes/feeds.rs`, `web/src/pages/Feeds.tsx`.
 
 ### Workflows
 

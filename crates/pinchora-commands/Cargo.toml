@@ -12,6 +12,7 @@ pinchora-game.workspace = true
 image.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+feed-rs.workspace = true
 futures-util.workspace = true
 metrics.workspace = true
 moka.workspace = true
@@ -19,6 +20,7 @@ rand.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
@@ -26,6 +28,7 @@ twilight-http.workspace = true
 twilight-interactions.workspace = true
 twilight-model.workspace = true
 twilight-util.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 axum.workspace = true

@@ -10,6 +10,7 @@ import { defineConfig } from "@playwright/test";
 const port = Number(process.env.E2E_PORT ?? 18190);
 const mockPort = Number(process.env.E2E_MOCK_PORT ?? 18191);
 const opsPort = Number(process.env.E2E_OPS_PORT ?? 18192);
+const feedPort = Number(process.env.E2E_FEED_PORT ?? 18193);
 const database = process.env.PINCHORA_TEST_DATABASE_URL;
 const redis = process.env.PINCHORA_TEST_REDIS_URL;
 if (!database || !redis) {
@@ -58,6 +59,7 @@ export default defineConfig({
         PINCHORA_WEB__DEV_LOGIN: "true",
         PINCHORA_WEB__DISCORD_API_BASE: `http://127.0.0.1:${mockPort}/api/v10`,
         PINCHORA_WEB__STATIC_DIR: dist,
+        PINCHORA_FEEDS__DEV_ENDPOINT: `127.0.0.1:${feedPort}`,
       },
     },
   ],

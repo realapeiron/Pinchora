@@ -134,6 +134,7 @@ pub(crate) const AREAS: &[Area] = &[
             "store",
             "tag",
             "customcommand",
+            "feeds",
             "autoroles",
             "color",
             "stats",

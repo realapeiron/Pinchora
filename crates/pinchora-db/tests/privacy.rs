@@ -275,6 +275,10 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO ticket_transcript_authors (ticket_id, idx, user_id, name)
          SELECT id, 0, $1, 'Pinch' FROM tickets WHERE guild_id = $1 AND number = 2
          UNION ALL SELECT id, 1, $2, 'Other' FROM tickets WHERE guild_id = $1 AND number = 2",
+        // A feed they set up ($1 doubles as the server).
+        "INSERT INTO feed_sources (kind, source) VALUES ('rss', 'https://privacy.example/' || $1::text)",
+        "INSERT INTO feeds (guild_id, kind, source, channel_id, created_by)
+         VALUES ($1, 'rss', 'https://privacy.example/' || $1::text, 1, $1)",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

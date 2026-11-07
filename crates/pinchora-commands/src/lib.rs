@@ -8,6 +8,7 @@ mod custom;
 mod cx;
 mod defer;
 mod events;
+pub mod feeds;
 mod game;
 mod gate;
 mod hooks;
@@ -59,6 +60,7 @@ pub use events::{
     PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,
     on_member_update, on_message, on_permissions_changed, on_voice_state_update, voice_snapshot,
 };
+pub use feeds::{spawn_ticker as spawn_feeds_ticker, tick as feeds_tick};
 pub use hooks::ReactionEvent;
 pub use house_view::{
     RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,

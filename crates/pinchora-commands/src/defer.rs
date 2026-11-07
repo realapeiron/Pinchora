@@ -46,6 +46,7 @@ const PRIVATE: &[&str] = &[
     "customcommand list",
     "customize",
     "dex",
+    "feeds",
     "fish gear",
     "fish sell",
     "fish shop",

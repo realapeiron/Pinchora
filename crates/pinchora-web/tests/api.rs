@@ -55,6 +55,9 @@ mod roles;
 // Tickets: settings, panels, the tickets list and transcripts.
 #[path = "api/tickets.rs"]
 mod tickets;
+// The Feeds page.
+#[path = "api/feeds.rs"]
+mod feeds;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

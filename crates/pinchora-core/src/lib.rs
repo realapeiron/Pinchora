@@ -2,6 +2,7 @@ pub mod card_design;
 pub mod cluster;
 pub mod config;
 pub mod economy;
+pub mod feeds;
 pub mod i18n;
 pub mod items;
 pub mod leveling;

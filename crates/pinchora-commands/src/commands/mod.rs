@@ -13,6 +13,7 @@ pub(crate) mod decorate;
 pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
+pub(crate) mod feeds;
 pub(crate) mod fish;
 pub(crate) mod friends;
 pub(crate) mod games;
@@ -172,4 +173,5 @@ commands!(
     tickets::TicketCommand,
     tickets::TicketsCommand,
     automod::AutoMod,
+    feeds::FeedsCommand,
 );

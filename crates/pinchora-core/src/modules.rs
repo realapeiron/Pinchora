@@ -122,11 +122,12 @@ pub enum Module {
     Stats,
     Tickets,
     AutoMod,
+    Feeds,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 34] = [
+    pub const ALL: [Self; 35] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -161,6 +162,7 @@ impl Module {
         Self::Stats,
         Self::Tickets,
         Self::AutoMod,
+        Self::Feeds,
     ];
 
     /// The key stored in the database and used in the API.
@@ -200,6 +202,7 @@ impl Module {
             Self::Stats => "stats",
             Self::Tickets => "tickets",
             Self::AutoMod => "automod",
+            Self::Feeds => "feeds",
         }
     }
 
@@ -243,6 +246,7 @@ impl Module {
             Self::Stats => "Stats",
             Self::Tickets => "Tickets",
             Self::AutoMod => "AutoMod",
+            Self::Feeds => "Social feeds",
         }
     }
 
@@ -301,6 +305,9 @@ impl Module {
             Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
             Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
             Self::AutoMod => "Automatic message rules and moderation actions.",
+            Self::Feeds => {
+                "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
+            }
         }
     }
 
@@ -331,6 +338,7 @@ impl Module {
             Self::Stats => Group::Server,
             Self::Tickets => Group::Community,
             Self::AutoMod => Group::Safety,
+            Self::Feeds => Group::Feeds,
         }
     }
 
@@ -340,6 +348,7 @@ impl Module {
                 Scope::Server
             }
             Self::AutoMod => Scope::Server,
+            Self::Feeds => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -379,6 +388,7 @@ impl Module {
             "tag" | "customcommand" => Self::CustomCommands,
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
+            "feeds" => Self::Feeds,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
             "surge" => Self::Party,
             "party" => Self::PartyGames,
@@ -429,6 +439,7 @@ impl Module {
             "sc" => Self::Stats,
             "tk" | "tp" | "tf" | "tr" => Self::Tickets,
             "am" | "ax" => Self::AutoMod,
+            "sn" => Self::Feeds,
             _ => return None,
         })
     }

@@ -138,6 +138,9 @@ mod stats;
 // Tickets: panels, ticket channels and threads, closing with transcripts, the idle ticker.
 #[path = "simulate/tickets.rs"]
 mod tickets;
+// Social feeds: /feeds and the poller, against a local feed server.
+#[path = "simulate/feeds.rs"]
+mod feeds;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -12590,6 +12593,24 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": resolved_channels(&[channel])["channels"],
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("feeds list", json!([sub("list", vec![])])),
+        (
+            "feeds add",
+            json!([sub(
+                "add",
+                vec![
+                    text_option("kind", "rss"),
+                    text_option("source", "https://example.com/feed"),
+                    channel_option("channel", channel)
+                ]
+            )]),
+        ),
+        (
+            "feeds edit",
+            json!([sub("edit", vec![int_option("id", 1), bool_option("enabled", false)])]),
+        ),
+        ("feeds test", json!([sub("test", vec![int_option("id", 1)])])),
+        ("feeds remove", json!([sub("remove", vec![int_option("id", 1)])])),
         ("automod show", json!([sub("show", vec![])])),
         (
             "automod profile",
