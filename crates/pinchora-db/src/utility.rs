@@ -26,6 +26,8 @@ pub struct UtilityStickyRow {
     pub min_messages: i32,
     pub message_count: i32,
     pub enabled: bool,
+    pub lease_until: Option<DateTime<Utc>>,
+    pub pause_reason: Option<String>,
     pub updated_by: Option<i64>,
 }
 
@@ -42,12 +44,14 @@ pub struct ScheduledRow {
     pub last_run_at: Option<DateTime<Utc>>,
     pub runs: i32,
     pub enabled: bool,
+    pub lease_until: Option<DateTime<Utc>>,
+    pub pause_reason: Option<String>,
     pub created_by: Option<i64>,
     pub ping_allowed: bool,
 }
 
-const STICKY: &str = "channel_id, guild_id, content, embed, last_message_id, min_gap_secs, min_messages, message_count, enabled, updated_by";
-const SCHEDULED: &str = "id, guild_id, channel_id, content, embed, schedule, tz, next_run_at, last_run_at, runs, enabled, created_by, ping_allowed";
+const STICKY: &str = "channel_id, guild_id, content, embed, last_message_id, min_gap_secs, min_messages, message_count, enabled, updated_by, lease_until, pause_reason";
+const SCHEDULED: &str = "id, guild_id, channel_id, content, embed, schedule, tz, next_run_at, last_run_at, runs, enabled, created_by, ping_allowed, lease_until, pause_reason";
 
 impl Db {
     pub async fn queue_sticky_cleanup(&self, channel: u64, copy: u64) -> anyhow::Result<()> {
@@ -96,7 +100,7 @@ impl Db {
             .bind(sql_id(channel)).execute(&self.pool).await?.rows_affected() > 0)
     }
     pub async fn set_afk(&self, guild: u64, user: u64, message: &str, nick_prefixed: bool) -> anyhow::Result<()> {
-        sqlx::query("INSERT INTO afk (guild_id,user_id,message,nick_prefixed) VALUES ($1,$2,$3,$4) ON CONFLICT (guild_id,user_id) DO UPDATE SET message=$3,nick_prefixed=$4,since=now()")
+        sqlx::query("INSERT INTO afk (guild_id,user_id,message,nick_prefixed) VALUES ($1,$2,$3,$4) ON CONFLICT (guild_id,user_id) DO UPDATE SET message=$3,nick_prefixed=afk.nick_prefixed OR $4,since=now()")
             .bind(sql_id(guild)).bind(sql_id(user)).bind(message).bind(nick_prefixed).execute(&self.pool).await?;
         Ok(())
     }
@@ -112,8 +116,9 @@ impl Db {
     }
 
     pub async fn upsert_sticky(&self, row: &UtilityStickyRow) -> anyhow::Result<()> {
-        sqlx::query("INSERT INTO sticky_messages (channel_id,guild_id,content,embed,min_gap_secs,min_messages,enabled,updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (channel_id) DO UPDATE SET guild_id=$2,content=$3,embed=$4,min_gap_secs=$5,min_messages=$6,enabled=$7,updated_by=$8,message_count=0,updated_at=now()")
-            .bind(row.channel_id).bind(row.guild_id).bind(&row.content).bind(&row.embed).bind(row.min_gap_secs).bind(row.min_messages).bind(row.enabled).bind(row.updated_by).execute(&self.pool).await?;
+        let changed = sqlx::query("INSERT INTO sticky_messages (channel_id,guild_id,content,embed,min_gap_secs,min_messages,enabled,updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (channel_id) DO UPDATE SET guild_id=$2,content=$3,embed=$4,min_gap_secs=$5,min_messages=$6,enabled=$7,updated_by=$8,message_count=0,updated_at=now(),pause_reason=NULL WHERE sticky_messages.lease_until IS NULL OR sticky_messages.lease_until<now()")
+            .bind(row.channel_id).bind(row.guild_id).bind(&row.content).bind(&row.embed).bind(row.min_gap_secs).bind(row.min_messages).bind(row.enabled).bind(row.updated_by).execute(&self.pool).await?.rows_affected();
+        anyhow::ensure!(changed > 0, "sticky delivery in progress; retry after it finishes");
         Ok(())
     }
 
@@ -127,39 +132,76 @@ impl Db {
     }
 
     pub async fn remove_sticky(&self, guild: u64, channel: u64) -> anyhow::Result<Option<UtilityStickyRow>> {
-        Ok(sqlx::query_as::<_, UtilityStickyRow>(sqlx::AssertSqlSafe(format!(
-            "DELETE FROM sticky_messages WHERE guild_id=$1 AND channel_id=$2 RETURNING {STICKY}"
-        )))
-        .bind(sql_id(guild))
-        .bind(sql_id(channel))
-        .fetch_optional(&self.pool)
-        .await?)
+        let mut tx = self.pool.begin().await?;
+        let row = sqlx::query_as::<_, UtilityStickyRow>(sqlx::AssertSqlSafe(format!(
+            "DELETE FROM sticky_messages WHERE guild_id=$1 AND channel_id=$2 AND (lease_until IS NULL OR lease_until<now()) RETURNING {STICKY}"
+        ))).bind(sql_id(guild)).bind(sql_id(channel)).fetch_optional(&mut *tx).await?;
+        if let Some(copy) = row.as_ref().and_then(|r| r.last_message_id) {
+            sqlx::query("INSERT INTO sticky_copy_cleanup(channel_id,message_id) VALUES ($1,$2) ON CONFLICT DO NOTHING")
+                .bind(sql_id(channel))
+                .bind(copy)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(row)
     }
 
-    pub async fn count_sticky_message(&self, channel: u64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE sticky_messages SET message_count=message_count+1 WHERE channel_id=$1 AND enabled")
-            .bind(sql_id(channel))
-            .execute(&self.pool)
-            .await?;
+    pub async fn utility_sticky_enabled(&self, channel: u64) -> anyhow::Result<bool> {
+        Ok(
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sticky_messages WHERE channel_id=$1 AND enabled)")
+                .bind(sql_id(channel))
+                .fetch_one(&self.pool)
+                .await?,
+        )
+    }
+
+    pub async fn count_sticky_messages(&self, channel: u64, count: i32) -> anyhow::Result<()> {
+        sqlx::query("UPDATE sticky_messages SET message_count=LEAST(message_count::bigint+$2,1000)::integer WHERE channel_id=$1 AND enabled")
+            .bind(sql_id(channel)).bind(i64::from(count)).execute(&self.pool).await?;
         Ok(())
     }
 
     pub async fn claim_stickies(&self, limit: i64) -> anyhow::Result<Vec<UtilityStickyRow>> {
-        Ok(sqlx::query_as::<_, UtilityStickyRow>(sqlx::AssertSqlSafe(format!("WITH due AS (SELECT channel_id FROM sticky_messages WHERE enabled AND (message_count>=min_messages OR COALESCE(last_post_at,updated_at)+min_gap_secs * INTERVAL '1 second'<=now()) AND COALESCE(last_post_at,updated_at)+INTERVAL '5 seconds'<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY updated_at LIMIT $1 FOR UPDATE SKIP LOCKED) UPDATE sticky_messages s SET lease_until=now()+INTERVAL '45 seconds' FROM due WHERE s.channel_id=due.channel_id RETURNING {}", STICKY.split(", ").map(|s| format!("s.{s}")).collect::<Vec<_>>().join(", "))))
+        Ok(sqlx::query_as::<_, UtilityStickyRow>(sqlx::AssertSqlSafe(format!("WITH due AS (SELECT channel_id FROM sticky_messages WHERE enabled AND message_count>=min_messages AND COALESCE(last_post_at,updated_at)+min_gap_secs * INTERVAL '1 second'<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY updated_at LIMIT $1 FOR UPDATE SKIP LOCKED) UPDATE sticky_messages s SET lease_until=now()+INTERVAL '45 seconds' FROM due WHERE s.channel_id=due.channel_id RETURNING {}", STICKY.split(", ").map(|s| format!("s.{s}")).collect::<Vec<_>>().join(", "))))
             .bind(limit).fetch_all(&self.pool).await?)
     }
 
-    pub async fn finish_sticky(&self, channel: u64, copy: u64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE sticky_messages SET last_message_id=$2,message_count=0,last_post_at=now(),lease_until=NULL WHERE channel_id=$1")
-            .bind(sql_id(channel)).bind(sql_id(copy)).execute(&self.pool).await?;
+    /// Persist intent before HTTP. A crash leaves a paused item, never an automatic duplicate.
+    pub async fn begin_sticky(&self, row: &UtilityStickyRow) -> anyhow::Result<bool> {
+        Ok(sqlx::query("UPDATE sticky_messages SET enabled=false,pause_reason='delivery_uncertain',message_count=0 WHERE channel_id=$1 AND enabled AND lease_until=$2 AND lease_until>now()")
+            .bind(row.channel_id).bind(row.lease_until).execute(&self.pool).await?.rows_affected()>0)
+    }
+
+    pub async fn finish_sticky(&self, row: &UtilityStickyRow, copy: u64) -> anyhow::Result<()> {
+        let mut tx = self.pool.begin().await?;
+        let saved = sqlx::query("UPDATE sticky_messages SET last_message_id=$2,last_post_at=now(),lease_until=NULL,enabled=true,pause_reason=NULL WHERE channel_id=$1 AND lease_until=$3 AND pause_reason='delivery_uncertain'")
+            .bind(row.channel_id).bind(sql_id(copy)).bind(row.lease_until).execute(&mut *tx).await?.rows_affected()>0;
+        // If a manager removed/replaced the row while HTTP was in flight, discard our copy.
+        let cleanup = if saved { row.last_message_id } else { Some(sql_id(copy)) };
+        if let Some(old) = cleanup {
+            sqlx::query("INSERT INTO sticky_copy_cleanup(channel_id,message_id) VALUES ($1,$2) ON CONFLICT DO NOTHING")
+                .bind(row.channel_id)
+                .bind(old)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
         Ok(())
     }
 
-    pub async fn release_sticky(&self, channel: u64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE sticky_messages SET lease_until=NULL WHERE channel_id=$1")
-            .bind(sql_id(channel))
+    pub async fn release_sticky(&self, row: &UtilityStickyRow) -> anyhow::Result<()> {
+        sqlx::query("UPDATE sticky_messages SET lease_until=NULL WHERE channel_id=$1 AND lease_until=$2")
+            .bind(row.channel_id)
+            .bind(row.lease_until)
             .execute(&self.pool)
             .await?;
+        Ok(())
+    }
+
+    pub async fn pause_sticky(&self, row: &UtilityStickyRow, reason: &str) -> anyhow::Result<()> {
+        sqlx::query("UPDATE sticky_messages SET enabled=false,pause_reason=$3,lease_until=NULL WHERE channel_id=$1 AND lease_until=$2")
+            .bind(row.channel_id).bind(row.lease_until).bind(reason).execute(&self.pool).await?;
         Ok(())
     }
 
@@ -202,25 +244,25 @@ impl Db {
     }
 
     pub async fn update_schedule(&self, row: &ScheduledRow) -> anyhow::Result<bool> {
-        Ok(sqlx::query("UPDATE scheduled_messages SET channel_id=$3,content=$4,embed=$5,schedule=$6,tz=$7,next_run_at=$8,created_by=$9,ping_allowed=$10,enabled=true,lease_until=NULL WHERE guild_id=$1 AND id=$2 AND (lease_until IS NULL OR lease_until<now())")
+        Ok(sqlx::query("UPDATE scheduled_messages SET channel_id=$3,content=$4,embed=$5,schedule=$6,tz=$7,next_run_at=$8,created_by=$9,ping_allowed=$10,enabled=true,lease_until=NULL,pause_reason=NULL WHERE guild_id=$1 AND id=$2 AND (lease_until IS NULL OR lease_until<now())")
             .bind(row.guild_id).bind(row.id).bind(row.channel_id).bind(&row.content).bind(&row.embed).bind(&row.schedule).bind(&row.tz).bind(row.next_run_at).bind(row.created_by).bind(row.ping_allowed).execute(&self.pool).await?.rows_affected()>0)
     }
 
     pub async fn remove_schedule(&self, guild: u64, id: i64) -> anyhow::Result<bool> {
-        Ok(
-            sqlx::query("DELETE FROM scheduled_messages WHERE guild_id=$1 AND id=$2")
-                .bind(sql_id(guild))
-                .bind(id)
-                .execute(&self.pool)
-                .await?
-                .rows_affected()
-                > 0,
+        Ok(sqlx::query(
+            "DELETE FROM scheduled_messages WHERE guild_id=$1 AND id=$2 AND (lease_until IS NULL OR lease_until<now())",
         )
+        .bind(sql_id(guild))
+        .bind(id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected()
+            > 0)
     }
 
     pub async fn enable_schedule(&self, guild: u64, id: i64, enabled: bool) -> anyhow::Result<bool> {
         Ok(
-            sqlx::query("UPDATE scheduled_messages SET enabled=$3,lease_until=NULL WHERE guild_id=$1 AND id=$2")
+            sqlx::query("UPDATE scheduled_messages SET enabled=$3,lease_until=NULL,pause_reason=NULL WHERE guild_id=$1 AND id=$2 AND (lease_until IS NULL OR lease_until<now())")
                 .bind(sql_id(guild))
                 .bind(id)
                 .bind(enabled)
@@ -236,17 +278,35 @@ impl Db {
             .bind(limit).fetch_all(&self.pool).await?)
     }
 
-    pub async fn finish_schedule(&self, id: i64, next: Option<DateTime<Utc>>) -> anyhow::Result<()> {
-        sqlx::query("UPDATE scheduled_messages SET runs=runs+1,last_run_at=now(),next_run_at=COALESCE($2,next_run_at),enabled=$2 IS NOT NULL,lease_until=NULL WHERE id=$1")
-            .bind(id).bind(next).execute(&self.pool).await?;
+    pub async fn claim_schedule_now(&self, guild: u64, id: i64) -> anyhow::Result<Option<ScheduledRow>> {
+        Ok(sqlx::query_as::<_, ScheduledRow>(sqlx::AssertSqlSafe(format!(
+            "UPDATE scheduled_messages SET enabled=true,lease_until=now()+INTERVAL '90 seconds' WHERE guild_id=$1 AND id=$2 AND (lease_until IS NULL OR lease_until<now()) RETURNING {SCHEDULED}"
+        ))).bind(sql_id(guild)).bind(id).fetch_optional(&self.pool).await?)
+    }
+
+    pub async fn begin_schedule(&self, row: &ScheduledRow) -> anyhow::Result<bool> {
+        Ok(sqlx::query("UPDATE scheduled_messages SET enabled=false,pause_reason='delivery_uncertain' WHERE id=$1 AND enabled AND lease_until=$2 AND lease_until>now()")
+            .bind(row.id).bind(row.lease_until).execute(&self.pool).await?.rows_affected()>0)
+    }
+
+    pub async fn finish_schedule(&self, row: &ScheduledRow, next: Option<DateTime<Utc>>) -> anyhow::Result<()> {
+        sqlx::query("UPDATE scheduled_messages SET runs=runs+1,last_run_at=now(),next_run_at=COALESCE($2,next_run_at),enabled=$2 IS NOT NULL,lease_until=NULL,pause_reason=NULL WHERE id=$1 AND lease_until=$3 AND pause_reason='delivery_uncertain'")
+            .bind(row.id).bind(next).bind(row.lease_until).execute(&self.pool).await?;
         Ok(())
     }
 
-    pub async fn release_schedule(&self, id: i64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE scheduled_messages SET lease_until=NULL WHERE id=$1")
-            .bind(id)
+    pub async fn release_schedule(&self, row: &ScheduledRow) -> anyhow::Result<()> {
+        sqlx::query("UPDATE scheduled_messages SET lease_until=NULL WHERE id=$1 AND lease_until=$2")
+            .bind(row.id)
+            .bind(row.lease_until)
             .execute(&self.pool)
             .await?;
+        Ok(())
+    }
+
+    pub async fn pause_schedule(&self, row: &ScheduledRow, reason: &str) -> anyhow::Result<()> {
+        sqlx::query("UPDATE scheduled_messages SET enabled=false,pause_reason=$3,lease_until=NULL WHERE id=$1 AND lease_until=$2")
+            .bind(row.id).bind(row.lease_until).bind(reason).execute(&self.pool).await?;
         Ok(())
     }
 }

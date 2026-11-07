@@ -28,6 +28,7 @@ CREATE TABLE sticky_messages (
     enabled BOOLEAN NOT NULL DEFAULT true,
     updated_by BIGINT,
     lease_until TIMESTAMPTZ,
+    pause_reason TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX sticky_messages_due ON sticky_messages (lease_until) WHERE enabled;
@@ -52,6 +53,7 @@ CREATE TABLE scheduled_messages (
     created_by BIGINT,
     ping_allowed BOOLEAN NOT NULL DEFAULT false,
     lease_until TIMESTAMPTZ,
+    pause_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX scheduled_messages_due ON scheduled_messages (next_run_at) WHERE enabled;

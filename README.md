@@ -846,7 +846,7 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### Utility
 
-`/afk set [reason] [global] [nickname]` marks you away until your next message. Mentions get one short notice per channel every five minutes. `/sticky set|remove|show` keeps a channel message visible after a chosen number of messages or a time interval, with a five-second debounce; the bot needs Manage Messages. `/schedule add|list|remove|pause|resume|run-now|preview` posts once or on an interval, daily, weekly, or with a five-field cron pattern. Each server has a fixed default UTC offset such as `+03:00`, which a schedule can override; up to 20 schedules fit. Managers can edit sticky and scheduled messages on the Messages dashboard page.
+`/afk set [reason] [global] [nickname]` marks you away until your next message. Mentions get one short notice per channel every five minutes. `/sticky set|remove|show` keeps a channel message visible after both a chosen number of human messages and a minimum time interval, with batched counters; the bot needs Manage Messages. `/schedule add|list|remove|pause|resume|run-now|preview` posts once or on an interval, daily, weekly, or with a five-field cron pattern. Each server has a fixed default UTC offset such as `+03:00`, which a schedule can override; fixed offsets do not adjust for daylight saving time. Up to 20 schedules fit. Missed recurrences coalesce into one send. A failed or uncertain delivery pauses with a reason; check the channel before resuming. Delivery intent is stored before sending, so a crash cannot automatically replay a potentially delivered message. Managers can edit sticky and scheduled messages on the Messages dashboard page.
 
 ### Community pack
 

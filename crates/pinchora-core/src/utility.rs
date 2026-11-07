@@ -5,6 +5,18 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_SCHEDULES: usize = 20;
 
+pub fn pause_text(lang: crate::i18n::Lang, reason: &str) -> String {
+    crate::t!(
+        lang,
+        match reason {
+            "channel_deleted" => "utility.pause-channel",
+            "permissions_lost" => "utility.pause-permissions",
+            "invalid_schedule" => "utility.pause-invalid",
+            _ => "utility.pause-uncertain",
+        }
+    )
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Schedule {
@@ -33,7 +45,11 @@ pub enum Schedule {
 
 pub fn offset(text: &str) -> Option<FixedOffset> {
     let bytes = text.as_bytes();
-    if bytes.len() != 6 || bytes[3] != b':' || !matches!(bytes[0], b'+' | b'-') {
+    if bytes.len() != 6
+        || bytes[3] != b':'
+        || !matches!(bytes[0], b'+' | b'-')
+        || !bytes[1..3].iter().chain(&bytes[4..6]).all(u8::is_ascii_digit)
+    {
         return None;
     }
     let h: i32 = text[1..3].parse().ok()?;
@@ -103,7 +119,8 @@ pub fn next_run(schedule: &Schedule, tz: &str, after: DateTime<Utc>) -> Option<D
             let zone = offset(tz)?;
             let local = after.with_timezone(&zone);
             let start = local.date_naive();
-            for d in 0..=1462 {
+            // A leap day can be eight years away across a non-leap century (2100).
+            for d in 0..=2922 {
                 let date: NaiveDate = start.checked_add_signed(Duration::days(d))?;
                 let matches = |hour, minute| {
                     date.and_hms_opt(hour, minute, 0)
@@ -154,9 +171,54 @@ pub fn next_run(schedule: &Schedule, tz: &str, after: DateTime<Utc>) -> Option<D
     }
 }
 
+/// Preview the same coalesced backlog the sender uses: one missed run, then future runs.
+pub fn preview_runs(schedule: &Schedule, tz: &str, first: DateTime<Utc>, now: DateTime<Utc>) -> Vec<DateTime<Utc>> {
+    let mut at = first.max(now);
+    let mut runs = vec![at];
+    for _ in 0..4 {
+        let Some(next) = next_run(schedule, tz, at) else { break };
+        at = next;
+        runs.push(at);
+    }
+    runs
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn preview_coalesces_outages_instead_of_showing_five_missed_runs() {
+        let now = Utc.with_ymd_and_hms(2028, 3, 1, 9, 0, 0).unwrap();
+        let past = now - Duration::days(10);
+        let runs = preview_runs(&Schedule::Interval { seconds: 60 }, "+03:00", past, now);
+        assert_eq!(runs, (0..5).map(|n| now + Duration::minutes(n)).collect::<Vec<_>>());
+        assert_eq!(preview_runs(&Schedule::Once, "+03:00", past, now), vec![now]);
+    }
+
+    #[test]
+    fn untrusted_offsets_and_leap_century() {
+        for bad in ["+💥0", "+0é:0", "+-1:00", "+00:-1", "+15:00"] {
+            assert!(offset(bad).is_none(), "{bad}");
+        }
+        let rule = Schedule::Cron {
+            minute: "0".into(),
+            hour: "0".into(),
+            day: "29".into(),
+            month: "2".into(),
+            weekday: "*".into(),
+        };
+        assert_eq!(
+            next_run(&rule, "+00:00", Utc.with_ymd_and_hms(2096, 3, 1, 0, 0, 0).unwrap()),
+            Some(Utc.with_ymd_and_hms(2104, 2, 29, 0, 0, 0).unwrap())
+        );
+        let daily = Schedule::Daily { hour: 9, minute: 0 };
+        // Fixed offsets deliberately do not change on DST transition dates.
+        assert_eq!(
+            next_run(&daily, "+01:00", Utc.with_ymd_and_hms(2026, 3, 29, 0, 0, 0).unwrap()),
+            Some(Utc.with_ymd_and_hms(2026, 3, 29, 8, 0, 0).unwrap())
+        );
+    }
+
     #[test]
     fn month_end_and_offset() {
         let at = Utc.with_ymd_and_hms(2026, 1, 31, 22, 0, 0).unwrap();

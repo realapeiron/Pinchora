@@ -18,6 +18,10 @@ import {
   type ScheduledDraft,
   type Sticky,
   useUtility,
+  FIXED_OFFSET_NOTICE,
+  pauseReason,
+  firstRunUtc,
+  newRecurrence,
 } from "../lib/utility";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
@@ -122,8 +126,9 @@ export function Utility() {
           />
           <Panel title="STICKY MESSAGES">
             <p className="panel-lead muted">
-              After the chosen number of member messages or the time interval, Pinchora posts a fresh copy and
-              removes the old one. A five-second debounce prevents bursts. It needs Manage Messages.
+              After both the chosen number of member messages and the minimum time interval, Pinchora posts a
+              fresh copy and removes the old one. Counts are batched to prevent bursts. It needs Manage
+              Messages.
             </p>
             <div className="utility-list">
               {query.data.sticky.map((item) => (
@@ -132,9 +137,12 @@ export function Utility() {
                     <strong>{name(discord.data, item.channel_id)}</strong>
                     <span className="badge">{item.enabled ? "ON" : "OFF"}</span>
                     <p>{item.content || "Embed only"}</p>
+                    {pauseReason(item.pause_reason) && (
+                      <p role="status">{item.pause_reason_text ?? pauseReason(item.pause_reason)}</p>
+                    )}
                     <small>
-                      Every {item.min_messages} messages or {item.min_gap_secs} seconds · {item.message_count}{" "}
-                      counted
+                      Every {item.min_messages} messages and at least {item.min_gap_secs} seconds ·{" "}
+                      {item.message_count} counted
                     </small>
                   </div>
                   <div className="utility-actions">
@@ -173,7 +181,7 @@ export function Utility() {
           >
             <p className="panel-lead muted">
               Send once, every few minutes, daily, weekly, or with a five-field cron pattern. Choose a UTC
-              offset for the server's local time.
+              offset for the server's local time. {query.data.fixed_offset_notice ?? FIXED_OFFSET_NOTICE}
             </p>
             <div className="utility-list">
               {query.data.scheduled.map((item) => (
@@ -342,11 +350,7 @@ function TimezoneEditor({
   return (
     <Panel title="SERVER TIME">
       <div className="utility-timezone">
-        <Field
-          label="Default UTC offset"
-          htmlFor="utility-offset"
-          hint="Used by new schedules when no offset is given. Example: +03:00"
-        >
+        <Field label="Default UTC offset" htmlFor="utility-offset" hint={FIXED_OFFSET_NOTICE}>
           <input
             id="utility-offset"
             className="pixel-input"
@@ -396,6 +400,9 @@ function ScheduleCard({
           {item.enabled ? "ACTIVE" : "PAUSED"}
         </span>
         <p>{item.content || "Embed only"}</p>
+        {pauseReason(item.pause_reason) && (
+          <p role="status">{item.pause_reason_text ?? pauseReason(item.pause_reason)}</p>
+        )}
         <small>
           {item.schedule.kind.replace("_", " ")} · next {new Date(item.next_run_at).toLocaleString()} ·{" "}
           {item.runs} sent
@@ -555,30 +562,9 @@ function ScheduleEditor({
     onChange({ ...draft, [key]: value });
   const kind = draft.schedule.kind;
   const local = draft.next_run_at.slice(0, 16);
-  const changeKind = (value: Recurrence["kind"]) => {
-    const date = new Date(draft.next_run_at);
-    const hour = date.getUTCHours();
-    const minute = date.getUTCMinutes();
-    set(
-      "schedule",
-      value === "once"
-        ? { kind: "once" }
-        : value === "interval"
-          ? { kind: "interval", seconds: 3600 }
-          : value === "daily"
-            ? { kind: "daily", hour, minute }
-            : value === "weekly"
-              ? { kind: "weekly", weekday: date.getUTCDay(), hour, minute }
-              : {
-                  kind: "cron",
-                  minute: String(minute),
-                  hour: String(hour),
-                  day: "*",
-                  month: "*",
-                  weekday: "*",
-                },
-    );
-  };
+  const validTime = Number.isFinite(Date.parse(draft.next_run_at));
+  const changeKind = (value: Recurrence["kind"]) =>
+    set("schedule", newRecurrence(value, draft.next_run_at, draft.tz));
   return (
     <div className="utility-overlay" role="presentation" onClick={onCancel}>
       <section
@@ -624,10 +610,10 @@ function ScheduleEditor({
               className="pixel-input"
               type="datetime-local"
               value={local}
-              onChange={(e) => set("next_run_at", new Date(`${e.target.value}:00Z`).toISOString())}
+              onChange={(e) => set("next_run_at", firstRunUtc(e.target.value))}
             />
           </Field>
-          <Field label="UTC offset" htmlFor="schedule-tz" hint="For example +03:00">
+          <Field label="UTC offset" htmlFor="schedule-tz" hint={FIXED_OFFSET_NOTICE}>
             <input
               id="schedule-tz"
               className="pixel-input"
@@ -732,11 +718,11 @@ function ScheduleEditor({
           <PixelButton variant="ghost" onClick={onCancel}>
             Cancel
           </PixelButton>
-          <PixelButton variant="secondary" onClick={onPreview}>
+          <PixelButton variant="secondary" disabled={!validTime} onClick={onPreview}>
             Preview
           </PixelButton>
           <PixelButton
-            disabled={busy || !draft.channel_id || (!draft.content.trim() && !draft.embed)}
+            disabled={busy || !validTime || !draft.channel_id || (!draft.content.trim() && !draft.embed)}
             onClick={onSave}
           >
             {busy ? "Saving…" : editing ? "Save schedule" : "Schedule"}

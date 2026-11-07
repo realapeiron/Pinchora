@@ -5,7 +5,7 @@ use std::str::Split;
 use chrono::{DateTime, Utc};
 use pinchora_core::{
     t,
-    utility::{Schedule, clean, next_run, offset},
+    utility::{Schedule, clean, next_run, offset, preview_runs},
 };
 use pinchora_db::{ScheduledRow, UtilityStickyRow};
 use serde_json::json;
@@ -59,15 +59,18 @@ impl AfkCommand {
             return cx.reply_ephemeral(t!(cx.lang(), "utility.guild-only")).await;
         };
         let Self::Set(set) = self;
-        let reason = clean(
-            &scrub_value(&set.reason.unwrap_or_else(|| t!(cx.lang(), "utility.afk-default"))).replace('\n', " "),
-            100,
-        );
+        let Some(reason) =
+            crate::utility::afk_plain(&set.reason.unwrap_or_else(|| t!(cx.lang(), "utility.afk-default")))
+        else {
+            return cx.reply_ephemeral(t!(cx.lang(), "utility.afk-unsafe")).await;
+        };
         let user = cx.author()?.id.get();
         let mut prefixed = false;
         if set.nickname.unwrap_or(false) && !set.global.unwrap_or(false) {
             let current = cx.author_display_name();
             if !current.starts_with("[AFK] ") {
+                let current =
+                    crate::utility::afk_plain(&current).unwrap_or_else(|| t!(cx.lang(), "utility.afk-member"));
                 let nick = format!("[AFK] {current}");
                 if cx
                     .app
@@ -90,7 +93,8 @@ impl AfkCommand {
                 prefixed,
             )
             .await?;
-        cx.reply_ephemeral(t!(cx.lang(), "utility.afk-set", reason = reason))
+        crate::utility::forget_afk(&cx.app, user).await?;
+        cx.reply_ephemeral(t!(cx.lang(), "utility.afk-set", reason = scrub_value(&reason)))
             .await
     }
 }
@@ -173,6 +177,8 @@ impl StickyCommand {
                         min_messages: v.messages.unwrap_or(5) as i32,
                         message_count: 0,
                         enabled: true,
+                        lease_until: None,
+                        pause_reason: None,
                         updated_by: Some(cx.author()?.id.get() as i64),
                     })
                     .await?;
@@ -379,6 +385,8 @@ impl ScheduleCommand {
                     last_run_at: None,
                     runs: 0,
                     enabled: true,
+                    lease_until: None,
+                    pause_reason: None,
                     created_by: Some(cx.author()?.id.get() as i64),
                     ping_allowed: broad && actor_may_ping && perms.contains(Permissions::MENTION_EVERYONE),
                 };
@@ -434,10 +442,28 @@ impl ScheduleCommand {
                     .await
             }
             Self::RunNow(v) => {
-                let Some(row) = cx.app.db.schedule(guild, v.id).await? else {
+                let Some(row) = cx.app.db.claim_schedule_now(guild, v.id).await? else {
                     return cx.reply_ephemeral(t!(cx.lang(), "utility.missing")).await;
                 };
-                crate::utility::send_scheduled(&cx.app, &row).await?;
+                if !cx.app.db.begin_schedule(&row).await? {
+                    return cx.reply_ephemeral(t!(cx.lang(), "utility.missing")).await;
+                }
+                match crate::utility::send_scheduled(&cx.app, &row).await {
+                    Ok(_) => {
+                        let rule: Schedule = serde_json::from_value(row.schedule.clone())?;
+                        cx.app
+                            .db
+                            .finish_schedule(&row, next_run(&rule, &row.tz, Utc::now()))
+                            .await?;
+                    }
+                    Err(error) => {
+                        cx.app
+                            .db
+                            .pause_schedule(&row, crate::utility::failure_reason(&error))
+                            .await?;
+                        return cx.reply_ephemeral(t!(cx.lang(), "utility.delivery-paused")).await;
+                    }
+                }
                 cx.reply_ephemeral(t!(cx.lang(), "utility.saved")).await
             }
             Self::Preview(v) => {
@@ -445,15 +471,10 @@ impl ScheduleCommand {
                     return cx.reply_ephemeral(t!(cx.lang(), "utility.missing")).await;
                 };
                 let schedule: Schedule = serde_json::from_value(row.schedule)?;
-                let mut at = row.next_run_at;
-                let mut runs = vec![format!("<t:{}:F>", at.timestamp())];
-                for _ in 0..4 {
-                    let Some(next) = next_run(&schedule, &row.tz, at) else {
-                        break;
-                    };
-                    at = next;
-                    runs.push(format!("<t:{}:F>", at.timestamp()));
-                }
+                let runs = preview_runs(&schedule, &row.tz, row.next_run_at, Utc::now())
+                    .iter()
+                    .map(|at| format!("<t:{}:F>", at.timestamp()))
+                    .collect::<Vec<_>>();
                 cx.reply_ephemeral(t!(cx.lang(), "utility.schedule-preview", runs = runs.join(" · ")))
                     .await
             }
@@ -598,6 +619,8 @@ pub(crate) async fn on_modal(
                     min_messages: messages,
                     message_count: 0,
                     enabled: true,
+                    lease_until: None,
+                    pause_reason: None,
                     updated_by: Some(actor.unwrap_or(0) as i64),
                 })
                 .await?;
@@ -632,6 +655,8 @@ pub(crate) async fn on_modal(
                 last_run_at: None,
                 runs: 0,
                 enabled: true,
+                lease_until: None,
+                pause_reason: None,
                 created_by: Some(actor.unwrap_or(0) as i64),
                 ping_allowed: broad && actor_may_ping && permissions.contains(Permissions::MENTION_EVERYONE),
             };

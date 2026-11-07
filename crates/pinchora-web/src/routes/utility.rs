@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 use pinchora_core::{
     settings::FieldError,
     tags::{EmbedSpec, clean_embed},
-    utility::{Schedule, clean, next_run, offset, validate},
+    utility::{Schedule, clean, offset, preview_runs, validate},
 };
 use pinchora_db::{ScheduledRow, UtilityStickyRow};
 use serde::Deserialize;
@@ -17,6 +17,7 @@ use serde_json::{Value, json};
 use twilight_model::guild::Permissions;
 
 use crate::{
+    audit::{self, Change},
     error::{ApiError, ApiJson, ApiResult},
     extract::ManagedGuild,
     guild_info,
@@ -80,17 +81,47 @@ async fn channel(state: &WebState, guild: u64, raw: &str, manage: bool) -> ApiRe
 }
 
 fn sticky_json(s: &UtilityStickyRow) -> Value {
-    json!({"channel_id":s.channel_id.to_string(),"content":s.content,"embed":s.embed,"min_gap_secs":s.min_gap_secs,"min_messages":s.min_messages,"message_count":s.message_count,"enabled":s.enabled})
+    json!({"channel_id":s.channel_id.to_string(),"content":s.content,"embed":s.embed,"min_gap_secs":s.min_gap_secs,"min_messages":s.min_messages,"message_count":s.message_count,"enabled":s.enabled,"pause_reason":s.pause_reason})
 }
 fn scheduled_json(s: &ScheduledRow) -> Value {
-    json!({"id":s.id.to_string(),"channel_id":s.channel_id.to_string(),"content":s.content,"embed":s.embed,"schedule":s.schedule,"tz":s.tz,"next_run_at":s.next_run_at,"last_run_at":s.last_run_at,"runs":s.runs,"enabled":s.enabled,"ping_allowed":s.ping_allowed})
+    json!({"id":s.id.to_string(),"channel_id":s.channel_id.to_string(),"content":s.content,"embed":s.embed,"schedule":s.schedule,"tz":s.tz,"next_run_at":s.next_run_at,"last_run_at":s.last_run_at,"runs":s.runs,"enabled":s.enabled,"ping_allowed":s.ping_allowed,"pause_reason":s.pause_reason})
 }
+async fn record(
+    state: &WebState,
+    managed: &ManagedGuild,
+    action: &str,
+    target: Option<String>,
+    before: Value,
+    after: Value,
+) {
+    audit::finish(
+        state,
+        &managed.current.session,
+        Change {
+            guild: managed.id,
+            action,
+            target: target.as_deref(),
+            before,
+            after,
+        },
+        None,
+    )
+    .await;
+}
+
 async fn list(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Json<Value>> {
     let sticky = state.app.db.stickies(managed.id).await?;
     let scheduled = state.app.db.schedules(managed.id).await?;
     let utc_offset = state.app.db.utility_offset(managed.id).await?;
+    let lang = state.app.guild_lang(managed.id).await;
+    let localize = |mut value: Value| {
+        if let Some(reason) = value["pause_reason"].as_str() {
+            value["pause_reason_text"] = json!(pinchora_core::utility::pause_text(lang, reason));
+        }
+        value
+    };
     Ok(Json(
-        json!({"sticky":sticky.iter().map(sticky_json).collect::<Vec<_>>(),"scheduled":scheduled.iter().map(scheduled_json).collect::<Vec<_>>(),"max_scheduled":20,"utc_offset":utc_offset}),
+        json!({"sticky":sticky.iter().map(sticky_json).map(localize).collect::<Vec<_>>(),"scheduled":scheduled.iter().map(scheduled_json).map(localize).collect::<Vec<_>>(),"max_scheduled":20,"utc_offset":utc_offset,"fixed_offset_notice":pinchora_core::t!(lang,"utility.fixed-offset")}),
     ))
 }
 
@@ -108,7 +139,17 @@ async fn set_timezone(
     if offset(&body.utc_offset).is_none() {
         return Err(invalid("utc_offset", "Use a UTC offset such as +03:00."));
     }
+    let before = state.app.db.utility_offset(managed.id).await?;
     state.app.db.set_utility_offset(managed.id, &body.utc_offset).await?;
+    record(
+        &state,
+        &managed,
+        "utility.timezone",
+        None,
+        json!({"utc_offset":before}),
+        json!({"utc_offset":body.utc_offset}),
+    )
+    .await;
     Ok(Json(json!({"utc_offset":body.utc_offset})))
 }
 
@@ -152,9 +193,29 @@ async fn save_sticky(
         min_messages: body.min_messages,
         message_count: 0,
         enabled: body.enabled,
+        lease_until: None,
+        pause_reason: None,
         updated_by: Some(managed.current.session.user_id as i64),
     };
+    let before = state
+        .app
+        .db
+        .stickies(managed.id)
+        .await?
+        .iter()
+        .find(|r| r.channel_id == row.channel_id)
+        .map(sticky_json)
+        .unwrap_or(Value::Null);
     state.app.db.upsert_sticky(&row).await?;
+    record(
+        &state,
+        &managed,
+        "utility.sticky.save",
+        Some(channel.to_string()),
+        before,
+        sticky_json(&row),
+    )
+    .await;
     Ok(Json(sticky_json(&row)))
 }
 async fn delete_sticky(
@@ -166,9 +227,15 @@ async fn delete_sticky(
     let Some(row) = state.app.db.remove_sticky(managed.id, channel).await? else {
         return Err(ApiError::not_found());
     };
-    if let Some(copy) = row.last_message_id {
-        state.app.db.queue_sticky_cleanup(channel, copy as u64).await?;
-    }
+    record(
+        &state,
+        &managed,
+        "utility.sticky.remove",
+        Some(channel.to_string()),
+        sticky_json(&row),
+        Value::Null,
+    )
+    .await;
     Ok(Json(json!({"removed":true})))
 }
 
@@ -229,6 +296,8 @@ async fn checked_schedule(state: &WebState, managed: &ManagedGuild, body: Schedu
         last_run_at: None,
         runs: 0,
         enabled: true,
+        lease_until: None,
+        pause_reason: None,
         created_by: Some(managed.current.session.user_id as i64),
         ping_allowed: broad && actor_may_ping && bot_may_ping,
     })
@@ -243,6 +312,15 @@ async fn add_schedule(
     let Some(id) = state.app.db.add_schedule(&row).await? else {
         return Err(ApiError::limit("This server already has 20/20 scheduled messages."));
     };
+    record(
+        &state,
+        &managed,
+        "utility.schedule.add",
+        Some(id.to_string()),
+        Value::Null,
+        scheduled_json(&row),
+    )
+    .await;
     Ok(Json(json!({"id":id.to_string()})))
 }
 
@@ -254,9 +332,26 @@ async fn put_schedule(
 ) -> ApiResult<Json<Value>> {
     let mut row = checked_schedule(&state, &managed, body).await?;
     row.id = id;
+    let before = state
+        .app
+        .db
+        .schedule(managed.id, id)
+        .await?
+        .as_ref()
+        .map(scheduled_json)
+        .unwrap_or(Value::Null);
     if !state.app.db.update_schedule(&row).await? {
         return Err(ApiError::not_found());
     }
+    record(
+        &state,
+        &managed,
+        "utility.schedule.edit",
+        Some(id.to_string()),
+        before,
+        scheduled_json(&row),
+    )
+    .await;
     Ok(Json(json!({"id":id.to_string()})))
 }
 async fn delete_schedule(
@@ -264,9 +359,26 @@ async fn delete_schedule(
     managed: ManagedGuild,
     Path(ScheduledPath { id }): Path<ScheduledPath>,
 ) -> ApiResult<Json<Value>> {
+    let before = state
+        .app
+        .db
+        .schedule(managed.id, id)
+        .await?
+        .as_ref()
+        .map(scheduled_json)
+        .unwrap_or(Value::Null);
     if !state.app.db.remove_schedule(managed.id, id).await? {
         return Err(ApiError::not_found());
     }
+    record(
+        &state,
+        &managed,
+        "utility.schedule.remove",
+        Some(id.to_string()),
+        before,
+        Value::Null,
+    )
+    .await;
     Ok(Json(json!({"removed":true})))
 }
 #[derive(Deserialize)]
@@ -280,9 +392,26 @@ async fn patch_schedule(
     Path(ScheduledPath { id }): Path<ScheduledPath>,
     ApiJson(body): ApiJson<SchedulePatch>,
 ) -> ApiResult<Json<Value>> {
+    let before = state
+        .app
+        .db
+        .schedule(managed.id, id)
+        .await?
+        .as_ref()
+        .map(scheduled_json)
+        .unwrap_or(Value::Null);
     if !state.app.db.enable_schedule(managed.id, id, body.enabled).await? {
         return Err(ApiError::not_found());
     }
+    record(
+        &state,
+        &managed,
+        "utility.schedule.toggle",
+        Some(id.to_string()),
+        before,
+        json!({"enabled":body.enabled}),
+    )
+    .await;
     Ok(Json(json!({"enabled":body.enabled})))
 }
 async fn preview(
@@ -295,15 +424,7 @@ async fn preview(
     };
     let rule: Schedule =
         serde_json::from_value(row.schedule).map_err(|_| invalid("schedule", "Invalid recurrence."))?;
-    let mut at = row.next_run_at;
-    let mut runs = vec![at];
-    for _ in 0..4 {
-        let Some(next) = next_run(&rule, &row.tz, at) else {
-            break;
-        };
-        at = next;
-        runs.push(at);
-    }
+    let runs = preview_runs(&rule, &row.tz, row.next_run_at, Utc::now());
     Ok(Json(json!({"runs":runs})))
 }
 
@@ -319,14 +440,6 @@ async fn preview_draft(_managed: ManagedGuild, ApiJson(body): ApiJson<PreviewBod
     if !validate(&body.schedule) || offset(&body.tz).is_none() {
         return Err(invalid("schedule", "Choose a valid recurrence and UTC offset."));
     }
-    let mut at = body.next_run_at;
-    let mut runs = vec![at];
-    for _ in 0..4 {
-        let Some(next) = next_run(&body.schedule, &body.tz, at) else {
-            break;
-        };
-        at = next;
-        runs.push(at);
-    }
+    let runs = preview_runs(&body.schedule, &body.tz, body.next_run_at, Utc::now());
     Ok(Json(json!({"runs":runs})))
 }

@@ -86,6 +86,8 @@ async fn schedule_can_be_previewed_edited_paused_and_removed() {
             min_messages: 5,
             message_count: 0,
             enabled: true,
+            lease_until: None,
+            pause_reason: None,
             updated_by: None,
         })
         .await
@@ -94,4 +96,49 @@ async fn schedule_can_be_previewed_edited_paused_and_removed() {
         .write(Method::DELETE, &format!("{base}/sticky/{GENERAL}"), json!({}))
         .await;
     assert_eq!(removed_sticky.status, StatusCode::OK, "{}", removed_sticky.text());
+    let audit = h.state.app.db.audit_page(guild, None, 20).await.unwrap();
+    for action in [
+        "utility.schedule.add",
+        "utility.schedule.edit",
+        "utility.schedule.toggle",
+        "utility.schedule.remove",
+        "utility.sticky.remove",
+    ] {
+        assert!(audit.iter().any(|r| r.action == action), "missing audit: {action}");
+    }
+}
+
+#[tokio::test]
+async fn utility_writes_require_csrf_managed_guild_and_record_audit() {
+    let Some(h) = Harness::new("utility_guards_and_audit").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let base = format!("/api/guilds/{guild}/utility");
+    let token = browser.csrf.take();
+    let denied = browser
+        .write(Method::PUT, &format!("{base}/timezone"), json!({"utc_offset":"+03:00"}))
+        .await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN);
+    assert_eq!(denied.code(), "csrf");
+    browser.csrf = token;
+    let denied = browser
+        .write(
+            Method::PUT,
+            &format!("/api/guilds/{}/utility/timezone", guild + 1),
+            json!({"utc_offset":"+03:00"}),
+        )
+        .await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN);
+    assert_eq!(denied.code(), "not_manager");
+    let saved = browser
+        .write(Method::PUT, &format!("{base}/timezone"), json!({"utc_offset":"+03:00"}))
+        .await;
+    assert_eq!(saved.status, StatusCode::OK);
+    let rows = h.state.app.db.audit_page(guild, None, 20).await.unwrap();
+    assert!(rows.iter().any(|r| r.action == "utility.timezone"));
+    let invalid = browser
+        .write(Method::PUT, &format!("{base}/timezone"), json!({"utc_offset":"+💥0"}))
+        .await;
+    assert_eq!(invalid.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
