@@ -6,6 +6,7 @@ mod cards;
 mod commands;
 mod community;
 mod discord_info;
+mod events;
 mod feeds;
 mod guilds;
 mod house;

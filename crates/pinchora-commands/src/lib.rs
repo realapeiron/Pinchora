@@ -7,6 +7,7 @@ mod components;
 mod custom;
 mod cx;
 mod defer;
+mod event_rsvp;
 mod events;
 pub mod feeds;
 mod game;
@@ -69,6 +70,11 @@ pub use custom::{
 };
 pub use cx::Cx;
 pub use defer::Deferral;
+pub use event_rsvp::{
+    check_manage_events as check_event_sync_permission, on_scheduled_event_update, publish as publish_event,
+    refresh_card as refresh_event_card, spawn_ticker as spawn_event_ticker, sync_discord as sync_discord_event,
+    tick as event_tick,
+};
 pub use events::on_reaction;
 pub use events::{
     PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,

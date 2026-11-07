@@ -22,6 +22,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("event_rsvps", "user_id"),
     ("verification_pending", "user_id"),
     ("raid_joins", "user_id"),
     ("automod_hits", "user_id"),
@@ -146,6 +147,7 @@ pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
     ("collection_drops", "host_id"),
     ("tickets", "claimed_by"),
     ("tickets", "closed_by"),
+    ("events", "host_id"),
     ("automod_rules", "created_by"),
     // A room whose owner deleted their data has no owner: whoever is in it may claim it.
     ("temp_voice_channels", "owner_id"),
@@ -187,6 +189,8 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "event_settings",
+    "events",
     "verification",
     "raid_settings",
     "raid_events",

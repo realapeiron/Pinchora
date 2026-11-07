@@ -129,11 +129,12 @@ pub enum Module {
     Invites,
     Verification,
     AntiRaid,
+    Events,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 41] = [
+    pub const ALL: [Self; 42] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -175,6 +176,7 @@ impl Module {
         Self::Invites,
         Self::Verification,
         Self::AntiRaid,
+        Self::Events,
     ];
 
     /// The key stored in the database and used in the API.
@@ -221,6 +223,7 @@ impl Module {
             Self::Invites => "invites",
             Self::Verification => "verification",
             Self::AntiRaid => "anti_raid",
+            Self::Events => "events",
         }
     }
 
@@ -271,6 +274,7 @@ impl Module {
             Self::Invites => "Invites",
             Self::Verification => "Verification",
             Self::AntiRaid => "Raid protection",
+            Self::Events => "Events",
         }
     }
 
@@ -331,6 +335,7 @@ impl Module {
             Self::AutoMod => "Automatic message rules and moderation actions.",
             Self::Verification => "Join gate and pixel captcha verification.",
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
+            Self::Events => "/event: scheduled server events and RSVPs.",
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -374,6 +379,7 @@ impl Module {
             Self::Starboard => Group::Community,
             Self::Verification => Group::Safety,
             Self::AntiRaid => Group::Safety,
+            Self::Events => Group::Community,
         }
     }
 
@@ -454,6 +460,7 @@ impl Module {
             "voice" => Self::TempVoice,
             "verify" | "verification" => Self::Verification,
             "raid" => Self::AntiRaid,
+            "event" => Self::Events,
             _ => return None,
         })
     }
@@ -493,6 +500,7 @@ impl Module {
             "xi" => Self::Leveling,
             "sr" => Self::Starboard,
             "in" | "tl" => Self::Invites,
+            "ev" => Self::Events,
             _ => return None,
         })
     }

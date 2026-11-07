@@ -13,6 +13,7 @@ pub(crate) mod decorate;
 pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
+pub(crate) mod events;
 pub(crate) mod feeds;
 pub(crate) mod fish;
 pub(crate) mod friends;
@@ -178,6 +179,7 @@ commands!(
     starboard::StarboardCommand,
     stats::CountersCommand,
     tickets::TicketCommand,
+    events::EventCommand,
     tickets::TicketsCommand,
     automod::AutoMod,
     verification::Verify,

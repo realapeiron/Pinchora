@@ -2184,6 +2184,154 @@
           "usage": "/stats channel <channel> [period]"
         },
         {
+          "description": "Open a form for a new event",
+          "manager": true,
+          "options": [],
+          "path": "event create",
+          "usage": "/event create"
+        },
+        {
+          "description": "List upcoming events",
+          "manager": true,
+          "options": [],
+          "path": "event list",
+          "usage": "/event list"
+        },
+        {
+          "description": "Change an event, its capacity, role or repeat schedule",
+          "manager": true,
+          "options": [
+            {
+              "description": "Event ID",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "New title",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "New start time in the server time zone",
+              "name": "when",
+              "required": false
+            },
+            {
+              "description": "Duration in minutes",
+              "name": "duration",
+              "required": false
+            },
+            {
+              "description": "New description",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Maximum going RSVPs; zero is unlimited",
+              "name": "capacity",
+              "required": false
+            },
+            {
+              "description": "Maximum Maybe RSVPs; zero is unlimited",
+              "name": "maybe_capacity",
+              "required": false
+            },
+            {
+              "description": "Maximum Declined RSVPs; zero is unlimited",
+              "name": "declined_capacity",
+              "required": false
+            },
+            {
+              "description": "First custom RSVP choice; use - to remove it",
+              "name": "custom_one",
+              "required": false
+            },
+            {
+              "description": "Capacity for the first custom choice",
+              "name": "custom_one_capacity",
+              "required": false
+            },
+            {
+              "description": "Second custom RSVP choice; use - to remove it",
+              "name": "custom_two",
+              "required": false
+            },
+            {
+              "description": "Capacity for the second custom choice",
+              "name": "custom_two_capacity",
+              "required": false
+            },
+            {
+              "description": "Required role ID; 0 clears it",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "daily, weekly or off",
+              "name": "repeat",
+              "required": false
+            },
+            {
+              "description": "Repeat through YYYY-MM-DD (inclusive)",
+              "name": "until",
+              "required": false
+            },
+            {
+              "description": "Mirror to Discord Scheduled Events",
+              "name": "sync",
+              "required": false
+            }
+          ],
+          "path": "event edit",
+          "usage": "/event edit <id> [title] [when] [duration] [description] [capacity] [maybe_capacity] [declined_capacity] [custom_one] [custom_one_capacity] [custom_two] [custom_two_capacity] [role] [repeat] [until] [sync]"
+        },
+        {
+          "description": "Cancel an event",
+          "manager": true,
+          "options": [
+            {
+              "description": "Event ID from /event list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "event cancel",
+          "usage": "/event cancel <id>"
+        },
+        {
+          "description": "Show a paged list of RSVPs",
+          "manager": true,
+          "options": [
+            {
+              "description": "Event ID from /event list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "event attendees",
+          "usage": "/event attendees <id>"
+        },
+        {
+          "description": "Schedule the event reminders again",
+          "manager": true,
+          "options": [
+            {
+              "description": "Event ID from /event list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "event remind",
+          "usage": "/event remind <id>"
+        },
+        {
+          "description": "Show an event template and create button",
+          "manager": true,
+          "options": [],
+          "path": "event template",
+          "usage": "/event template"
+        },
+        {
           "description": "Close this ticket and keep its transcript",
           "manager": false,
           "options": [
@@ -4492,5 +4640,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 272
+  "count": 279
 }

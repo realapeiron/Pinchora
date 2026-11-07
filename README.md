@@ -874,7 +874,7 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### Events
 
-<!-- F21: the Events package replaces this heading's section; keep it one `###` section. -->
+`/event create` opens a form for an event in the server time zone. Times accept `2026-11-12 20:00`, `tomorrow 20:00`, `yarın 20:00`, `cuma 21:00`, `in 2h` and `2 saat sonra`. `/event list|edit|cancel|attendees|remind|template` manage events, RSVPs, reminders and optional Discord Scheduled Event sync. The public card has Going, Maybe and Declined buttons, capacity and a first-come waitlist. The dashboard Events page can create, edit, duplicate and inspect attendees. Set the server time zone there.
 
 ### XP admin
 

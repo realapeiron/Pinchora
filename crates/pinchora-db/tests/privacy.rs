@@ -4,11 +4,14 @@
 //! numbers behind Wrapped.
 
 use chrono::{Duration, NaiveDate, Utc};
-use pinchora_core::economy::{Period, daily_reward};
+use pinchora_core::{
+    economy::{Period, daily_reward},
+    events::default_options,
+};
 use pinchora_db::{
     ANONYMISED, Award, CLEARED_COLUMNS, Comb, Counter, DAILY_LIMITS, DELETED_NAME, Daily, DailyOutcome, Db, DerbyJoin,
-    DuelStart, GiveawayOpen, Hide, ID_LISTS, ListEdit, NewGame, NewGiveaway, OTHER_TABLES, PENDING, PeriodOutcome,
-    RepOutcome, USER_COLUMNS, VisitOutcome, XpGrant, ZEROED_COLUMNS,
+    DuelStart, EventDraft, GiveawayOpen, Hide, ID_LISTS, ListEdit, NewGame, NewGiveaway, OTHER_TABLES, PENDING,
+    PeriodOutcome, RepOutcome, USER_COLUMNS, VisitOutcome, XpGrant, ZEROED_COLUMNS,
 };
 
 async fn db() -> Option<Db> {
@@ -83,6 +86,28 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     db.remember_name(other, "Other").await.unwrap();
     db.pair_partners(user, other).await.unwrap();
     db.befriend(user, other).await.unwrap();
+    let start = Utc::now() + Duration::hours(2);
+    let event = db
+        .create_event(
+            guild,
+            &EventDraft {
+                title: "Privacy test".into(),
+                description: String::new(),
+                starts_at: start,
+                ends_at: start + Duration::hours(1),
+                tz: "UTC".into(),
+                location: String::new(),
+                channel_id: None,
+                host_id: Some(user as i64),
+                options: default_options(),
+                required_role_id: None,
+                reminders: vec![60, 15],
+                recurrence: None,
+            },
+        )
+        .await
+        .unwrap();
+    db.rsvp_event(guild, event.id, user, "going").await.unwrap();
 
     // A wager both players put money on: deleting one player must not cost the other their bet.
     let game = |host: u64, guest: u64, bet: i64| NewGame {

@@ -149,6 +149,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     // Closes tickets nobody wrote in for longer than their server allows.
     pinchora_commands::spawn_tickets_ticker(app.clone());
     pinchora_commands::spawn_feeds_ticker(app.clone());
+    pinchora_commands::spawn_event_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());
