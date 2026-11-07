@@ -1178,7 +1178,10 @@
       "feeds",
       "voice",
       "xp",
-      "info"
+      "info",
+      "afk",
+      "sticky",
+      "schedule"
     ],
     "responder_placeholders": {
       "keyword": [

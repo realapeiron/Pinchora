@@ -83,6 +83,8 @@ mod collection;
 mod automod;
 #[path = "simulate/moderation.rs"]
 mod moderation;
+#[path = "simulate/utility.rs"]
+mod utility;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
 #[path = "simulate/w9a.rs"]
 mod w9a;

@@ -92,6 +92,7 @@ export const router = createBrowserRouter([
       { path: "audit", element: <AuditLog /> },
       { path: "starboard", lazy: async () => ({ Component: (await import("./pages/Starboard")).Starboard }) },
       { path: "stats", lazy: async () => ({ Component: (await import("./pages/Stats")).Stats }) },
+      { path: "utility", lazy: async () => ({ Component: (await import("./pages/Utility")).Utility }) },
       {
         path: "tickets/:ticketId?",
         lazy: async () => ({ Component: (await import("./pages/Tickets")).Tickets }),

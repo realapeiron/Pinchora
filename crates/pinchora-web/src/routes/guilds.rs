@@ -98,6 +98,7 @@ pub fn router() -> Router<WebState> {
         .nest("/tickets", super::tickets::router())
         .nest("/feeds", super::feeds::router())
         .nest("/starboard", super::starboard::router())
+        .nest("/utility", super::utility::router())
 }
 
 #[derive(Serialize)]

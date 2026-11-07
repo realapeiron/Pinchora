@@ -126,11 +126,12 @@ pub enum Module {
     TempVoice,
     Info,
     Starboard,
+    Utility,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 38] = [
+    pub const ALL: [Self; 39] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -169,6 +170,7 @@ impl Module {
         Self::TempVoice,
         Self::Info,
         Self::Starboard,
+        Self::Utility,
     ];
 
     /// The key stored in the database and used in the API.
@@ -212,6 +214,7 @@ impl Module {
             Self::TempVoice => "temp_voice",
             Self::Info => "info",
             Self::Starboard => "starboard",
+            Self::Utility => "utility",
         }
     }
 
@@ -259,6 +262,7 @@ impl Module {
             Self::TempVoice => "Temp voice",
             Self::Info => "Info commands",
             Self::Starboard => "Starboard",
+            Self::Utility => "Messages",
         }
     }
 
@@ -323,6 +327,7 @@ impl Module {
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
             Self::Starboard => "/starboard: highlight popular posts and set up vote channels.",
+            Self::Utility => "AFK notices, sticky posts and scheduled messages.",
         }
     }
 
@@ -357,6 +362,7 @@ impl Module {
             Self::TempVoice => Group::Community,
             Self::Info => Group::Server,
             Self::Starboard => Group::Community,
+            Self::Utility => Group::Server,
         }
     }
 
@@ -416,6 +422,7 @@ impl Module {
             "stats" | "counters" => Self::Stats,
             "ticket" | "tickets" => Self::Tickets,
             "starboard" => Self::Starboard,
+            "afk" | "sticky" | "schedule" => Self::Utility,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -467,6 +474,7 @@ impl Module {
             "nf" => Self::Info,
             "xi" => Self::Leveling,
             "sr" => Self::Starboard,
+            "af" | "sk" | "sm" => Self::Utility,
             _ => return None,
         })
     }

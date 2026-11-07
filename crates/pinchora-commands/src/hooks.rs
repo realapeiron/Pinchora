@@ -62,6 +62,7 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     // F9 stats counts the message.
     crate::stats::count_message(app, msg).await;
     // F19 AFK and sticky messages come after F1.
+    crate::utility::after_message(app, msg).await;
     // F15 AI characters answer mentions.
     Verdict::Continue
 }

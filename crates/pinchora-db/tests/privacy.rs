@@ -162,6 +162,10 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     // Everything else, with the player on each side of every table that names two players.
     // ($1 is the player, $2 someone else.)
     let inserts: &[&str] = &[
+        "INSERT INTO afk (guild_id, user_id, message) VALUES ($1, $1, 'away')",
+        "INSERT INTO sticky_messages (channel_id, guild_id, content, updated_by) VALUES ($1, $1, 'note', $1)",
+        "INSERT INTO scheduled_messages (guild_id, channel_id, content, schedule, next_run_at, created_by)
+         VALUES ($1, $1, 'note', '{\"kind\":\"once\"}', now() + INTERVAL '1 hour', $1)",
         "INSERT INTO inventory (user_id, item_id, quantity) VALUES ($1, 'chair', 2)",
         "INSERT INTO houses (user_id) VALUES ($1)",
         "INSERT INTO rooms (user_id, idx, room_type, wallpaper, floor) VALUES ($1, 0, 'cottage', 'plain', 'oak')",

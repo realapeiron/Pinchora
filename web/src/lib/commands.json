@@ -2712,6 +2712,182 @@
           "options": [],
           "path": "starboard votes list",
           "usage": "/starboard votes list"
+        },
+        {
+          "description": "Set your AFK reason",
+          "manager": false,
+          "options": [
+            {
+              "description": "Why you are away",
+              "name": "reason",
+              "required": false
+            },
+            {
+              "description": "Set across all servers",
+              "name": "global",
+              "required": false
+            },
+            {
+              "description": "Add [AFK] to your server nickname if allowed",
+              "name": "nickname",
+              "required": false
+            }
+          ],
+          "path": "afk set",
+          "usage": "/afk set [reason] [global] [nickname]"
+        },
+        {
+          "description": "Create or replace a sticky message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to keep the message in",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Message text",
+              "name": "text",
+              "required": true
+            },
+            {
+              "description": "Number of human messages before reposting",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Minimum seconds between posts",
+              "name": "seconds",
+              "required": false
+            }
+          ],
+          "path": "sticky set",
+          "usage": "/sticky set <channel> <text> [messages] [seconds]"
+        },
+        {
+          "description": "Remove a channel's sticky message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to remove",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "sticky remove",
+          "usage": "/sticky remove <channel>"
+        },
+        {
+          "description": "List sticky messages",
+          "manager": true,
+          "options": [],
+          "path": "sticky show",
+          "usage": "/sticky show"
+        },
+        {
+          "description": "Save a once or recurring message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for the message",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Message text",
+              "name": "text",
+              "required": true
+            },
+            {
+              "description": "First run (RFC3339, such as 2026-12-01T09:00:00+03:00)",
+              "name": "when",
+              "required": true
+            },
+            {
+              "description": "once, daily, weekly, every:seconds, or cron:minute hour day month weekday",
+              "name": "every",
+              "required": false
+            },
+            {
+              "description": "Fixed UTC offset, such as +03:00",
+              "name": "tz",
+              "required": false
+            }
+          ],
+          "path": "schedule add",
+          "usage": "/schedule add <channel> <text> <when> [every] [tz]"
+        },
+        {
+          "description": "List scheduled messages",
+          "manager": true,
+          "options": [],
+          "path": "schedule list",
+          "usage": "/schedule list"
+        },
+        {
+          "description": "Remove a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule remove",
+          "usage": "/schedule remove <id>"
+        },
+        {
+          "description": "Pause a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule pause",
+          "usage": "/schedule pause <id>"
+        },
+        {
+          "description": "Resume a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule resume",
+          "usage": "/schedule resume <id>"
+        },
+        {
+          "description": "Send a scheduled message now",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule run-now",
+          "usage": "/schedule run-now <id>"
+        },
+        {
+          "description": "Show the next five runs",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule preview",
+          "usage": "/schedule preview <id>"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -4232,5 +4408,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 255
+  "count": 266
 }

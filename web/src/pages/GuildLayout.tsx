@@ -24,6 +24,7 @@ export const NAV: NavGroup[] = [
       { to: "modules", label: "Modules" },
       { to: "audit", label: "Audit log" },
       { to: "stats", label: "Stats" },
+      { to: "utility", label: "Messages" },
     ],
   },
   {

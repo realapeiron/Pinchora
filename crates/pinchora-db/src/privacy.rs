@@ -22,6 +22,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("afk", "user_id"),
     ("automod_hits", "user_id"),
     ("automod_strikes", "user_id"),
     ("placements", "user_id"),
@@ -132,6 +133,8 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
 pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("sticky_messages", "updated_by"),
+    ("scheduled_messages", "created_by"),
     ("suggestions", "decided_by"),
     ("collection_drops", "host_id"),
     ("tickets", "claimed_by"),
@@ -177,6 +180,11 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "sticky_messages",
+    "afk_reply_limits",
+    "utility_settings",
+    "sticky_copy_cleanup",
+    "scheduled_messages",
     "automod_settings",
     "automod_rules",
     "automod_hit_actions",

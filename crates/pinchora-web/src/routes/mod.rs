@@ -26,6 +26,7 @@ mod store;
 mod tag_common;
 mod temp_voice;
 mod tickets;
+mod utility;
 mod xp_admin;
 
 use std::time::Instant;

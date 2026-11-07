@@ -28,8 +28,13 @@ mod stats;
 mod text;
 mod tickets;
 mod util;
+mod utility;
 mod voice_xp;
 mod xp_admin;
+pub use utility::{
+    bot_permissions as utility_bot_permissions, creator_may_ping as utility_creator_may_ping,
+    spawn_ticker as spawn_utility_ticker, tick as utility_tick,
+};
 pub use xp_admin::{
     ImportMode, ImportProgress, ImportRequest, import_mee6, import_mee6_with_fetch, mee6_resting, sync_member_roles,
 };

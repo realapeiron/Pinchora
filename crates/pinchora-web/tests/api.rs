@@ -63,6 +63,8 @@ mod feeds;
 // Temp voice: creators and the live list of rooms.
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
+#[path = "api/utility.rs"]
+mod utility;
 mod xp_admin;
 
 const APPLICATION_ID: u64 = 1;

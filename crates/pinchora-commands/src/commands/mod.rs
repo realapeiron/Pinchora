@@ -68,6 +68,7 @@ pub(crate) mod tickets;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
+pub(crate) mod utility;
 pub(crate) mod wordle;
 mod wrapped;
 mod xp;
@@ -182,4 +183,7 @@ commands!(
     tempvoice::VoiceCommand,
     xp_admin::XpAdmin,
     info::Info,
+    utility::AfkCommand,
+    utility::StickyCommand,
+    utility::ScheduleCommand,
 );
