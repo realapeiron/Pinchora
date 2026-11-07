@@ -79,7 +79,10 @@ async fn feeds_are_checked_saved_previewed_tested_and_removed() {
         .iter()
         .map(|k| k["key"].as_str().unwrap())
         .collect();
-    assert_eq!(kinds, ["youtube", "rss", "reddit", "bluesky", "bridge"]);
+    assert_eq!(
+        kinds,
+        ["youtube", "rss", "reddit", "bluesky", "bridge", "twitch", "kick"]
+    );
     assert_eq!(empty["kinds"][4]["available"], false, "no bridge on this instance");
 
     // The check names the source and its latest post.

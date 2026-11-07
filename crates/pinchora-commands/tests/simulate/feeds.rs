@@ -5,7 +5,7 @@
 use std::sync::OnceLock;
 
 use chrono::{Duration as Span, Utc};
-use pinchora_commands::feeds::{FeedsTick, Fetcher, install_fetcher, tick_for};
+use pinchora_commands::feeds::{FeedsTick, Fetcher, end_live, install_fetcher, send, tick_for};
 use pinchora_core::feeds::Item;
 use pinchora_db::{FeedAdd, FeedEdit, NewFeed, Polled, PostOutcome};
 
@@ -139,6 +139,7 @@ async fn add_direct(sim: &Sim, guild: u64, source: &str, seen: &[String]) -> i64
             message: None,
             embed: true,
             ping_role: None,
+            live_role: None,
             include: &[],
             exclude: &[],
             created_by: unique(),
@@ -151,6 +152,118 @@ async fn add_direct(sim: &Sim, guild: u64, source: &str, seen: &[String]) -> i64
         panic!("feed was not added: {added:?}")
     };
     feed.id
+}
+
+#[tokio::test]
+async fn live_post_is_edited_and_verified_streamer_role_is_removed() {
+    let Some(sim) = Sim::new("live_post_is_edited_and_verified_streamer_role_is_removed").await else {
+        return;
+    };
+    let source = format!("streamer{}", unique());
+    let user = unique();
+    let role = unique();
+    let channel = unique();
+    sim.mock
+        .roles
+        .lock()
+        .unwrap()
+        .push(role_json(role, "Live now", 2, false));
+    sim.app
+        .db
+        .start_channel_link(user, "twitch", &source, "pinchora-proof")
+        .await
+        .unwrap();
+    assert!(
+        sim.app
+            .db
+            .verify_channel_link(user, "twitch", &source, "pinchora-proof")
+            .await
+            .unwrap()
+    );
+    let added = sim
+        .app
+        .db
+        .add_feed(&NewFeed {
+            guild: sim.guild,
+            kind: "twitch",
+            source: &source,
+            title: Some(&source),
+            channel,
+            message: None,
+            embed: true,
+            ping_role: None,
+            live_role: Some(role),
+            include: &[],
+            exclude: &[],
+            created_by: user,
+            seen: &[],
+            interval_secs: 120,
+        })
+        .await
+        .unwrap();
+    let FeedAdd::Added(feed) = added else {
+        panic!("feed should have been added")
+    };
+    sim.app
+        .db
+        .set_live_stream("twitch", &source, "42", Some("stream-42"))
+        .await
+        .unwrap();
+    let item = Item {
+        id: "stream-42".into(),
+        title: "Playing chess".into(),
+        url: Some(format!("https://www.twitch.tv/{source}")),
+        summary: Some("Chess".into()),
+        image: Some("https://example.com/thumb.png".into()),
+        published: Some(Utc::now()),
+        ..Item::default()
+    };
+    assert_eq!(send(&sim.app, &feed, &item, true).await, PostOutcome::Sent);
+    let live = sim.app.db.feed(sim.guild, feed.id).await.unwrap().unwrap();
+    assert!(live.live_message_id.is_some());
+    assert!(
+        sim.mock
+            .role_calls
+            .lock()
+            .unwrap()
+            .contains(&format!("PUT {user} {role}"))
+    );
+    assert!(
+        sim.mock
+            .posts
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|post| { post.channel == channel && post.body["components"][0]["components"][0]["style"] == 5 })
+    );
+    end_live(&sim.app, &live).await;
+    assert!(
+        sim.mock
+            .role_calls
+            .lock()
+            .unwrap()
+            .contains(&format!("DELETE {user} {role}"))
+    );
+    assert!(
+        sim.mock
+            .posts
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|post| post.method == Method::PATCH
+                && post.channel == channel
+                && post.body["embeds"][0]["title"] == "Stream ended · Watch the VOD")
+    );
+    assert!(
+        sim.app
+            .db
+            .feed(sim.guild, feed.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .live_message_id
+            .is_none()
+    );
 }
 
 fn polled_item(id: &str) -> Item {
@@ -524,6 +637,7 @@ async fn new_items_are_posted_once_per_feed_even_with_two_pods() {
             message: Some("{account} · {title} · {author} · {url}"),
             embed: false,
             ping_role: None,
+            live_role: None,
             include: &[],
             exclude: &["boring".to_owned()],
             created_by: admin,

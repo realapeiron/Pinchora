@@ -17,6 +17,7 @@ list-title = "Akışlar ({count}/{max})"
 list-empty = "Bu sunucu henüz hiçbir akışı takip etmiyor. `/setup feeds add` ile ya da paneldeki Akışlar sayfasından ekleyebilirsin."
 list-footer = "Sayfa {page} / {pages}"
 list-pings = " · {role} etiketlenir"
+list-live-role = " · canlı yayın rolü {role}"
 previous = "Önceki"
 next = "Sonraki"
 expired = "Bu düğmenin süresi doldu."
@@ -47,6 +48,8 @@ podcast = "Podcast"
 reddit = "Reddit"
 bluesky = "Bluesky"
 bridge = "Köprü"
+twitch = "Twitch"
+kick = "Kick"
 
 [feeds.default]
 youtube = "**{account}** yeni bir video yükledi: {title}\n{url}"
@@ -54,6 +57,20 @@ rss = "**{account}** kaynağında yeni yazı: {title}\n{url}"
 reddit = "**{account}** topluluğunda yeni gönderi: {title}\n{url}"
 bluesky = "**{account}** Bluesky'da paylaştı:\n{url}"
 bridge = "**{account}** kaynağında yeni paylaşım: {title}\n{url}"
+twitch = "🔴 **{account}** canlı yayında: {title}\n{url}"
+kick = "🔴 **{account}** canlı yayında: {title}\n{url}"
+
+[feeds.live]
+watch = "Yayını izle"
+ended = "Yayın sona erdi · Kaydı izle"
+game = "Oyun"
+
+[feeds.link]
+kind = "Twitch veya Kick seç."
+expired = "Doğrulama kodunun süresi doldu. Yeniden başla."
+check-failed = "Kanal şu an kontrol edilemedi."
+code-missing = "Kodu kanal açıklamana ya da yayın başlığına ekleyip yeniden dene."
+taken = "Bu kanal zaten başka bir üyeye bağlı."
 
 [feeds.card]
 length = "Süre"
@@ -66,6 +83,8 @@ rss = "Bu yıl öğrendiğimiz on şey"
 reddit = "Bu ay oynadığın en huzurlu oyun hangisiydi?"
 bluesky = "Resifte sabah yürüyüşü 🌊"
 bridge = "Yeni bir paylaşım"
+twitch = "Şimdi canlı yayında"
+kick = "Şimdi canlı yayında"
 summary = "Yazının ilk satırları burada görünür."
 account = "Kaynağın"
 
@@ -78,10 +97,14 @@ private = "Bu adres özel bir ağın içini gösteriyor, o yüzden ona bağlanma
 reddit = "Bu bir subreddit değil. r/isim diye yaz ya da bağlantısını yapıştır."
 bluesky = "Bu bir Bluesky hesabı değil. isim.bsky.social gibi kullanıcı adını yaz ya da profil bağlantısını yapıştır."
 bridge = "Bu bir köprü yolu değil. Köprünün sunduğu yolu yaz, örneğin twitter/user/isim."
+twitch = "Twitch kullanıcı adını ya da kanal bağlantısını yaz."
+kick = "Kick kullanıcı adını ya da kanal bağlantısını yaz."
 
 [feeds.unavailable]
 bridge = "X, Instagram ve TikTok için bir RSS köprüsü gerekiyor; bu Pinchora'da kurulu bir köprü yok."
 reddit = "Bu Pinchora'da Reddit akışları kapalı."
+twitch = "Twitch akışları için PINCHORA_FEEDS__TWITCH_CLIENT_ID ve PINCHORA_FEEDS__TWITCH_CLIENT_SECRET gerekiyor."
+kick = "Kick akışları için PINCHORA_FEEDS__KICK_CLIENT_ID ve PINCHORA_FEEDS__KICK_CLIENT_SECRET gerekiyor."
 
 [feeds.error]
 blocked = "adres özel bir ağın içini gösteriyor, o yüzden ona bağlanmam."
@@ -128,11 +151,26 @@ full = "Bir sunucu en fazla {max} akış takip edebilir. Önce birini kaldır."
 post-refused = "Oraya gönderemedim: {why}"
 ping-role = "Her yeni paylaşımda @{role} rolünü etiketler (denemede kimse etiketlenmez)."
 role = "rol"
+live-only = "Canlı yayın rolü yalnızca Twitch veya Kick akışlarında kullanılabilir."
 
 [module-blurb]
 feeds = "/setup feeds: yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin."
 
 [feeds.ui]
+my-channels = "KANALLARIM"
+my-channels-help = "Seni takip eden sunucularda canlı yayın rolü almak için Twitch veya Kick kanalını bağla."
+channel-verified = "Doğrulandı"
+channel-pending = "Doğrulama bekleniyor"
+put-code-in-title-or-bio = "Bu kodu yayın başlığına ya da kanal açıklamana ekle"
+verify-channel = "Doğrula"
+unlink-channel = "Bağlantıyı kaldır"
+platform = "Platform"
+channel-login = "Kanal kullanıcı adı"
+link-channel = "Kanalı bağla"
+twitch-live-help = "Twitch kullanıcı adı veya kanal bağlantısı; Pinchora yayını iki dakikada bir kontrol eder."
+kick-live-help = "Kick kullanıcı adı veya kanal bağlantısı; Pinchora yayını iki dakikada bir kontrol eder."
+live-now-role = "Canlı yayın rolü"
+live-now-role-hint = "Yalnızca bağlı yayıncı canlı yayındayken verilir."
 social-feeds = "SOSYAL AKIŞLAR"
 new-videos-posts-and-episodes-from-the-places = "Sunucunun takip ettiği kaynaklardaki yeni videolar, paylaşımlar ve bölümler yayınlandıkça bir kanala gelsin."
 add-a-feed = "Akış ekle"

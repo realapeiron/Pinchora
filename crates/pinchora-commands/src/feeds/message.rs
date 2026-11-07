@@ -91,6 +91,8 @@ fn color(kind: Kind) -> u32 {
         Kind::Reddit => 0xff4500,
         Kind::Bluesky => 0x1185fe,
         Kind::Bridge => 0x8b7cf6,
+        Kind::Twitch => 0x9146ff,
+        Kind::Kick => 0x53fc18,
     }
 }
 
@@ -161,8 +163,17 @@ pub fn render(lang: Lang, draft: &Draft<'_>, item: &Item) -> FeedMessage {
 fn card(lang: Lang, kind: Kind, account: &str, item: &Item, link: Option<&str>) -> FeedEmbed {
     let picture = item.image.as_deref().and_then(web_link);
     // A video or a post is its picture; an article or an episode only illustrated by one.
-    let big = matches!(kind, Kind::YouTube | Kind::Bluesky);
+    let big = matches!(kind, Kind::YouTube | Kind::Bluesky | Kind::Twitch | Kind::Kick);
     let mut fields = Vec::new();
+    if matches!(kind, Kind::Twitch | Kind::Kick)
+        && let Some(game) = item.summary.as_deref().filter(|game| !game.is_empty())
+    {
+        fields.push(FeedField {
+            name: t!(lang, "feeds.live.game"),
+            value: safe(game, 100),
+            inline: true,
+        });
+    }
     if let Some(secs) = item.duration_secs {
         fields.push(FeedField {
             name: t!(lang, "feeds.card.length"),
@@ -185,7 +196,9 @@ fn card(lang: Lang, kind: Kind, account: &str, item: &Item, link: Option<&str>) 
     let title = Some(safe(&item.title, 256)).filter(|t| !t.is_empty());
     FeedEmbed {
         title,
-        description: item.summary.as_deref().map(|s| safe(s, 350)).filter(|s| !s.is_empty()),
+        description: (!matches!(kind, Kind::Twitch | Kind::Kick))
+            .then(|| item.summary.as_deref().map(|s| safe(s, 350)).filter(|s| !s.is_empty()))
+            .flatten(),
         url: link.map(str::to_owned),
         color: format!("#{:06x}", color(kind)),
         // Discord shows an author line as plain text: mentions out, nothing to escape.
@@ -247,6 +260,8 @@ pub fn sample_item(lang: Lang, kind: Kind, now: DateTime<Utc>) -> Item {
             Kind::Reddit => "https://www.reddit.com/r/example/comments/abc123/".to_owned(),
             Kind::Bluesky => "https://bsky.app/profile/example.bsky.social/post/3l".to_owned(),
             Kind::Rss | Kind::Bridge => "https://example.com/posts/hello".to_owned(),
+            Kind::Twitch => "https://www.twitch.tv/example".to_owned(),
+            Kind::Kick => "https://kick.com/example".to_owned(),
         }),
         author: None,
         summary: matches!(kind, Kind::Rss | Kind::Bridge).then(|| t!(lang, "feeds.sample.summary")),

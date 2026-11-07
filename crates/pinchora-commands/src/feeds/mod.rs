@@ -7,6 +7,7 @@
 //! that fails waits longer each time ([`backoff_secs`]) and says why on the dashboard.
 
 pub(crate) mod fetch;
+pub mod live;
 pub(crate) mod message;
 pub(crate) mod parse;
 
@@ -28,6 +29,7 @@ use pinchora_core::{
 };
 use pinchora_db::{FeedPost, FeedRow, FeedSourceRow, Polled, PostOutcome};
 use sha2::{Digest, Sha256};
+use twilight_http::request::AuditLogReason;
 use twilight_model::{channel::message::AllowedMentions, id::Id};
 
 pub use fetch::{FetchError, Fetched, Fetcher, Request, fetcher, install_fetcher};
@@ -74,6 +76,8 @@ pub async fn spend_lookup(app: &App, guild: u64) -> bool {
 pub struct Instance {
     pub bridge: Option<String>,
     pub reddit: bool,
+    pub twitch: bool,
+    pub kick: bool,
 }
 
 static INSTANCE: LazyLock<Instance> = LazyLock::new(|| Instance {
@@ -83,6 +87,8 @@ static INSTANCE: LazyLock<Instance> = LazyLock::new(|| Instance {
         .filter(|b| b.starts_with("https://") || b.starts_with("http://")),
     reddit: !std::env::var("PINCHORA_FEEDS__REDDIT")
         .is_ok_and(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "false" | "off" | "0" | "no")),
+    twitch: live::configured(Kind::Twitch),
+    kick: live::configured(Kind::Kick),
 });
 
 pub fn instance() -> &'static Instance {
@@ -98,6 +104,8 @@ fn available_in(kind: Kind, settings: &Instance) -> bool {
     match kind {
         Kind::Bridge => settings.bridge.is_some(),
         Kind::Reddit => settings.reddit,
+        Kind::Twitch => settings.twitch,
+        Kind::Kick => settings.kick,
         _ => true,
     }
 }
@@ -218,6 +226,23 @@ pub async fn fetch_source(
     etag: Option<&str>,
     last_modified: Option<&str>,
 ) -> Result<Option<Read>, Problem> {
+    if matches!(kind, Kind::Twitch | Kind::Kick) {
+        if !available(kind) {
+            return Err(Problem::Unavailable(kind));
+        }
+        let read = live::lookup(kind, source)
+            .await
+            .map_err(|_| Problem::Fetch(FetchError::Network))?;
+        return Ok(Some(Read {
+            parsed: parse::Parsed {
+                title: Some(read.title),
+                ttl: None,
+                items: read.item.into_iter().collect(),
+            },
+            etag: None,
+            last_modified: None,
+        }));
+    }
     let url = source_url(kind, source, instance())?;
     let bridge = instance().bridge.as_deref();
     let bridge_host = bridge
@@ -276,13 +301,43 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<FeedsTick> {
 pub async fn tick_for(app: &Arc<App>, guilds: Option<&[u64]>) -> anyhow::Result<FeedsTick> {
     let due = app.db.claim_due_sources(app.now(), POLL_BATCH, guilds).await?;
     let polled = due.len();
-    let queued: usize = futures_util::stream::iter(due)
+    let (twitch, other): (Vec<_>, Vec<_>) = due.into_iter().partition(|row| row.kind == "twitch");
+    let mut queued: usize = futures_util::stream::iter(other)
         .map(|source| poll(app, source))
         .buffer_unordered(POLL_AT_ONCE)
         .collect::<Vec<usize>>()
         .await
         .into_iter()
         .sum();
+    if !twitch.is_empty() {
+        let names: Vec<String> = twitch.iter().map(|row| row.source.clone()).collect();
+        let reads = if available(Kind::Twitch) {
+            live::lookup_twitch_batch(&names).await
+        } else {
+            Err(anyhow::anyhow!("Twitch credentials are missing"))
+        };
+        match reads {
+            Ok(mut reads) => {
+                for row in twitch {
+                    if let Some(read) = reads.remove(&row.source) {
+                        queued += poll_live_read(app, &row, Kind::Twitch, read).await;
+                    } else {
+                        live_failure(app, &row).await;
+                    }
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "batched Twitch poll failed");
+                for row in twitch {
+                    if available(Kind::Twitch) {
+                        live_failure(app, &row).await;
+                    } else {
+                        live_unavailable(app, &row).await;
+                    }
+                }
+            }
+        }
+    }
     let posted = deliver(app, guilds).await?;
     Ok(FeedsTick { polled, queued, posted })
 }
@@ -298,6 +353,9 @@ async fn poll(app: &App, row: FeedSourceRow) -> usize {
             .await;
         return 0;
     };
+    if matches!(kind, Kind::Twitch | Kind::Kick) {
+        return poll_live(app, &row, kind).await;
+    }
     // A little spread, so sources added together do not stay in step.
     let spread = |secs: i64| Span::seconds(secs + rand::random_range(0..=secs / 10));
     let result = fetch_source(kind, &row.source, row.etag.as_deref(), row.last_modified.as_deref()).await;
@@ -343,6 +401,92 @@ async fn poll(app: &App, row: FeedSourceRow) -> usize {
         tracing::warn!(%error, kind = %row.kind, source = %row.source, "feed poll not recorded");
         0
     })
+}
+
+async fn poll_live(app: &App, row: &FeedSourceRow, kind: Kind) -> usize {
+    if !available(kind) {
+        live_unavailable(app, row).await;
+        return 0;
+    }
+    let read = match live::lookup(kind, &row.source).await {
+        Ok(read) => read,
+        Err(error) => {
+            tracing::warn!(%error, source = %row.source, "live source lookup failed");
+            live_failure(app, row).await;
+            return 0;
+        }
+    };
+    poll_live_read(app, row, kind, read).await
+}
+
+async fn live_unavailable(app: &App, row: &FeedSourceRow) {
+    let later = app.now() + Span::seconds(i64::from(row.interval_secs));
+    let code = format!("feeds.unavailable.{}", row.kind);
+    if let Err(error) = app.db.record_feed_failure(&row.kind, &row.source, &code, later).await {
+        tracing::warn!(%error, source = %row.source, "unavailable live source was not recorded");
+    }
+}
+
+async fn live_failure(app: &App, row: &FeedSourceRow) {
+    let later = app.now() + Span::seconds(backoff_secs(row.interval_secs, row.fail_count + 1));
+    if let Err(error) = app
+        .db
+        .record_feed_failure(&row.kind, &row.source, "feeds.error.network", later)
+        .await
+    {
+        tracing::warn!(%error, source = %row.source, "live source failure was not recorded");
+    }
+}
+
+async fn poll_live_read(app: &App, row: &FeedSourceRow, kind: Kind, read: live::LiveRead) -> usize {
+    let now = app.now();
+    if kind == Kind::Twitch && row.eventsub_registered_at.is_none() && live::webhook_callback().is_some() {
+        match live::subscribe_twitch(&read.broadcaster_id).await {
+            Ok(()) => {
+                if let Err(error) = app.db.mark_eventsub_registered(&row.source).await {
+                    tracing::warn!(%error, "EventSub registration was not recorded");
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, source = %row.source, "EventSub registration failed; polling continues")
+            }
+        }
+    }
+    let stream_id = read.item.as_ref().map(|item| item.id.as_str());
+    match app
+        .db
+        .set_live_stream(&row.kind, &row.source, &read.broadcaster_id, stream_id)
+        .await
+    {
+        Ok(ended) => {
+            for feed in ended {
+                end_live(app, &feed).await;
+            }
+        }
+        Err(error) => tracing::warn!(%error, "live stream state was not saved"),
+    }
+    let items: Vec<Item> = read.item.into_iter().collect();
+    match app
+        .db
+        .record_feed_poll(&Polled {
+            kind: &row.kind,
+            source: &row.source,
+            title: Some(&read.title),
+            etag: None,
+            last_modified: None,
+            interval_secs: kind.interval_secs(),
+            next_poll_at: now + Span::seconds(i64::from(kind.interval_secs())),
+            items: &items,
+            now,
+        })
+        .await
+    {
+        Ok(queued) => queued,
+        Err(error) => {
+            tracing::warn!(%error, "live poll was not recorded");
+            0
+        }
+    }
 }
 
 /// Sends the posts this pod can lease; returns how many went out.
@@ -401,18 +545,43 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
     let embeds: Vec<_> = message.embed.iter().map(|e| e.to_embed(draft.kind)).collect();
     // Twilight 0.18 has `nonce` but omits Discord's `enforce_nonce` field. Its raw JSON
     // escape hatch sends the complete payload, including that field.
-    let payload = delivery_payload(
+    let mut payload = delivery_payload(
         &message,
         &embeds,
         &mentions,
         ping.then(|| delivery_nonce(feed.id, &item.id)),
     );
+    if matches!(draft.kind, Kind::Twitch | Kind::Kick)
+        && let Some(url) = pinchora_core::feeds::page_url(draft.kind, &feed.source)
+    {
+        let mut value: serde_json::Value = serde_json::from_slice(&payload).expect("feed payload");
+        value["components"] = serde_json::json!([{ "type": 1, "components": [{
+            "type": 2, "style": 5, "label": t!(lang, "feeds.live.watch"), "url": url
+        }]}]);
+        payload = serde_json::to_vec(&value).expect("live payload");
+    }
     let request = app
         .http
         .create_message(Id::new((feed.channel_id as u64).max(1)))
         .payload_json(&payload);
     match request.await {
-        Ok(_) => PostOutcome::Sent,
+        Ok(response) => {
+            if ping && matches!(draft.kind, Kind::Twitch | Kind::Kick) {
+                match response.model().await {
+                    Ok(message) => match app.db.set_live_message(feed.id, message.id.get(), &item.id).await {
+                        Ok(true) => change_live_role(app, feed, true).await,
+                        Ok(false) => {
+                            let mut ended = feed.clone();
+                            ended.live_message_id = Some(message.id.get() as i64);
+                            end_live(app, &ended).await;
+                        }
+                        Err(error) => tracing::warn!(%error, feed = feed.id, "live message id was not saved"),
+                    },
+                    Err(error) => tracing::warn!(%error, feed = feed.id, "live response was not decoded"),
+                }
+            }
+            PostOutcome::Sent
+        }
         Err(error) => {
             tracing::debug!(%error, feed = feed.id, "feed post refused");
             let code = match error_code(&error) {
@@ -423,6 +592,111 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
             };
             PostOutcome::Refused(code.to_owned())
         }
+    }
+}
+
+/// The role is only handed out to a verified owner and only while it passes the shared role rule.
+pub async fn change_live_role(app: &App, feed: &FeedRow, add: bool) {
+    let Some(role) = feed.live_role_id.map(|id| id as u64) else {
+        return;
+    };
+    let Ok(Some(user)) = app.db.linked_streamer(&feed.kind, &feed.source).await else {
+        return;
+    };
+    let guild = feed.guild_id as u64;
+    let Ok(roles) = app.http.roles(Id::new(guild)).await else {
+        return;
+    };
+    let Ok(roles) = roles.models().await else {
+        return;
+    };
+    let Some(target) = roles.iter().find(|r| r.id.get() == role) else {
+        return;
+    };
+    let Ok(me) = app
+        .http
+        .guild_member(Id::new(guild), Id::new(app.application_id.get()))
+        .await
+    else {
+        return;
+    };
+    let Ok(me) = me.model().await else {
+        return;
+    };
+    let top = roles
+        .iter()
+        .filter(|r| me.roles.contains(&r.id))
+        .map(|r| r.position)
+        .max()
+        .unwrap_or(0);
+    let facts = pinchora_core::settings::RoleFacts {
+        everyone: role == guild,
+        managed: target.managed,
+        position: target.position,
+        permissions: target.permissions.bits(),
+    };
+    if pinchora_core::settings::role_refusal(facts, Some(top), "Live now").is_some() {
+        return;
+    }
+    let request = if add {
+        app.http
+            .add_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+            .reason("Stream went live")
+            .await
+    } else {
+        app.http
+            .remove_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+            .reason("Stream ended")
+            .await
+    };
+    if let Err(error) = request {
+        tracing::warn!(%error, guild, user, role, "live role update failed");
+    }
+}
+
+pub async fn reconcile_live_edit(app: &App, before: &FeedRow, after: &FeedRow) {
+    if before.live_message_id.is_none() {
+        return;
+    }
+    if !after.enabled || before.channel_id != after.channel_id {
+        end_live(app, before).await;
+    } else if before.live_role_id != after.live_role_id {
+        change_live_role(app, before, false).await;
+        change_live_role(app, after, true).await;
+    }
+}
+
+pub async fn end_live(app: &App, feed: &FeedRow) {
+    let Some(id) = feed.live_message_id.map(|id| id as u64) else {
+        return;
+    };
+    let lang = app.guild_lang(feed.guild_id as u64).await;
+    let kind = Kind::parse(&feed.kind).unwrap_or(Kind::Twitch);
+    let vod = format!(
+        "{}/videos",
+        pinchora_core::feeds::page_url(kind, &feed.source).unwrap_or_default()
+    );
+    let embed = twilight_util::builder::embed::EmbedBuilder::new()
+        .title(t!(lang, "feeds.live.ended"))
+        .url(vod)
+        .color(0x6b7280)
+        .build();
+    let body = serde_json::to_vec(&serde_json::json!({
+        "content": "", "embeds": [embed], "components": [], "allowed_mentions": {"parse": []}
+    }))
+    .expect("ended payload");
+    let edited = app
+        .http
+        .update_message(Id::new(feed.channel_id as u64), Id::new(id))
+        .payload_json(&body)
+        .await;
+    change_live_role(app, feed, false).await;
+    if let Err(error) = edited {
+        tracing::warn!(%error, feed = feed.id, "live message edit failed");
+        return;
+    }
+    if let Err(error) = app.db.clear_live_message(feed.id, id).await {
+        tracing::warn!(%error, feed = feed.id, "live message id was not cleared");
     }
 }
 
@@ -483,6 +757,8 @@ mod tests {
         let off = Instance {
             bridge: None,
             reddit: false,
+            twitch: false,
+            kick: false,
         };
         assert_eq!(
             source_url(Kind::Reddit, "existing-subscription", &off),

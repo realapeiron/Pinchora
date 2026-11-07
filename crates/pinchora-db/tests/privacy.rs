@@ -342,6 +342,8 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO feed_sources (kind, source) VALUES ('rss', 'https://privacy.example/' || $1::text)",
         "INSERT INTO feeds (guild_id, kind, source, channel_id, created_by)
          VALUES ($1, 'rss', 'https://privacy.example/' || $1::text, 1, $1)",
+        "INSERT INTO feed_channel_links (user_id, kind, source, verified_at)
+         VALUES ($1, 'twitch', 'privacy' || $1::text, now())",
         // A temp voice room they own, and the members kept out of it ($1 doubles as the room and the server).
         "INSERT INTO temp_voice_channels (channel_id, guild_id, source_id, owner_id) VALUES ($1, $1, $2, $1)",
         "INSERT INTO temp_voice_bans (channel_id, user_id) VALUES ($1, $1), ($1, $2)",

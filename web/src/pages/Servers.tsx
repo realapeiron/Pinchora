@@ -3,12 +3,14 @@ import { PixelButton, PixelLink } from "../components/PixelButton";
 import { ServerIcon } from "../components/ServerIcon";
 import { TopBar } from "../components/TopBar";
 import type { GuildEntry, Me } from "../lib/api";
+import { useMyChannels } from "../lib/feeds";
 import { useGuilds, useRefreshGuilds } from "../lib/queries";
 import { Loading, Problem } from "./States";
 
 export function Servers({ me }: { me: Me }) {
   const guilds = useGuilds();
   const refresh = useRefreshGuilds();
+  const channels = useMyChannels();
   return (
     <div className="page">
       <TopBar me={me} />
@@ -22,6 +24,12 @@ export function Servers({ me }: { me: Me }) {
             {refresh.isPending ? "Refreshing…" : "Refresh list"}
           </PixelButton>
         </div>
+        {channels.data && (
+          <Panel title={channels.data.strings["my-channels"]}>
+            <p>{channels.data.strings["my-channels-help"]}</p>
+            <PixelLink href="/feeds/my-channels">{channels.data.strings["my-channels"]}</PixelLink>
+          </Panel>
+        )}
         {refresh.isError && <p className="notice notice-heart">{refresh.error.message}</p>}
         {guilds.isPending && <Loading label="Finding your servers" />}
         {guilds.isError && <Problem error={guilds.error} />}

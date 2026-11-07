@@ -86,6 +86,8 @@ fn feed_json(lang: Lang, row: &FeedListRow) -> Value {
         "message": feed.message,
         "embed": feed.embed,
         "ping_role_id": feed.ping_role_id.map(|r| r.to_string()),
+        "live_role_id": feed.live_role_id.map(|r| r.to_string()),
+        "live_message_id": feed.live_message_id.map(|r| r.to_string()),
         "filter_include": feed.filter_include,
         "filter_exclude": feed.filter_exclude,
         "enabled": feed.enabled,
@@ -112,6 +114,7 @@ fn audit_json(feed: &FeedRow) -> Value {
         "message": feed.message,
         "embed": feed.embed,
         "ping_role_id": feed.ping_role_id.map(|r| r.to_string()),
+        "live_role_id": feed.live_role_id.map(|r| r.to_string()),
         "filter_include": feed.filter_include,
         "filter_exclude": feed.filter_exclude,
         "enabled": feed.enabled,
@@ -251,6 +254,8 @@ pub struct FeedBody {
     /// `null` pings nobody.
     #[serde(default, deserialize_with = "present")]
     ping_role_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "present")]
+    live_role_id: Option<Option<String>>,
     #[serde(default)]
     filter_include: Option<Vec<String>>,
     #[serde(default)]
@@ -260,7 +265,13 @@ pub struct FeedBody {
 }
 
 /// The checked edit a body asks for, against the server's channels and roles.
-fn checked_edit(lang: Lang, body: &FeedBody, info: &GuildInfo, guild: u64) -> Result<FeedEdit, Vec<FieldError>> {
+fn checked_edit(
+    lang: Lang,
+    body: &FeedBody,
+    info: &GuildInfo,
+    guild: u64,
+    grantor: pinchora_core::settings::Grantor,
+) -> Result<FeedEdit, Vec<FieldError>> {
     let mut errors = Vec::new();
     let channel = body.channel_id.as_deref().and_then(|raw| match parse_id(raw) {
         Some(id) => match info.check_post_channel("channel_id", id) {
@@ -296,6 +307,22 @@ fn checked_edit(lang: Lang, body: &FeedBody, info: &GuildInfo, guild: u64) -> Re
             }
         }
     });
+    let live_role = body.live_role_id.as_ref().map(|raw| {
+        let Some(raw) = raw else {
+            return None;
+        };
+        let Some(id) = parse_id(raw) else {
+            errors.push(FieldError::new("live_role_id", t!(lang, "feeds.api.role")));
+            return None;
+        };
+        match info.check_grant("live_role_id", id, grantor) {
+            Ok(_) => Some(id),
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        }
+    });
     let mut words = |field: &'static str, list: &Option<Vec<String>>| {
         list.as_ref()
             .and_then(|list| match filter_words(list.iter().map(String::as_str)) {
@@ -320,6 +347,7 @@ fn checked_edit(lang: Lang, body: &FeedBody, info: &GuildInfo, guild: u64) -> Re
         include,
         exclude,
         enabled: body.enabled,
+        live_role,
     })
 }
 
@@ -347,7 +375,14 @@ pub async fn create(
         )]));
     }
     let info = guild_info::get(&state, guild, false).await?;
-    let edit = checked_edit(lang, &body, &info, guild).map_err(ApiError::invalid)?;
+    let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
+    let edit = checked_edit(lang, &body, &info, guild, grantor).map_err(ApiError::invalid)?;
+    if edit.live_role.flatten().is_some() && !matches!(kind, Kind::Twitch | Kind::Kick) {
+        return Err(ApiError::invalid(vec![FieldError::new(
+            "live_role_id",
+            t!(lang, "feeds.api.live-only"),
+        )]));
+    }
     let found = look_up(&state, guild, kind, body.source.as_deref().unwrap_or_default()).await?;
     let seen: Vec<String> = found.items.iter().map(|i| i.id.clone()).collect();
     let (include, exclude) = (edit.include.unwrap_or_default(), edit.exclude.unwrap_or_default());
@@ -363,6 +398,7 @@ pub async fn create(
             message: edit.message.flatten().as_deref(),
             embed: edit.embed.unwrap_or(kind != Kind::YouTube),
             ping_role: edit.ping_role.flatten(),
+            live_role: edit.live_role.flatten(),
             include: &include,
             exclude: &exclude,
             created_by: managed.current.session.user_id,
@@ -421,7 +457,17 @@ pub async fn replace(
         return Err(ApiError::malformed(t!(lang, "feeds.api.immutable")));
     }
     let info = guild_info::get(&state, guild, false).await?;
-    let edit = checked_edit(lang, &body, &info, guild).map_err(ApiError::invalid)?;
+    let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
+    let edit = checked_edit(lang, &body, &info, guild, grantor).map_err(ApiError::invalid)?;
+    if edit.live_role.flatten().is_some() {
+        let feed = state.app.db.feed(guild, id).await?;
+        if feed.is_some_and(|feed| !matches!(Kind::parse(&feed.kind), Some(Kind::Twitch | Kind::Kick))) {
+            return Err(ApiError::invalid(vec![FieldError::new(
+                "live_role_id",
+                t!(lang, "feeds.api.live-only"),
+            )]));
+        }
+    }
     match state.app.db.edit_feed(guild, id, &edit).await? {
         FeedChange::NotFound => Err(ApiError::not_found()),
         FeedChange::Duplicate => Err(ApiError::invalid(vec![FieldError::new(
@@ -429,6 +475,7 @@ pub async fn replace(
             t!(lang, "feeds.api.duplicate"),
         )])),
         FeedChange::Changed { before, after } => {
+            feeds::reconcile_live_edit(&state.app, &before, &after).await;
             if before != after {
                 let target = id.to_string();
                 audit::finish(
@@ -459,6 +506,9 @@ pub async fn delete(
     let lang = state.app.guild_lang(managed.id).await;
     let (guild, id) = (managed.id, feed_id(lang, &params)?);
     if let Some(feed) = state.app.db.remove_feed(guild, id).await? {
+        if feed.live_message_id.is_some() {
+            feeds::end_live(&state.app, &feed).await;
+        }
         let target = id.to_string();
         audit::finish(
             &state,

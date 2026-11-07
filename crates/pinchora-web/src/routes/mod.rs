@@ -10,6 +10,8 @@ mod commands;
 mod community;
 mod discord_info;
 mod events;
+mod feed_links;
+mod feed_webhooks;
 mod feeds;
 mod guilds;
 mod house;
@@ -79,11 +81,13 @@ pub fn router(state: WebState) -> Router {
         .nest("/api/house", house::router())
         .nest("/api/reef", reef::router())
         .nest("/api/verify", verification::member_router())
+        .nest("/api/feeds", feed_links::router())
         .route("/api/{*rest}", any(|| async { ApiError::not_found() }));
     Router::new()
         .merge(auth)
         .merge(public)
         .route("/invite", get(site::invite))
+        .nest("/hooks", feed_webhooks::router())
         .merge(api)
         .merge(house::assets())
         .merge(static_files::router())

@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type Preview } from "./api";
 
-export type FeedKind = "youtube" | "rss" | "reddit" | "bluesky" | "bridge";
+export type FeedKind = "youtube" | "rss" | "reddit" | "bluesky" | "bridge" | "twitch" | "kick";
 
 export type HealthState = "ok" | "waiting" | "failing" | "cannot_post" | "off";
 
@@ -34,6 +34,8 @@ export interface Feed {
   message: string | null;
   embed: boolean;
   ping_role_id: string | null;
+  live_role_id: string | null;
+  live_message_id: string | null;
   filter_include: string[];
   filter_exclude: string[];
   enabled: boolean;
@@ -91,6 +93,7 @@ export interface FeedDraft {
   message: string | null;
   embed: boolean;
   ping_role_id: string | null;
+  live_role_id: string | null;
   filter_include: string;
   filter_exclude: string;
   enabled: boolean;
@@ -123,6 +126,8 @@ export const SOURCE_HELP: Record<FeedKind, { label: string; placeholder: string;
     placeholder: "twitter/user/name",
     hint: "the-path-your-rss-bridge-serves-for-an",
   },
+  twitch: { label: "account", placeholder: "twitch.tv/streamer", hint: "twitch-live-help" },
+  kick: { label: "account", placeholder: "kick.com/streamer", hint: "kick-live-help" },
 };
 
 /** A short tag for each kind, for the list. */
@@ -132,6 +137,8 @@ export const KIND_TAG: Record<FeedKind, string> = {
   reddit: "RED",
   bluesky: "SKY",
   bridge: "BRG",
+  twitch: "TTV",
+  kick: "KCK",
 };
 
 export function blankDraft(kind: FeedKind = "youtube"): FeedDraft {
@@ -142,6 +149,7 @@ export function blankDraft(kind: FeedKind = "youtube"): FeedDraft {
     message: null,
     embed: kind !== "youtube",
     ping_role_id: null,
+    live_role_id: null,
     filter_include: "",
     filter_exclude: "",
     enabled: true,
@@ -156,6 +164,7 @@ export function draftOf(feed: Feed): FeedDraft {
     message: feed.message,
     embed: feed.embed,
     ping_role_id: feed.ping_role_id,
+    live_role_id: feed.live_role_id,
     filter_include: feed.filter_include.join(", "),
     filter_exclude: feed.filter_exclude.join(", "),
     enabled: feed.enabled,
@@ -193,6 +202,7 @@ export function bodyOf(draft: FeedDraft, saved: FeedDraft | null): Record<string
     message,
     embed: draft.embed,
     ping_role_id: draft.ping_role_id,
+    live_role_id: draft.live_role_id,
     filter_include: words(draft.filter_include),
     filter_exclude: words(draft.filter_exclude),
     enabled: draft.enabled,
@@ -279,5 +289,51 @@ export function useFeedPreview(guild: string, body: unknown, enabled: boolean) {
     staleTime: Infinity,
     retry: false,
     placeholderData: (previous) => previous,
+  });
+}
+
+export interface MyChannel {
+  kind: "twitch" | "kick";
+  source: string;
+  code: string | null;
+  expires_at: string | null;
+  verified_at: string | null;
+}
+
+export interface MyChannelList {
+  items: MyChannel[];
+  kinds: { key: "twitch" | "kick"; available: boolean; why_not: string | null }[];
+  strings: Record<string, string>;
+}
+
+const myChannelsKey = ["/api/feeds/my-channels"];
+export function useMyChannels() {
+  return useQuery({
+    queryKey: myChannelsKey,
+    queryFn: () => api<MyChannelList>("/api/feeds/my-channels"),
+  });
+}
+export function useStartChannel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: "twitch" | "kick"; source: string }) =>
+      api<MyChannel>("/api/feeds/my-channels", "POST", body),
+    onSuccess: () => client.invalidateQueries({ queryKey: myChannelsKey }),
+  });
+}
+export function useVerifyChannel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (kind: "twitch" | "kick") =>
+      api<{ verified: boolean }>(`/api/feeds/my-channels/${kind}/verify`, "POST", {}),
+    onSuccess: () => client.invalidateQueries({ queryKey: myChannelsKey }),
+  });
+}
+export function useUnlinkChannel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (kind: "twitch" | "kick") =>
+      api<{ removed: boolean }>(`/api/feeds/my-channels/${kind}`, "DELETE"),
+    onSuccess: () => client.invalidateQueries({ queryKey: myChannelsKey }),
   });
 }

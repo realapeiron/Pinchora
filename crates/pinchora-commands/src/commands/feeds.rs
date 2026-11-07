@@ -70,6 +70,10 @@ pub enum FeedKind {
     Bluesky,
     #[option(name = "X, Instagram or TikTok (bridge)", value = "bridge")]
     Bridge,
+    #[option(name = "Twitch", value = "twitch")]
+    Twitch,
+    #[option(name = "Kick", value = "kick")]
+    Kick,
 }
 
 impl FeedKind {
@@ -80,6 +84,8 @@ impl FeedKind {
             Self::Reddit => Kind::Reddit,
             Self::Bluesky => Kind::Bluesky,
             Self::Bridge => Kind::Bridge,
+            Self::Twitch => Kind::Twitch,
+            Self::Kick => Kind::Kick,
         }
     }
 }
@@ -100,6 +106,8 @@ pub struct FeedsAdd {
     message: Option<String>,
     /// A role to ping with every new post
     role: Option<Role>,
+    /// Give this role to the verified streamer while live (Twitch or Kick only)
+    live_role: Option<Role>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -122,6 +130,10 @@ pub struct FeedsEdit {
     role: Option<Role>,
     /// Stop pinging a role
     no_role: Option<bool>,
+    /// Give this role to the verified streamer while live
+    live_role: Option<Role>,
+    /// Stop giving a live role
+    no_live_role: Option<bool>,
     /// Add Pinchora's card (title, picture, summary) under the text
     embed: Option<bool>,
     /// Only post titles with one of these words, comma-separated; - clears
@@ -191,6 +203,7 @@ fn feed_json(feed: &FeedRow) -> Value {
         "message": feed.message,
         "embed": feed.embed,
         "ping_role_id": feed.ping_role_id.map(|r| r.to_string()),
+        "live_role_id": feed.live_role_id.map(|r| r.to_string()),
         "filter_include": feed.filter_include,
         "filter_exclude": feed.filter_exclude,
         "enabled": feed.enabled,
@@ -238,6 +251,14 @@ async fn add(cx: &Cx, guild: u64, c: FeedsAdd) -> anyhow::Result<()> {
     if c.role.as_ref().is_some_and(|r| r.id.get() == guild) {
         return cx.reply_ephemeral(t!(lang, "feeds.no-everyone")).await;
     }
+    if let Some(role) = c.live_role.as_ref() {
+        if !matches!(kind, Kind::Twitch | Kind::Kick) {
+            return cx.reply_ephemeral(t!(lang, "feeds.api.live-only")).await;
+        }
+        if let Some(why) = crate::roles::unassignable(cx, guild, role).await {
+            return cx.reply_ephemeral(why).await;
+        }
+    }
     if !feeds::spend_lookup(&cx.app, guild).await {
         return cx.reply_ephemeral(t!(lang, "feeds.slow-down")).await;
     }
@@ -260,6 +281,7 @@ async fn add(cx: &Cx, guild: u64, c: FeedsAdd) -> anyhow::Result<()> {
             // YouTube links get Discord's own video player; everything else reads better as a card.
             embed: kind != Kind::YouTube,
             ping_role: ping_role(guild, c.role.as_ref()),
+            live_role: c.live_role.as_ref().map(|role| role.id.get()),
             include: &[],
             exclude: &[],
             created_by: cx.author()?.id.get(),
@@ -338,6 +360,9 @@ fn page_view(lang: Lang, rows: &[FeedListRow], page: usize) -> (Embed, Vec<Compo
             );
             if let Some(role) = feed.ping_role_id {
                 line.push_str(&t!(lang, "feeds.list-pings", role = format!("<@&{role}>")));
+            }
+            if let Some(role) = feed.live_role_id {
+                line.push_str(&t!(lang, "feeds.list-live-role", role = format!("<@&{role}>")));
             }
             line
         })
@@ -453,6 +478,22 @@ async fn edit(cx: &Cx, guild: u64, c: FeedsEdit) -> anyhow::Result<()> {
         (None, Some(true)) => Some(None),
         _ => None,
     };
+    if let Some(role) = c.live_role.as_ref()
+        && let Some(why) = crate::roles::unassignable(cx, guild, role).await
+    {
+        return cx.reply_ephemeral(why).await;
+    }
+    let live_role = match (c.live_role.as_ref(), c.no_live_role) {
+        (Some(role), _) => Some(Some(role.id.get())),
+        (None, Some(true)) => Some(None),
+        _ => None,
+    };
+    if live_role.flatten().is_some() {
+        let feed = cx.app.db.feed(guild, c.id).await?;
+        if feed.is_some_and(|feed| !matches!(Kind::parse(&feed.kind), Some(Kind::Twitch | Kind::Kick))) {
+            return cx.reply_ephemeral(t!(lang, "feeds.api.live-only")).await;
+        }
+    }
     let change = FeedEdit {
         channel: c.channel.as_ref().map(|ch| ch.id.get()),
         message,
@@ -461,6 +502,7 @@ async fn edit(cx: &Cx, guild: u64, c: FeedsEdit) -> anyhow::Result<()> {
         include,
         exclude,
         enabled: c.enabled,
+        live_role,
     };
     let nothing = change.channel.is_none()
         && change.message.is_none()
@@ -468,7 +510,8 @@ async fn edit(cx: &Cx, guild: u64, c: FeedsEdit) -> anyhow::Result<()> {
         && change.ping_role.is_none()
         && change.include.is_none()
         && change.exclude.is_none()
-        && change.enabled.is_none();
+        && change.enabled.is_none()
+        && change.live_role.is_none();
     if nothing {
         return cx.reply_ephemeral(t!(lang, "feeds.edit-nothing")).await;
     }
@@ -479,6 +522,7 @@ async fn edit(cx: &Cx, guild: u64, c: FeedsEdit) -> anyhow::Result<()> {
             cx.reply_ephemeral(t!(lang, "feeds.duplicate", channel = channel)).await
         }
         FeedChange::Changed { before, after } => {
+            feeds::reconcile_live_edit(&cx.app, &before, &after).await;
             audit(
                 cx,
                 guild,
@@ -555,6 +599,9 @@ async fn remove(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
     let Some(feed) = cx.app.db.remove_feed(guild, id).await? else {
         return cx.reply_ephemeral(t!(lang, "feeds.no-such", id = id)).await;
     };
+    if feed.live_message_id.is_some() {
+        feeds::end_live(&cx.app, &feed).await;
+    }
     audit(cx, guild, "feeds.remove", feed.id, Some(feed_json(&feed)), None).await;
     cx.reply_ephemeral(t!(lang, "feeds.removed", name = feed_name(lang, &feed)))
         .await
