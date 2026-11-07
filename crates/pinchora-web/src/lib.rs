@@ -16,6 +16,7 @@ mod extract;
 mod guild_info;
 mod invalidate;
 mod ratelimit;
+mod reef;
 mod routes;
 #[cfg(test)]
 mod rules;

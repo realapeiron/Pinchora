@@ -10,11 +10,13 @@ use crate::Cache;
 /// Pinchora on one Redis hears it; the ids in the messages keep that harmless.
 pub const INVALIDATE_CHANNEL: &str = "pinchora:invalidate";
 
-/// What changed. The message on the wire is `guild:<id>` or `xp:<id>`.
+/// What changed. The message on the wire is `guild:<id>`, `xp:<id>` or `house:<id>`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Invalidation {
     /// A server's settings row.
     Guild(u64),
+    /// A house layout changed; listeners verify the current database layout.
+    House(u64),
     /// A server's XP multipliers.
     XpRules(u64),
 }
@@ -22,6 +24,7 @@ pub enum Invalidation {
 impl Invalidation {
     pub fn encode(self) -> String {
         match self {
+            Self::House(id) => format!("house:{id}"),
             Self::Guild(id) => format!("guild:{id}"),
             Self::XpRules(id) => format!("xp:{id}"),
         }
@@ -31,6 +34,7 @@ impl Invalidation {
         let (kind, id) = message.split_once(':')?;
         let id = id.parse().ok()?;
         match kind {
+            "house" => Some(Self::House(id)),
             "guild" => Some(Self::Guild(id)),
             "xp" => Some(Self::XpRules(id)),
             _ => None,
@@ -62,7 +66,11 @@ mod tests {
 
     #[test]
     fn messages_round_trip() {
-        for what in [Invalidation::Guild(42), Invalidation::XpRules(u64::MAX >> 1)] {
+        for what in [
+            Invalidation::Guild(42),
+            Invalidation::XpRules(u64::MAX >> 1),
+            Invalidation::House(42),
+        ] {
             assert_eq!(Invalidation::decode(&what.encode()), Some(what));
         }
         assert_eq!(Invalidation::Guild(7).encode(), "guild:7");

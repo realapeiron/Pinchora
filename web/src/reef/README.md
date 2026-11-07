@@ -1,4 +1,4 @@
-# Reef client engine (R02–R08, R12)
+# Reef client engine and multiplayer (R02–R12)
 
 Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. The room picker in Controls preserves the flag.
 
@@ -25,7 +25,7 @@ No new npm dependencies. `reef:assets` runs automatically before dev/build and u
 - Floor/wall/rug/static-shadow preparation uses the existing software renderer in a worker. All seven Rust scene fixtures, including editing overlays, are pixel-identical through the cached software compositor. Atlas standing sprites have binary alpha; live drawing uses native bitmaps with smoothing disabled.
 - Standing objects and fractional actors share the existing footprint dependency graph, overlap rank, stable ready queue and cycle fallback. `fixtures/order.json` adds fractional wide-furniture cases. Alpha picking follows reverse painter order.
 - Camera scaling and translations are integers in physical pixels. CSS size derives from the backing resolution and DPR; the floor inverse retains its `-1` boundary. Drag/pinch/cancel consume taps. Keyboard arrows, tile coordinates, and a furniture/action list provide pointer-free control.
-- Navigation uses four neighbours, Manhattan distance, `(f, h, insertion)` ties and no diagonals. `fixtures/navigation.json` is the language-neutral contract for a future Rust implementation. Empty/full rooms, blocked and unreachable goals, replan-without-corner-cutting, approach tiles, sit/stand and use completion are covered.
+- Navigation uses four neighbours, Manhattan distance, `(f, h, insertion)` ties and no diagonals. `fixtures/navigation.json` is the shared Rust/TypeScript contract. Empty/full rooms, blocked and unreachable goals, replan-without-corner-cutting, approach tiles, sit/stand and use completion are covered.
 - Rugs/walls are walkable; floor and loose surface items default to solid. Three pilot seats are allowlisted (`pebblerest_stool`, `duneplait_stool`, `mosshem_pouf`); game-tagged items play the use animation. Seat approaches and directions transpose when flipped. Unknown seats remain solid. All other furniture offers walking to a reachable adjacent tile.
 - All 32 frames per look are composed once with the fixed foot anchor. Key skin/hair/top/bottom ramps are sourced from the bot; custom OKLCH ramps are checked against 136 fixtures generated from the actual Rust palette implementation. The palette file in this checkout is `assets/sprites/avatar_palette.hex`.
 - Accessories use original procedural pixels obtained by comparing the existing character endpoint's base and single-accessory images. These layers are positioned by metadata, ordered by slot, mirrored by facing and padded beyond the character cell. Faces are occluded while facing away; use poses put held items away. Missing hand landmarks retain a saved anchor and produce a visible warning; unknown accessories are named in a warning. No replacement art is generated.
@@ -46,4 +46,53 @@ The camera fits the room with 24 CSS pixels of padding at the largest integer **
 
 This environment's Chromium launch fails at macOS Mach-port registration (`Permission denied`), so browser visuals, HTTP-transfer measurements, total resident memory, and physical midrange-phone 60 FPS remain unverified. The browser specs are retained for the integration environment.
 
-This is local client prediction, with no realtime server, persistent position, inventory mutation, game launch, cooldown or rewards. Seat heights and directional accessory placements are pilot content awaiting visual integration review; no chair-arm foreground masks are certified (the initial seats have no arms). The sheet's own eye/shoe colours are retained; the requested four key channels are recoloured. Reduced motion preserves navigation and facing but replaces interpolated walking with tile steps and a static idle pose. A full room offers viewing until space is cleared. Periodic snapshot refresh is suspended during local Play so it cannot reset an active walk. Reload or switch rooms to refresh the layout; server-driven layout invalidation belongs to the later realtime phases.
+Local preview remains available when multiplayer cannot connect. Seat heights and directional accessory placements are pilot content awaiting visual integration review; no chair-arm foreground masks are certified. The sheet's eye/shoe colours are retained; four key channels are recoloured. Full rooms without a free entry tile remain viewable. Multiplayer refreshes layouts from server invalidations; offline preview refreshes on reload or room change.
+
+## Private-house multiplayer (R09–R11)
+
+Play now attempts a single-pod room connection; an unavailable socket leaves the local preview usable.
+Two separate browser profiles, signed in as different accounts with saved characters, can open
+/house/&lt;owner-id&gt;?play=1. The owner can use /me/house?play=1. Hidden or locked houses and
+bidirectional guestbook blocks refuse visitors. There is no friends-only policy or global Reef sanction
+table in this checkout. Owners bypass visitor privacy checks. Guild plazas are not admitted.
+
+- GET /api/reef/bootstrap: authenticated saved appearance; visitors do not need to own a house.
+- POST /api/reef/socket-ticket: authenticated, CSRF-protected, Redis single-use ticket, 30-second TTL.
+- GET /api/reef/ws: session cookie plus one exact configured Origin; first frame authenticates within five seconds.
+- Every JSON message has protocol_version (1), request_id, room_epoch and sequence.
+  Client request IDs are 1–64 characters; unsolicited server events use an empty request ID.
+  Each direction has its own increasing connection sequence starting at 1. Connection control messages use an empty epoch;
+  snapshots supply the actor's random epoch. Room keys are house:OWNER:INDEX; all database IDs are strings.
+- Client types: authenticate {ticket}, join {room}, leave, snapshot, move_to {tile:[x,y]},
+  stop, use {placement_id,revision}, stand, ping.
+- Server types: authenticated, snapshot, presence, path, correction, posture,
+  layout_changed, left, ping, error {reason}. Command responses echo request IDs.
+  Correction updates are compact tuples: [user_id,x,y,tile_x,tile_y,direction,state].
+  Snapshots/presence carry saved character codes and plain-text names; appearances are not resent every tick.
+- Limits: 4 KiB incoming frames and messages, 64 queued outbound events / actor commands, 16 occupants,
+  movement 5/s with burst 10, furniture 2/s with burst 2 and a 500 ms account use cooldown, six joins per rolling minute.
+  An extra 30/s burst-60 envelope budget bounds other commands. Account budgets survive reconnects.
+- Server movement uses monotonic time at 3 tiles/s; corrections run at 10 Hz and the browser interpolates at rAF frequency
+  with a 100 ms buffer. Stop/replan finishes the current edge without crossing a blocked corner.
+  Server-validated seats have one occupant; moving/standing/leaving releases the seat.
+- Heartbeats run every 15 seconds, expire after 45 seconds without a valid client frame, and revalidate the session.
+  A new authenticated controller closes the old one with controller_replaced; the old tab does not reconnect.
+  Gaps request snapshots; reconnect uses bounded exponential backoff with jitter.
+- House editor, surface and upgrade changes publish on the existing invalidation channel. Actors reload authoritative
+  DB layouts before movement/use and every second, so missed notifications also recover. Layout changes stop routes,
+  release seats and relocate blocked actors to the deterministic free entry. The client refetches the room.
+  Redis/DB failures close rooms, and full outbound queues evict slow clients.
+- This is single-pod authority only. No chat, rewards, new personal-data tables, migrations, outbox or cross-pod fencing.
+  The existing shared invalidation channel carries only a house ID hint; each actor rereads its own database.
+  Reliable environment-isolated outbox notifications and multi-pod ownership remain Wave 6 work.
+
+Rust and TS both read navigation-manifest.json, the seven A* cases in fixtures/navigation.json,
+and the three collision/interaction cases in fixtures/navigation-layout.json.
+The Rust integration binary reef runs real HTTP/WebSocket clients against the configured test services.
+The lead can run the two-browser journey with the regular real-server config, after building the Rust binary
+and frontend with the assigned test DB/Redis environment:
+
+    npx playwright test tests/e2e/reef-multiplayer.spec.ts
+
+The spec seeds two stable test accounts (IDs ending 091/092), then checks presence, walking, seat contention,
+reconnect and replacement controllers. It uses neither mocked WebSockets nor the preview-only Reef config.

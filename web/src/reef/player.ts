@@ -19,6 +19,22 @@ export class Player {
     this.position = this.tile ? [...this.tile] : null;
     if (!this.tile) this.message = "No free entry tile. View the room or clear a floor tile in Discord.";
   }
+  synchronize(
+    tile: Point,
+    position: Point,
+    direction: Direction,
+    state: "idle" | "walk" | "sit" | "use",
+    seat: Omit<Target, "label"> | null,
+  ) {
+    this.route = [];
+    this.progress = 0;
+    this.pending = null;
+    this.tile = tile;
+    this.position = position;
+    this.direction = direction;
+    this.state = state;
+    this.target = seat ? { ...seat, label: "" } : null;
+  }
   move(goal: Point, interaction?: Target): boolean {
     if (!this.tile) return false;
     // Replanning starts at the next exact tile, never cuts across a blocked corner.

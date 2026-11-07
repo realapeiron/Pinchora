@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { PixelButton } from "../components/PixelButton";
 import type { RoomJson } from "../iso/scene";
 import { bootstrap } from "./bootstrap";
-import { poseAt } from "./animation";
+import { ReefNet } from "./net";
+import { poseAt, type Animation } from "./animation";
 import { Camera, Gesture } from "./camera";
-import { actorItem, Compositor } from "./compositor";
+import { actorItem, Compositor, type ActorDraw } from "./compositor";
 import type { Point } from "./manifest";
 import { findPath, type Target, type WalkTarget } from "./navigation";
 import { Player } from "./player";
@@ -21,6 +22,8 @@ interface Controls {
 export default function ReefStage({
   room,
   own,
+  roomKey,
+  onLayout,
   roomName,
   playerName,
   onExit,
@@ -29,12 +32,16 @@ export default function ReefStage({
 }: {
   room: RoomJson;
   own: boolean;
+  roomKey: string;
+  onLayout: () => void;
   roomName: string;
   playerName: string;
   onExit: () => void;
   rooms: { idx: number; name: string }[];
   onRoom: (idx: number) => void;
 }) {
+  const refreshLayout = useRef(onLayout);
+  refreshLayout.current = onLayout;
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
   const nameTag = useRef<HTMLDivElement>(null);
@@ -87,6 +94,24 @@ export default function ReefStage({
         return;
       }
       const player = new Player(loaded.nav.grid);
+      const remoteArt = new Map<string, Animation>();
+      const pendingArt = new Set<string>();
+      const tags = new Map<string, HTMLDivElement>();
+      let wasOnline = false;
+      const net = new ReefNet(
+        roomKey,
+        (message) => {
+          el.dataset.network = net.ready ? "connected" : "preview";
+          player.message = message;
+          if (!net.ready && wasOnline && player.tile)
+            player.synchronize(player.tile, [...player.tile], player.direction, "idle", null);
+          wasOnline = net.ready;
+          setStatus(message);
+        },
+        () => refreshLayout.current(),
+        room,
+      );
+      void net.connect();
       const camera = new Camera(window.devicePixelRatio || 1);
       const gesture = new Gesture();
       const actor = actorItem();
@@ -149,7 +174,7 @@ export default function ReefStage({
       observer.observe(el.parentElement!);
       resize();
       const announce = () => {
-        if (announced !== player.message) {
+        if (!net.ready && announced !== player.message) {
           announced = player.message;
           setStatus(playerStatus(announced));
         }
@@ -158,7 +183,19 @@ export default function ReefStage({
       };
       const move = (p: Point, t?: Target) => {
         interacted = true;
-        if (player.move(p, t)) {
+        if (net.ready) {
+          const start = net.players.get(net.userId)?.tile;
+          const route =
+            t && start
+              ? t.approaches
+                  .map((tile) => findPath(player.grid, start, tile))
+                  .filter((path) => path !== null)
+                  .sort((a, b) => a.length - b.length)[0]
+              : null;
+          const goal = t ? route?.at(-1) : p;
+          if (goal) net.move(goal, t ? { id: t.id, tile: goal } : undefined);
+        }
+        if (player.move(p, net.ready ? undefined : t)) {
           destination = p;
           markerAge = 0;
           following = true;
@@ -314,7 +351,71 @@ export default function ReefStage({
         const started = performance.now();
         const dt = last ? Math.min(100, now - last) : 0;
         last = now;
-        player.update(dt, motion.matches);
+        if (!net.ready) player.update(dt, motion.matches);
+        else {
+          const me = net.visual(net.userId, now);
+          if (me) {
+            player.synchronize(
+              me.tile,
+              motion.matches && !me.seat ? me.tile : me.position,
+              me.direction,
+              me.state,
+              me.seat,
+            );
+            player.elapsed += dt;
+          }
+        }
+        el.dataset.players = String(net.players.size);
+        for (const [id, tag] of tags)
+          if (!net.players.has(id) || !net.ready) {
+            tag.remove();
+            tags.delete(id);
+          }
+        const activeCharacters = new Set([...net.players.values()].map((p) => p.character));
+        for (const code of remoteArt.keys())
+          if (!activeCharacters.has(code)) {
+            loaded.releaseAnimation(code);
+            remoteArt.delete(code);
+            pendingArt.delete(code);
+          }
+        const remoteDraws: ActorDraw[] = [];
+        if (net.ready)
+          for (const id of [...net.players.keys()].sort()) {
+            if (id === net.userId) continue;
+            const sample = net.visual(id, now)!;
+            const remote = motion.matches && !sample.seat ? { ...sample, position: sample.tile } : sample;
+            if (!remoteArt.has(remote.character) && !pendingArt.has(remote.character)) {
+              pendingArt.add(remote.character);
+              void loaded
+                .loadAnimation(remote.character)
+                .then((animation) => {
+                  if (!abort.signal.aborted) remoteArt.set(remote.character, animation);
+                })
+                .catch(() => {
+                  if (!abort.signal.aborted)
+                    setWarnings((w) => [...w, "A player's saved appearance could not load."]);
+                });
+            }
+            const animation = remoteArt.get(remote.character);
+            if (!animation) continue;
+            const f = animation.get(remote.direction, poseAt(remote.state, now, motion.matches));
+            const lift = remote.seat ? 122 - remote.seat.height - (f.meta.seat_contact?.[1] ?? 101) : 8;
+            const item = actorItem();
+            item.info.label = id;
+            item.x = remote.position[0];
+            item.y = remote.position[1];
+            remoteDraws.push({ item, image: f.image, offset: [-f.padding, lift - f.padding] });
+            let tag = tags.get(id);
+            if (!tag) {
+              tag = document.createElement("div");
+              tag.className = "reef-name-tag";
+              tag.dataset.playerId = id;
+              tag.textContent = remote.name;
+              el.parentElement!.append(tag);
+              tags.set(id, tag);
+            }
+            placeOverlay(tag, remote.position, 105 - lift);
+          }
         announce();
         openingTime += dt;
         markerAge += dt;
@@ -343,6 +444,7 @@ export default function ReefStage({
         ctx.setTransform(camera.scale, 0, 0, camera.scale, camera.x, camera.y);
         const pos = player.state === "sit" && player.target ? player.target.anchor : player.position;
         if (pos) {
+          actor.info.label = net.userId;
           actor.x = pos[0];
           actor.y = pos[1];
           const f = loaded.animation.get(
@@ -357,7 +459,12 @@ export default function ReefStage({
             !motion.matches && player.state === "idle" ? Math.round(Math.sin(player.elapsed / 450)) : 0;
           compositor.draw(
             ctx,
-            [{ item: actor, image: f.image, offset: [-f.padding, lift - f.padding + bob] }],
+            (
+              [
+                { item: actor, image: f.image, offset: [-f.padding, lift - f.padding + bob] },
+                ...remoteDraws,
+              ] as ActorDraw[]
+            ).sort((a, b) => a.item.info.label.localeCompare(b.item.info.label)),
             ground,
           );
           placeOverlay(nameTag.current, pos, 105 - lift - bob);
@@ -394,6 +501,8 @@ export default function ReefStage({
       el.dataset.ready = "true";
       el.dataset.artReady = "false";
       dispose = () => {
+        net.dispose();
+        for (const tag of tags.values()) tag.remove();
         cancelAnimationFrame(raf);
         observer.disconnect();
         controls.current = null;
@@ -443,7 +552,7 @@ export default function ReefStage({
       abort.abort();
       dispose();
     };
-  }, [room, own]);
+  }, [room, own, roomKey]);
   return (
     <section className="reef" aria-label={t("Play in this room")} data-controls-open={drawer}>
       <div className="reef-surface">

@@ -1328,3 +1328,12 @@ no hinting, no layout features except the emoji sequences):
 | `NotoEmoji-Subset.ttf` | Noto Emoji 3.002 ([google/fonts](https://github.com/google/fonts/tree/main/ofl/notoemoji)), monochrome, Regular weight | every emoji code point of the font (1,489) and its sequences (flags, ZWJ, skin tones) | 0.9 MB |
 
 A character no font has (a rare hanzi, another script) still draws as an empty box.
+
+
+### Reef private-house multiplayer
+
+The web Play view (/me/house?play=1 or /house/OWNER?play=1) supports up to 16 players in a
+server-authoritative room on one web pod. Separate logged-in browser profiles can walk and use the pilot seats,
+with saved appearances and name tags. Hidden/locked houses and guestbook blocks restrict visitor access.
+A second tab for an account replaces its earlier controller. An unavailable socket falls back to local preview.
+There is no chat or movement reward. See [the Reef protocol and test instructions](web/src/reef/README.md#private-house-multiplayer-r09r11).

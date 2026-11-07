@@ -212,6 +212,11 @@ pub(crate) async fn on_component(
         (None, Some(surface.id.as_str()))
     };
     cx.app.db.set_room_surfaces(user, room, wp, fl).await?;
+    let _ = cx
+        .app
+        .cache
+        .publish_invalidation(pinchora_cache::Invalidation::House(user))
+        .await;
     let data = panel(cx, room, page, &note).await?;
     cx.update(data).await
 }

@@ -177,6 +177,8 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                   <ReefStage
                     room={room.data}
                     own={house.data.scope === "own"}
+                    roomKey={`house:${house.data.owner.id}:${room.data.idx}`}
+                    onLayout={() => void room.refetch()}
                     roomName={summary?.name ?? house.data.house.name}
                     playerName={me.user.global_name ?? me.user.username}
                     onExit={() => setMode("view")}

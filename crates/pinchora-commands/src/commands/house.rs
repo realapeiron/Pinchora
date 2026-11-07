@@ -1435,6 +1435,12 @@ pub(crate) async fn editor_as(
     let lang = cx.lang();
     let content = Content::get();
     let user_id = who.owner;
+    // Editor refresh follows bot mutations; Reef verifies the layout before broadcasting.
+    let _ = cx
+        .app
+        .cache
+        .publish_invalidation(pinchora_cache::Invalidation::House(user_id))
+        .await;
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
     let tier = house::tier(house_row.tier);
     let room = rooms[state.room.clamp(0, rooms.len() as i16 - 1) as usize].clone();
@@ -1838,6 +1844,11 @@ pub(crate) async fn on_upgrade(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Re
         ),
         UpgradeOutcome::WrongTier { .. } => t!(cx.lang(), "house.upgrade.changed"),
     };
+    let _ = cx
+        .app
+        .cache
+        .publish_invalidation(pinchora_cache::Invalidation::House(user_id))
+        .await;
     cx.update(InteractionResponseData {
         content: Some(text),
         embeds: Some(Vec::new()),

@@ -19,6 +19,7 @@ mod moderation;
 mod modules;
 mod overview;
 mod preview;
+mod reef;
 mod responders;
 mod roles;
 mod settings;
@@ -74,6 +75,7 @@ pub fn router(state: WebState) -> Router {
         .route("/api/me/guilds/refresh", post(me::refresh_guilds))
         .nest("/api/guilds/{g}", guilds::router())
         .nest("/api/house", house::router())
+        .nest("/api/reef", reef::router())
         .nest("/api/verify", verification::member_router())
         .route("/api/{*rest}", any(|| async { ApiError::not_found() }));
     Router::new()

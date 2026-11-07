@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixtures from "./fixtures/navigation.json";
+import layouts from "./fixtures/navigation-layout.json";
 import { approach, classify, findPath, free, navigation, spawn, type Grid, type Target } from "./navigation";
 import { Player } from "./player";
 import { fixtureContent, fixtureJson, type SceneFile } from "../iso/testing";
@@ -22,6 +23,22 @@ const seat: Target = {
   direction: "SW",
 };
 describe("portable A* contract", () => {
+  for (const f of layouts.cases)
+    it(f.name, () => {
+      const content = fixtureContent();
+      const base = fixtureJson<SceneFile>("empty_8x8.json").room;
+      const { grid: g, targets } = navigation(content, {
+        ...base,
+        width: 6,
+        depth: 6,
+        placements: f.placements,
+      });
+      expect([...g.blocked].sort((a, b) => a - b)).toEqual(
+        f.blocked.map(([x, y]) => y! * 6 + x!).sort((a, b) => a - b),
+      );
+      expect(targets.map(({ label: _label, ...target }) => target)).toEqual(f.targets);
+    });
+
   for (const f of fixtures.cases)
     it(f.name, () => {
       const g = grid(f.size[0], f.size[1]);

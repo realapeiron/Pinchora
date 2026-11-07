@@ -8,6 +8,7 @@ use crate::state::WebState;
 /// so a failed announcement is only logged: the bot's cache runs out within a minute anyway.
 pub async fn publish(state: &WebState, what: Invalidation) {
     match what {
+        Invalidation::House(_) => {}
         Invalidation::Guild(guild) => state.app.forget_guild_settings(guild).await,
         Invalidation::XpRules(guild) => state.app.forget_xp_rules(guild).await,
     }

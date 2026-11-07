@@ -1,3 +1,4 @@
+import manifest from "./navigation-manifest.json";
 import type { Content, Furniture } from "../iso/content";
 import { footprint } from "../iso/rules";
 import type { RoomJson } from "../iso/scene";
@@ -23,59 +24,7 @@ export interface NavigationManifest {
   classes: Record<string, NavigationClass>;
 }
 // Small pilot allowlist: unlisted floor furniture remains solid, never inferred as a usable seat.
-export const NAVIGATION: NavigationManifest = {
-  version: 1,
-  classes: {
-    pebblerest_stool: {
-      kind: "seat",
-      blocked: null,
-      interaction: {
-        kind: "seat",
-        approaches: [
-          [0, 1],
-          [1, 0],
-          [-1, 0],
-          [0, -1],
-        ],
-        anchor: [0, 0],
-        height: 20,
-        direction: "SW",
-      },
-    },
-    duneplait_stool: {
-      kind: "seat",
-      blocked: null,
-      interaction: {
-        kind: "seat",
-        approaches: [
-          [0, 1],
-          [1, 0],
-          [-1, 0],
-          [0, -1],
-        ],
-        anchor: [0, 0],
-        height: 18,
-        direction: "SW",
-      },
-    },
-    mosshem_pouf: {
-      kind: "seat",
-      blocked: null,
-      interaction: {
-        kind: "seat",
-        approaches: [
-          [0, 1],
-          [1, 0],
-          [-1, 0],
-          [0, -1],
-        ],
-        anchor: [0, 0],
-        height: 12,
-        direction: "SW",
-      },
-    },
-  },
-};
+export const NAVIGATION = manifest as unknown as NavigationManifest;
 export function classify(base: Furniture): NavigationClass {
   const known = NAVIGATION.classes[base.id];
   if (known) return known;

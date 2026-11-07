@@ -8,6 +8,7 @@ use crate::{config::WebSettings, discord::DiscordApi};
 #[derive(Clone)]
 pub struct WebState {
     pub app: Arc<App>,
+    pub(crate) reef: Arc<crate::reef::Runtime>,
     pub settings: Arc<WebSettings>,
     pub(crate) discord: Arc<DiscordApi>,
 }
@@ -17,6 +18,7 @@ impl WebState {
         let discord = Arc::new(DiscordApi::new(&settings.discord_api_base));
         Self {
             app,
+            reef: Arc::default(),
             settings: Arc::new(settings),
             discord,
         }
