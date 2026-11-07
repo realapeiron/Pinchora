@@ -53,6 +53,7 @@ pub enum ReactionEvent {
 /// A message from a human in a server (bots, webhooks and system messages are filtered out), judged
 /// before XP and before a text command reads it.
 pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &GuildSettings) -> Verdict {
+    crate::starboard::on_message(app, msg).await;
     // F1 automod goes first: a message it deletes is `Verdict::Blocked`, so it earns nothing.
     // F9 stats counts the message.
     crate::stats::count_message(app, msg).await;
@@ -86,6 +87,7 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
     // F2 reaction roles.
     crate::commands::roles_pack::on_reaction(app, event).await;
     // F5 starboard counts stars.
+    crate::starboard::on_reaction(app, event).await;
     // F13 workflows' reaction trigger.
 }
 

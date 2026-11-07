@@ -272,6 +272,14 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO ticket_transcript_authors (ticket_id, idx, user_id, name)
          SELECT id, 0, $1, 'Pinch' FROM tickets WHERE guild_id = $1 AND number = 2
          UNION ALL SELECT id, 1, $2, 'Other' FROM tickets WHERE guild_id = $1 AND number = 2",
+        // Stars they gave and a post they wrote, with the other player on the opposite side.
+        "INSERT INTO starboards (guild_id, name, channel_id) VALUES ($1, 'Privacy', 4)",
+        "INSERT INTO starboard_posts (starboard_id, message_id, channel_id, author_id)
+         SELECT id, $1, 5, $1 FROM starboards WHERE guild_id=$1
+         UNION ALL SELECT id, $2, 5, $2 FROM starboards WHERE guild_id=$1",
+        "INSERT INTO starboard_stars (starboard_id, message_id, user_id, weight)
+         SELECT id, $2, $1, 1 FROM starboards WHERE guild_id=$1
+         UNION ALL SELECT id, $1, $2, 1 FROM starboards WHERE guild_id=$1",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

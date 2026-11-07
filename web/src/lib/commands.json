@@ -2204,6 +2204,233 @@
           ],
           "path": "tickets settings",
           "usage": "/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
+        },
+        {
+          "description": "Create or replace a starboard (up to three)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Name of this board",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "The board channel",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Star emoji, including custom emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Stars needed before a message appears (1 to 50)",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Allow members to star their own posts",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Count stars on bot messages",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Require an image",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Delete the board post when its stars fall below the threshold",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Limit sources to channel IDs or mentions, separated by commas",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Exclude channel IDs or mentions, separated by commas",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Role weights as role ID=weight pairs, separated by commas",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Board colour, for example #ffc857",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "starboard setup",
+          "usage": "/starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
+        },
+        {
+          "description": "Change a board's threshold, emoji or rules",
+          "manager": true,
+          "options": [
+            {
+              "description": "Board ID from /starboard list",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "New name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "New star emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "New threshold",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Allow self stars",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Count bot messages",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Require an image",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Remove below threshold",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Source channels, comma separated; use `all` to clear",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Excluded channels, comma separated; use `all` to clear",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Role ID=weight pairs; use `all` to clear",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Board colour",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "Enable or disable this board",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "starboard edit",
+          "usage": "/starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
+        },
+        {
+          "description": "Remove a starboard",
+          "manager": true,
+          "options": [
+            {
+              "description": "Board ID from /starboard list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "starboard remove",
+          "usage": "/starboard remove <id>"
+        },
+        {
+          "description": "List this server's starboards",
+          "manager": true,
+          "options": [],
+          "path": "starboard list",
+          "usage": "/starboard list"
+        },
+        {
+          "description": "See the most starred posts and top stargazers",
+          "manager": true,
+          "options": [
+            {
+              "description": "Board ID, or the first board if omitted",
+              "name": "board",
+              "required": false
+            }
+          ],
+          "path": "starboard top",
+          "usage": "/starboard top [board]"
+        },
+        {
+          "description": "Add or change a vote channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to react in",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Upvote emoji",
+              "name": "up",
+              "required": false
+            },
+            {
+              "description": "Downvote emoji",
+              "name": "down",
+              "required": false
+            },
+            {
+              "description": "React only to posts with media",
+              "name": "only_media",
+              "required": false
+            },
+            {
+              "description": "Start a thread under each post",
+              "name": "thread",
+              "required": false
+            }
+          ],
+          "path": "starboard votes add",
+          "usage": "/starboard votes add <channel> [up] [down] [only_media] [thread]"
+        },
+        {
+          "description": "Stop automatic reactions in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to stop reacting in",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "starboard votes remove",
+          "usage": "/starboard votes remove <channel>"
+        },
+        {
+          "description": "List vote channels",
+          "manager": true,
+          "options": [],
+          "path": "starboard votes list",
+          "usage": "/starboard votes list"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -3426,5 +3653,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 207
+  "count": 215
 }

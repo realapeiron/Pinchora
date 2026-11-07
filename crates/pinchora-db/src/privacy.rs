@@ -102,6 +102,8 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     // then the tickets they opened, whose transcripts go with them.
     ("ticket_transcript_authors", "user_id"),
     ("tickets", "opener_id"),
+    ("starboard_stars", "user_id"),
+    ("starboard_posts", "author_id"),
     ("users", "id"),
 ];
 
@@ -207,6 +209,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "ticket_counters",
     // A closed ticket's lines; who wrote them is in `ticket_transcript_authors`.
     "ticket_transcripts",
+    "starboards",
+    "vote_channels",
 ];
 
 /// What a player hides.
@@ -541,7 +545,10 @@ async fn others_written(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64)
          WHERE status = 'active' AND bet > 0 AND (host_id = $1 OR guest_id = $1)
          UNION SELECT m.user_id FROM party_members m JOIN game_sessions s ON s.id = m.session_id
          WHERE s.host_id = $1 AND s.kind = 'derby' AND s.status = 'pending' AND m.amount > 0
-         UNION SELECT host_id FROM house_likes WHERE liker_id = $1",
+         UNION SELECT host_id FROM house_likes WHERE liker_id = $1
+         UNION SELECT s.user_id FROM starboard_stars s
+             JOIN starboard_posts p ON p.starboard_id=s.starboard_id AND p.message_id=s.message_id
+             WHERE p.author_id=$1",
     )
     .bind(id)
     .fetch_all(&mut **tx)

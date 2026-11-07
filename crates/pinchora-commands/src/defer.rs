@@ -86,6 +86,7 @@ const PRIVATE: &[&str] = &[
     "warnings",
     "ticket",
     "tickets",
+    "starboard",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.

@@ -600,7 +600,21 @@ dashboard's Community group).
 
 ### Starboard and vote channels
 
-<!-- F5: the Starboard and vote channels package replaces this heading's section; keep it one `###` section. -->
+`/starboard setup|edit|remove|list|top` manages up to three boards per server. Each board has an emoji,
+threshold (1–50), self-star and bot rules, source channel allow/deny lists, image requirement, colour,
+role weights and an option to remove posts that fall below the threshold. A reaction is counted once per
+member and board. The first qualifying reaction claims the board post in Postgres before sending it, so
+concurrent gateways do not post duplicates. Removing stars updates the count; deleting or editing the
+source updates the board copy. NSFW sources only copy to NSFW boards. A private source can appear on a
+public board only when explicitly selected in that board's source allow list.
+
+`/starboard votes add|remove|list` sets channels where each new message gets the up reaction followed
+by the down reaction; the server may choose emojis, restrict to media posts and open discussion threads.
+The **Starboard** dashboard page edits boards and vote channels and previews the board card. With the
+Message Content intent off, board copies show the author, source link and attachments but omit message
+text; the dashboard shows why. The module key is `starboard` (Community). Old star records are swept
+after 180 days. The bot needs View Channel, Read Message History, Add Reactions and Send Messages in
+the relevant channels; thread creation additionally needs Create Public Threads.
 
 ### Invite tracker
 
