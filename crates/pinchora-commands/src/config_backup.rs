@@ -189,6 +189,8 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
         ("voice_creators", pinchora_core::temp_voice::MAX_CREATORS),
         ("ticket_panels", pinchora_core::tickets::MAX_PANELS),
         ("ticket_forms", 10),
+        ("forms", 10),
+        ("qotd_questions", 500),
         ("automod_rules", pinchora_core::automod::MAX_RULES),
         ("feeds", pinchora_core::feeds::MAX_FEEDS as usize),
         ("starboards", 3),
@@ -454,6 +456,16 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
             }
         }
     }
+    for row in get("forms") {
+        if !pinchora_core::community::valid_form(&s(row, "name")?, &row["questions"]) {
+            return Err(invalid());
+        }
+    }
+    for row in get("qotd_settings") {
+        if s(row, "timezone")?.parse::<chrono_tz::Tz>().is_err() {
+            return Err(invalid());
+        }
+    }
     for row in get("ticket_forms") {
         let questions = serde_json::from_value::<Vec<pinchora_core::tickets::Question>>(row["questions"].clone())
             .map_err(|_| invalid())?;
@@ -680,6 +692,8 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
     use twilight_model::guild::Permissions;
     let mut grants = Vec::new();
     for (table, field) in [
+        ("forms", "accept_role_id"),
+        ("counting_channels", "fail_role_id"),
         ("level_roles", "role_id"),
         ("rep_roles", "role_id"),
         ("store_items", "role_id"),
@@ -762,7 +776,7 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
             }
         }
     }
-    use twilight_model::channel::ChannelType::{GuildAnnouncement, GuildCategory, GuildText, GuildVoice};
+    use twilight_model::channel::ChannelType::{GuildAnnouncement, GuildCategory, GuildForum, GuildText, GuildVoice};
     for (table, field, kinds) in [
         ("voice_creators", "channel_id", &[GuildVoice][..]),
         ("voice_creators", "category_id", &[GuildCategory][..]),
@@ -774,6 +788,15 @@ async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: 
         ("ticket_settings", "open_category_id", &[GuildCategory][..]),
         ("ticket_settings", "closed_category_id", &[GuildCategory][..]),
         ("ticket_panels", "open_category_id", &[GuildCategory][..]),
+        ("qotd_settings", "channel_id", &[GuildText, GuildAnnouncement][..]),
+        ("counting_channels", "channel_id", &[GuildText, GuildAnnouncement][..]),
+        ("forms", "submit_channel_id", &[GuildText, GuildAnnouncement][..]),
+        ("modmail_settings", "forum_channel_id", &[GuildForum][..]),
+        (
+            "modmail_settings",
+            "log_channel_id",
+            &[GuildText, GuildAnnouncement][..],
+        ),
         ("role_panels", "channel_id", &[GuildText, GuildAnnouncement][..]),
         (
             "counter_channels",

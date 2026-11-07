@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useOutletContext } from "react-router";
-import { translate as t } from "../i18n";
+import { locale, translate as t } from "../i18n";
 import { Panel } from "../components/Panel";
 import { ChannelPicker } from "../components/Pickers";
 import { PageHead } from "./PageHead";
@@ -14,6 +14,7 @@ import {
   type MailSettings,
   type QotdSettings,
   useCommunityPack,
+  questionText,
 } from "../lib/community-pack";
 import "../styles/community-pack.css";
 
@@ -81,7 +82,7 @@ export function CommunityPack() {
       setNotice(t("Saved community changes."));
       return true;
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : t("Could not save changes."));
+      setNotice(error instanceof Error ? t(error.message) : t("Could not save changes."));
       return false;
     } finally {
       setBusy(false);
@@ -188,7 +189,7 @@ export function CommunityPack() {
                     <span className="muted">
                       #{question.id} · {question.approved ? t("Approved") : t("Pending")}
                     </span>
-                    <p>{question.text}</p>
+                    <p>{questionText(question, locale())}</p>
                     {!question.approved && (
                       <div className="community-pack-actions">
                         <button
@@ -303,7 +304,7 @@ export function CommunityPack() {
                     {t("Form name")}
                     <input
                       className="pixel-input"
-                      maxLength={100}
+                      maxLength={45}
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                     />

@@ -463,6 +463,8 @@ fn reference_kind(field: &str) -> Option<bool> {
                 | "ignored_roles"
                 | "exempt_roles"
                 | "support_roles"
+                | "review_roles"
+                | "staff_roles"
         )
     {
         return Some(true);
@@ -784,6 +786,31 @@ mod tests {
             backup.sections["automod_settings"][0]["escalation"][0]["action"]["role"],
             "2"
         );
+    }
+
+    #[test]
+    fn community_review_and_staff_roles_are_remapped_and_checked() {
+        let mut backup = Backup {
+            version: VERSION,
+            source_guild: "10".into(),
+            names: Names {
+                roles: BTreeMap::from([("1".into(), "Staff".into())]),
+                channels: BTreeMap::new(),
+            },
+            sections: BTreeMap::from([
+                ("forms".into(), vec![json!({"review_roles":["1"]})]),
+                ("modmail_settings".into(), vec![json!({"staff_roles":["1"]})]),
+            ]),
+        };
+        assert_eq!(references(&backup), vec![(true, "1".into())]);
+        let target = Names {
+            roles: BTreeMap::from([("2".into(), "Staff".into())]),
+            channels: BTreeMap::new(),
+        };
+        assert!(remap(&mut backup, 20, &target).is_empty());
+        assert_eq!(backup.sections["forms"][0]["review_roles"], json!(["2"]));
+        assert_eq!(backup.sections["modmail_settings"][0]["staff_roles"], json!(["2"]));
+        assert_eq!(references(&backup), vec![(true, "2".into())]);
     }
 
     #[test]

@@ -3505,4 +3505,18 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Staff roles": "Ekip rolleri",
   "Post form in": "Formu paylaşacağın kanal",
   "Post button": "Düğmeyi paylaş",
+  "Choose a valid Discord ID.": "Geçerli bir Discord kimliği seçin.",
+  "Choose an IANA time zone and an hour from 0 to 23.":
+    "Bir IANA saat dilimi ve 0 ile 23 arasında bir saat seçin.",
+  "Choose a role in this server.": "Bu sunucudaki bir rolü seçin.",
+  "That role cannot be granted safely.": "Bu rol güvenli biçimde verilemiyor.",
+  "Use a name of at most 45 characters and 1 to 5 questions of at most 45 characters.":
+    "En fazla 45 karakterlik bir ad ve her biri en fazla 45 karakter olan 1–5 soru yazın.",
+  "Choose at most 10 review roles.": "Başvuruları incelemek için en fazla 10 rol seçin.",
+  "Choose roles in this server.": "Bu sunucudaki rolleri seçin.",
+  "This server already has 10 forms.": "Bu sunucuda zaten 10 form var.",
+  "Check the greeting, close interval and staff roles.":
+    "Karşılama mesajını, kapanma süresini ve ekip rollerini kontrol edin.",
+  "Choose a staff forum.": "Ekip için bir forum kanalı seçin.",
+  "Choose a forum in this server.": "Bu sunucudaki bir forum kanalını seçin.",
 };

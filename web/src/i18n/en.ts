@@ -3479,4 +3479,17 @@ export const en = {
   "Staff roles": "Staff roles",
   "Post form in": "Post form in",
   "Post button": "Post button",
+  "Choose a valid Discord ID.": "Choose a valid Discord ID.",
+  "Choose an IANA time zone and an hour from 0 to 23.": "Choose an IANA time zone and an hour from 0 to 23.",
+  "Choose a role in this server.": "Choose a role in this server.",
+  "That role cannot be granted safely.": "That role cannot be granted safely.",
+  "Use a name of at most 45 characters and 1 to 5 questions of at most 45 characters.":
+    "Use a name of at most 45 characters and 1 to 5 questions of at most 45 characters.",
+  "Choose at most 10 review roles.": "Choose at most 10 review roles.",
+  "Choose roles in this server.": "Choose roles in this server.",
+  "This server already has 10 forms.": "This server already has 10 forms.",
+  "Check the greeting, close interval and staff roles.":
+    "Check the greeting, close interval and staff roles.",
+  "Choose a staff forum.": "Choose a staff forum.",
+  "Choose a forum in this server.": "Choose a forum in this server.",
 } as const;

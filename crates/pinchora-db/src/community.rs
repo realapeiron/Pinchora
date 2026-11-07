@@ -233,29 +233,46 @@ impl Db {
             .bind(sql_id(guild))
             .fetch_one(&mut *tx)
             .await?;
-        let query = "SELECT id,guild_id,text,text_tr,suggested_by,approved,asked_at FROM qotd_questions WHERE guild_id=$1 AND approved AND asked_at IS NULL ORDER BY (suggested_by IS NULL),id LIMIT 1";
-        let mut next: Option<QotdQuestion> = sqlx::query_as(query)
-            .bind(sql_id(guild))
-            .fetch_optional(&mut *tx)
-            .await?;
-        if next.is_none() {
-            sqlx::query("UPDATE qotd_questions SET asked_at=NULL WHERE guild_id=$1 AND approved")
-                .bind(sql_id(guild))
-                .execute(&mut *tx)
-                .await?;
-            next = sqlx::query_as(query)
-                .bind(sql_id(guild))
-                .fetch_optional(&mut *tx)
-                .await?;
-        }
-        if let Some(ref question) = next {
-            sqlx::query("UPDATE qotd_questions SET asked_at=now() WHERE id=$1")
-                .bind(question.id)
-                .execute(&mut *tx)
-                .await?;
-        }
+        let next = next_question(&mut tx, guild).await?;
         tx.commit().await?;
         Ok(next)
+    }
+    /// Claims a local calendar day and consumes its question in one durable transaction.
+    pub async fn claim_qotd(&self, guild: u64, day: chrono::NaiveDate) -> anyhow::Result<Option<QotdQuestion>> {
+        let mut tx = self.pool().begin().await?;
+        let claimed = sqlx::query("UPDATE qotd_settings SET last_posted_on=$2 WHERE guild_id=$1 AND (last_posted_on IS NULL OR last_posted_on<$2)")
+            .bind(sql_id(guild)).bind(day).execute(&mut *tx).await?.rows_affected() > 0;
+        if !claimed {
+            return Ok(None);
+        }
+        let next = next_question(&mut tx, guild).await?;
+        if next.is_some() {
+            tx.commit().await?;
+        }
+        Ok(next)
+    }
+    pub async fn save_form(&self, form: &FormRow) -> anyhow::Result<Option<i64>> {
+        if !pinchora_core::community::valid_form(&form.name, &form.questions) {
+            return Ok(None);
+        }
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
+            .bind(format!("community:forms:{}", form.guild_id))
+            .execute(&mut *tx)
+            .await?;
+        let id = if form.id == 0 {
+            sqlx::query_scalar("INSERT INTO forms(guild_id,name,questions,submit_channel_id,review_roles,accept_role_id,dm_result,open) SELECT $1,$2,$3,$4,$5,$6,$7,$8 WHERE (SELECT count(*) FROM forms WHERE guild_id=$1)<10 RETURNING id")
+                .bind(form.guild_id).bind(&form.name).bind(&form.questions).bind(form.submit_channel_id)
+                .bind(&form.review_roles).bind(form.accept_role_id).bind(form.dm_result).bind(form.open)
+                .fetch_optional(&mut *tx).await?
+        } else {
+            sqlx::query_scalar("UPDATE forms SET name=$3,questions=$4,submit_channel_id=$5,review_roles=$6,accept_role_id=$7,dm_result=$8,open=$9 WHERE guild_id=$1 AND id=$2 RETURNING id")
+                .bind(form.guild_id).bind(form.id).bind(&form.name).bind(&form.questions).bind(form.submit_channel_id)
+                .bind(&form.review_roles).bind(form.accept_role_id).bind(form.dm_result).bind(form.open)
+                .fetch_optional(&mut *tx).await?
+        };
+        tx.commit().await?;
+        Ok(id)
     }
     pub async fn form(&self, guild: u64, id: i64) -> anyhow::Result<Option<FormRow>> {
         Ok(sqlx::query_as("SELECT * FROM forms WHERE guild_id=$1 AND id=$2")
@@ -288,8 +305,23 @@ impl Db {
         }) {
             return Ok(None);
         }
-        Ok(sqlx::query_scalar("INSERT INTO form_submissions(form_id,user_id,answers) SELECT id,$2,$3 FROM forms WHERE id=$1 AND guild_id=$4 AND open AND jsonb_array_length(questions)=jsonb_array_length($3::jsonb) RETURNING id")
-            .bind(id).bind(sql_id(user)).bind(answers).bind(sql_id(guild)).fetch_optional(self.pool()).await?)
+        let mut tx = self.pool().begin().await?;
+        // Lock the form so close/edit and simultaneous submissions cannot race this validation.
+        let form: Option<FormRow> = sqlx::query_as("SELECT * FROM forms WHERE guild_id=$1 AND id=$2 FOR UPDATE")
+            .bind(sql_id(guild))
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let Some(form) = form.filter(|f| f.open && pinchora_core::community::valid_form(&f.name, &f.questions)) else {
+            return Ok(None);
+        };
+        if form.questions.as_array().map(Vec::len) != answers.as_array().map(Vec::len) {
+            return Ok(None);
+        }
+        let submission = sqlx::query_scalar("INSERT INTO form_submissions(form_id,user_id,answers) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM form_submissions WHERE form_id=$1 AND user_id=$2 AND (status='pending' OR created_at>now()-INTERVAL '1 hour')) RETURNING id")
+            .bind(id).bind(sql_id(user)).bind(answers).fetch_optional(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(submission)
     }
     pub async fn decide_form(
         &self,
@@ -363,4 +395,32 @@ impl Db {
         Ok(sqlx::query("UPDATE modmail_threads SET status='closed',closed_at=now(),closed_by=$3 WHERE guild_id=$1 AND thread_id=$2 AND status='open'")
             .bind(sql_id(guild)).bind(sql_id(thread)).bind(sql_id(actor)).execute(self.pool()).await?.rows_affected()>0)
     }
+}
+
+async fn next_question(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    guild: u64,
+) -> anyhow::Result<Option<QotdQuestion>> {
+    let query = "SELECT id,guild_id,text,text_tr,suggested_by,approved,asked_at FROM qotd_questions WHERE guild_id=$1 AND approved AND asked_at IS NULL ORDER BY (suggested_by IS NULL),id LIMIT 1";
+    let mut next: Option<QotdQuestion> = sqlx::query_as(query)
+        .bind(sql_id(guild))
+        .fetch_optional(&mut **tx)
+        .await?;
+    if next.is_none() {
+        sqlx::query("UPDATE qotd_questions SET asked_at=NULL WHERE guild_id=$1 AND approved")
+            .bind(sql_id(guild))
+            .execute(&mut **tx)
+            .await?;
+        next = sqlx::query_as(query)
+            .bind(sql_id(guild))
+            .fetch_optional(&mut **tx)
+            .await?;
+    }
+    if let Some(ref question) = next {
+        sqlx::query("UPDATE qotd_questions SET asked_at=now() WHERE id=$1")
+            .bind(question.id)
+            .execute(&mut **tx)
+            .await?;
+    }
+    Ok(next)
 }

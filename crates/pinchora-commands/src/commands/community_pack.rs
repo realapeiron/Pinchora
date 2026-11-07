@@ -212,7 +212,7 @@ pub enum FormsAdmin {
 #[command(name = "create", desc = "Create a form")]
 pub struct FormCreate {
     /// Form name
-    #[command(max_length = 100)]
+    #[command(max_length = 45)]
     name: String,
     /// Questions, separated by |
     #[command(max_length = 500)]
@@ -330,10 +330,13 @@ async fn open_form(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
     let Some(form) = cx.app.db.form(guild, id).await?.filter(|f| f.open) else {
         return cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-missing")).await;
     };
+    if !pinchora_core::community::valid_form(&form.name, &form.questions) {
+        return cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-invalid")).await;
+    }
     let questions = form.questions.as_array().cloned().unwrap_or_default();
     let mut components = Vec::new();
     for (index, question) in questions.iter().take(5).enumerate() {
-        let label = question.as_str().unwrap_or("Question");
+        let label = question.as_str().unwrap_or_default();
         components.push(Component::Label(Label {
             id: None,
             label: label.chars().take(45).collect(),
@@ -402,6 +405,7 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
                 tracing::warn!(%error,guild,"form accept role could not be granted");
             }
             if dm_result
+                && !cx.app.db.dm_opt_out(user as u64).await?
                 && let Ok(dm) = cx
                     .app
                     .http
@@ -414,9 +418,10 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
                 } else {
                     "community-pack.form-denied"
                 };
-                let _ = cx.app.http.create_message(dm.id).content(&t!(cx.lang(), key)).await;
+                let lang = crate::lang::resolve_text(&cx.app, user as u64, guild as u64).await;
+                let _ = cx.app.http.create_message(dm.id).content(&t!(lang, key)).await;
             }
-            cx.reply_ephemeral(t!(cx.lang(), "community-pack.qotd-decided")).await
+            cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-decided")).await
         }
         _ => cx.reply_ephemeral(t!(cx.lang(), "component.button-expired")).await,
     }
@@ -443,9 +448,16 @@ pub async fn on_mail_select(cx: &Cx, values: &[String]) -> anyhow::Result<()> {
     if !allowed {
         return cx.reply_ephemeral(t!(cx.lang(), "community-pack.modmail-denied")).await;
     }
-    crate::community_pack::route_dm(&cx.app, guild, user, &body).await?;
-    cx.reply_ephemeral(t!(cx.lang(), "community-pack.modmail-greeting"))
-        .await
+    let delivered = crate::community_pack::route_dm(&cx.app, guild, user, &body).await?;
+    cx.reply_ephemeral(t!(
+        cx.lang(),
+        if delivered {
+            "community-pack.modmail-greeting"
+        } else {
+            "community-pack.modmail-denied"
+        }
+    ))
+    .await
 }
 pub async fn on_qotd_decision(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyhow::Result<()> {
     let Some(guild) = cx.guild_id() else {
@@ -476,7 +488,9 @@ pub async fn on_modal(
         return cx.reply_ephemeral(t!(cx.lang(), "component.button-expired")).await;
     };
     let id = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-    let answers = serde_json::json!(fields.iter().map(|(_, value)| value).collect::<Vec<_>>());
+    let Some(answers) = pinchora_core::community::form_answers(fields) else {
+        return cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-invalid")).await;
+    };
     match cx
         .app
         .db
@@ -488,14 +502,16 @@ pub async fn on_modal(
                 && let Some(form) = cx.app.db.form(guild, id).await?
                 && let Some(channel) = form.submit_channel_id
             {
-                let body = fields
+                let body = answers
+                    .as_array()
+                    .unwrap()
                     .iter()
                     .enumerate()
-                    .map(|(i, (_, value))| {
+                    .map(|(i, value)| {
                         format!(
                             "**{}**\n{}",
-                            form.questions.get(i).and_then(|x| x.as_str()).unwrap_or("Question"),
-                            value.chars().take(600).collect::<String>()
+                            form.questions.get(i).and_then(|x| x.as_str()).unwrap_or_default(),
+                            value.as_str().unwrap_or_default().chars().take(600).collect::<String>()
                         )
                     })
                     .collect::<Vec<_>>()
@@ -576,8 +592,19 @@ impl CommunityAdmin {
                     let queue = cx.app.db.qotd_queue(guild).await?;
                     let items = queue
                         .iter()
-                        .take(15)
-                        .map(|q| format!("#{} {} {}", q.id, if q.approved { "✓" } else { "?" }, q.text))
+                        .take(5)
+                        .map(|q| {
+                            format!(
+                                "#{} {} {}",
+                                q.id,
+                                if q.approved { "✓" } else { "?" },
+                                if cx.lang() == pinchora_core::i18n::Lang::Tr {
+                                    q.text_tr.as_deref().unwrap_or(&q.text)
+                                } else {
+                                    &q.text
+                                }
+                            )
+                        })
                         .collect::<Vec<_>>()
                         .join("\n");
                     let pending = queue.iter().filter(|q| !q.approved).take(5);
@@ -667,22 +694,30 @@ impl CommunityAdmin {
                     if questions.is_empty() || questions.len() > 5 || questions.iter().any(|s| s.chars().count() > 45) {
                         return cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-invalid")).await;
                     }
-                    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM forms WHERE guild_id=$1")
-                        .bind(guild as i64)
-                        .fetch_one(cx.app.db.pool())
-                        .await?;
-                    if count >= 10 {
-                        return cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-invalid")).await;
-                    }
                     if let Some(ref role) = input.accept_role
                         && let Some(reason) = crate::roles::unassignable(cx, guild, role).await
                     {
                         return cx.reply_ephemeral(reason).await;
                     }
-                    let id:i64=sqlx::query_scalar("INSERT INTO forms(guild_id,name,questions,submit_channel_id,accept_role_id) VALUES($1,$2,$3,$4,$5) RETURNING id")
-                        .bind(guild as i64).bind(input.name).bind(serde_json::json!(questions))
-                        .bind(input.review_channel.id.get() as i64).bind(input.accept_role.map(|r|r.id.get() as i64))
-                        .fetch_one(cx.app.db.pool()).await?;
+                    let Some(id) = cx
+                        .app
+                        .db
+                        .save_form(&pinchora_db::FormRow {
+                            id: 0,
+                            guild_id: guild as i64,
+                            name: input.name,
+                            questions: serde_json::json!(questions),
+                            submit_channel_id: Some(input.review_channel.id.get() as i64),
+                            review_roles: vec![],
+                            accept_role_id: input.accept_role.map(|r| r.id.get() as i64),
+                            dm_result: true,
+                            open: true,
+                            message_id: None,
+                        })
+                        .await?
+                    else {
+                        return cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-invalid")).await;
+                    };
                     cx.reply_ephemeral(t!(cx.lang(), "community-pack.form-created", id = id))
                         .await
                 }
@@ -830,6 +865,11 @@ impl ModmailCommand {
                         .reply_ephemeral(t!(cx.lang(), "community-pack.modmail-not-thread"))
                         .await;
                 };
+                if thread.guild_id != guild as i64 {
+                    return cx
+                        .reply_ephemeral(t!(cx.lang(), "community-pack.modmail-not-thread"))
+                        .await;
+                }
                 let text: Option<String> =
                     sqlx::query_scalar("SELECT text FROM modmail_snippets WHERE guild_id=$1 AND name=$2")
                         .bind(guild as i64)
@@ -848,7 +888,12 @@ impl ModmailCommand {
                     .await?
                     .model()
                     .await?;
-                cx.app.http.create_message(dm.id).content(&text).await?;
+                cx.app
+                    .http
+                    .create_message(dm.id)
+                    .content(&text)
+                    .allowed_mentions(Some(&twilight_model::channel::message::AllowedMentions::default()))
+                    .await?;
                 cx.reply_ephemeral(t!(cx.lang(), "community-pack.modmail-snippet-saved"))
                     .await
             }

@@ -74,3 +74,8 @@ export function useCommunityPack(guild: string) {
     queryFn: () => api<CommunityPackData>(`/api/guilds/${guild}/community-pack`),
   });
 }
+
+/** Bundled questions carry both languages; member suggestions retain their original text. */
+export function questionText(question: Question, language: "en" | "tr"): string {
+  return language === "tr" ? (question.text_tr ?? question.text) : question.text;
+}

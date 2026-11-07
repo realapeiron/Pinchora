@@ -47,3 +47,5 @@ modmail-choose = "Mesajın için sunucu seç."
 modmail-no-server = "Özel desteği açık ortak sunucu bulunamadı."
 modmail-denied = "Burada destek görüşmesi başlatamazsın."
 admin-only = "Sunucuyu Yönet yetkisi gerekiyor."
+
+form-decided = "Başvuru güncellendi."

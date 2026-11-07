@@ -127,3 +127,175 @@ async fn community_user_rows_are_removed_by_privacy_deletion() {
     assert_eq!((q, stats), (0, 0));
     assert_eq!(db.counting_for_guild(guild).await.unwrap().unwrap().last_user_id, None);
 }
+
+fn draft(guild: u64, name: &str) -> pinchora_db::FormRow {
+    pinchora_db::FormRow {
+        id: 0,
+        guild_id: guild as i64,
+        name: name.into(),
+        questions: serde_json::json!(["Why?"]),
+        submit_channel_id: None,
+        review_roles: vec![],
+        accept_role_id: None,
+        dm_result: false,
+        open: true,
+        message_id: None,
+    }
+}
+
+#[tokio::test]
+async fn concurrent_form_creation_and_submissions_obey_limits() {
+    let Some(db) = db().await else { return };
+    let (guild, _, user) = ids();
+    for i in 0..9 {
+        assert!(
+            db.save_form(&draft(guild, &format!("Form {i}")))
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+    let a = draft(guild, "Tenth");
+    let b = draft(guild, "Eleventh");
+    let (a, b) = tokio::join!(db.save_form(&a), db.save_form(&b));
+    let form = a.unwrap().or(b.unwrap()).unwrap();
+    assert_eq!(db.forms(guild).await.unwrap().len(), 10);
+    let mut backup = db.export_config(guild, Default::default()).await.unwrap();
+    let mut extra = backup.sections["forms"][0].clone();
+    extra["id"] = serde_json::json!("999999999");
+    extra["name"] = serde_json::json!("Imported eleventh");
+    backup.sections.get_mut("forms").unwrap().push(extra);
+    assert!(
+        db.import_config(
+            guild,
+            &backup,
+            pinchora_core::config_backup::Policy::Merge,
+            Default::default()
+        )
+        .await
+        .is_err()
+    );
+    assert_eq!(db.forms(guild).await.unwrap().len(), 10);
+    let answers = serde_json::json!(["Private answer"]);
+    let (a, b) = tokio::join!(
+        db.submit_form(guild, form, user, &answers),
+        db.submit_form(guild, form, user, &answers)
+    );
+    let a = a.unwrap();
+    let b = b.unwrap();
+    assert_ne!(a.is_some(), b.is_some());
+    db.decide_form(guild, a.or(b).unwrap(), user + 1, false).await.unwrap();
+    assert!(
+        db.submit_form(guild, form, user, &answers).await.unwrap().is_none(),
+        "review must not bypass the hourly throttle"
+    );
+    assert!(
+        db.save_form(&draft(guild + 1, &"x".repeat(46)))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        db.submit_form(guild, form, user + 2, &serde_json::json!(["x".repeat(1001)]))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        db.submit_form(guild, form, user + 2, &serde_json::json!(["one", "two"]))
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn qotd_claim_is_atomic_across_connections_and_restarts() {
+    let Some(db) = db().await else { return };
+    let (guild, _, user) = ids();
+    let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 8).unwrap();
+    let id = db.suggest_qotd(guild, user, "Today?").await.unwrap().unwrap();
+    db.decide_qotd(guild, id, true).await.unwrap();
+    let other = Db::connect_waiting(
+        &std::env::var("PINCHORA_TEST_DATABASE_URL").unwrap(),
+        2,
+        std::time::Duration::from_secs(10),
+    )
+    .await
+    .unwrap();
+    let (a, b) = tokio::join!(db.claim_qotd(guild, day), other.claim_qotd(guild, day));
+    assert_ne!(a.unwrap().is_some(), b.unwrap().is_some());
+    assert!(other.claim_qotd(guild, day).await.unwrap().is_none());
+    assert!(
+        other
+            .claim_qotd(guild, day.pred_opt().unwrap())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        other
+            .claim_qotd(guild, day.succ_opt().unwrap())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    // An empty queue must not consume the day.
+    sqlx::query("DELETE FROM qotd_questions WHERE guild_id=$1")
+        .bind(guild as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let next = day.succ_opt().unwrap().succ_opt().unwrap();
+    assert!(db.claim_qotd(guild, next).await.unwrap().is_none());
+    let id = db.suggest_qotd(guild, user, "Later?").await.unwrap().unwrap();
+    db.decide_qotd(guild, id, true).await.unwrap();
+    assert!(db.claim_qotd(guild, next).await.unwrap().is_some());
+}
+
+#[tokio::test]
+async fn reviewer_deletion_preserves_other_members_data_and_exports_exclude_answers() {
+    let Some(db) = db().await else { return };
+    let (guild, channel, user) = ids();
+    let staff = user + 1;
+    let form = db.save_form(&draft(guild, "Private form")).await.unwrap().unwrap();
+    let sub = db
+        .submit_form(guild, form, user, &serde_json::json!(["PRIVATE_SENTINEL"]))
+        .await
+        .unwrap()
+        .unwrap();
+    db.decide_form(guild, sub, staff, true).await.unwrap();
+    db.modmail_create(guild, user, channel).await.unwrap();
+    db.modmail_close(guild, channel, staff).await.unwrap();
+    sqlx::query("INSERT INTO modmail_pending(user_id,body) VALUES($1,'PRIVATE_PENDING')")
+        .bind(user as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let export = serde_json::to_string(&db.export_config(guild, Default::default()).await.unwrap()).unwrap();
+    assert!(!export.contains("PRIVATE_SENTINEL") && !export.contains("PRIVATE_PENDING"));
+    db.delete_user_data(staff, chrono::Utc::now()).await.unwrap();
+    let reviewer: Option<i64> = sqlx::query_scalar("SELECT decided_by FROM form_submissions WHERE id=$1")
+        .bind(sub)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(reviewer, None);
+    let closer: Option<i64> = sqlx::query_scalar("SELECT closed_by FROM modmail_threads WHERE thread_id=$1")
+        .bind(channel as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(closer, None);
+    db.delete_user_data(user, chrono::Utc::now()).await.unwrap();
+    for table in ["form_submissions", "modmail_threads", "modmail_pending"] {
+        let count: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+            "SELECT count(*) FROM {table} WHERE user_id=$1"
+        )))
+        .bind(user as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(count, 0, "{table}");
+    }
+}

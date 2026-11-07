@@ -269,16 +269,11 @@ async fn form_write(
     existing: Option<i64>,
     body: FormBody,
 ) -> ApiResult<Json<Value>> {
-    if body.name.trim().is_empty()
-        || body.name.chars().count() > 100
-        || body.questions.is_empty()
-        || body.questions.len() > 5
-        || body
-            .questions
-            .iter()
-            .any(|q| q.trim().is_empty() || q.chars().count() > 45)
-    {
-        return Err(bad("questions", "Use 1 to 5 questions of at most 45 characters."));
+    if !pinchora_core::community::valid_form(&body.name, &json!(body.questions)) {
+        return Err(bad(
+            "questions",
+            "Use a name of at most 45 characters and 1 to 5 questions of at most 45 characters.",
+        ));
     }
     let channel = id(&body.submit_channel_id, "submit_channel_id")?;
     let info = guild_info::get(&state, guild.id, false).await?;
@@ -307,19 +302,29 @@ async fn form_write(
         }
         review.push(role);
     }
-    if existing.is_none() && state.app.db.forms(guild.id).await?.len() >= 10 {
-        return Err(ApiError::limit("This server already has 10 forms."));
-    }
-    let form_id: i64 = if let Some(existing) = existing {
-        sqlx::query_scalar("UPDATE forms SET name=$3,questions=$4,submit_channel_id=$5,review_roles=$6,accept_role_id=$7,dm_result=$8,open=$9 WHERE guild_id=$1 AND id=$2 RETURNING id")
-            .bind(guild.id as i64).bind(existing).bind(&body.name).bind(json!(body.questions)).bind(channel).bind(review)
-            .bind(role).bind(body.dm_result).bind(body.open).fetch_optional(state.app.db.pool()).await?
-            .ok_or_else(ApiError::not_found)?
-    } else {
-        sqlx::query_scalar("INSERT INTO forms(guild_id,name,questions,submit_channel_id,review_roles,accept_role_id,dm_result,open) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id")
-            .bind(guild.id as i64).bind(&body.name).bind(json!(body.questions)).bind(channel).bind(review)
-            .bind(role).bind(body.dm_result).bind(body.open).fetch_one(state.app.db.pool()).await?
-    };
+    let form_id = state
+        .app
+        .db
+        .save_form(&pinchora_db::FormRow {
+            id: existing.unwrap_or(0),
+            guild_id: guild.id as i64,
+            name: body.name.clone(),
+            questions: json!(body.questions),
+            submit_channel_id: Some(channel),
+            review_roles: review,
+            accept_role_id: role,
+            dm_result: body.dm_result,
+            open: body.open,
+            message_id: None,
+        })
+        .await?
+        .ok_or_else(|| {
+            if existing.is_some() {
+                ApiError::not_found()
+            } else {
+                ApiError::limit("This server already has 10 forms.")
+            }
+        })?;
     let target = form_id.to_string();
     audited(
         &state,
@@ -443,11 +448,16 @@ async fn decide_submission(
     {
         tracing::warn!(%error,guild=guild.id,"form acceptance role could not be granted");
     }
-    if dm {
+    if dm && !state.app.db.dm_opt_out(user as u64).await? {
+        let lang = state
+            .app
+            .user_lang_choice(user as u64)
+            .await
+            .unwrap_or(state.app.guild_lang(guild.id).await);
         let message = if body.accept {
-            t!(state.app.guild_lang(guild.id).await, "community-pack.form-accepted")
+            t!(lang, "community-pack.form-accepted")
         } else {
-            t!(state.app.guild_lang(guild.id).await, "community-pack.form-denied")
+            t!(lang, "community-pack.form-denied")
         };
         if let Ok(response) = state
             .app

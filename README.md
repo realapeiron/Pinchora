@@ -1057,7 +1057,13 @@ always requested. Modmail chooses a shared server when several have it enabled,
 opens a staff forum thread, relays replies, and closes idle threads on schedule.
 Application forms use up to five questions in a Discord modal; submissions are
 reviewed from Discord buttons or the dashboard, with optional result DM and a
-safe acceptance role.
+safe acceptance role. Form names and questions are limited to 45 characters. Members
+may have one pending submission per form and submit at most once per hour. Modmail
+limits incoming DMs to one per five seconds and new threads to one per ten minutes
+per member across servers. Empty staff-role settings allow only server managers to
+relay replies. Accepted counts are durable: editing or deleting a message does not
+change the sequence. QOTD reserves the local calendar day before sending; an
+ambiguous network failure can lose that day's post, but cannot trigger duplicate pings.
 
 ### Events
 

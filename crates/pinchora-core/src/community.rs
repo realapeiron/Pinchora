@@ -101,3 +101,58 @@ mod tests {
         assert_eq!(SubmissionStatus::Accepted.decide(false), None);
     }
 }
+
+/// The name is also a Discord modal title; keep every writer within its 45-character limit.
+pub fn valid_form(name: &str, questions: &serde_json::Value) -> bool {
+    !name.trim().is_empty()
+        && name.chars().count() <= 45
+        && questions.as_array().is_some_and(|items| {
+            (1..=5).contains(&items.len())
+                && items.iter().all(|q| {
+                    q.as_str()
+                        .is_some_and(|q| !q.trim().is_empty() && q.chars().count() <= 45)
+                })
+        })
+}
+
+/// Discord modal fields are identified by custom ID, never by client-supplied ordering.
+pub fn form_answers(fields: &[(String, String)]) -> Option<serde_json::Value> {
+    if !(1..=5).contains(&fields.len()) {
+        return None;
+    }
+    let mut answers = Vec::new();
+    for index in 0..fields.len() {
+        let key = format!("a{index}");
+        let mut matches = fields.iter().filter(|(id, _)| id == &key);
+        let (_, value) = matches.next()?;
+        if matches.next().is_some() {
+            return None;
+        }
+        answers.push(value);
+    }
+    Some(serde_json::json!(answers))
+}
+
+#[cfg(test)]
+mod form_tests {
+    use super::*;
+    #[test]
+    fn modal_limits_and_field_identity() {
+        assert!(valid_form(&"a".repeat(45), &serde_json::json!(vec!["Why?"; 5])));
+        for (name, questions) in [
+            ("a".repeat(46), serde_json::json!(["Why?"])),
+            (" ".into(), serde_json::json!(["Why?"])),
+            ("Form".into(), serde_json::json!([])),
+            ("Form".into(), serde_json::json!(vec!["Why?"; 6])),
+            ("Form".into(), serde_json::json!(["a".repeat(46)])),
+        ] {
+            assert!(!valid_form(&name, &questions));
+        }
+        assert_eq!(
+            form_answers(&[("a1".into(), "second".into()), ("a0".into(), "first".into())]),
+            Some(serde_json::json!(["first", "second"]))
+        );
+        assert!(form_answers(&[("a0".into(), "a".into()), ("a0".into(), "b".into())]).is_none());
+        assert!(form_answers(&[("forged".into(), "a".into())]).is_none());
+    }
+}

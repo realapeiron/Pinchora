@@ -25,9 +25,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("qotd_questions", "suggested_by"),
     ("counting_stats", "user_id"),
     ("form_submissions", "user_id"),
-    ("form_submissions", "decided_by"),
     ("modmail_threads", "user_id"),
-    ("modmail_threads", "closed_by"),
     ("modmail_blocks", "user_id"),
     ("modmail_pending", "user_id"),
     ("reef_layout_outbox", "owner_id"),
@@ -171,6 +169,8 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
 pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("form_submissions", "decided_by"),
+    ("modmail_threads", "closed_by"),
     ("counting_channels", "last_user_id"),
     ("invite_rewards", "grantor_id"),
     ("raid_events", "ended_by"),

@@ -53,13 +53,32 @@ pub(crate) async fn on_guild_message(app: &Arc<App>, msg: &Message) {
     let Ok(Some(settings)) = app.db.modmail_settings(guild).await else {
         return;
     };
-    if !settings.enabled
-        || (!settings.staff_roles.is_empty()
-            && !msg
-                .member
-                .as_ref()
-                .is_some_and(|m| m.roles.iter().any(|r| settings.staff_roles.contains(&(r.get() as i64)))))
-    {
+    let staff_role = msg
+        .member
+        .as_ref()
+        .is_some_and(|m| m.roles.iter().any(|r| settings.staff_roles.contains(&(r.get() as i64))));
+    let owner = app
+        .guild_facts(guild)
+        .await
+        .is_some_and(|facts| facts.owner == msg.author.id.get());
+    let manager = if staff_role || owner {
+        true
+    } else if let Ok(response) = app.http.roles(Id::new(guild)).await {
+        response.models().await.is_ok_and(|roles| {
+            msg.member.as_ref().is_some_and(|member| {
+                roles.iter().any(|role| {
+                    (role.id.get() == guild || member.roles.contains(&role.id))
+                        && role.permissions.intersects(
+                            twilight_model::guild::Permissions::ADMINISTRATOR
+                                | twilight_model::guild::Permissions::MANAGE_GUILD,
+                        )
+                })
+            })
+        })
+    } else {
+        false
+    };
+    if !settings.enabled || !(staff_role || manager) {
         return;
     }
     let body = relay_body(msg);
@@ -92,9 +111,18 @@ pub(crate) async fn on_guild_message(app: &Arc<App>, msg: &Message) {
 
 pub(crate) async fn on_dm(app: &Arc<App>, msg: &Message) {
     let user = msg.author.id.get();
+    let lang = app.user_lang_choice(user).await.unwrap_or_default();
     let body = relay_body(msg);
     let text = body.trim();
     if text.is_empty() {
+        return;
+    }
+    if !matches!(
+        app.cache
+            .try_cooldown(&format!("community:dm:{user}"), Duration::from_secs(5))
+            .await,
+        Ok(None)
+    ) {
         return;
     }
     let candidates = match app.db.modmail_enabled_guilds().await {
@@ -110,7 +138,9 @@ pub(crate) async fn on_dm(app: &Arc<App>, msg: &Message) {
             continue;
         }
         let guild = guild as u64;
-        if !app.module_allowed(guild, None, Module::Modmail).await {
+        if !app.module_allowed(guild, None, Module::Modmail).await
+            || !matches!(app.db.modmail_blocked(guild, user).await, Ok(false))
+        {
             continue;
         }
         if app.http.guild_member(Id::new(guild), msg.author.id).await.is_ok() {
@@ -122,7 +152,7 @@ pub(crate) async fn on_dm(app: &Arc<App>, msg: &Message) {
             let _ = app
                 .http
                 .create_message(msg.channel_id)
-                .content(&t!(Lang::En, "community-pack.modmail-no-server"))
+                .content(&t!(lang, "community-pack.modmail-no-server"))
                 .await;
         }
         pinchora_core::community::MailRoute::One(guild) => {
@@ -161,14 +191,14 @@ pub(crate) async fn on_dm(app: &Arc<App>, msg: &Message) {
                     max_values: Some(1),
                     min_values: Some(1),
                     options: Some(options),
-                    placeholder: Some(t!(Lang::En, "community-pack.modmail-choose")),
+                    placeholder: Some(t!(lang, "community-pack.modmail-choose")),
                     required: None,
                 })],
             });
             let _ = app
                 .http
                 .create_message(msg.channel_id)
-                .content(&t!(Lang::En, "community-pack.modmail-choose"))
+                .content(&t!(lang, "community-pack.modmail-choose"))
                 .components(&[component])
                 .await;
         }
@@ -185,21 +215,54 @@ fn relay_body(msg: &Message) -> String {
     body.chars().take(1800).collect()
 }
 
-pub(crate) async fn route_dm(app: &Arc<App>, guild: u64, user: u64, body: &str) -> anyhow::Result<()> {
+pub(crate) async fn route_dm(app: &Arc<App>, guild: u64, user: u64, body: &str) -> anyhow::Result<bool> {
+    if guild == 0 || user == 0 || body.trim().is_empty() {
+        return Ok(false);
+    }
     if !app.module_allowed(guild, None, Module::Modmail).await {
-        return Ok(());
+        return Ok(false);
     }
     if app.db.modmail_blocked(guild, user).await? {
-        return Ok(());
+        return Ok(false);
     }
     let Some(settings) = app.db.modmail_settings(guild).await?.filter(|s| s.enabled) else {
-        return Ok(());
+        return Ok(false);
     };
+    if app.http.guild_member(Id::new(guild), Id::new(user)).await.is_err() {
+        return Ok(false);
+    }
+    if app
+        .cache
+        .try_cooldown(&format!("community:mail-delivery:{user}"), Duration::from_secs(5))
+        .await?
+        .is_some()
+    {
+        return Ok(false);
+    }
     let Some(forum) = settings.forum_channel_id else {
-        return Ok(());
+        return Ok(false);
     };
+    let guild_lang = app.guild_lang(guild).await;
+    let member_lang = crate::lang::resolve_text(app, user, guild).await;
+    // Hold a cross-pod lock until Discord creation and persistence finish. A cooldown also
+    // prevents repeated orphan threads after an ambiguous HTTP/DB failure or process restart.
+    let mut lock = app.db.pool().begin().await?;
+    let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,0))")
+        .bind(format!("community:mail:{guild}:{user}"))
+        .fetch_one(&mut *lock)
+        .await?;
+    if !acquired {
+        return Ok(false);
+    }
     let mut text = body.chars().take(1800).collect::<String>();
-    if let Some(thread) = app.db.modmail_open(guild, user).await? {
+    let existing: Option<pinchora_db::ModmailThread> =
+        sqlx::query_as("SELECT * FROM modmail_threads WHERE guild_id=$1 AND user_id=$2 AND status='open'")
+            .bind(guild as i64)
+            .bind(user as i64)
+            .fetch_optional(&mut *lock)
+            .await?;
+    let mut created = false;
+    if let Some(thread) = existing {
         let mentions = AllowedMentions::default();
         app.http
             .create_message(Id::new(thread.thread_id as u64))
@@ -207,11 +270,15 @@ pub(crate) async fn route_dm(app: &Arc<App>, guild: u64, user: u64, body: &str) 
             .allowed_mentions(Some(&mentions))
             .await?;
     } else {
-        let name = t!(
-            app.guild_lang(guild).await,
-            "community-pack.modmail-thread-title",
-            user = user
-        );
+        if app
+            .cache
+            .try_cooldown(&format!("community:mail-create:{user}"), Duration::from_secs(600))
+            .await?
+            .is_some()
+        {
+            return Ok(false);
+        }
+        let name = t!(guild_lang, "community-pack.modmail-thread-title", user = user);
         text = format!("<@{user}>: {text}");
         let mentions = AllowedMentions::default();
         let response = app
@@ -222,16 +289,25 @@ pub(crate) async fn route_dm(app: &Arc<App>, guild: u64, user: u64, body: &str) 
             .allowed_mentions(Some(&mentions))
             .await?;
         let thread = response.model().await?;
-        app.db.modmail_create(guild, user, thread.channel.id.get()).await?;
+        sqlx::query("INSERT INTO modmail_threads(guild_id,user_id,thread_id) VALUES($1,$2,$3)")
+            .bind(guild as i64)
+            .bind(user as i64)
+            .bind(thread.channel.id.get() as i64)
+            .execute(&mut *lock)
+            .await?;
+        created = true;
+    }
+    lock.commit().await?;
+    if created {
         let dm = app.http.create_private_channel(Id::new(user)).await?.model().await?;
         let greeting = if settings.greeting.is_empty() {
-            t!(Lang::En, "community-pack.modmail-greeting")
+            t!(member_lang, "community-pack.modmail-greeting")
         } else {
             settings.greeting
         };
         let _ = app.http.create_message(dm.id).content(&greeting).await;
     }
-    Ok(())
+    Ok(true)
 }
 pub async fn close_thread(
     app: &Arc<App>,
@@ -251,7 +327,7 @@ pub async fn close_thread(
     if !app.db.modmail_close(guild, thread_id, actor).await? {
         return Ok(false);
     }
-    let lang = app.guild_lang(guild).await;
+    let lang = crate::lang::resolve_text(app, thread.user_id as u64, guild).await;
     let message = reason.filter(|s| !s.trim().is_empty()).unwrap_or("");
     let dm_text = if message.is_empty() {
         t!(lang, "community-pack.modmail-closed")
@@ -274,7 +350,7 @@ pub async fn close_thread(
         && let Some(log) = settings.log_channel_id
     {
         let log_text = t!(
-            lang,
+            app.guild_lang(guild).await,
             "community-pack.modmail-log",
             thread = thread.id,
             user = thread.user_id,
@@ -286,6 +362,9 @@ pub async fn close_thread(
 }
 
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
+    sqlx::query("DELETE FROM modmail_pending WHERE created_at <= now()-INTERVAL '15 minutes'")
+        .execute(app.db.pool())
+        .await?;
     let stale:Vec<(i64,i64)>=sqlx::query_as(
         "SELECT t.guild_id,t.thread_id FROM modmail_threads t JOIN modmail_settings s ON s.guild_id=t.guild_id WHERE t.status='open' AND t.opened_at < now() - make_interval(hours=>s.close_after_hours) LIMIT 100")
         .fetch_all(app.db.pool()).await?;
@@ -325,28 +404,9 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
         {
             continue;
         }
-        let has_question: bool =
-            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM qotd_questions WHERE guild_id=$1 AND approved)")
-                .bind(guild as i64)
-                .fetch_one(app.db.pool())
-                .await?;
-        if !has_question {
-            continue;
-        }
-        let claimed=sqlx::query("UPDATE qotd_settings SET last_posted_on=$2 WHERE guild_id=$1 AND (last_posted_on IS NULL OR last_posted_on<$2)")
-            .bind(guild as i64).bind(now.date_naive()).execute(app.db.pool()).await?.rows_affected()>0;
-        if !claimed {
-            continue;
-        }
-        let Some(question) = app.db.next_qotd(guild).await? else {
-            sqlx::query("UPDATE qotd_settings SET last_posted_on=NULL WHERE guild_id=$1 AND last_posted_on=$2")
-                .bind(guild as i64)
-                .bind(now.date_naive())
-                .execute(app.db.pool())
-                .await?;
+        let Some(question) = app.db.claim_qotd(guild, now.date_naive()).await? else {
             continue;
         };
-        let question_id = question.id;
         let Some(channel) = channel else { continue };
         let question_text = if app.guild_lang(guild).await == Lang::Tr {
             question.text_tr.unwrap_or(question.text)
@@ -380,15 +440,8 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
             }
             Err(error) => {
                 tracing::warn!(%error,guild,"QOTD post failed");
-                sqlx::query("UPDATE qotd_questions SET asked_at=NULL WHERE id=$1")
-                    .bind(question_id)
-                    .execute(app.db.pool())
-                    .await?;
-                sqlx::query("UPDATE qotd_settings SET last_posted_on=NULL WHERE guild_id=$1 AND last_posted_on=$2")
-                    .bind(guild as i64)
-                    .bind(now.date_naive())
-                    .execute(app.db.pool())
-                    .await?;
+                // A failed response may follow a successful Discord send. Retain the durable
+                // claim: at-most-once delivery is safer than repeating a daily ping after restart.
             }
         }
     }

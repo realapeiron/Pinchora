@@ -47,3 +47,5 @@ modmail-choose = "Choose the server for your message."
 modmail-no-server = "No shared server has modmail enabled."
 modmail-denied = "You cannot open a support thread here."
 admin-only = "Manage Server is required."
+
+form-decided = "Application updated."
