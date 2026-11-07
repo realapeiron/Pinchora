@@ -1,5 +1,5 @@
 //! Which parts of Pinchora a server uses, and where: the modules a manager can switch off for the
-//! whole server or limit to some channels. Pure: the bot, `/config modules` and the dashboard all
+//! whole server or limit to some channels. Pure: the bot, `/setup server` and the dashboard all
 //! decide with these rules.
 
 use std::collections::HashMap;
@@ -317,7 +317,7 @@ impl Module {
         t!(lang, &format!("module-blurb.{}", self.key()))
     }
 
-    /// One line on what the module covers, for the dashboard and `/config modules show`.
+    /// One line on what the module covers, for the dashboard and `/setup server modules-show`.
     pub const fn blurb(self) -> &'static str {
         match self {
             Self::Leveling => "Chat and voice XP, levels and level-up messages.",
@@ -326,18 +326,20 @@ impl Module {
             Self::Goodbye => "The message when a member leaves.",
             Self::Log => "Members, messages, roles, channels, voice, bans and server changes in the log channels.",
             Self::Moderation => {
-                "/ban, /kick, /timeout, /warn, /purge, /lock and the other moderation commands, with numbered cases."
+                "/ban, /kick, /timeout, /warn, /purge, /mod lock and the other moderation commands, with numbered cases."
             }
-            Self::RolePanels => "/roles and the role buttons.",
+            Self::RolePanels => "/setup roles and the role buttons.",
             Self::Store => "/store and /points: spending and giving server points.",
             Self::Suggestions => "/suggest and its voting buttons.",
             Self::Polls => "/poll and its voting buttons.",
             Self::Giveaways => "/giveaway and its entry button.",
             Self::CustomCommands => {
-                "/tag and /customcommand, and the auto-responders (joins, level-ups, roles, keywords)."
+                "/tag and /setup commands, and the auto-responders (joins, level-ups, roles, keywords)."
             }
-            Self::Profile => "/profile, /rank, /leaderboard, /bio, /customize, /character, /wrapped and game stats.",
-            Self::Economy => "/daily, /weekly, /monthly, /balance, /give and /rep.",
+            Self::Profile => {
+                "/profile, /rank, /leaderboard, /customize bio, /customize, /character, /info wrapped and game stats."
+            }
+            Self::Economy => "/daily, /rewards weekly, /rewards monthly, /balance, /give and /rep.",
             Self::Shop => "/shop, /inventory, /gift and player stalls.",
             Self::Quests => "/quests.",
             Self::Social => "/partner, /friends, /hug, /pat, /wave and /highfive.",
@@ -357,10 +359,14 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
-            Self::AutoRoles => "/autoroles: roles given to members who join, and roles kept for those who come back.",
+            Self::AutoRoles => "/setup roles: roles given to members who join, and roles kept for those who come back.",
             Self::ColorRoles => "/color: colour roles members pick for their names.",
-            Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
-            Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
+            Self::Stats => {
+                "/stats, /setup stats, the Stats page and counting messages, voice minutes, joins and leaves."
+            }
+            Self::Tickets => {
+                "/ticket and /setup tickets: private support tickets opened from a panel, with transcripts."
+            }
             Self::AutoMod => "Automatic message rules and moderation actions.",
             Self::Verification => "Join gate and pixel captcha verification.",
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
@@ -368,11 +374,11 @@ impl Module {
             Self::Events => "/event: scheduled server events and RSVPs.",
             Self::CommandControl => "Command permissions, aliases and configuration backups.",
             Self::Feeds => {
-                "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
+                "/setup feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
-            Self::Starboard => "/starboard: highlight popular posts and set up vote channels.",
+            Self::Starboard => "/setup starboard: highlight popular posts and set up vote channels.",
             Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
             Self::AntiNuke => "Protect server structure, staff and VIP members.",
             Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",
@@ -716,7 +722,7 @@ pub fn check_channels(module: Module, mode: ChannelMode, channels: &[u64]) -> Re
     Ok(clean)
 }
 
-/// What `/config modules channels` does with one channel: starts a list in `mode` (or adds to the
+/// What `/setup server modules-channels` does with one channel: starts a list in `mode` (or adds to the
 /// one already in that mode), or takes `channel` off it. Returns the mode and list to check and
 /// store: removing the last channel goes back to all channels.
 pub fn edit_channels(
@@ -1031,10 +1037,10 @@ mod tests {
         let manager = refusal(Module::Pets, Access::ServerOff, true, Lang::En);
         assert_eq!(
             refusal(Module::Pets, Access::ChannelOff, true, Lang::Tr),
-            "Bu özellik bu kanalda kapalı. Bu, **Evcil hayvanlar** modülü: `/config modules` ile ya da panelden açabilirsin."
+            "Bu özellik bu kanalda kapalı. Bu, **Evcil hayvanlar** modülü: `/setup server` ile ya da panelden açabilirsin."
         );
         assert!(
-            manager.contains("**Pets**") && manager.contains("/config modules"),
+            manager.contains("**Pets**") && manager.contains("/setup server"),
             "{manager}"
         );
         for module in Module::ALL {

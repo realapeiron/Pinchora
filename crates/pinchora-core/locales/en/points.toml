@@ -1,4 +1,4 @@
-# /points and /store: server points, the role store and its /config store subcommands.
+# /points and /store: server points, the role store and its /setup economy subcommands.
 
 [points]
 guild-only = "Points only exist inside a server."
@@ -22,12 +22,12 @@ option = "{price} {name}"
 title = "Server store"
 footer = "Pay with {name}. Check your balance with /points show"
 buy-placeholder = "Buy a role…"
-empty = "The store is empty. Server managers can add roles with `/config store add`."
-max-roles = "A store holds at most {max} roles. Remove one with `/config store remove` first."
+empty = "The store is empty. Server managers can add roles with `/setup economy store-add`."
+max-roles = "A store holds at most {max} roles. Remove one with `/setup economy store-remove` first."
 on-sale = "On sale now: {line}"
 removed = "{role} is off sale. Members who bought it keep it."
 not-in-store = "{role} isn't in the store."
-list-empty = "Nothing on sale. Add a role with `/config store add`."
+list-empty = "Nothing on sale. Add a role with `/setup economy store-add`."
 list-title = "{name} store"
 list-footer = "{count}/{max} roles"
 pick = "Pick something to buy."

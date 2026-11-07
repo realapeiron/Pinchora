@@ -14,8 +14,19 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
     assert_eq!(tree.len(), 95);
     let registered = crate::command_definitions();
-    assert_eq!(registered.len(), 98);
+    assert_eq!(registered.len(), PROJECTED_ROOTS);
+    let actual: BTreeSet<_> = crate::commands::help::leaves(&registered, Lang::En)
+        .into_iter()
+        .map(|l| l.path)
+        .collect();
+    assert_eq!(
+        actual,
+        MANIFEST.iter().map(|r| r.canonical.clone()).collect(),
+        "every original action must still be reachable, once"
+    );
     validate(&registered).unwrap();
+    assert!(has_legacy_paths(&tree));
+    assert!(!has_legacy_paths(&registered));
     let projected: BTreeSet<_> = MANIFEST
         .iter()
         .map(|r| r.canonical.split(' ').next().unwrap())
@@ -206,9 +217,23 @@ fn mod_permissions_and_form_deferrals_are_action_specific() {
     );
     let catalog = crate::control_catalog();
     for route in MANIFEST.iter().filter(|r| r.slice == 9 || r.slice == 10) {
-        let old = catalog.iter().find(|c| c.path == route.legacy).unwrap();
+        let legacy_catalog = crate::command_control::control_validation_catalog();
+        let old = legacy_catalog.iter().find(|c| c.path == route.legacy).unwrap();
         let new = catalog.iter().find(|c| c.path == route.canonical).unwrap();
-        assert_eq!(old.permissions, new.permissions, "{}", route.canonical);
+        let original = crate::commands::legacy_definitions();
+        let root = original
+            .iter()
+            .find(|c| Some(c.name.as_str()) == route.legacy.split(' ').next())
+            .unwrap();
+        assert_eq!(
+            root.default_member_permissions
+                .unwrap_or_else(Permissions::empty)
+                .bits()
+                .to_string(),
+            new.permissions,
+            "{}",
+            route.canonical
+        );
         assert_eq!(old.ephemeral_supported, new.ephemeral_supported);
     }
     for path in ["setup commands custom-create", "setup commands custom-edit"] {
@@ -275,7 +300,7 @@ fn legacy_prefix_resolution_preserves_argument_bytes_and_expands_once() {
     config
         .validate_update(
             &config,
-            &crate::control_catalog(),
+            &crate::command_control::control_validation_catalog(),
             &crate::command_reserved_aliases(),
             Lang::En,
         )
@@ -313,4 +338,73 @@ fn member_additions_preserve_dm_contexts() {
             .unwrap();
         assert_eq!(source.contexts, target.contexts, "{}", route.canonical);
     }
+}
+
+#[test]
+fn migrated_split_parents_preserve_conjunctive_roles_channels_and_cooldown_identity() {
+    use pinchora_core::command_control::{Config, Rule};
+    let config = Config {
+        rules: [
+            (
+                "roles".into(),
+                Rule {
+                    allowed_roles: vec!["1".into(), "2".into()],
+                    cooldown_secs: 12,
+                    ..Rule::default()
+                },
+            ),
+            (
+                "roles post".into(),
+                Rule {
+                    allowed_roles: vec!["3".into()],
+                    ..Rule::default()
+                },
+            ),
+            (
+                "setup roles panel-post".into(),
+                Rule {
+                    denied_channels: vec!["9".into()],
+                    ..Rule::default()
+                },
+            ),
+            (
+                "automod".into(),
+                Rule {
+                    enabled: false,
+                    ..Rule::default()
+                },
+            ),
+        ]
+        .into(),
+        ..Config::default()
+    };
+    let migrated = normalize_control(&config);
+    assert_eq!(normalize_control(&migrated), migrated);
+    for roles in [vec![], vec!["1".into()], vec!["2".into(), "3".into()]] {
+        for channels in [vec![], vec!["9".into()]] {
+            let check = |config: &Config| {
+                matching(config, "setup roles panel-post")
+                    .iter()
+                    .all(|(_, r)| r.check(&roles, &channels).is_ok())
+            };
+            assert_eq!(check(&config), check(&migrated));
+        }
+    }
+    assert!(
+        matching(&migrated, "setup roles panel-add")
+            .iter()
+            .any(|(source, r)| source.as_str() == "roles" && r.cooldown_secs == 12)
+    );
+    assert!(
+        matching(&migrated, "automod").iter().any(|(_, r)| !r.enabled),
+        "old family component owners keep parent denies"
+    );
+    assert!(
+        !matching(&migrated, "setup roles color-setup")
+            .iter()
+            .any(|(_, r)| r.cooldown_secs == 12)
+    );
+    migrated
+        .validate(&crate::control_catalog(), &crate::command_reserved_aliases(), Lang::En)
+        .unwrap();
 }

@@ -56,7 +56,7 @@ async fn auto_roles_and_sticky_roles_follow_the_command_rules() {
         json!({ "name": "Coral", "hex": "#ff6b4a" })
     );
 
-    // A role with a delay and an expiry, like `/autoroles add`.
+    // A role with a delay and an expiry, like `/setup roles auto-add`.
     let added = browser
         .write(
             Method::PUT,

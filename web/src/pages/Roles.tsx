@@ -237,7 +237,7 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
             label="Sticky roles"
             checked={sticky}
             disabled={write.isPending}
-            onChange={(on) => write.mutate({ method: "PUT", sub: "/sticky", body: { enabled: on } })}
+            onChange={(on) => write.mutate({ method: "PUT", sub: "/setup utility", body: { enabled: on } })}
           />
         }
       >

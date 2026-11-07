@@ -498,7 +498,7 @@ async fn the_text_commands_module_switches_them_off_by_server_and_channel() {
         .text_one(manager, &[staff], &format!("{BOT_MENTION} profile"), &[])
         .await;
     assert!(
-        way_back.content().contains("**Text commands**") && way_back.content().contains("/config modules"),
+        way_back.content().contains("**Text commands**") && way_back.content().contains("/setup server"),
         "{}",
         way_back.content()
     );
@@ -823,7 +823,7 @@ async fn private_text_answers_are_deleted_when_the_bot_shuts_down() {
 }
 
 /// A message carries no Discord language: a text command answers in the member's `/language` pick,
-/// else the server's default, else English; `/config prefix` follows the interaction's language.
+/// else the server's default, else English; `/setup server` follows the interaction's language.
 #[tokio::test]
 async fn text_commands_answer_in_the_members_or_the_servers_language() {
     use pinchora_core::i18n::Lang;
@@ -879,7 +879,7 @@ async fn text_commands_answer_in_the_members_or_the_servers_language() {
     let usage = sim.text_one(picker, &[], "p!duel connect4", &[]).await;
     assert!(usage.content().starts_with("`user` is missing."), "{}", usage.content());
 
-    // `/config prefix` is answered in the language of the interaction.
+    // `/setup server` is answered in the language of the interaction.
     sim.locale = "tr";
     sim.permissions = MANAGE_GUILD;
     let shown = sim

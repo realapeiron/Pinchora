@@ -79,7 +79,10 @@ pub fn command_catalog() -> Value {
         let order = AREAS[area]
             .covers
             .iter()
-            .position(|c| leaf.path == *c || leaf.path.starts_with(&format!("{c} ")))
+            .position(|c| {
+                crate::routing::legacy(&leaf.path) == *c
+                    || crate::routing::legacy(&leaf.path).starts_with(&format!("{c} "))
+            })
             .unwrap_or(0);
         let options: Vec<&CommandOption> = leaf
             .options
@@ -95,6 +98,7 @@ pub fn command_catalog() -> Value {
             order,
             json!({
                 "path": leaf.path,
+                "aliases": crate::routing::MANIFEST.iter().filter(|r| r.canonical == leaf.path && r.legacy != r.canonical).map(|r| &r.legacy).collect::<Vec<_>>(),
                 "usage": usage(&leaf.path, &leaf.options),
                 "description": leaf.text,
                 "manager": leaf.manager,
@@ -206,7 +210,7 @@ mod tests {
         };
         assert_eq!(find("give")["usage"], "/give <user> <amount>");
         assert_eq!(find("profile")["usage"], "/profile [user]");
-        assert_eq!(find("config xp voice")["manager"], true);
+        assert_eq!(find("setup leveling xp-voice")["manager"], true);
         assert_eq!(find("daily")["manager"], false);
     }
 }

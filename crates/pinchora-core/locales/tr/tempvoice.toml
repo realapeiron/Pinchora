@@ -1,4 +1,4 @@
-# Geçici ses: /voice, odadaki düğme paneli ve /voice creators.
+# Geçici ses: /voice, odadaki düğme paneli ve /setup utility.
 
 [module]
 temp_voice = "Geçici ses"
@@ -91,13 +91,13 @@ per-user-invalid = "Bir üye, aynı oluşturucudan 1 ile 5 arasında odaya sahip
 added = "✅ {channel} artık bir oluşturucu: ona katılan herkese bir oda açılır."
 updated = "✅ {channel} güncellendi."
 category = " Odalar {category} içinde açılır."
-module-off = " Bu sunucuda **Geçici ses** modülü kapalı, açana kadar hiçbir şey olmaz (`/config modules`)."
+module-off = " Bu sunucuda **Geçici ses** modülü kapalı, açana kadar hiçbir şey olmaz (`/setup server`)."
 gaps = " Dikkat: **{permissions}** iznim eksik, odalar henüz düzgün çalışmaz."
 full = "Bir sunucuda en fazla {count} oluşturucu olabilir. Önce birini kaldır."
 taken = "{channel} oluşturucu olamaz."
 removed = "{channel} artık oluşturucu değil. Açtığı odalar boşalana kadar durur."
 unknown = "{channel} bir oluşturucu değil."
-none = "Henüz oluşturucu yok. `/voice creators add` ile bir tane yap."
+none = "Henüz oluşturucu yok. `/setup utility voice-add` ile bir tane yap."
 head = "**Oluşturucular** ({count}/{max})"
 line = "{channel} · {template} · {limit} · {rooms} · {state}"
 rooms-now = { other = "{count} oda açık" }
@@ -150,15 +150,6 @@ per-user = "Bir üye aynı anda 1 ile {count} arasında odaya sahip olabilir."
 "voice invite" = "Birini odana al; oda kilitliyse ya da o atılmışsa bile"
 "voice invite user" = "Kimi alacaksın"
 "voice panel" = "Odanı yöneten düğmeleri göster"
-"voice creators" = "Katılan herkese oda açan kanallar (Sunucuyu Yönet)"
-"voice creators add" = "Bir ses kanalını oluşturucu yap ya da değiştir (Sunucuyu Yönet)"
-"voice creators add channel" = "Oda almak için katılınan ses kanalı"
-"voice creators add category" = "Odaların açılacağı kategori (varsayılan: oluşturucunun kategorisi)"
-"voice creators add limit" = "Odaların başlangıç kişi sınırı (sınırsız için 0)"
-"voice creators add template" = "Oda adları: {user} sahibin adı, {n} odanın numarası"
-"voice creators remove" = "Bir kanalın oda açmasını durdur (Sunucuyu Yönet)"
-"voice creators remove channel" = "Oluşturucu kanal"
-"voice creators list" = "Bu sunucudaki oluşturucu kanallar (Sunucuyu Yönet)"
 
 [module-blurb]
 temp_voice = "Katılana özel ses odası açan kanallar ve odanı yönetmek için /voice."

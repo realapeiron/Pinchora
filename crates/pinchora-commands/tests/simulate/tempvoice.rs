@@ -1424,7 +1424,7 @@ async fn voice_xp_is_still_paid_in_a_temp_room() {
     v.manage = true;
     let on = v
         .run(
-            "/config xp voice".into(),
+            "/setup leveling xp-voice".into(),
             admin,
             2,
             json!({ "id": unique().to_string(), "name": "config", "type": 1,

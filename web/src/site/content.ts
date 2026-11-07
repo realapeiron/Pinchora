@@ -57,12 +57,12 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: "Can I turn parts of it off?",
     answer:
-      "Yes. Switch whole parts of Pinchora on or off for the server, or only in the channels you pick, with /config modules or in the dashboard.",
+      "Yes. Switch whole parts of Pinchora on or off for the server, or only in the channels you pick, with /setup server or in the dashboard.",
   },
   {
     question: "Is there gambling?",
     answer:
-      "One optional game, Shell Game, is a gambling-style bet with shells. It stays off until a manager runs /config gambling and has daily limits. Nobody can lose shells in the heist, the party games or the puzzles.",
+      "One optional game, Shell Game, is a gambling-style bet with shells. It stays off until a manager runs /setup economy gambling and has daily limits. Nobody can lose shells in the heist, the party games or the puzzles.",
   },
   {
     question: "Which languages does it speak?",

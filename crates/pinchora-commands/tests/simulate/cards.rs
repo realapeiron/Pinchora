@@ -1,5 +1,5 @@
 //! Welcome and goodbye images from the dashboard's editor: every way a saved design is sent, goodbye images,
-//! direct messages (open and closed), a stored design that no longer reads, and `/config welcome-card`
+//! direct messages (open and closed), a stored design that no longer reads, and `/setup welcome card`
 //! putting the classic card back. Pictures land in `target/sim/<test>/`.
 
 use pinchora_core::card_design::{CardKind, Delivery};

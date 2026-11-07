@@ -151,7 +151,18 @@ fn localize_option(option: &mut CommandOption, parent: &str) {
 
 /// `path`'s text in every language that has it, by Discord locale; `None` when none has.
 fn descriptions(path: &str) -> Option<std::collections::HashMap<String, String>> {
-    let key = command_key(path);
+    let mapped = crate::routing::MANIFEST
+        .iter()
+        .filter(|r| r.active())
+        .filter(|r| {
+            path == r.legacy
+                || path
+                    .strip_prefix(&r.legacy)
+                    .is_some_and(|s| s.starts_with(' ') || s.starts_with('='))
+        })
+        .max_by_key(|r| r.legacy.len())
+        .map(|r| format!("{}{}", r.canonical, &path[r.legacy.len()..]));
+    let key = command_key(mapped.as_deref().unwrap_or(path));
     let found: std::collections::HashMap<String, String> = Lang::ALL
         .into_iter()
         .filter_map(|lang| i18n::exact(lang, &key).map(|text| (lang, text)))

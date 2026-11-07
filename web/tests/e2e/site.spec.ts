@@ -184,7 +184,7 @@ test("the commands page searches, filters and links", async ({ page }) => {
   // A link from a feature page lands on the same search.
   await open(page, "/commands?q=welcome");
   await expect(page.getByRole("searchbox")).toHaveValue("welcome");
-  await expect(page.locator(".cmd-path", { hasText: "/config welcome" }).first()).toBeVisible();
+  await expect(page.locator(".cmd-path", { hasText: "/setup welcome message" }).first()).toBeVisible();
 
   // "/" jumps to the search.
   await page.getByRole("heading", { level: 1 }).click();

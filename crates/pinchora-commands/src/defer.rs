@@ -221,7 +221,7 @@ mod tests {
                     CommandOptionType::SubCommand | CommandOptionType::SubCommandGroup
                 ) {
                     let path = format!("{prefix} {}", option.name);
-                    paths.push(path.clone());
+                    paths.push(crate::routing::legacy(&path).to_owned());
                     walk(&path, option.options.as_deref().unwrap_or_default(), paths);
                 }
             }

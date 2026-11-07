@@ -106,7 +106,7 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
       <Panel title="WARN LADDER">
         <p className="panel-lead muted">
           When a warn brings a member's active warns to a number on the ladder, Pinchora acts on its own, as a
-          case of its own. Taking a warn back with /unwarn lowers the count again.
+          case of its own. Taking a warn back with /mod unwarn lowers the count again.
         </p>
         {ladder.length === 0 ? (
           <p className="empty-row muted">No rungs yet: warns are only counted.</p>

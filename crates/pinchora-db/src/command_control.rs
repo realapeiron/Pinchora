@@ -16,3 +16,35 @@ impl Db {
         Ok(())
     }
 }
+
+impl Db {
+    /// First snapshot wins, including on a retried registration after Discord already deleted IDs.
+    pub async fn save_command_permissions(
+        &self,
+        guild: u64,
+        application: u64,
+        snapshot: &serde_json::Value,
+    ) -> anyhow::Result<()> {
+        sqlx::query("INSERT INTO guilds(id) VALUES($1) ON CONFLICT DO NOTHING")
+            .bind(sql_id(guild))
+            .execute(self.pool())
+            .await?;
+        sqlx::query("INSERT INTO command_permission_snapshots(guild_id,application_id,snapshot) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
+            .bind(sql_id(guild)).bind(sql_id(application)).bind(snapshot).execute(self.pool()).await?;
+        Ok(())
+    }
+
+    pub async fn saved_command_permissions(
+        &self,
+        guild: u64,
+        application: u64,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        Ok(sqlx::query_scalar(
+            "SELECT snapshot FROM command_permission_snapshots WHERE guild_id=$1 AND application_id=$2",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(application))
+        .fetch_optional(self.pool())
+        .await?)
+    }
+}

@@ -17,6 +17,8 @@ pub enum Invalidation {
     Guild(u64),
     /// A server's XP multipliers.
     XpRules(u64),
+    /// Command IDs/overrides changed for this application.
+    Commands(u64),
 }
 
 impl Invalidation {
@@ -24,6 +26,7 @@ impl Invalidation {
         match self {
             Self::Guild(id) => format!("guild:{id}"),
             Self::XpRules(id) => format!("xp:{id}"),
+            Self::Commands(id) => format!("commands:{id}"),
         }
     }
 
@@ -33,6 +36,7 @@ impl Invalidation {
         match kind {
             "guild" => Some(Self::Guild(id)),
             "xp" => Some(Self::XpRules(id)),
+            "commands" => Some(Self::Commands(id)),
             _ => None,
         }
     }
@@ -62,7 +66,11 @@ mod tests {
 
     #[test]
     fn messages_round_trip() {
-        for what in [Invalidation::Guild(42), Invalidation::XpRules(u64::MAX >> 1)] {
+        for what in [
+            Invalidation::Guild(42),
+            Invalidation::XpRules(u64::MAX >> 1),
+            Invalidation::Commands(123),
+        ] {
             assert_eq!(Invalidation::decode(&what.encode()), Some(what));
         }
         assert_eq!(Invalidation::Guild(7).encode(), "guild:7");

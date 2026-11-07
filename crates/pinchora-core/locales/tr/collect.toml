@@ -1,4 +1,4 @@
-# /critterdrop, the bottle, /beachcomb, /crabpot, /dex and `/config critters`: the collection games.
+# /critterdrop, the bottle, /beachcomb, /crabpot, /dex and `/setup economy critters`: the collection games.
 
 # /Shared
 [collect]
@@ -8,7 +8,7 @@ money-fragments = "+{fragments} parçacık"
 tag-new = "YENİ"
 tag-spare = "TEKRAR"
 button-expired = "Bu düğmenin süresi doldu."
-summary-off = "**kapalı** · `/config critters enabled:true` ile açabilirsin"
+summary-off = "**kapalı** · `/setup economy critters enabled:true` ile açabilirsin"
 summary-channel = "**açık** · yaratıklar <#{channel}> kanalında belirir, sohbet orada sayılır"
 summary-anywhere = "**açık** · yaratıklar sohbetin yoğun olduğu kanalda belirir"
 both-set = "Bir kanal seç ya da `anywhere` de, ikisini birden değil."
@@ -16,7 +16,7 @@ setting = "Yaratık etkinliği: {summary}"
 
 # /Critter drop
 [drop]
-off = "Bu sunucuda yaratık etkinliği kapalı. Bir yönetici `/config critters enabled:true` ile açabilir."
+off = "Bu sunucuda yaratık etkinliği kapalı. Bir yönetici `/setup economy critters enabled:true` ile açabilir."
 only-channel = "Bu sunucuda yaratık etkinliği <#{channel}> kanalında. Etkinliği orada başlat!"
 waiting = "Bu kanalda hâlâ açık bir yaratık etkinliği var. Önce herkes kartını alsın!"
 channel-cooldown = "Bu kanalda biraz önce yaratık etkinliği yapıldı. Sonrakini {minutes} dakika sonra başlatabilirsin."

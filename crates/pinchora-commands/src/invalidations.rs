@@ -44,5 +44,10 @@ async fn forget(app: &App, what: Invalidation) {
             crate::commands::achievements::forget(guild).await;
         }
         Invalidation::XpRules(guild) => app.forget_xp_rules(guild).await,
+        Invalidation::Commands(application) => {
+            if application == app.application_id.get() {
+                app.forget_command_registration().await;
+            }
+        }
     }
 }

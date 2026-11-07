@@ -72,13 +72,17 @@ async fn save(
     config
         .validate_update(
             &before,
-            &pinchora_commands::control_catalog(),
+            &pinchora_commands::control_validation_catalog(),
             &pinchora_commands::command_reserved_aliases(),
             lang,
         )
         .map_err(ApiError::blocked)?;
     let info = guild_info::get(&state, managed.id, false).await?;
-    for rule in config.rules.values() {
+    for rule in config
+        .rules
+        .values()
+        .flat_map(|r| std::iter::once(r).chain(r.constraints.values()))
+    {
         for role in rule.allowed_roles.iter().chain(&rule.denied_roles) {
             info.check_role(
                 "roles",

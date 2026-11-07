@@ -10,9 +10,9 @@ needs-manage-server = "You need the **Manage Server** permission for that."
 [gate]
 server-off = "This feature is turned off on this server."
 channel-off = "This feature is turned off in this channel."
-how-to-enable = " It is the **{module}** module: switch it on with `/config modules` or on the dashboard."
+how-to-enable = " It is the **{module}** module: switch it on with `/setup server` or on the dashboard."
 
-# Module names, by `Module::key`, as `/config modules` and refusals name them.
+# Module names, by `Module::key`, as `/setup server` and refusals name them.
 [module]
 leveling = "Leveling"
 points = "Chat points"

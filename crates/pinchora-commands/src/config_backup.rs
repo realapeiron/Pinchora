@@ -44,6 +44,7 @@ pub async fn backup_preview(
     let names = backup_names(app, guild).await?;
     let before = app.db.snapshot_config(guild, names.clone()).await?;
     let mut backup = request.backup.clone();
+    crate::routing::normalize_backup(&mut backup)?;
     let unmapped: Vec<String> = config_backup::remap(&mut backup, guild, &names)
         .into_iter()
         .map(|entry| {
@@ -167,6 +168,9 @@ pub async fn backup_apply(app: &App, guild: u64, request: &Import, lang: Lang, a
 
 pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
     config_backup::validate_shape(backup, lang)?;
+    let mut normalized = backup.clone();
+    crate::routing::normalize_backup(&mut normalized).map_err(|_| t!(lang, "config_backup.invalid"))?;
+    let backup = &normalized;
     let invalid = || t!(lang, "config_backup.invalid");
     let fields =
         |errors: Vec<settings::FieldError>| errors.into_iter().map(|e| e.text(lang)).collect::<Vec<_>>().join(" · ");
@@ -247,7 +251,16 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
     for row in get("command_control") {
         let config: pinchora_core::command_control::Config =
             serde_json::from_value(row["config"].clone()).map_err(|_| invalid())?;
-        config.validate(&crate::control_catalog(), &crate::command_reserved_aliases(), lang)?;
+        let mut previous = config.clone();
+        previous
+            .aliases
+            .retain(|name, _| matches!(name.as_str(), "setup" | "mod" | "rewards"));
+        config.validate_update(
+            &previous,
+            &crate::command_control::control_validation_catalog(),
+            &crate::command_reserved_aliases(),
+            lang,
+        )?;
     }
     for row in get("guild_modules") {
         use pinchora_core::modules::{self, ChannelMode, Module};
@@ -627,7 +640,12 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
                 let def: pinchora_core::tags::CommandDef = serde_json::from_value(row).map_err(|_| invalid())?;
                 let clean = def
                     .clone()
-                    .clean(&crate::control_catalog().into_iter().map(|c| c.path).collect::<Vec<_>>())
+                    .clean(
+                        &crate::command_control::control_validation_catalog()
+                            .into_iter()
+                            .map(|c| c.path)
+                            .collect::<Vec<_>>(),
+                    )
                     .map_err(fields)?;
                 if clean != def {
                     return Err(invalid());

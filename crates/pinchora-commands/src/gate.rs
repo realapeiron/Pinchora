@@ -110,7 +110,10 @@ mod tests {
                 sub.as_deref().unwrap_or("")
             );
         }
-        let names: Vec<String> = crate::command_definitions().into_iter().map(|c| c.name).collect();
+        let names: Vec<String> = crate::commands::legacy_definitions()
+            .into_iter()
+            .map(|c| c.name)
+            .collect();
         for never in NEVER_GATED {
             assert!(names.iter().any(|n| n == never), "/{never} is not a command any more");
         }

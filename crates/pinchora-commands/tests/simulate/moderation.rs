@@ -933,7 +933,7 @@ async fn temporary_bans_end_on_the_ticker_with_a_case_of_their_own() {
     sim.app.shift_clock(chrono::Duration::minutes(-2));
 }
 
-/// `/unwarn` and `/reason` follow the hierarchy of the case: a junior moderator can neither take back nor
+/// `/mod unwarn` and `/mod reason` follow the hierarchy of the case: a junior moderator can neither take back nor
 /// reword a senior's warn, the senior can do both to the junior's, and everyone may reword their own.
 #[tokio::test]
 async fn unwarn_and_reason_follow_the_hierarchy_of_the_case() {
@@ -1071,7 +1071,7 @@ async fn a_refused_ban_takes_its_message_back_and_server_dms_off_is_honoured() {
     assert_eq!(sim.cases().await[0].dm_sent, Some(false));
 }
 
-/// `/unlock` gives @everyone back exactly what the lock took: here an explicit Send Messages.
+/// `/mod unlock` gives @everyone back exactly what the lock took: here an explicit Send Messages.
 #[tokio::test]
 async fn unlock_puts_back_what_everyone_had() {
     let Some(mut sim) = Sim::new("unlock_puts_back_what_everyone_had").await else {

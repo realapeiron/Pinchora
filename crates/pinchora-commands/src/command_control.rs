@@ -75,6 +75,27 @@ pub fn control_catalog() -> Vec<Command> {
     }
     out
 }
+/// Hidden legacy parents remain valid alias targets: their suffix is resolved after expansion.
+pub fn control_validation_catalog() -> Vec<Command> {
+    let mut commands = control_catalog();
+    for route in crate::routing::MANIFEST.iter() {
+        let parts: Vec<_> = route.legacy.split(' ').collect();
+        for end in 1..=parts.len() {
+            let path = parts[..end].join(" ");
+            if !commands.iter().any(|c| c.path == path) {
+                commands.push(Command {
+                    protected: crate::routing::protected(&path),
+                    path,
+                    description: "Legacy text shortcut".into(),
+                    permissions: "0".into(),
+                    ephemeral_supported: false,
+                });
+            }
+        }
+    }
+    commands
+}
+
 pub fn command_reserved_aliases() -> Vec<&'static str> {
     crate::text::parse::ALIASES
         .iter()
@@ -252,7 +273,9 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
 /// Autocomplete must not disclose suggestions for a denied command or consume its cooldown.
 pub(crate) async fn autocomplete_allowed(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
     use pinchora_core::modules::{Access, Module};
-    if data.name == "setup" && (cx.guild_id().is_none() || !cx.can_manage_guild()) {
+    if (data.name == "setup" || crate::routing::canonical(&path(data)).starts_with("setup "))
+        && (cx.guild_id().is_none() || !cx.can_manage_guild())
+    {
         return Ok(false);
     }
     let data = crate::routing::adapt(data.clone())?;
@@ -261,6 +284,9 @@ pub(crate) async fn autocomplete_allowed(cx: &Cx, data: &CommandData) -> anyhow:
         return Ok(false);
     }
     let path = path(&data);
+    if crate::routing::saved_permissions_denied(cx, &path).await? {
+        return Ok(false);
+    }
     let sub = path.split(' ').nth(1);
     if let Some(module) = Module::of_command(&data.name, sub)
         && cx
@@ -309,10 +335,13 @@ async fn policy_check(
     Ok(())
 }
 
-pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Result<bool> {
+pub(crate) async fn refuses(cx: &Cx, path: &str, component: bool) -> anyhow::Result<bool> {
     let Some(guild) = cx.guild_id() else {
         return Ok(false);
     };
+    if !component && crate::routing::refuses_saved_permissions(cx, path).await? {
+        return Ok(true);
+    }
     if crate::routing::protected(path) {
         return Ok(false);
     }
@@ -387,7 +416,7 @@ mod tests {
     }
     #[test]
     fn component_owners_are_real_commands() {
-        let catalog = control_catalog();
+        let catalog = control_validation_catalog();
         let source = include_str!("components.rs");
         let mut invalid = vec![];
         for s in source.split("Some(\"").skip(1) {

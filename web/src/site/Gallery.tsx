@@ -137,7 +137,7 @@ export function Gallery() {
               <h3 className="pixel-title">{tab.title}</h3>
               <p>{tab.text}</p>
               <p className="gallery-try muted">
-                Try <code>{tab.command.startsWith("/") ? tab.command : "/config welcome"}</code>
+                Try <code>{tab.command.startsWith("/") ? tab.command : "/setup welcome message"}</code>
               </p>
             </div>
           </div>

@@ -282,7 +282,7 @@ export const FEATURES: Feature[] = [
         text: "Turn whole parts of Pinchora on or off for the server, or only in the channels you pick.",
       },
     ],
-    try: ["/config welcome", "/poll", "/giveaway start", "/config modules"],
+    try: ["/setup welcome message", "/poll", "/giveaway start", "/setup server"],
     shots: [
       {
         key: "welcome",

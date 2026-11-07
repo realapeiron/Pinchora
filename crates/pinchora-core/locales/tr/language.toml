@@ -1,4 +1,4 @@
-# /language and /config language.
+# /language and /setup server language.
 
 [language]
 set = "Tamam, bundan sonra her sunucuda seninle **{language}** konuşacağım."

@@ -1,5 +1,5 @@
 //! The everyday commands through the real handlers: ping and help, bio, rep and give, the shops,
-//! gifts, stalls, the plaza, quests, the house commands and the first /config settings, and a game of
+//! gifts, stalls, the plaza, quests, the house commands and the first /setup settings, and a game of
 //! tic-tac-toe that nobody wins. Pictures land in `target/sim/<test>/`.
 
 use pinchora_game::{Availability, Category, Content, house};
@@ -73,7 +73,7 @@ async fn ping_answers_and_help_pages_through_every_area() {
     assert!(first.button("◀ Previous").disabled && !first.button("Next ▶").disabled);
     let chosen = |reply: &Reply| {
         reply
-            .options("hp:s")
+            .options("hp:v2:s")
             .iter()
             .find(|o| o.default)
             .expect("a page is chosen")
@@ -93,7 +93,7 @@ async fn ping_answers_and_help_pages_through_every_area() {
         assert_eq!(chosen(&page), n, "the menu follows the page");
         assert_eq!(size_of(&page).0, 900);
         heights.push(size_of(&page).1);
-        assert!(page.options("hp:s").len() <= 25);
+        assert!(page.options("hp:v2:s").len() <= 25);
     }
     assert!(page.button("Next ▶").disabled, "the last page has no next");
     let page_count = heights.len();
@@ -103,17 +103,17 @@ async fn ping_answers_and_help_pages_through_every_area() {
     let back = sim.click(user, &page, "◀ Previous").await;
     assert_eq!(chosen(&back), page_count - 2);
     let value = back
-        .options("hp:s")
+        .options("hp:v2:s")
         .iter()
         .find(|o| !o.default)
         .expect("another page")
         .value
         .clone();
-    let picked = sim.pick(user, &back, "hp:s", &value).await;
+    let picked = sim.pick(user, &back, "hp:v2:s", &value).await;
     assert_eq!(chosen(&picked), value.parse::<usize>().unwrap());
-    let far = sim.component(user, "hp:999", &[], &picked).await;
+    let far = sim.component(user, "hp:v2:999", &[], &picked).await;
     assert_eq!(chosen(&far), page_count - 1);
-    let junk = sim.component(user, "hp:x", &[], &picked).await;
+    let junk = sim.component(user, "hp:v2:x", &[], &picked).await;
     assert_eq!(chosen(&junk), 0, "an id that is not a page is the first page");
 }
 
@@ -127,7 +127,7 @@ async fn bio_rep_and_give_follow_their_rules() {
     let (a, b, bot) = (unique(), unique(), unique());
     let db = sim.app.db.clone();
 
-    // /bio keeps the words and drops the extra white space; a dash clears it.
+    // /customize bio keeps the words and drops the extra white space; a dash clears it.
     let set = sim
         .command(
             a,
@@ -581,7 +581,7 @@ async fn the_plaza_takes_donations_and_managers_place_them() {
     assert!(donated.content().contains("Donated"), "{}", donated.content());
     let news = donated.followups.first().expect("the channel is told");
     assert!(
-        !news.ephemeral && news.content().contains(&name) && news.content().contains("/plaza edit"),
+        !news.ephemeral && news.content().contains(&name) && news.content().contains("/setup community plaza-edit"),
         "{}",
         news.content()
     );
@@ -599,7 +599,7 @@ async fn the_plaza_takes_donations_and_managers_place_them() {
     // Only managers arrange it.
     let refused = sim.command(member, "plaza", json!([sub("edit", vec![])])).await;
     assert!(
-        refused.ephemeral && refused.content().contains("Only server managers"),
+        refused.ephemeral && refused.content().contains("Manage Server"),
         "{}",
         refused.content()
     );

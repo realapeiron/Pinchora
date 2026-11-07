@@ -591,6 +591,7 @@ async fn utility_and_events_obey_command_control_on_slash_buttons_and_modals() {
     };
     let actor = unique();
     sim.own_server(actor);
+    sim.permissions = MANAGE_GUILD;
     sim.channel_is(sim.channel, 0, None);
     let original = sim.command(actor, "ping", json!([])).await;
     for (command, subcommand, component) in [
@@ -611,7 +612,7 @@ async fn utility_and_events_obey_command_control_on_slash_buttons_and_modals() {
                 )]),
                 ..Config::default()
             };
-            config
+            pinchora_commands::routing::normalize_control(&config)
                 .validate(
                     &pinchora_commands::control_catalog(),
                     &[],

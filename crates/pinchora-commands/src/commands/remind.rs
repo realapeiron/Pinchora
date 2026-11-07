@@ -636,7 +636,7 @@ async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>, lang: Lang) -> any
             title: t!(lang, &format!("remind.title.{}", r.kind)),
             text: format!(
                 "{}\n{}",
-                t!(lang, "remind.collect", cmd = r.kind),
+                t!(lang, "remind.collect", cmd = crate::routing::canonical(&r.kind)),
                 t!(lang, "remind.turn-off", what = r.kind)
             ),
         },

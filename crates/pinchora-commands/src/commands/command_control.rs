@@ -173,7 +173,7 @@ impl CommandControl {
         }
         if let Err(error) = config.validate_update(
             &cx.app.db.command_control(guild).await?,
-            &crate::control_catalog(),
+            &crate::command_control::control_validation_catalog(),
             &crate::command_reserved_aliases(),
             cx.lang(),
         ) {

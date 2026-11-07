@@ -223,7 +223,7 @@ pub use anti_nuke::{
 pub use birthdays::{spawn_ticker as spawn_birthdays_ticker, tick as birthdays_tick};
 
 mod command_control;
-pub use command_control::{command_reserved_aliases, control_catalog};
+pub use command_control::{command_reserved_aliases, control_catalog, control_validation_catalog};
 
 mod config_backup;
 pub use config_backup::{backup_apply, backup_names, backup_preview, backup_rate_limit, validate_backup};

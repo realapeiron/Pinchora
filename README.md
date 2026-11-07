@@ -14,14 +14,14 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
-Command-tree transition (slices 1–12): **98 registered roots**, including every legacy slash
-command, and **62 projected roots** after the final removal slice. `/setup` has 21 groups;
+Command-tree consolidation (slices 1–18): **62 registered roots**, covering all **321 executable actions**.
+The eight planned feature families project **70 roots**. `/setup` has 21 groups;
 `/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.
 Old prefix paths and server aliases resolve to the new paths, with a daily English/Turkish notice.
 Private setup actions redirect to slash. Existing colliding server aliases keep their text meaning;
 new collisions are rejected, and existing custom commands remain available through `/tag`.
-Migration `0066` rewrites unambiguous policy keys and alias targets on upgrade and subsequent writes.
-Conflicting rules and split parents retain cumulative enforcement for slice 13 normalization.
+Migration `0066` rewrites policy keys and alias targets, expanding split parents while retaining
+independent restrictions. Old version-1 backups normalize before validation and import.
 
 
 | Command | What it does |
@@ -48,12 +48,12 @@ Conflicting rules and split parents retain cumulative enforcement for slice 13 n
 | `/info wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, server XP (chat and voice), shells earned (a duel counts what you won, not your own stake), fish caught, houses visited, pets cared for, likes given and received, your favourite fish of the year, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/customize bio text` | About-me text on the profile card |
-| `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/setup leveling settings` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
-| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
+| `/setup welcome message`, `/setup leveling settings`, `/setup server show` | Welcome cards and level-up messages. `/setup leveling settings` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
+| `/setup leveling roles-add\|roles-remove\|roles-list\|roles-mode\|roles-sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
 | `/setup leveling xp-multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
 | `/setup leveling xp-clear [channel] [role]`, `/setup leveling xp-show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
 | `/setup leveling xp-voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
-| `/config rep-roles add\|remove\|list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
+| `/setup economy rep-roles-add\|rep-roles-remove\|rep-roles-list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
 | `/setup roles join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
 | `/setup welcome goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
 | `/setup moderation log [channel] [off] [category]` | The server log's channel (this turns it on), or with `category` a channel of its own for one of the nine categories (members, messages, roles, channels and threads, voice, moderation, server, invites, emojis and stickers); `off` with a category sends it back to the log channel (Manage Server) |
@@ -75,7 +75,7 @@ Conflicting rules and split parents retain cumulative enforcement for slice 13 n
 | `/points give\|take user amount` | Adjust a member's server points (Manage Server) |
 | `/setup economy points-settings [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
 | `/store` | The server's role store: pick a role from the menu to buy it with server points |
-| `/config store add\|remove\|list` | Put roles on sale for points, with optional stock (up to 25); adding a role again updates its price and stock (Manage Server) |
+| `/setup economy store-add\|store-remove\|store-list` | Put roles on sale for points, with optional stock (up to 25); adding a role again updates its price and stock (Manage Server) |
 | `/giveaway start duration winners prize [shells] [channel] [required_role]` | Post a giveaway with an **Enter** button (press again to leave): `duration` like `30m`, `2h`, `1d12h` (1 minute to 30 days), 1 to 20 `winners`, an optional `shells` prize **per winner**, a `channel` (default: here) and a `required_role`. Up to 20 run at once per server (Manage Server) |
 | `/giveaway end id`, `/giveaway reroll id [winners]`, `/giveaway list` | End one now and pick its winners; pick new winners from the entrants who have not won yet (a reroll never pays shells, and the announcement of a shells giveaway says so); list the running ones with entries and links. `id` is the number in the giveaway's footer (Manage Server) |
 | `/setup community suggestions [channel] [off]` | Where `/suggest` posts; with neither option it shows the setting, and `/setup server show` lists it (Manage Server) |
@@ -163,7 +163,7 @@ in `crates/pinchora-db/src/privacy.rs` before it can ship.
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
 never pays a minute twice. Servers with voice XP off are not tracked at all (the ticker drops one the
-moment it finds it switched off), and the switch lives in Redis too: turning voice XP off (`/config xp
+moment it finds it switched off), and the switch lives in Redis too: turning voice XP off (`/setup leveling
 voice` or the dashboard) forgets everyone and makes every pod refuse to write who is in voice for ten
 minutes, so a pod whose settings are a minute old cannot write a just-forgotten member back. Settings and
 multiplier changes made with the slash commands are announced through Redis like the dashboard's, so every
@@ -268,7 +268,7 @@ Voice States were there already; Server Members and Message Content are privileg
 switch. Invites and emoji or sticker changes come from the audit log too: the bot asks for neither the Guild
 Invites nor the Guild Emojis and Stickers intent, so it needs View Audit Log for them.
 
-Admin commands check the permission themselves. `/config` (every subcommand), `/roles`, `/giveaway`,
+Admin commands check the permission themselves. `/setup` (every subcommand), `/setup roles`, `/giveaway`,
 `/mod suggestion`, `/setup economy points-give|take` and `/setup community plaza-edit` (with the buttons and menus of its editor) need
 Manage Server or Administrator, read from the member permissions Discord sends with each interaction,
 on top of the command's default visibility: a server owner can change who sees a command in the
@@ -339,10 +339,10 @@ permission gets a private refusal and nothing changes.
 | `/party truthordare [topic]` | Truth or Dare, 2 to 10 players, family friendly (102 truths and 102 dares in six topics): the bot picks whose turn it is, that player presses **Truth** or **Dare**, gets one nobody had lately, and presses **Done** or **Pass** (passing is always fine). The host ends the game with **End game**; a table that lets two turns in a row run out of time ends it by itself. Each player gets one game in `/play stats` when it ends |
 | `/party stop` | Ends the lobby or game running in this channel: its host or a member with Manage Server can. The message is closed, nobody wins and nothing is paid or refunded (the party games have no wagers); the answer is private |
 | `/setup economy partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
-| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/language`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/rewards weekly` and `/rewards monthly` belong to the economy module and `/info wrapped` to profiles. The 28 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/setup leveling settings`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
+| `/setup server modules-show\|modules-toggle\|modules-channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/setup`, `/help`, `/language`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/rewards weekly` and `/rewards monthly` belong to the economy module and `/info wrapped` to profiles. The 28 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/setup leveling settings`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
 | `/setup welcome card` | The classic welcome card (theme, headline, accent colour) with a preview: any option makes the classic card the server's welcome image again (a design made in the dashboard's editor is put aside, and the reply says so; how the image is sent stays), and without options it shows the welcome image as it is now, the editor's design included |
 | `/setup server language language` | The server's default language (English, Türkçe, or Automatic for English) for messages that answer nobody in particular: welcome cards, level-ups, logs, giveaways. Replies to a member are still in that member's own language (Manage Server) |
-| `/config prefix set\|reset\|show` | What text commands start with here: 1 to 5 characters without spaces, `@`, `#` or backticks; `reset` goes back to `p!`. `/setup server show` and the dashboard's Overview show it too (Manage Server) |
+| `/setup server prefix-set\|prefix-reset\|prefix-show` | What text commands start with here: 1 to 5 characters without spaces, `@`, `#` or backticks; `reset` goes back to `p!`. `/setup server show` and the dashboard's Overview show it too (Manage Server) |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
 challenged player accepts; then both bets leave the balances in one transaction and sit in the database
@@ -438,13 +438,13 @@ no duplicate names, the glossary, the furniture noun table (`_furniture_nouns.js
 an arm to `overlay()`.
 
 **Turkish social and server tools.** `/partner`, `/friends`, `/hug` `/pat` `/wave` `/highfive`, `/rep`, `/customize bio`, `/ping`,
-the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/roles`, `/tag` and `/setup commands`, every
-`/config` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
+the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/setup roles`, `/tag` and `/setup commands`, every
+`/setup` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
 `suggestions`, `welcome-card`) and the messages a server sends on its own (welcome card, goodbye, level-up banner, server
 log, giveaway, suggestion and poll messages) speak Turkish: the catalogs are `locales/<code>/social.toml`, `guestbook.toml`
 (+ contest), `giveaway.toml`, `suggest.toml` (+ poll), `roles.toml`, `tags.toml`, `modules.toml`, `serverconfig.toml`
 and `settings.toml`. Replies use the member's language; what answers nobody in particular (the giveaway, suggestion, poll and
-role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/config
+role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/setup
 language`), and a direct message (a level-up by DM, a suggestion's verdict) uses its recipient's own pick. The checks that
 refuse a setting (`pinchora_core::settings::FieldError`) carry a catalog key beside their English text: ask
 `error.text(lang)`; role refusals have `*_in(lang, …)` twins (`role_refusal_in`, `grant_refusal_in`, …) and the pixel cards
@@ -497,7 +497,7 @@ same after the bot's mention (`@Pinchora fish cast reef`), which always works wh
 is read against the registered slash commands and runs the very same handler, so the module switches, the
 Manage Server checks (from the member's roles), cooldowns and wagers are those of the slash command.
 
-Servers control them like any other part of the bot. The **Text commands** module (`/config modules`, the
+Servers control them like any other part of the bot. The **Text commands** module (`/setup server`, the
 dashboard's Modules page) switches every text command off for the server or in some channels, the `@Pinchora`
 form included: where it is off, a command typed with the prefix is ignored without a word and one typed after
 the mention is answered with "This feature is turned off". On top of that a text command is allowed only where
@@ -519,9 +519,9 @@ permissions (`default_member_permissions`, where `"0"` means administrators only
   once when the bot shuts down. Buttons and menus on a reply work as on the slash command's message and
   check the member who typed the command.
 - A message carries no Discord language, so a text command answers in the member's `/language` pick, else the
-  server's default (`/setup server language`), else English. The notices, usage lines and `/config prefix` are in the
+  server's default (`/setup server language`), else English. The notices, usage lines and `/setup server` are in the
   `text` catalogs (`crates/pinchora-core/locales/<code>/text.toml`); a switch also takes `evet`/`hayır`.
-- Private panels, forms and server settings stay slash-only: `/config` (which would show the server's
+- Private panels, forms and server settings stay slash-only: `/setup` (which would show the server's
   settings to the whole channel), `/house edit`, `/house decorate`, `/customize`, `/character`,
   `/setup community plaza-edit`, `/stall manage`, `/play picross`, `/play wordle` and `/play 2048` (and any other command
   whose first answer is a private panel) answer "This one only works as a slash command: use `/…`".
@@ -533,10 +533,10 @@ The bot owner turns this on in two places: **Message Content Intent** on the Bot
 Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
 mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
 
-### Command-tree transition (slices 1–12)
+### Consolidated command tree (slices 1–18)
 
-All 95 original roots remain registered alongside `/setup`, `/mod`, and `/rewards`: **98 roots now**,
-with **62 projected** after the complete consolidation plan. The 160 moved actions call their original
+The original 95 roots now occupy **62 registered roots** including `/setup`, `/mod`, and `/rewards`.
+Every one of the 321 original actions is reachable. The 160 moved actions call their original
 typed handlers. `/setup` adds Manage Server authorization on every action; `/mod` has no restrictive
 root default and preserves each action's existing authorization and feature module.
 Member panel buttons keep their custom IDs and authorization. Old prefix paths use longest-token
@@ -575,10 +575,11 @@ and module ownership. The player leaves under points, voice, color, plaza and ev
 
 The route manifest in `crates/pinchora-commands/src/routing/manifest.json` records every original
 leaf, final path and rollout slice. Registration validates the 100-root budget, depth and 25-option
-limits. Migration `0066` converts unambiguous policy keys and alias targets, including later writes.
-Conflicting old/new rules remain cumulative; split-parent normalization continues in slice 13.
-Recovery protection is path-aware. Help appends new pages so old `hp:<page-index>` buttons keep
-working. Discord override preservation and final legacy slash removal belong to later slices.
+limits. Migration `0066` expands old parent rules onto their exact replacement actions and preserves
+independent role/channel restrictions. Recovery protection is path-aware. Help lists canonical paths
+and maps old `hp:<page-index>` buttons to the same action. Registration snapshots Discord overrides
+before replacing command IDs and invalidates caches afterward; see the [release rehearsal and admin
+checklist](docs/releases/command-tree.md). Old slash definitions remain internal only.
 
 ### Command control and configuration backup (D2)
 
@@ -657,7 +658,7 @@ English and Turkish text comes from `locales/{en,tr}/automod.toml`.
 ### Roles pack
 
 Auto roles, role panels in three styles, roles that expire, roles kept for members who come back, and colour
-roles. The commands are in the table above (`/autoroles`, `/roles`, `/color`); the dashboard's **Roles** page
+roles. The commands are in the table above (`/setup roles`, `/setup roles`, `/color`); the dashboard's **Roles** page
 (sidebar group Roles) does the same with a live preview of every panel.
 
 - **Auto roles** (module `autoroles`) are given by the join hook, after what sticky roles bring back, and respect a
@@ -693,7 +694,7 @@ dashboard's Community group).
 |---|---|
 | `/setup tickets panel-create name channel [title] [description] [topics] [style] [support_role]` | Make a panel (up to 10): a title, a text, and its topics as buttons (up to 5) or a menu (up to 25), typed as `Support, Billing, Report a member`. The support role sees and answers its tickets (Manage Server) |
 | `/setup tickets panel-edit panel [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]` | Change a panel; `welcome` is the ticket's first message, with `{user}` `{server}` `{number}` `{topic}`. Post it again to update it (Manage Server) |
-| `/tickets panel post\|delete\|list panel` | Post a panel (posting again edits it where it is), delete one (its tickets stay), or list them with how many tickets are open (Manage Server) |
+| `/setup tickets panel-post\|panel-delete\|panel-list panel` | Post a panel (posting again edits it where it is), delete one (its tickets stay), or list them with how many tickets are open (Manage Server) |
 | `/setup tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]` | Where ticket channels go and where closed ones move, the log channel, closing tickets nobody wrote in for 1 to 720 hours, the transcript by direct message, 1 to 5 star ratings, channels or private threads (automatic: threads once the server has more than 400 channels), the channel name (`ticket-{number}`, also `{user}` `{topic}`) and how many tickets one member may have open (1 to 10). No options shows them (Manage Server) |
 | `/ticket close [reason]`, `/ticket transcript` | In a ticket: close it, or get its messages as a web page only you see. The member who opened it may do both |
 | `/ticket claim\|unclaim\|add user\|remove user\|rename name\|reopen\|move category` | In a ticket, for staff (a support role, Manage Channels or Manage Server): say you handle it or hand it back, let someone in or take them out, rename the channel, reopen a closed ticket, move the channel to another category |
@@ -871,7 +872,7 @@ Migration **0054** adds `verification`, `verification_pending`, `raid_settings`,
 
 ### Anti-nuke
 
-`/antinuke` and **Safety → Anti-nuke** watch destructive actions per actor in rolling Redis windows.
+`/setup antinuke` and **Safety → Anti-nuke** watch destructive actions per actor in rolling Redis windows.
 Protection starts disabled, with alert-only responses. The owner always stays exempt; trusted users
 are exempt too, and only the owner can edit trust or weaken existing protections. Nobody can add themselves.
 Discord system users and owner/trusted-installed integrations are exempt; unknown integration owners fail closed.
@@ -882,8 +883,8 @@ Discord system users and owner/trusted-installed integrations are exempt; unknow
 | `/setup antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]` | Enable monitoring and select recovery/response options |
 | `/setup antinuke disable` | Pause destructive-action monitoring |
 | `/setup antinuke limits kind count seconds` | Allow 1–100 actions per actor in 5–300 seconds; the next action triggers |
-| `/antinuke trust add\|remove user` | Owner-managed exemptions, up to 50 members |
-| `/antinuke vip add\|remove role` | Protect holders of up to 50 VIP roles |
+| `/setup antinuke trust-add\|trust-remove user` | Owner-managed exemptions, up to 50 members |
+| `/setup antinuke vip-add\|vip-remove role` | Protect holders of up to 50 VIP roles |
 | `/setup antinuke events` | Recent actions and outcomes |
 
 Watches channel/role create and delete bursts, bans, kicks/prunes, webhook creation, dangerous role/member
@@ -965,7 +966,7 @@ pick the kind, type the source and the page looks it up as you type (“FOUND: R
 channel, the role, the message with placeholder chips and a character count, the card switch and the filters;
 the preview on the right is drawn by the bot's own function from the source's real latest post. An existing
 feed's editor has **Send a test post**. The kind and source of a feed never change: add another feed instead.
-API: `GET/POST /api/guilds/{g}/setup feeds`, `POST …/feeds/check`, `POST …/feeds/preview`, `PUT/DELETE …/feeds/{id}`,
+API: `GET/POST /api/guilds/{g}/feeds`, `POST …/feeds/check`, `POST …/feeds/preview`, `PUT/DELETE …/feeds/{id}`,
 `POST …/feeds/{id}/test`; every change is in the audit log (`feeds.add`, `feeds.edit`, `feeds.remove`, from
 Discord too).
 
@@ -1084,17 +1085,17 @@ so every bot pod uses it from the next message instead of after its one-minute c
 
 | Page | What it sets | Same as |
 |---|---|---|
-| Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/setup server show`, `/setup leveling settings enabled`, `/config prefix`, `/setup server modules-show` |
-| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, moderation, role panels, auto roles, colour roles, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
+| Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/setup server show`, `/setup leveling settings enabled`, `/setup server`, `/setup server modules-show` |
+| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, moderation, role panels, auto roles, colour roles, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/setup server` |
 | Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the welcome image the bot sends now (drawn by the bot) with a link to the editor, join role, goodbye channel and text | `/setup welcome message`, `join-role`, `goodbye` |
 | Welcome image | The image editor for welcome and goodbye pictures (below) | `/setup welcome card` (the classic card) |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/setup leveling settings`, `xp`, `level-roles`, `rep-roles` |
-| Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/setup economy points-settings`, `/config store` |
+| Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/setup economy points-settings`, `/setup economy` |
 | Moderation | The mod-log channel, direct messages to members, and the warn ladder | `/setup moderation settings`, `/setup moderation warn-ladder` |
 | Cases | Every case, searchable by name, reason or id and filtered by kind or what still stands; a case opens whole with the member's other cases, and its reason can be changed (the mod-log entry follows) | `/mod case`, `/mod reason` |
 | Server log | The log channel, a channel per category, every event on or off (marked when it needs View Audit Log), and the ignore lists | `/setup moderation log`, `/setup moderation log-events`, `/setup moderation log-ignore` |
 | Staff log | What staff did with Pinchora's commands, on the dashboard and by hand in Discord, searchable and filtered by where (kept 180 days) | |
-| Roles | Auto roles (who gets which role on joining, with a delay or an expiry), sticky roles, role panels as buttons, a menu or reactions with a live preview and posting from the page, and colour roles (palette, mode, who may pick, the anchor role, making the missing roles) | `/autoroles`, `/roles`, `/color` |
+| Roles | Auto roles (who gets which role on joining, with a delay or an expiry), sticky roles, role panels as buttons, a menu or reactions with a live preview and posting from the page, and colour roles (palette, mode, who may pick, the anchor role, making the missing roles) | `/setup roles`, `/setup roles`, `/color` |
 | Custom commands | The commands members run with `/tag`: name, description, one to five replies (one picked at random), an embed, up to three actions (give, take or toggle a role, give or take server points, send a DM), who may use it and where, a cooldown, a live preview drawn by the bot, import and export as a JSON file | `/setup commands` (replies only) |
 | Auto-responders | Messages the bot sends by itself when a member joins, leaves, levels up, gets or loses a role, or says a keyword (locked unless the bot has the Message Content intent): where it answers, how often, a cooldown, actions, a preview, import and export | |
 | Community | The `/suggest` channel; critter drops on/off and where they land; timed storm surges (on/off, channel, how often) | `/setup community suggestions`, `/setup economy critters`, `/setup economy surge` |
@@ -1168,7 +1169,7 @@ an embed up to 6,000 in all with at most 25 fields, and a command does at most t
   replacing import keeps the commands it overwrote.
 
 The dashboard and the slash commands check values with the same rules (`pinchora_core::settings`): the same
-limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/config`
+limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/setup`
 gives. `web/src/lib/rules.json` carries those limits and sample answers to the browser (`cargo test -p
 pinchora-web rules -- --ignored write_rules` rewrites it; a test fails while it is out of date).
 

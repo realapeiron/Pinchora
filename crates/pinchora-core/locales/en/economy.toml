@@ -1,4 +1,4 @@
-# /daily, /weekly, /monthly, /balance, /give.
+# /daily, /rewards weekly, /rewards monthly, /balance, /give.
 
 [daily]
 streak-days = { one = "{count} day", other = "{count} days" }

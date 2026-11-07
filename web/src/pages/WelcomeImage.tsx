@@ -725,7 +725,7 @@ function Editor({
             <p className="muted fine">
               Drawn by the bot with you as the member, from the design above, at most twenty times a minute
               for the whole server.{" "}
-              {side.custom ? "" : "This is the classic card from /config welcome-card until you change it."}
+              {side.custom ? "" : "This is the classic card from /setup welcome card until you change it."}
             </p>
           </div>
         )}

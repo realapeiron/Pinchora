@@ -276,7 +276,7 @@ function InviteSettingsForm({
           </div>
           <p className="muted inv-small-note">
             {t("Members use")} <code>/invites temp</code>{" "}
-            {t("or the “Invite a friend” button. Post the button with")} <code>/inviteadmin post</code>.
+            {t("or the “Invite a friend” button. Post the button with")} <code>/setup invites post</code>.
           </p>
         </Panel>
       </div>

@@ -372,7 +372,7 @@ pub(crate) fn area_of(path: &str) -> Option<usize> {
 /// The pages: each area's commands in the order its `covers` list names them, started over on a new
 /// page whenever the rows would not fit one card. Anything no area claims lands on a last page, so
 /// the guide never leaves a command out (a test keeps that page empty).
-fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
+fn build_legacy(commands: &[Command], lang: Lang) -> Vec<Page> {
     // Append each rollout cohort. Both original and slices 1–6 hp:<page-index> destinations
     // must remain stable when later groups introduce more rows in the same help area.
     let mut pages = build_pages(&crate::commands::legacy_definitions(), lang);
@@ -402,6 +402,32 @@ fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
     pages.extend(build_leaf_pages(early, lang));
     pages.extend(build_leaf_pages(late, lang));
     pages
+}
+
+fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
+    build_pages(commands, lang)
+}
+
+/// Old hp:<index> messages predate compact pages. Keep their area/action destination.
+fn legacy_page(at: usize, lang: Lang, pages: &[Page]) -> usize {
+    static LEGACY: LazyLock<HashMap<Lang, Vec<Page>>> = LazyLock::new(|| {
+        let mut previous = crate::commands::legacy_definitions();
+        crate::routing::extend(&mut previous);
+        Lang::ALL
+            .into_iter()
+            .map(|lang| (lang, build_legacy(&previous, lang)))
+            .collect()
+    });
+    let old = &LEGACY[&lang];
+    old.get(at)
+        .and_then(|page| page.rows.first())
+        .and_then(|row| {
+            let canonical = crate::routing::canonical(row.command.trim_start_matches('/'));
+            pages
+                .iter()
+                .position(|p| p.rows.iter().any(|r| r.command == format!("/{canonical}")))
+        })
+        .unwrap_or(0)
 }
 
 fn build_pages(commands: &[Command], lang: Lang) -> Vec<Page> {
@@ -485,7 +511,7 @@ static PAGES: LazyLock<HashMap<Lang, Vec<Page>>> = LazyLock::new(|| {
 
 fn button(page: usize, label: &str, disabled: bool) -> Component {
     Component::Button(Button {
-        custom_id: Some(format!("hp:{page}")),
+        custom_id: Some(format!("hp:v2:{page}")),
         disabled,
         emoji: None,
         id: None,
@@ -527,7 +553,7 @@ fn controls(pages: &[Page], at: usize, lang: Lang) -> Vec<Component> {
             id: None,
             components: vec![Component::SelectMenu(SelectMenu {
                 channel_types: None,
-                custom_id: "hp:s".to_owned(),
+                custom_id: "hp:v2:s".to_owned(),
                 default_values: None,
                 disabled: false,
                 id: None,
@@ -582,11 +608,18 @@ async fn page_card(cx: &Cx, at: usize, private: bool) -> anyhow::Result<Interact
 
 /// `hp:<page>` buttons and the `hp:s` menu, whose value is the page.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
-    let wanted = match args.next() {
+    let first = args.next();
+    let modern = first == Some("v2");
+    let wanted = match if modern { args.next() } else { first } {
         Some("s") => value,
         other => other,
     };
     let at = wanted.and_then(|p| p.parse().ok()).unwrap_or(0);
+    let at = if modern {
+        at
+    } else {
+        legacy_page(at, cx.lang(), &PAGES[&cx.lang()])
+    };
     let private = cx
         .interaction
         .message
@@ -669,8 +702,8 @@ mod tests {
             assert!(!area.covers.is_empty(), "{} covers nothing", area.key);
             for cover in area.covers {
                 assert!(
-                    all.iter()
-                        .any(|l| l.path == *cover || l.path.starts_with(&format!("{cover} "))),
+                    all.iter().any(|l| crate::routing::legacy(&l.path) == *cover
+                        || crate::routing::legacy(&l.path).starts_with(&format!("{cover} "))),
                     "`{cover}` in {} is not a command",
                     area.key
                 );
@@ -765,7 +798,7 @@ mod tests {
     fn managers_are_marked_where_the_command_asks_for_them() {
         let pages = build(&tree(), Lang::Tr);
         let manager = |path: &str| rows_of(&pages, path)[0].manager;
-        assert!(manager("config show") && manager("giveaway start") && manager("plaza edit"));
+        assert!(manager("setup server show") && manager("giveaway start") && manager("setup community plaza-edit"));
         assert!(!manager("house view") && !manager("duel chess"));
     }
 }
@@ -774,29 +807,20 @@ mod tests {
 mod transition_tests {
     use super::*;
     #[test]
-    fn existing_help_buttons_keep_their_page_destinations() {
+    fn existing_help_buttons_keep_their_action_destinations() {
         for lang in Lang::ALL {
             let tree = crate::command_definitions();
+            let pages = build(&tree, lang);
             let mut previous = crate::commands::legacy_definitions();
-            let mut setup = tree.iter().find(|c| c.name == "setup").unwrap().clone();
-            setup.options.retain_mut(|group| {
-                group.options.as_mut().unwrap().retain(|leaf| {
-                    crate::routing::route(&format!("setup {} {}", group.name, leaf.name))
-                        .unwrap()
-                        .slice
-                        <= 6
-                });
-                !group.options.as_ref().unwrap().is_empty()
-            });
-            previous.push(setup);
-            let old = build(&previous, lang);
-            let new = build(&tree, lang);
-            assert!(new.len() > old.len());
-            for (old, new) in old.iter().zip(&new) {
-                assert_eq!(old.title, new.title);
-                assert_eq!(
-                    old.rows.iter().map(|r| &r.command).collect::<Vec<_>>(),
-                    new.rows.iter().map(|r| &r.command).collect::<Vec<_>>()
+            crate::routing::extend(&mut previous);
+            for (at, page) in build_legacy(&previous, lang).iter().enumerate() {
+                let destination = &pages[legacy_page(at, lang, &pages)];
+                let old = page.rows[0].command.trim_start_matches('/');
+                assert!(
+                    destination
+                        .rows
+                        .iter()
+                        .any(|r| r.command == format!("/{}", crate::routing::canonical(old)))
                 );
             }
         }

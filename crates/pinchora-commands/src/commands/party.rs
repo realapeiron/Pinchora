@@ -250,7 +250,7 @@ mod tests {
             );
             check(&command.name, &command.options);
         }
-        for name in ["surge", "play", "duel", "config"] {
+        for name in ["surge", "play", "duel", "setup"] {
             assert!(commands.iter().any(|c| c.name == name), "{name} is registered");
         }
     }

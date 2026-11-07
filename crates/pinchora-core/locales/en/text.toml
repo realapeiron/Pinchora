@@ -1,17 +1,17 @@
-# Text commands (`p!profile`, `@Pinchora profile`) and `/config prefix`.
+# Text commands (`p!profile`, `@Pinchora profile`) and `/setup server`.
 #
 # A message carries no Discord language, so a text command is answered in the member's `/language`
-# pick, else the server's default (`/config language`), else English.
+# pick, else the server's default (`/setup server language`), else English.
 
 [text]
 moved = "`{old}` moved to `/{new}`. Your shortcut still works."
 # `/help`: the line under the description. {prefix} is the server's prefix, or `@Pinchora ` without the
 # Message Content intent.
 help-hint = "Every command also works as text here: `{prefix}profile`, `{prefix}fish cast reef`."
-# `/config show`: the field's name.
+# `/setup server show`: the field's name.
 config-field = "Text commands"
 
-# `/config prefix`.
+# `/setup server`.
 prefix-intent-on = "`{prefix}`, e.g. `{prefix}profile` · `@Pinchora profile` works too"
 prefix-intent-off = "`{prefix}` · text commands need `@Pinchora profile` until the bot owner turns on the Message Content intent"
 prefix-show = "Text commands start with {summary}"

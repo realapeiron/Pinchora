@@ -1,16 +1,16 @@
-# Metin komutları (`p!profile`, `@Pinchora profile`) ve `/config prefix`.
+# Metin komutları (`p!profile`, `@Pinchora profile`) ve `/setup server`.
 #
 # Bir mesajla Discord dili gelmez: metin komutu üyenin `/language` seçimiyle, o yoksa sunucunun
-# varsayılan diliyle (`/config language`), o da yoksa İngilizceyle yanıtlanır.
+# varsayılan diliyle (`/setup server language`), o da yoksa İngilizceyle yanıtlanır.
 
 [text]
 moved = "`{old}` artık `/{new}`. Eski kısayolun çalışmaya devam ediyor."
 # `/help`: açıklamanın altındaki satır. {prefix} sunucunun öneki; Message Content intent'i kapalıysa `@Pinchora `.
 help-hint = "Her komut burada yazıyla da çalışır: `{prefix}profile`, `{prefix}fish cast reef`."
-# `/config show`: alanın adı.
+# `/setup server show`: alanın adı.
 config-field = "Metin komutları"
 
-# `/config prefix`.
+# `/setup server`.
 prefix-intent-on = "`{prefix}`, ör. `{prefix}profile` · `@Pinchora profile` da çalışır"
 prefix-intent-off = "`{prefix}` · bot sahibi Message Content intent'ini açana kadar metin komutları `@Pinchora profile` biçiminde yazılır"
 prefix-show = "Metin komutları şununla başlıyor: {summary}"

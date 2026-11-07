@@ -116,7 +116,7 @@ mod turkish_arcade;
 mod turkish_social;
 #[path = "simulate/words.rs"]
 mod words;
-// Custom commands (/customcommand, /tag) and auto-responders.
+// Custom commands (/setup commands, /tag) and auto-responders.
 #[path = "simulate/tags.rs"]
 mod tags;
 // What a switched-off module still did: timers, the chat XP minute, quests, the level-up channel.
@@ -140,7 +140,7 @@ mod turkish_shop;
 // The roles pack: auto roles, sticky roles, role panels, expiring roles and colour roles.
 #[path = "simulate/roles.rs"]
 mod roles;
-// Server stats: counting, the flush, the /stats cards and /counters.
+// Server stats: counting, the flush, the /stats cards and /setup stats.
 #[path = "simulate/stats.rs"]
 mod stats;
 // Starboards and vote channels.
@@ -151,7 +151,7 @@ mod starboard;
 mod invites;
 #[path = "simulate/tickets.rs"]
 mod tickets;
-// Social feeds: /feeds and the poller, against a local feed server.
+// Social feeds: /setup feeds and the poller, against a local feed server.
 #[path = "simulate/feeds.rs"]
 mod feeds;
 // Birthdays: opt-in confirmation, privacy and pixel card.
@@ -1268,20 +1268,24 @@ impl Sim {
     /// Runs a slash command as `user`. `options` is Discord's `data.options` array, e.g.
     /// `json!([{"name": "edit", "type": 1}])` for `/house edit`.
     async fn command(&mut self, user: u64, name: &str, options: Value) -> Reply {
-        let data = json!({ "id": unique().to_string(), "name": name, "type": 1, "options": options });
-        self.run(format!("/{name} {options}"), user, 2, data, None).await
+        self.command_resolved(user, name, options, json!({})).await
     }
 
-    /// Like [`Sim::command`] for options that name users or roles: `resolved` is Discord's
-    /// `data.resolved`, e.g. `json!({ "users": {...}, "roles": {...} })`.
+    /// Feature fixtures exercise the registered tree, including rewritten nested options and labels.
     async fn command_resolved(&mut self, user: u64, name: &str, options: Value, resolved: Value) -> Reply {
-        let data = json!({
-            "id": unique().to_string(),
-            "name": name,
-            "type": 1,
-            "options": options,
-            "resolved": resolved,
-        });
+        let data = command_tree::canonical_fixture(json!({"name":name,"options":options}));
+        self.legacy_command_resolved(user, data["name"].as_str().unwrap(), data["options"].clone(), resolved)
+            .await
+    }
+
+    /// Explicit rollout compatibility fixture; bypasses canonical fixture normalization.
+    async fn legacy_command(&mut self, user: u64, name: &str, options: Value) -> Reply {
+        self.legacy_command_resolved(user, name, options, json!({})).await
+    }
+
+    async fn legacy_command_resolved(&mut self, user: u64, name: &str, options: Value, resolved: Value) -> Reply {
+        let data =
+            json!({ "id": unique().to_string(), "name": name, "type": 1, "options": options, "resolved":resolved });
         self.run(format!("/{name} {options}"), user, 2, data, None).await
     }
 
@@ -3118,7 +3122,7 @@ async fn points_and_store_flow() {
     let vip = sim.guild_role(vip_id, "VIP", 2);
     let pricey = sim.guild_role(pricey_id, "Whale", 3);
 
-    // /config points renames the currency; an upside-down range is refused.
+    // /setup economy points-settings renames the currency; an upside-down range is refused.
     sim.permissions = MANAGE_GUILD;
     let config = sim
         .command(
@@ -3306,7 +3310,7 @@ async fn points_and_store_flow() {
     assert_eq!(sim.app.db.member_points(sim.guild, buyer).await.unwrap().0, 35);
     assert!(sim.role_changes().is_empty());
 
-    // /config store remove takes it off sale.
+    // /setup economy store-remove takes it off sale.
     sim.permissions = MANAGE_GUILD;
     let removed = sim
         .command(
@@ -5394,7 +5398,7 @@ async fn join_role_goodbye_and_server_log() {
     sim.join(unique(), "Early", false, None).await;
     assert!(sim.role_changes().is_empty() && sim.posts().is_empty());
 
-    // /config join-role: only roles the bot can hand out.
+    // /setup roles join-role: only roles the bot can hand out.
     sim.permissions = MANAGE_GUILD;
     let join_role = |role: &Value| config(sub("join-role", vec![role_option("role", role)]));
     let above = role_json(unique(), "Boss", BOT_ROLE_POSITION + 5, false);
@@ -5434,7 +5438,7 @@ async fn join_role_goodbye_and_server_log() {
         reply.content()
     );
 
-    // /config goodbye and /config log.
+    // /setup welcome goodbye and /setup moderation log.
     let goodbye = sim
         .command_resolved(
             admin,
@@ -5555,7 +5559,7 @@ async fn join_role_goodbye_and_server_log() {
     assert!(in_channel(&posts, bye).is_empty());
     assert_eq!(posts.iter().map(Post::title).collect::<Vec<_>>(), ["Bot left"]);
 
-    // /config goodbye with nothing to change shows the current setting.
+    // /setup welcome goodbye with nothing to change shows the current setting.
     let reply = sim.command(admin, "config", config(sub("goodbye", vec![]))).await;
     assert!(reply.content().contains("Bye {user}"), "{}", reply.content());
 
@@ -5633,7 +5637,7 @@ async fn join_role_goodbye_and_server_log() {
     sim.voice(robot, "RoboBot", true, Some(lounge), false).await;
     assert!(sim.posts().is_empty());
 
-    // /config log-events switches kinds off; the others keep working.
+    // /setup moderation log-events switches kinds off; the others keep working.
     let events = |options: Vec<Value>| config(sub("log-events", options));
     let reply = sim
         .command(
@@ -7355,7 +7359,7 @@ impl Sim {
         self.app.db.member_points(self.guild, user).await.expect("points").0
     }
 
-    /// Runs `/config xp ...`.
+    /// Runs `/setup leveling ...`.
     async fn xp(&mut self, admin: u64, sub_command: Value) -> Reply {
         self.command(admin, "config", json!([group("xp", sub_command)])).await
     }
@@ -7572,15 +7576,12 @@ async fn xp_multipliers_and_voice_xp_are_configured_with_config() {
         "{}",
         reply.field("XP rules and voice XP")
     );
-    let definitions = pinchora_commands::command_definitions();
-    let config = serde_json::to_value(definitions.iter().find(|c| c.name == "config").expect("config")).unwrap();
-    let leveling_message = config["options"]
+    let leveling = command_tree::definition("setup leveling settings");
+    let leveling_message = leveling["options"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|o| o["name"] == "leveling")
-        .and_then(|o| o["options"].as_array())
-        .and_then(|options| options.iter().find(|o| o["name"] == "message"))
+        .find(|o| o["name"] == "message")
         .expect("the message option");
     let doc = leveling_message["description"].as_str().unwrap();
     assert!(
@@ -9620,7 +9621,7 @@ async fn weekly_and_monthly_rewards_have_cooldowns_and_show_on_the_wallet() {
     let total = shells(&sim, user).await;
     assert_eq!(total, 8_000 + 250 + 1_500 + 6_500 + 1_500);
 
-    // Every one of those shells shows in this month's numbers for /wrapped.
+    // Every one of those shells shows in this month's numbers for /info wrapped.
     let year = sim.app.db.activity_year(user, Utc::now().year()).await.unwrap();
     assert_eq!(year.iter().map(|(_, m)| m.shells).sum::<i64>(), total);
 
@@ -13207,11 +13208,7 @@ async fn admin_paths_refuse_members_without_manage_server() {
                     canonical.content()
                 );
             }
-            let wanted = if name == "plaza" {
-                "server managers"
-            } else {
-                "Manage Server"
-            };
+            let wanted = "Manage Server";
             assert!(
                 reply.ephemeral && reply.content().contains(wanted),
                 "/{label} with permissions {permissions}: {:?}",
@@ -13586,7 +13583,7 @@ async fn staked_derbies_need_the_gambling_switch_and_stop_at_the_daily_loss_limi
     assert!(
         refused.ephemeral
             && refused.content().contains("**off**")
-            && refused.content().contains("/config gambling")
+            && refused.content().contains("/setup economy gambling")
             && refused.files.is_empty(),
         "{}",
         refused.content()
@@ -13991,7 +13988,7 @@ async fn turkish_server(sim: &Sim) {
         .expect("set the server's language");
 }
 
-/// `/config gambling enabled:<on>` as a manager.
+/// `/setup economy gambling enabled:<on>` as a manager.
 async fn gambling(sim: &mut Sim, manager: u64, on: bool) -> Reply {
     sim.permissions = MANAGE_GUILD;
     let reply = sim
@@ -14670,8 +14667,8 @@ async fn the_party_games_are_in_the_stats_and_the_help() {
     let mut help = sim.command(player, "help", json!([])).await;
     let mut areas = help_areas(&help);
     while !help.button("Next ▶").disabled {
-        let last = help.options("hp:s").last().expect("pages in the menu").value.clone();
-        help = sim.pick(player, &help, "hp:s", &last).await;
+        let last = help.options("hp:v2:s").last().expect("pages in the menu").value.clone();
+        help = sim.pick(player, &help, "hp:v2:s", &last).await;
         areas.extend(help_areas(&help));
     }
     for area in ["Crowd games & collecting", "Duels", "Game & module setup"] {
@@ -14684,12 +14681,12 @@ fn help_areas(help: &Reply) -> Vec<String> {
     assert!(help.ephemeral, "the help is for the one who asked");
     assert_eq!(help.files.len(), 1, "one card");
     assert!(help.button("Next ▶").custom_id.is_some());
-    help.options("hp:s").iter().map(|o| o.label.clone()).collect()
+    help.options("hp:v2:s").iter().map(|o| o.label.clone()).collect()
 }
 
 // /Modules
 
-/// `/config modules <sub_command>` as a manager; `channels` are what the options name.
+/// `/setup server <sub_command>` as a manager; `channels` are what the options name.
 async fn modules(sim: &mut Sim, manager: u64, sub_command: Value, channels: &[u64]) -> Reply {
     let before = sim.permissions;
     sim.permissions = MANAGE_GUILD;
@@ -14788,7 +14785,7 @@ async fn module_off_refuses_commands_and_xp() {
     sim.permissions = MANAGE_GUILD;
     let manager_sees = sim.command(manager, "pet", pet()).await;
     assert!(
-        manager_sees.content().contains("/config modules") && manager_sees.content().contains("**Pets**"),
+        manager_sees.content().contains("/setup server") && manager_sees.content().contains("**Pets**"),
         "{}",
         manager_sees.content()
     );
@@ -14918,7 +14915,7 @@ async fn module_off_refuses_commands_and_xp() {
     modules(&mut sim, manager, toggle("gambling", true), &[]).await;
     assert!(
         sim.app.db.gambling_enabled(sim.guild).await.unwrap(),
-        "the module is the /config gambling switch"
+        "the module is the /setup economy gambling switch"
     );
 
     // Chat XP and points stop in the channels leveling and points are off in; the rest earns.
@@ -15070,7 +15067,7 @@ async fn module_off_stops_chat_drops_goodbyes_and_the_log() {
     assert!(!sim.app.db.guild_settings(sim.guild).await.unwrap().welcome_enabled);
 }
 
-/// What Discord would suggest while `typed` is in the `module` box of `/config modules <sub_command>`.
+/// What Discord would suggest while `typed` is in the `module` box of `/setup server <sub_command>`.
 async fn suggestions(sim: &Sim, user: u64, sub_command: &str, typed: &str) -> Vec<(String, String)> {
     let data = json!({
         "id": unique().to_string(),
@@ -15082,7 +15079,7 @@ async fn suggestions(sim: &Sim, user: u64, sub_command: &str, typed: &str) -> Ve
             "options": [{ "name": "module", "type": 3, "value": typed, "focused": true }],
         }] }],
     });
-    let interaction = sim.interaction(user, 4, data, None);
+    let interaction = sim.interaction(user, 4, command_tree::canonical_fixture(data), None);
     let (tx, mut rx) = oneshot::channel();
     let responder = Arc::new(Responder::http(sim.app.clone(), &interaction, tx));
     assert_eq!(responder.deferral(), Deferral::Never, "suggestions are never deferred");
@@ -15110,6 +15107,9 @@ async fn module_names_autocomplete_and_a_typed_name_works() {
         return;
     };
     let (manager, member) = (unique(), unique());
+
+    assert!(suggestions(&sim, member, "toggle", "").await.is_empty());
+    sim.permissions = MANAGE_GUILD;
 
     // More modules than Discord's 25 choices: the box suggests as you type, 25 at most.
     assert!(pinchora_core::modules::Module::ALL.len() > 25);

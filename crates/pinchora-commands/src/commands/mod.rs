@@ -90,20 +90,24 @@ macro_rules! commands {
     ($($ty:ty),* $(,)?) => {
         /// Every slash command, for registration.
         pub(crate) fn legacy_definitions() -> Vec<Command> {
-            let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
-            crate::lang::localize(&mut commands);
-            commands
+            static COMMANDS: std::sync::LazyLock<Vec<Command>> = std::sync::LazyLock::new(|| {
+                let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
+                crate::lang::localize(&mut commands);
+                commands
+            });
+            COMMANDS.clone()
         }
 
         pub fn definitions() -> Vec<Command> {
             let mut commands = legacy_definitions();
             crate::routing::extend(&mut commands);
+            crate::routing::remove_replaced(&mut commands);
             crate::lang::localize(&mut commands);
             commands
         }
 
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
-            if data.name == "setup" {
+            if data.name == "setup" || crate::routing::canonical(&crate::command_control::path(&data)).starts_with("setup ") {
                 if cx.guild_id().is_none() {
                     return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.guild-only")).await;
                 }

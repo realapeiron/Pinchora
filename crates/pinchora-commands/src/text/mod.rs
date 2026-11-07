@@ -47,14 +47,10 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 /// answered), or it shows the server's settings, which a reply in the channel would show to everyone.
 const SLASH_ONLY: &[&str] = &[
     "character",
-    "config",
     "setup",
-    "backup",
-    "commandcontrol",
     "customize",
     "house decorate",
     "house edit",
-    "plaza edit",
     "play 2048",
     "play picross",
     "play wordle",

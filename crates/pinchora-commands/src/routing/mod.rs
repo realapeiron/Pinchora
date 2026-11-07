@@ -1,5 +1,5 @@
 //! Command-tree transition. Definitions and payloads share this manifest; business handlers keep
-//! their original typed models. Legacy roots stay registered until the final release slice.
+//! their original typed models. Legacy definitions remain internal for rollout and text compatibility.
 use std::{collections::BTreeSet, sync::LazyLock};
 
 use pinchora_core::{command_control::protected as recovery_path, modules::Module};
@@ -12,7 +12,7 @@ use twilight_model::{
     guild::Permissions,
 };
 
-pub const COMPLETED_SLICE: u8 = 12;
+pub const COMPLETED_SLICE: u8 = 18;
 pub const PROJECTED_ROOTS: usize = 62;
 
 #[derive(Debug, Deserialize)]
@@ -100,6 +100,9 @@ pub fn canonical(path: &str) -> &str {
         end = index;
     }
     let parent = &first[..end];
+    if MANIFEST.iter().any(|r| r.canonical == parent) {
+        return path;
+    }
     // A flattened family can share a group with unrelated actions. Never broaden an old rule.
     if MANIFEST.iter().any(|r| {
         (r.canonical == parent || r.canonical.strip_prefix(parent).is_some_and(|s| s.starts_with(' ')))
@@ -123,15 +126,23 @@ pub(crate) fn matching<'a>(
 ) -> Vec<(&'a String, &'a pinchora_core::command_control::Rule)> {
     let old = legacy(path);
     let new = canonical(path);
-    config
-        .rules
-        .iter()
-        .filter(|(key, _)| {
-            [old, new]
-                .iter()
-                .any(|p| *p == key.as_str() || p.strip_prefix(key.as_str()).is_some_and(|s| s.starts_with(' ')))
-        })
-        .collect()
+    let mut result = Vec::new();
+    let matches = |key: &str, p: &str| p == key || p.strip_prefix(key).is_some_and(|s| s.starts_with(' '));
+    for (key, rule) in &config.rules {
+        if [old, new].iter().any(|p| matches(key, p)) {
+            result.push((key, rule));
+            result.extend(rule.constraints.iter());
+        } else if route(path).is_none() {
+            // Old generic component owners name a family, not a leaf. Its migrated parent
+            // constraint is still authoritative; unrelated leaf constraints are not inherited.
+            for (source, constraint) in &rule.constraints {
+                if matches(source, old) && !result.contains(&(source, constraint)) {
+                    result.push((source, constraint));
+                }
+            }
+        }
+    }
+    result
 }
 
 /// Longest command-token match. The argument suffix is copied byte-for-byte, including quotes.
@@ -283,6 +294,47 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
     }
 }
 
+/// Final release cutover: register exactly the canonical leaves, retaining old models internally.
+pub(crate) fn remove_replaced(tree: &mut Vec<Command>) {
+    fn keep(path: &str) -> bool {
+        MANIFEST
+            .iter()
+            .any(|r| r.canonical == path || r.canonical.strip_prefix(path).is_some_and(|s| s.starts_with(' ')))
+    }
+    fn prune(options: &mut Vec<CommandOption>, parent: &str) {
+        options.retain_mut(|option| {
+            if !matches!(
+                option.kind,
+                CommandOptionType::SubCommand | CommandOptionType::SubCommandGroup
+            ) {
+                return true;
+            }
+            let path = format!("{parent} {}", option.name);
+            if !keep(&path) {
+                return false;
+            }
+            if let Some(children) = &mut option.options {
+                prune(children, &path);
+            }
+            true
+        });
+    }
+    tree.retain_mut(|command| {
+        if !keep(&command.name) {
+            return false;
+        }
+        prune(&mut command.options, &command.name);
+        true
+    });
+}
+
+/// A completed registration must not capture new guilds as if they had pre-migration overrides.
+pub fn has_legacy_paths(tree: &[Command]) -> bool {
+    crate::commands::help::leaves(tree, pinchora_core::i18n::Lang::En)
+        .iter()
+        .any(|leaf| MANIFEST.iter().any(|r| r.active() && r.legacy == leaf.path))
+}
+
 /// Validate the complete registration payload before any Discord HTTP request.
 pub fn validate(tree: &[Command]) -> anyhow::Result<()> {
     anyhow::ensure!(
@@ -347,3 +399,9 @@ pub fn validate(tree: &[Command]) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests;
+
+mod policy;
+pub use policy::{normalize_backup, normalize_control};
+
+mod permissions;
+pub(crate) use permissions::{refuses_saved_permissions, saved_permissions_denied};

@@ -1,4 +1,4 @@
-# Sunucu istatistikleri (/stats, /counters) ve istatistik kartları. Kart etiketlerini piksel yazı büyük harfle çizer.
+# Sunucu istatistikleri (/stats, /setup stats) ve istatistik kartları. Kart etiketlerini piksel yazı büyük harfle çizer.
 
 [module]
 stats = "İstatistikler"
@@ -105,13 +105,13 @@ days = { other = "{count} gün" }
 needs-role = "Sayılacak rolü `role:` ile seç."
 bad-template = "Sayaç adında sayının geleceği yere `{count}` yazmalısın; en fazla {max} karakter olabilir, örneğin `Üyeler: {count}`."
 missing = "{channel} kanalını yeniden adlandırmam için orada **{permission}** iznine ihtiyacım var. Bu izni o kanalda rolüme verip tekrar dene."
-full = "Bu sunucuda zaten {max} sayaç kanalı var. Önce `/counters remove` ile birini kaldır."
+full = "Bu sunucuda zaten {max} sayaç kanalı var. Önce `/setup stats counter-remove` ile birini kaldır."
 added = "{channel} artık bir sayaç: adı **{name}** olacak. Sayı değiştikçe ad her 10 dakikada bir güncellenir. ({used}/{max} kullanılıyor)"
 added-problem = "{channel} artık bir sayaç, ama sayısını henüz gösteremiyor: {problem}"
 added-later = "{channel} artık bir sayaç. Discord sayıyı şu an söylemedi; birkaç dakika içinde görünür."
 not-a-counter = "{channel} bir sayaç kanalı değil."
 removed = "{channel} artık sayaç değil. Son adını korur; istediğin zaman yeniden adlandırabilirsin."
-none = "Henüz sayaç kanalı yok. `/counters add` ile bir tane oluştur: kilitli bir ses kanalı en iyisi."
+none = "Henüz sayaç kanalı yok. `/setup stats counter-add` ile bir tane oluştur: kilitli bir ses kanalı en iyisi."
 heading = "**Sayaç kanalları** ({used}/{max} kullanılıyor)"
 line = "• {channel} · {kind} · {name}"
 not-yet = "henüz adlandırılmadı"
@@ -124,7 +124,7 @@ connect = "Bağlan"
 [stats.problem]
 missing = "⚠️ O kanalı yeniden adlandırmam için **{permission}** iznine ihtiyacım var."
 too-many-members = "⚠️ Bu sunucuda 10.000'den fazla üye var; tek tek saymak için çok fazla. Üyeler, Şu an çevrimiçi ve Takviyeler sayaçları yine çalışır."
-role-gone = "⚠️ Saydığı rol silinmiş. `/counters add` ile başka bir rol seç."
+role-gone = "⚠️ Saydığı rol silinmiş. `/setup stats counter-add` ile başka bir rol seç."
 other = "⚠️ Son yeniden adlandırma gerçekleşmedi; 10 dakika sonra yeniden denenecek."
 
 # Slash command descriptions (names stay English).
@@ -146,26 +146,6 @@ other = "⚠️ Son yeniden adlandırma gerçekleşmedi; 10 dakika sonra yeniden
 "stats channel period=Last 7 days" = "Son 7 gün"
 "stats channel period=Last 30 days" = "Son 30 gün"
 "stats channel period=Last 90 days" = "Son 90 gün"
-"counters" = "Adı canlı bir sayı gösteren kanallar, örneğin Üyeler: 1.234"
-"counters add" = "Bir kanalın adında sayı göster, her 10 dakikada bir güncellenir"
-"counters add channel" = "Yeniden adlandırılacak kanal (kilitli bir ses kanalı en iyisi)"
-"counters add kind" = "Ne sayılacak"
-"counters add kind=Members" = "Üyeler"
-"counters add kind=Humans" = "İnsanlar"
-"counters add kind=Bots" = "Botlar"
-"counters add kind=Online now" = "Şu an çevrimiçi"
-"counters add kind=Boosts" = "Takviyeler"
-"counters add kind=Roles" = "Roller"
-"counters add kind=Channels" = "Kanallar"
-"counters add kind=Members with a role" = "Bir roldeki üyeler"
-"counters add kind=Pinchora houses" = "Pinchora evleri"
-"counters add kind=Fish caught" = "Tutulan balıklar"
-"counters add kind=Average level" = "Ortalama seviye"
-"counters add role" = "\"Bir roldeki üyeler\" için sayılacak rol"
-"counters add template" = "Ad; sayının geleceği yere {count} yaz, örneğin Üyeler: {count}"
-"counters remove" = "Bir sayaç kanalını güncellemeyi bırak (son adını korur)"
-"counters remove channel" = "Sayaç kanalı"
-"counters list" = "Bu sunucunun sayaç kanalları"
 
 [module-blurb]
-stats = "/stats, /counters ve İstatistikler sayfası; mesajları, sesli sohbet dakikalarını, katılmaları ve ayrılmaları sayar."
+stats = "/stats, /setup stats ve İstatistikler sayfası; mesajları, sesli sohbet dakikalarını, katılmaları ve ayrılmaları sayar."

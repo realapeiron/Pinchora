@@ -9,6 +9,7 @@ export interface CommandOption {
 
 export interface CommandEntry {
   path: string;
+  aliases?: string[];
   usage: string;
   description: string;
   /** Needs Manage Server (or a role that has it). */
@@ -31,7 +32,9 @@ export interface Catalog {
 /** What a search is looking at in one command, lower case. */
 function haystack(area: CommandArea, command: CommandEntry): string {
   const options = command.options.map((o) => `${o.name} ${o.description} ${(o.choices ?? []).join(" ")}`);
-  return [command.usage, command.description, area.title, ...options].join(" ").toLowerCase();
+  return [command.usage, command.description, area.title, ...(command.aliases ?? []), ...options]
+    .join(" ")
+    .toLowerCase();
 }
 
 /** The words of a search: lower case, no leading slash, no empty ones. */

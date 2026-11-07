@@ -1,5 +1,5 @@
 //! The social and server tools in Turkish: partners, friends, hugs, reputation, guestbooks and the room
-//! contest for a player whose Discord is set to Turkish, and the server tools (`/config`, role panels, custom
+//! contest for a player whose Discord is set to Turkish, and the server tools (`/setup`, role panels, custom
 //! commands, giveaways, suggestions, polls, the welcome, goodbye, level-up and server log messages) for a server
 //! whose default language is Turkish. The pictures they draw are saved next to the other simulator output.
 
@@ -302,7 +302,7 @@ async fn the_server_tools_answer_in_turkish() {
     let config = |sub_command: Value| json!([sub_command]);
     let (log, bye, ideas, lounge) = (unique(), unique(), unique(), unique());
 
-    // /config show: every field in Turkish, the defaults too.
+    // /setup server show: every field in Turkish, the defaults too.
     let shown = sim.command(admin, "config", config(sub("show", vec![]))).await;
     assert_eq!(shown.title(), "Sunucu ayarları");
     assert!(shown.field("Parti oyunları").contains("ağır sözler ve hakaretler"));

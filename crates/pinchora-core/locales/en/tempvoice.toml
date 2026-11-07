@@ -1,4 +1,4 @@
-# Temp voice: /voice, the panel of buttons in a room, and /voice creators.
+# Temp voice: /voice, the panel of buttons in a room, and /setup utility.
 
 [module]
 temp_voice = "Temp voice"
@@ -91,13 +91,13 @@ per-user-invalid = "A member can own 1 to 5 rooms from one creator."
 added = "✅ {channel} is a creator now: whoever joins it gets a room."
 updated = "✅ {channel} is updated."
 category = " Rooms go in {category}."
-module-off = " The **Temp voice** module is switched off in this server, so nothing happens until you switch it on (`/config modules`)."
+module-off = " The **Temp voice** module is switched off in this server, so nothing happens until you switch it on (`/setup server`)."
 gaps = " Heads up: I'm missing **{permissions}**, so rooms won't work properly yet."
 full = "A server can have {count} creators. Remove one first."
 taken = "{channel} can't be a creator."
 removed = "{channel} isn't a creator any more. Rooms it made stay until they empty."
 unknown = "{channel} isn't a creator."
-none = "No creators yet. Make one with `/voice creators add`."
+none = "No creators yet. Make one with `/setup utility voice-add`."
 head = "**Creators** ({count}/{max})"
 line = "{channel} · {template} · {limit} · {rooms} · {state}"
 rooms-now = { one = "{count} room open", other = "{count} rooms open" }
