@@ -199,11 +199,20 @@ async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
     // Stop every actor/relay task without releasing room leases, as with a killed process.
     a.server.abort();
     a.state.drain_reef();
+    // Commit while the owner is gone: there is no publisher left to acknowledge this edit.
+    let floor = &Content::get().surfaces.floors[1].id;
+    sqlx::query("UPDATE rooms SET floor=$2 WHERE user_id=$1 AND idx=0")
+        .bind(host as i64)
+        .bind(floor)
+        .execute(&b.pool)
+        .await
+        .unwrap();
     assert_eq!(q.close_reason().await, "ownership_lost");
     let mut recovered = guest.connect().await;
     let snapshot = recovered.join(host).await;
     assert!(recovered.epoch.parse::<i64>().unwrap() > epoch);
     assert_eq!(snapshot["players"].as_array().unwrap().len(), 1);
+    assert_eq!(snapshot["layout"]["floor"], *floor);
     assert!(!b.app.db.reef_renew(&fence).await.unwrap());
     assert!(
         !b.app
@@ -483,4 +492,284 @@ async fn a_lost_leave_does_not_keep_presence_in_the_previous_room() {
         .reef_release(&format!("location:{token}"), &format!("house:{host}:1"))
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn expired_fences_cannot_be_renewed_or_write_after_waiting_for_a_row_lock() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    site.house(host).await;
+    let _browser = eligible(&site, host).await;
+    let fence = site
+        .app
+        .db
+        .reef_acquire(site.app.cache.namespace(), host, 0)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut blocker = site.pool.begin().await.unwrap();
+    sqlx::query("SELECT token FROM reef_room_leases WHERE owner_id=$1 FOR UPDATE")
+        .bind(host as i64)
+        .execute(&mut *blocker)
+        .await
+        .unwrap();
+    let db = site.app.db.clone();
+    let old = fence.clone();
+    let renewal = tokio::spawn(async move { db.reef_renew(&old).await.unwrap() });
+    tokio::time::sleep(Duration::from_millis(3300)).await;
+    blocker.commit().await.unwrap();
+    assert!(
+        !renewal.await.unwrap(),
+        "a lock wait must not resurrect an expired lease"
+    );
+    let fresh = site
+        .app
+        .db
+        .reef_acquire(site.app.cache.namespace(), host, 0)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(fresh.token > fence.token);
+    let mut blocker = site.pool.begin().await.unwrap();
+    sqlx::query("SELECT token FROM reef_room_leases WHERE owner_id=$1 FOR UPDATE")
+        .bind(host as i64)
+        .execute(&mut *blocker)
+        .await
+        .unwrap();
+    let db = site.app.db.clone();
+    let write = tokio::spawn(async move {
+        db.reef_chat_fenced(host, 0, host, "expired during wait", &[host], Some(&fresh))
+            .await
+            .unwrap()
+    });
+    tokio::time::sleep(Duration::from_millis(3300)).await;
+    blocker.commit().await.unwrap();
+    assert!(matches!(write.await.unwrap(), Err("ownership_lost")));
+}
+
+#[tokio::test]
+async fn chat_recipient_authorization_is_rechecked_against_remote_moderation() {
+    let Some(a) = Site::new().await else { return };
+    let b = Site::new().await.unwrap();
+    let host = unique();
+    let sender = unique();
+    let banned = unique();
+    let blocked = unique();
+    a.house(host).await;
+    for user in [host, sender, banned, blocked] {
+        let _ = eligible(&a, user).await;
+    }
+    let moderator = b.browser(host).await;
+    assert_eq!(
+        moderator
+            .api(
+                reqwest::Method::POST,
+                "/api/reef/moderation",
+                json!({"target":banned.to_string(),"owner":host.to_string(),"room_idx":0,"kind":"ban","seconds":60})
+            )
+            .await
+            .status(),
+        204
+    );
+    assert_eq!(
+        moderator
+            .api(reqwest::Method::PUT, &format!("/api/reef/blocks/{blocked}"), json!({}))
+            .await
+            .status(),
+        204
+    );
+    // The owner's roster can still contain remote users until the next policy sweep.
+    let (evidence, recipients) = a
+        .app
+        .db
+        .reef_chat(
+            host,
+            0,
+            sender,
+            "private room message",
+            &[host, sender, banned, blocked],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(recipients, vec![host, sender]);
+    for user in [banned, blocked] {
+        assert!(
+            a.app
+                .db
+                .reef_report(user, evidence.id, "other")
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+    a.app.db.set_house_locked(host, true).await.unwrap();
+    let (_, recipients) = a
+        .app
+        .db
+        .reef_chat(host, 0, host, "locked room message", &[host, sender])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(recipients, vec![host]);
+}
+
+#[tokio::test]
+async fn room_lease_renews_while_chat_waits_for_player_locks() {
+    let Some(a) = Site::new().await else { return };
+    let host = unique();
+    a.house(host).await;
+    let mut p = eligible(&a, host).await.connect().await;
+    p.join(host).await;
+    let epoch = p.epoch.clone();
+    let mut blocker = a.pool.begin().await.unwrap();
+    sqlx::query("SELECT lock_user($1)")
+        .bind(host as i64)
+        .execute(&mut *blocker)
+        .await
+        .unwrap();
+    p.send(json!({"type":"chat","text":"waiting for the player lock"}))
+        .await;
+    tokio::time::sleep(Duration::from_millis(3200)).await;
+    assert_eq!(
+        a.app
+            .cache
+            .reef_get(&format!("lease:house:{host}:0"))
+            .await
+            .unwrap()
+            .as_deref(),
+        Some(epoch.as_str())
+    );
+    let alive: bool = sqlx::query_scalar("SELECT expires_at>clock_timestamp() FROM reef_room_leases WHERE owner_id=$1")
+        .bind(host as i64)
+        .fetch_one(&a.pool)
+        .await
+        .unwrap();
+    assert!(alive, "busy actors must renew independently of the command queue");
+    blocker.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn remote_mute_and_block_cover_owner_commands_and_delayed_chat_delivery() {
+    let Some(a) = Site::new().await else { return };
+    let b = Site::new().await.unwrap();
+    let host = unique();
+    let guest = unique();
+    let observer = unique();
+    a.house(host).await;
+    let mut p = eligible(&a, host).await.connect().await;
+    p.join(host).await;
+    let mut q = eligible(&b, guest).await.connect().await;
+    q.join(host).await;
+    let mut r = eligible(&b, observer).await.connect().await;
+    r.join(host).await;
+    let remote_host = b.browser(host).await;
+    assert_eq!(
+        remote_host
+            .api(
+                reqwest::Method::POST,
+                "/api/reef/moderation",
+                json!({"target":guest.to_string(),"owner":host.to_string(),"room_idx":0,"kind":"mute","seconds":60})
+            )
+            .await
+            .status(),
+        204
+    );
+    q.send(json!({"type":"chat","text":"muted on another pod"})).await;
+    assert_eq!(q.until("error").await["reason"], "chat_muted");
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM reef_chat_evidence WHERE sender_id=$1")
+        .bind(guest as i64)
+        .fetch_one(&a.pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+    // Evidence was authorized before a block, but its relay arrives after the block committed.
+    let (message, _) = a
+        .app
+        .db
+        .reef_chat(host, 0, observer, "queued private chat", &[host, observer, guest])
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(a.app.db.reef_chat_deliverable(message.id, guest).await.unwrap());
+    let remote_guest = b.browser(guest).await;
+    assert_eq!(
+        remote_guest
+            .api(reqwest::Method::PUT, &format!("/api/reef/blocks/{observer}"), json!({}))
+            .await
+            .status(),
+        204
+    );
+    q.until("policy_changed").await;
+    assert!(!a.app.db.reef_chat_deliverable(message.id, guest).await.unwrap());
+    let token = b
+        .app
+        .cache
+        .reef_get(&format!("controller:{guest}"))
+        .await
+        .unwrap()
+        .unwrap();
+    let mut body = message.json();
+    body["type"] = json!("chat");
+    a.app
+        .cache
+        .reef_publish(
+            &format!("house:{host}:0"),
+            &json!({"route":"Event","token":token,
+        "event":{"delivery":1,"stream":"delayed-private-chat","epoch":p.epoch,"request":"","body":body}})
+            .to_string(),
+        )
+        .await
+        .unwrap();
+    let _ = tokio::time::timeout(Duration::from_millis(600), async {
+        while let Some(Ok(Message::Text(text))) = q.socket.next().await {
+            let body: Value = serde_json::from_str(&text).unwrap();
+            assert_ne!(body["type"], "chat", "a delayed event bypassed a committed block");
+        }
+    })
+    .await;
+    assert_eq!(
+        remote_host
+            .api(
+                reqwest::Method::POST,
+                "/api/reef/moderation",
+                json!({"target":guest.to_string(),"owner":host.to_string(),"room_idx":0,"kind":"ban","seconds":60})
+            )
+            .await
+            .status(),
+        204
+    );
+    assert_eq!(q.close_reason().await, "sanctioned");
+}
+
+#[tokio::test]
+async fn recovery_snapshots_do_not_bypass_remote_access_revocation() {
+    let Some(a) = Site::new().await else { return };
+    let b = Site::new().await.unwrap();
+    let host = unique();
+    a.house(host).await;
+    let mut p = eligible(&a, host).await.connect().await;
+    p.join(host).await;
+    let mut q = eligible(&b, unique()).await.connect().await;
+    q.join(host).await;
+    b.app.db.set_house_locked(host, true).await.unwrap();
+    q.send(json!({"type":"snapshot"})).await;
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while let Some(Ok(message)) = q.socket.next().await {
+            match message {
+                Message::Text(text) => {
+                    let body: Value = serde_json::from_str(&text).unwrap();
+                    assert_ne!(body["type"], "snapshot", "recovery disclosed a revoked private room");
+                }
+                Message::Close(Some(frame)) => {
+                    assert_eq!(frame.reason, "access_revoked");
+                    return;
+                }
+                _ => {}
+            }
+        }
+        panic!("expected an access-revoked close");
+    })
+    .await
+    .unwrap();
 }

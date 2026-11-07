@@ -201,6 +201,9 @@ export class ReefNet {
     if (message.sequence <= this.received) return;
     const gap = this.received > 0 && message.sequence !== this.received + 1;
     this.received = message.sequence;
+    // A missing event may have revoked chat visibility. Snapshots do not replay policy
+    // notifications, and a policy event must take effect even while recovering a gap.
+    if (gap || message.type === "policy_changed") this.chat.clear();
     if (message.type === "ping") this.send({ type: "ping" });
     if ((gap || this.recovering) && message.type !== "snapshot" && (this.epoch || this.userId)) {
       if (!this.recovering) {
@@ -217,10 +220,7 @@ export class ReefNet {
       this.send({ type: "join", room: this.room });
       return;
     }
-    if (message.type === "policy_changed") {
-      this.chat.clear();
-      return;
-    }
+    if (message.type === "policy_changed") return;
     if (message.type === "chat" && message.room_epoch === this.epoch) {
       this.chat.accept(message as unknown as Omit<ChatLine, "delivery">);
       return;

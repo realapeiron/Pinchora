@@ -167,7 +167,12 @@ impl Runtime {
         }
     }
     pub async fn locate(&self, user: u64, key: RoomKey) {
-        self.locations.lock().await.insert(user, key);
+        // This index belongs to local sockets. Remote actor proxies have no local release
+        // callback, so recording them here would retain their identities indefinitely.
+        let controllers = self.controllers.lock().await;
+        if controllers.contains_key(&user) {
+            self.locations.lock().await.insert(user, key);
+        }
     }
     pub async fn recheck(&self, state: &WebState) {
         let locations = self.locations.lock().await.clone();
@@ -350,6 +355,14 @@ impl Limits {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn remote_peers_do_not_accumulate_in_the_local_location_index() {
+        let runtime = Runtime::default();
+        for user in 1..1000 {
+            runtime.locate(user, RoomKey { owner: 1, idx: 0 }).await;
+        }
+        assert!(runtime.locations.lock().await.is_empty());
+    }
     #[tokio::test]
     async fn slow_client_eviction_preserves_the_reason() {
         let (outgoing, mut incoming) = mpsc::channel(1);

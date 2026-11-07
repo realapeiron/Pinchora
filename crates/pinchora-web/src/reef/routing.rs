@@ -253,6 +253,10 @@ async fn route(
                             if cache.reef_get(&lease_key(key)).await?.as_deref()!=Some(&event.epoch) { continue; }
                             if let Err(reason)=controller(state,peer).await {peer.terminate(reason);continue;}
                             pending.remove(&(token,event.request.clone()));
+                            if event.body["type"] == "chat" {
+                                let Some(id) = event.body["message_id"].as_str().and_then(|s|s.parse::<i64>().ok()) else {continue;};
+                                if !state.app.db.reef_chat_deliverable(id, peer.user).await? {continue;}
+                            }
                             if peer.outgoing.try_send(event).is_err() {peer.terminate("slow_client");}
                         }
                     }

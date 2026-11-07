@@ -272,7 +272,6 @@ impl Room {
             last_sequence: 0,
         };
         let presence = member.json();
-        state.reef.locate(peer.user, self.key).await;
         self.members.insert(peer.token.clone(), member);
         self.snapshot(&peer, &request);
         self.broadcast("", json!({"type":"presence","action":"join","player":presence}));
@@ -292,6 +291,12 @@ impl Room {
             self.leave(token);
             return Ok(());
         }
+        // Recovery and duplicate-command snapshots expose the same private room as movement.
+        // A remote revocation must apply before any early snapshot return.
+        if room_access(state, self.key, member.peer.user).await.is_err() {
+            member.peer.terminate("access_revoked");
+            return Ok(());
+        }
         if envelope.sequence > 0 && envelope.sequence <= member.last_sequence {
             let peer = member.peer.clone();
             self.snapshot(&peer, &envelope.request_id);
@@ -307,10 +312,6 @@ impl Room {
         }
         if matches!(envelope.command, Command::Snapshot) {
             self.snapshot(&member.peer, request);
-            return Ok(());
-        }
-        if room_access(state, self.key, member.peer.user).await.is_err() {
-            member.peer.terminate("access_revoked");
             return Ok(());
         }
         if let Command::Chat { text } = &envelope.command {
@@ -439,12 +440,30 @@ impl Room {
         Ok(())
     }
 }
-pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, mut input: mpsc::Receiver<Input>) {
+pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, input: mpsc::Receiver<Input>) {
+    // Room work can wait on player locks or layout reads. Renewal must keep running during
+    // those waits; loss cancels the in-flight work instead of draining stale commands.
+    tokio::select! {
+        biased;
+        _ = async {
+            let mut tick = tokio::time::interval(Duration::from_millis(500));
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            loop {
+                tick.tick().await;
+                if !matches!(tokio::time::timeout(Duration::from_secs(1), super::routing::valid(&state, key, &fence)).await, Ok(true)) {
+                    break;
+                }
+            }
+        } => {},
+        _ = run_owned(&state, key, &fence, input) => {},
+    }
+}
+async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFence, mut input: mpsc::Receiver<Input>) {
     let epoch = fence.token.to_string();
     let Ok(events) = state.app.db.reef_layout_events(key.owner).await else {
         return;
     };
-    let layout = match Layout::load(&state, key).await {
+    let layout = match Layout::load(state, key).await {
         Ok(layout) => layout,
         Err(_) => {
             if let Some(Input::Join(peer, request)) = input.recv().await {
@@ -469,21 +488,21 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, m
     loop {
         tokio::select! {
             command=input.recv()=>{
-                if !super::routing::valid(&state,key,&fence).await {break;}
+                if !super::routing::valid(state,key,fence).await {break;}
                 match command {
-                    Some(Input::Join(peer,request))=>room.join(&state,peer,request).await,
+                    Some(Input::Join(peer,request))=>room.join(state,peer,request).await,
                     Some(Input::Leave(token))=>room.leave(&token),
                     Some(Input::Layout(id))=>{
-                        if !room.layout_events.contains(&id) && room.refresh(&state).await.is_err() {break;}
+                        if !room.layout_events.contains(&id) && room.refresh(state).await.is_err() {break;}
                     }
                     Some(Input::Command(token,envelope))=>{
-                        if room.command(&state,&token,envelope).await.is_err() {break;}
+                        if room.command(state,&token,envelope).await.is_err() {break;}
                     }
                     None=>break,
                 }
             }
             _=tick.tick()=>{
-                if !super::routing::valid(&state,key,&fence).await {break;}
+                if !super::routing::valid(state,key,fence).await {break;}
                 let now=Instant::now();
                 let gone:Vec<_>=room.members.iter().filter(|(_,m)|m.peer.close.borrow().is_some() || m.peer.outgoing.is_closed()).map(|(k,_)|k.clone()).collect();
                 for token in gone {room.leave(&token);}
@@ -491,16 +510,16 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, m
                     if empty_since.elapsed()>Duration::from_secs(2) {break;}
                 } else {empty_since=now;}
                 if refreshed.elapsed()>=Duration::from_secs(1) {
-                    if state.app.cache.ping().await.is_err() || room.refresh(&state).await.is_err() {break;}
+                    if state.app.cache.ping().await.is_err() || room.refresh(state).await.is_err() {break;}
                     refreshed=Instant::now();
                 }
                 if policy.elapsed()>=Duration::from_secs(1) {
                     let mut relocated=Vec::new();
                     for (token,member) in &room.members {
-                        if !super::routing::in_room(&state,&member.peer,key).await {relocated.push(token.clone());continue;}
-                        if let Err(reason)=super::routing::controller(&state,&member.peer).await {member.peer.terminate(reason);}
+                        if !super::routing::in_room(state,&member.peer,key).await {relocated.push(token.clone());continue;}
+                        if let Err(reason)=super::routing::controller(state,&member.peer).await {member.peer.terminate(reason);}
                         else if matches!(state.app.db.reef_sanctioned(member.peer.user,key.owner,key.idx,false).await,Ok(true)) {member.peer.terminate("sanctioned");}
-                        else if room_access(&state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
+                        else if room_access(state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
                     }
                     for token in relocated {room.leave(&token);}
                     policy=Instant::now();

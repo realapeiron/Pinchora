@@ -20,8 +20,14 @@ impl Db {
         }))
     }
     pub async fn reef_renew(&self, fence: &ReefFence) -> anyhow::Result<bool> {
-        Ok(sqlx::query("UPDATE reef_room_leases SET expires_at=clock_timestamp()+interval '3 seconds' WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4 AND expires_at>clock_timestamp()")
-            .bind(&fence.namespace).bind(sql_id(fence.owner)).bind(fence.idx).bind(fence.token).execute(self.pool()).await?.rows_affected()==1)
+        let mut tx = self.pool().begin().await?;
+        if !fence.lock_valid(&mut tx).await? {
+            return Ok(false);
+        }
+        sqlx::query("UPDATE reef_room_leases SET expires_at=clock_timestamp()+interval '3 seconds' WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4")
+            .bind(&fence.namespace).bind(sql_id(fence.owner)).bind(fence.idx).bind(fence.token).execute(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(true)
     }
     pub async fn reef_release(&self, fence: &ReefFence) -> anyhow::Result<()> {
         sqlx::query("DELETE FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4")
@@ -44,5 +50,19 @@ impl Db {
             .execute(self.pool())
             .await?;
         Ok(())
+    }
+}
+
+impl ReefFence {
+    pub(crate) async fn lock_valid(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> anyhow::Result<bool> {
+        // A WHERE predicate can run before a row-lock wait. Check the clock in a separate
+        // statement after acquiring the lock, so waiting never resurrects an expired owner.
+        let found: Option<i64> = sqlx::query_scalar("SELECT token FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4 FOR UPDATE")
+            .bind(&self.namespace).bind(sql_id(self.owner)).bind(self.idx).bind(self.token).fetch_optional(&mut **tx).await?;
+        if found.is_none() {
+            return Ok(false);
+        }
+        Ok(sqlx::query_scalar("SELECT expires_at>clock_timestamp() FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4")
+            .bind(&self.namespace).bind(sql_id(self.owner)).bind(self.idx).bind(self.token).fetch_one(&mut **tx).await?)
     }
 }

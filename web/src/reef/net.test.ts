@@ -70,6 +70,19 @@ afterEach(() => {
 });
 
 describe("Reef socket", () => {
+  it("clears private chat when a policy event is lost or arrives during gap recovery", async () => {
+    const socket = await connected();
+    const chat = { message_id: "private", sender_id: "2", name: "guest", text: "hello", created_at: "now" };
+    socket.message({ type: "chat", ...chat }, 3);
+    expect(net.chat.snapshot()).toHaveLength(1);
+    socket.message({ type: "correction" }, 5);
+    expect(net.chat.snapshot()).toHaveLength(0);
+    net.chat.accept(chat);
+    socket.message({ type: "policy_changed" }, 6, "");
+    expect(net.chat.snapshot()).toHaveLength(0);
+    socket.message({ type: "snapshot", revision: "r1", players: [player()] }, 7);
+    expect(net.chat.snapshot()).toHaveLength(0);
+  });
   it("authenticates in a frame, joins, and sends only intentions", async () => {
     const socket = await connected();
     expect(socket.url.href).toBe("wss://reef.test/api/reef/ws");

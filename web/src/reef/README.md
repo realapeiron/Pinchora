@@ -101,6 +101,10 @@ leases, checked before actor commands and frontend delivery. Expiring room-locat
 when a transition's leave message is lost. Logout, blocks and consent changes reach other pods.
 `WebState::drain_reef()` cancels room/relay tasks immediately; ownership becomes available after lease expiry.
 There is no persisted footstep stream: failover returns players to deterministic spawn via a new snapshot.
+Renewal runs independently of room work every 500 ms, with a one-second deadline; a failed renewal cancels
+in-flight room work. Postgres checks expiry after acquiring the fencing row lock, including after lock waits.
+Chat recipients are authorized inside the evidence transaction and checked again at frontend relay delivery,
+so a committed remote block or ban also suppresses delayed chat events.
 
 Outbox triggers cover placements, rooms, and house tier changes from both bot and web, including direct surface/
 flip updates and bulk restore/clear. Multiple row writes in one transaction produce one house notification;
@@ -116,6 +120,10 @@ snapshot, and reconnects if recovery has not completed within three seconds. A m
 closes the affected connection after three seconds; chat is never automatically replayed. Duplicate routed
 command sequences return a snapshot without repeating their side effects. Full queues close with `slow_client`.
 Frontend connection rate budgets remain per pod; room ownership and account controller exclusivity are global.
+Reef subscriptions require Redis 6+ (RESP3), with 128 buffered messages of at most 256 KiB each; overflow,
+oversized messages, and disconnects end the subscription and force recovery. The Redis driver's unbounded
+RESP2 subscription queue is not used for Reef. Sequence gaps clear chat because a lost policy event cannot
+be reconstructed from a room snapshot. Local location indexes contain only locally controlled accounts.
 
 `cargo test -p pinchora-web --test reef -- --test-threads=2` includes two independent app instances sharing the
 assigned Postgres/Redis, cross-pod presence/movement/chat, controller and consent replacement, transactional

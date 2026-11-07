@@ -90,12 +90,10 @@ impl Db {
         ids.extend([sql_id(owner), sql_id(sender)]);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &ids).await?;
-        if let Some(fence) = fence {
-            let valid: Option<i64> = sqlx::query_scalar("SELECT token FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4 AND expires_at>clock_timestamp() FOR UPDATE")
-                .bind(&fence.namespace).bind(sql_id(owner)).bind(idx).bind(fence.token).fetch_optional(&mut *tx).await?;
-            if valid.is_none() {
-                return Ok(Err("ownership_lost"));
-            }
+        if let Some(fence) = fence
+            && (fence.owner != owner || fence.idx != idx || !fence.lock_valid(&mut tx).await?)
+        {
+            return Ok(Err("ownership_lost"));
         }
         let accessible: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$1 AND r.idx=$2 AND ($1=$3 OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy p WHERE p.user_id=$1 AND p.hide_house)))) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$3) OR (host_id=$3 AND blocked_id=$1))")
             .bind(sql_id(owner)).bind(idx).bind(sql_id(sender)).fetch_one(&mut *tx).await?;
@@ -114,10 +112,15 @@ impl Db {
         }
         let evidence: ReefEvidence = sqlx::query_as("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text) VALUES($1,$2,$3,$4) RETURNING id,owner_id,room_idx,sender_id,text,created_at")
             .bind(sql_id(owner)).bind(idx).bind(sql_id(sender)).bind(text).fetch_one(&mut *tx).await?;
-        let recipients: Vec<i64> = sqlx::query_scalar("INSERT INTO reef_chat_recipients(message_id,user_id) SELECT $1, p FROM unnest($2::bigint[]) p WHERE EXISTS(SELECT 1 FROM reef_consents c WHERE c.user_id=p AND c.version=$4 AND c.accepted AND c.age_band='13_plus') AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=p AND b.blocked_id=$3) OR (b.host_id=$3 AND b.blocked_id=p)) RETURNING user_id")
-            .bind(evidence.id).bind(peers.iter().copied().map(sql_id).collect::<Vec<_>>()).bind(sql_id(sender)).bind(REEF_CONSENT_VERSION).fetch_all(&mut *tx).await?;
+        let recipients: Vec<i64> = sqlx::query_scalar("INSERT INTO reef_chat_recipients(message_id,user_id) SELECT DISTINCT $1, p FROM unnest($2::bigint[]) p WHERE EXISTS(SELECT 1 FROM reef_consents c WHERE c.user_id=p AND c.version=$4 AND c.accepted AND c.age_band='13_plus') AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=p AND b.blocked_id IN ($3,$5)) OR (b.host_id IN ($3,$5) AND b.blocked_id=p)) AND EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$5 AND r.idx=$6 AND (p=$5 OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy privacy WHERE privacy.user_id=$5 AND privacy.hide_house)))) AND NOT EXISTS(SELECT 1 FROM reef_sanctions s WHERE s.user_id=p AND s.expires_at>clock_timestamp() AND (s.owner_id IS NULL OR s.owner_id=$5) AND (s.room_idx IS NULL OR s.room_idx=$6) AND s.kind IN ('kick','ban')) RETURNING user_id")
+            .bind(evidence.id).bind(peers.iter().copied().map(sql_id).collect::<Vec<_>>()).bind(sql_id(sender)).bind(REEF_CONSENT_VERSION).bind(sql_id(owner)).bind(idx).fetch_all(&mut *tx).await?;
         tx.commit().await?;
         Ok(Ok((evidence, recipients.into_iter().map(|id| id as u64).collect())))
+    }
+    /// A remote policy change can commit after evidence creation but before relay delivery.
+    pub async fn reef_chat_deliverable(&self, message: i64, user: u64) -> anyhow::Result<bool> {
+        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_chat_evidence e JOIN reef_chat_recipients r ON r.message_id=e.id JOIN reef_consents c ON c.user_id=r.user_id JOIN houses h ON h.user_id=e.owner_id WHERE e.id=$1 AND r.user_id=$2 AND c.version=$3 AND c.accepted AND c.age_band='13_plus' AND ($2=e.owner_id OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy p WHERE p.user_id=e.owner_id AND p.hide_house))) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=$2 AND b.blocked_id IN (e.sender_id,e.owner_id)) OR (b.host_id IN (e.sender_id,e.owner_id) AND b.blocked_id=$2)) AND NOT EXISTS(SELECT 1 FROM reef_sanctions s WHERE s.user_id=$2 AND s.expires_at>clock_timestamp() AND (s.owner_id IS NULL OR s.owner_id=e.owner_id) AND (s.room_idx IS NULL OR s.room_idx=e.room_idx) AND s.kind IN ('kick','ban')))")
+            .bind(message).bind(sql_id(user)).bind(REEF_CONSENT_VERSION).fetch_one(self.pool()).await?)
     }
     pub async fn reef_report(&self, user: u64, message: i64, reason: &str) -> anyhow::Result<Option<String>> {
         if !["harassment", "personal_info", "spam", "other"].contains(&reason) {
