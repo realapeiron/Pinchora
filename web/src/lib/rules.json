@@ -1174,7 +1174,10 @@
       "ticket",
       "tickets",
       "automod",
-      "feeds"
+      "feeds",
+      "voice",
+      "xp",
+      "info"
     ],
     "responder_placeholders": {
       "keyword": [

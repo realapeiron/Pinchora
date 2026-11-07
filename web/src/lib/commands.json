@@ -1692,6 +1692,161 @@
           "usage": "/customcommand info <name>"
         },
         {
+          "description": "Keep new people out of your room",
+          "manager": false,
+          "options": [],
+          "path": "voice lock",
+          "usage": "/voice lock"
+        },
+        {
+          "description": "Let anyone join your room again",
+          "manager": false,
+          "options": [],
+          "path": "voice unlock",
+          "usage": "/voice unlock"
+        },
+        {
+          "description": "Set how many people your room takes",
+          "manager": false,
+          "options": [
+            {
+              "description": "How many people at most (0 for no limit)",
+              "name": "people",
+              "required": true
+            }
+          ],
+          "path": "voice limit",
+          "usage": "/voice limit <people>"
+        },
+        {
+          "description": "Rename your room",
+          "manager": false,
+          "options": [
+            {
+              "description": "The new name",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "voice rename",
+          "usage": "/voice rename <name>"
+        },
+        {
+          "description": "Send someone out of your room and keep them out",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to kick",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice kick",
+          "usage": "/voice kick <user>"
+        },
+        {
+          "description": "Give your room to someone who is in it",
+          "manager": false,
+          "options": [
+            {
+              "description": "The new owner",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice transfer",
+          "usage": "/voice transfer <user>"
+        },
+        {
+          "description": "Take over a room whose owner has left",
+          "manager": false,
+          "options": [],
+          "path": "voice claim",
+          "usage": "/voice claim"
+        },
+        {
+          "description": "Hide your room from people who are not in it",
+          "manager": false,
+          "options": [],
+          "path": "voice hide",
+          "usage": "/voice hide"
+        },
+        {
+          "description": "Show your hidden room to everyone again",
+          "manager": false,
+          "options": [],
+          "path": "voice show",
+          "usage": "/voice show"
+        },
+        {
+          "description": "Let someone into your room, even if it is locked or they were kicked",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to let in",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice invite",
+          "usage": "/voice invite <user>"
+        },
+        {
+          "description": "Show the buttons that run your room",
+          "manager": false,
+          "options": [],
+          "path": "voice panel",
+          "usage": "/voice panel"
+        },
+        {
+          "description": "Make a voice channel a creator, or change one (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The voice channel people join to get a room",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "The category the rooms go in (default: the creator's own)",
+              "name": "category",
+              "required": false
+            },
+            {
+              "description": "How many people a room takes at first (0 for no limit)",
+              "name": "limit",
+              "required": false
+            },
+            {
+              "description": "What rooms are called: {user} is the owner's name, {n} the room's number",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "voice creators add",
+          "usage": "/voice creators add <channel> [category] [limit] [template]"
+        },
+        {
+          "description": "Stop a channel making rooms (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The creator channel",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "voice creators remove",
+          "usage": "/voice creators remove <channel>"
+        },
+        {
+          "description": "The creator channels of this server (Manage Server)",
+          "manager": true,
+          "options": [],
+          "path": "voice creators list",
+          "usage": "/voice creators list"
+        },
+        {
           "description": "Follow a source and post what is new in a channel",
           "manager": true,
           "options": [
@@ -2997,6 +3152,116 @@
           "usage": "/config language <language>"
         },
         {
+          "description": "Show a member's account and server details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member to inspect",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "info user",
+          "usage": "/info user [user]"
+        },
+        {
+          "description": "Show server details",
+          "manager": false,
+          "options": [],
+          "path": "info server",
+          "usage": "/info server"
+        },
+        {
+          "description": "Show a user's avatar",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member whose avatar to view",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Prefer the server avatar",
+              "name": "server",
+              "required": false
+            }
+          ],
+          "path": "info avatar",
+          "usage": "/info avatar [user] [server]"
+        },
+        {
+          "description": "Show a user's banner",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member whose banner to view",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "info banner",
+          "usage": "/info banner [user]"
+        },
+        {
+          "description": "Show a role's details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Role to inspect",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "info role",
+          "usage": "/info role <role>"
+        },
+        {
+          "description": "Show a channel's details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Channel to inspect",
+              "name": "channel",
+              "required": false
+            }
+          ],
+          "path": "info channel",
+          "usage": "/info channel [channel]"
+        },
+        {
+          "description": "Show member counts",
+          "manager": false,
+          "options": [],
+          "path": "info members",
+          "usage": "/info members"
+        },
+        {
+          "description": "Show a custom emoji",
+          "manager": false,
+          "options": [
+            {
+              "description": "Custom or Unicode emoji",
+              "name": "emoji",
+              "required": false
+            }
+          ],
+          "path": "info emoji",
+          "usage": "/info emoji [emoji]"
+        },
+        {
+          "description": "Show an invite's details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Invite code",
+              "name": "code",
+              "required": true
+            }
+          ],
+          "path": "info invite",
+          "usage": "/info invite <code>"
+        },
+        {
           "description": "Make a channel's name show a number, updated every 10 minutes",
           "manager": true,
           "options": [
@@ -3498,6 +3763,97 @@
           "options": [],
           "path": "config store list",
           "usage": "/config store list"
+        },
+        {
+          "description": "Add server XP to a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to edit",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp add",
+          "usage": "/xp add <user> <amount>"
+        },
+        {
+          "description": "Remove server XP from a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to edit",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp remove",
+          "usage": "/xp remove <user> <amount>"
+        },
+        {
+          "description": "Set a member's server XP",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to edit",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp set",
+          "usage": "/xp set <user> <amount>"
+        },
+        {
+          "description": "Reset one member's server XP",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to reset",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "xp reset",
+          "usage": "/xp reset <user>"
+        },
+        {
+          "description": "Reset everyone's server XP; requires two confirmations",
+          "manager": true,
+          "options": [],
+          "path": "xp reset-all",
+          "usage": "/xp reset-all"
+        },
+        {
+          "description": "Import MEE6 XP (once per server per day)",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Merge: keep the higher XP",
+                "Replace: use MEE6 XP"
+              ],
+              "description": "How imported XP combines with existing XP",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "xp import mee6",
+          "usage": "/xp import mee6 <mode>"
         }
       ],
       "intro": "Level roles, XP multipliers, voice XP, reputation roles and the points store.",
@@ -3649,5 +4005,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 218
+  "count": 247
 }
