@@ -1,8 +1,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { StatusPage, type PublicStatus } from "./Status";
+
+const testLanguage = vi.hoisted(() => ({ current: "en" as "en" | "tr" }));
+
+vi.mock("../i18n", async (importOriginal) => {
+  const i18n = await importOriginal<typeof import("../i18n")>();
+  return {
+    ...i18n,
+    useI18n: () => ({
+      t: (key: keyof typeof import("../i18n/en").en, values?: Record<string, string | number>) =>
+        i18n.translate(key, values, testLanguage.current),
+      number: (value: number) => i18n.number(value, testLanguage.current),
+    }),
+  };
+});
 
 const status: PublicStatus = {
   servers: 1234,
@@ -32,8 +46,7 @@ describe("status page", () => {
     ["en", "1,234", "Approx. members"],
     ["tr", "1.234", "Yaklaşık üye"],
   ])("shows the %s status with localized numbers", (lang, number, label) => {
-    const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
-    Object.assign(globalThis, { document: { documentElement: { lang } } });
+    testLanguage.current = lang as "en" | "tr";
     const client = new QueryClient();
     client.setQueryData(["/api/public/status"], status);
     const html = renderToStaticMarkup(
@@ -45,7 +58,5 @@ describe("status page", () => {
     expect(html).toContain(label);
     expect(html).toContain("42 ms");
     expect(html).toContain("/invite");
-    if (previous) Object.defineProperty(globalThis, "document", previous);
-    else Reflect.deleteProperty(globalThis, "document");
   });
 });

@@ -1443,21 +1443,6 @@ code {
 .status-page {
   padding-block: 5rem;
 }
-.status-languages {
-  display: flex;
-  gap: 0.5rem;
-  margin: 1.5rem 0;
-}
-.status-languages button {
-  border: 2px solid var(--ink, #24404c);
-  background: transparent;
-  color: inherit;
-  padding: 0.4rem 0.75rem;
-  cursor: pointer;
-}
-.status-languages button[aria-pressed="true"] {
-  background: var(--coral, #ed8263);
-}
 .status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

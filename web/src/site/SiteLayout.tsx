@@ -121,7 +121,7 @@ export function SiteLayout() {
                 <Link to="/commands">{t("Commands")}</Link>
               </li>
               <li>
-                <Link to="/status">Status</Link>
+                <Link to="/status">{t("Status")}</Link>
               </li>
               <li>
                 <Link to="/#faq">FAQ</Link>

@@ -5026,6 +5026,14 @@
         },
         {
           "aliases": [],
+          "description": "Pinchora'nın canlı durumunu gösterir",
+          "manager": false,
+          "options": [],
+          "path": "info bot",
+          "usage": "/info bot"
+        },
+        {
+          "aliases": [],
           "description": "Bir kullanıcının avatarını gösterir",
           "manager": false,
           "options": [
@@ -6193,5 +6201,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 330
+  "count": 331
 }

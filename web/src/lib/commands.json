@@ -5026,6 +5026,14 @@
         },
         {
           "aliases": [],
+          "description": "Show Pinchora's live status",
+          "manager": false,
+          "options": [],
+          "path": "info bot",
+          "usage": "/info bot"
+        },
+        {
+          "aliases": [],
           "description": "Show a user's avatar",
           "manager": false,
           "options": [
@@ -6193,5 +6201,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 330
+  "count": 331
 }
