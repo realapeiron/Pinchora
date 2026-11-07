@@ -2999,6 +2999,304 @@
         },
         {
           "aliases": [],
+          "description": "Günün sorusu öner",
+          "manager": false,
+          "options": [
+            {
+              "description": "Önerdiğin soru",
+              "name": "question",
+              "required": true
+            }
+          ],
+          "path": "qotd suggest",
+          "usage": "/qotd suggest <question>"
+        },
+        {
+          "aliases": [],
+          "description": "Sayma istatistiklerin",
+          "manager": false,
+          "options": [],
+          "path": "counting stats",
+          "usage": "/counting stats"
+        },
+        {
+          "aliases": [],
+          "description": "Açık formlar",
+          "manager": false,
+          "options": [],
+          "path": "form list",
+          "usage": "/form list"
+        },
+        {
+          "aliases": [],
+          "description": "Forma başvur",
+          "manager": false,
+          "options": [
+            {
+              "description": "Form numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "form open",
+          "usage": "/form open <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Konuyu kapat",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kapatma gerekçesi",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "modmail close",
+          "usage": "/modmail close [reason]"
+        },
+        {
+          "aliases": [],
+          "description": "Üyeyi engelle",
+          "manager": false,
+          "options": [
+            {
+              "description": "Üye numarası",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Engeli kaldır",
+              "name": "unblock",
+              "required": false
+            }
+          ],
+          "path": "modmail block",
+          "usage": "/modmail block <user> [unblock]"
+        },
+        {
+          "aliases": [],
+          "description": "Hazır yanıt ekle",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kısa ad",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Yanıt metni",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "modmail snippet-add",
+          "usage": "/modmail snippet-add <name> <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Hazır yanıt gönder",
+          "manager": false,
+          "options": [
+            {
+              "description": "Hazır yanıt adı",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "modmail snippet-use",
+          "usage": "/modmail snippet-use <name>"
+        },
+        {
+          "aliases": [],
+          "description": "Hazır yanıtları listele",
+          "manager": false,
+          "options": [],
+          "path": "modmail snippet-list",
+          "usage": "/modmail snippet-list"
+        },
+        {
+          "aliases": [],
+          "description": "Kanal ve saat ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Soru kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Saat",
+              "name": "hour",
+              "required": false
+            },
+            {
+              "description": "Saat dilimi",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "Konu aç",
+              "name": "thread",
+              "required": false
+            },
+            {
+              "description": "Bildirim rolü",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "community qotd settings",
+          "usage": "/community qotd settings [channel] [hour] [timezone] [thread] [role]"
+        },
+        {
+          "aliases": [],
+          "description": "Soru sırasını incele",
+          "manager": true,
+          "options": [],
+          "path": "community qotd queue",
+          "usage": "/community qotd queue"
+        },
+        {
+          "aliases": [],
+          "description": "Sayma kurallarını ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sayma kanalı",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Hatada sıfırla",
+              "name": "reset_on_fail",
+              "required": false
+            },
+            {
+              "description": "İşlemlere izin ver",
+              "name": "allow_math",
+              "required": false
+            },
+            {
+              "description": "Hata rolü",
+              "name": "fail_role",
+              "required": false
+            }
+          ],
+          "path": "community counting setup",
+          "usage": "/community counting setup <channel> [reset_on_fail] [allow_math] [fail_role]"
+        },
+        {
+          "aliases": [],
+          "description": "Sayıyı sıfırla",
+          "manager": true,
+          "options": [],
+          "path": "community counting reset",
+          "usage": "/community counting reset"
+        },
+        {
+          "aliases": [],
+          "description": "Form oluştur",
+          "manager": true,
+          "options": [
+            {
+              "description": "Form adı",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Soruları | ile ayır",
+              "name": "questions",
+              "required": true
+            },
+            {
+              "description": "İnceleme kanalı",
+              "name": "review_channel",
+              "required": true
+            },
+            {
+              "description": "Kabul rolü",
+              "name": "accept_role",
+              "required": false
+            }
+          ],
+          "path": "community forms create",
+          "usage": "/community forms create <name> <questions> <review_channel> [accept_role]"
+        },
+        {
+          "aliases": [],
+          "description": "Formu paylaş",
+          "manager": true,
+          "options": [
+            {
+              "description": "Form numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community forms post",
+          "usage": "/community forms post <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Formu kapat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Form numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community forms close",
+          "usage": "/community forms close <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Destek forumunu ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Özel desteği aç",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Ekip forumu",
+              "name": "forum",
+              "required": false
+            },
+            {
+              "description": "Karşılama metni",
+              "name": "greeting",
+              "required": false
+            },
+            {
+              "description": "Ekip adlarını gizle",
+              "name": "anonymous_staff",
+              "required": false
+            },
+            {
+              "description": "Ekip rolü",
+              "name": "staff_role",
+              "required": false
+            },
+            {
+              "description": "Kayıt kanalı",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Kapanma saati",
+              "name": "close_after_hours",
+              "required": false
+            }
+          ],
+          "path": "community modmail settings",
+          "usage": "/community modmail settings [enabled] [forum] [greeting] [anonymous_staff] [staff_role] [log_channel] [close_after_hours]"
+        },
+        {
+          "aliases": [],
           "description": "Bu talebi kapat ve dökümünü sakla",
           "manager": false,
           "options": [
@@ -6569,5 +6867,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 340
+  "count": 357
 }

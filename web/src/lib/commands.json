@@ -2999,6 +2999,304 @@
         },
         {
           "aliases": [],
+          "description": "Suggest a question for staff review",
+          "manager": false,
+          "options": [
+            {
+              "description": "Question, up to 300 characters",
+              "name": "question",
+              "required": true
+            }
+          ],
+          "path": "qotd suggest",
+          "usage": "/qotd suggest <question>"
+        },
+        {
+          "aliases": [],
+          "description": "See your correct counts and failures",
+          "manager": false,
+          "options": [],
+          "path": "counting stats",
+          "usage": "/counting stats"
+        },
+        {
+          "aliases": [],
+          "description": "List open application forms",
+          "manager": false,
+          "options": [],
+          "path": "form list",
+          "usage": "/form list"
+        },
+        {
+          "aliases": [],
+          "description": "Open an application form",
+          "manager": false,
+          "options": [
+            {
+              "description": "Form ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "form open",
+          "usage": "/form open <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Close the current private support thread",
+          "manager": false,
+          "options": [
+            {
+              "description": "Reason shown to the member",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "modmail close",
+          "usage": "/modmail close [reason]"
+        },
+        {
+          "aliases": [],
+          "description": "Block a member from starting modmail",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member ID",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Remove the block",
+              "name": "unblock",
+              "required": false
+            }
+          ],
+          "path": "modmail block",
+          "usage": "/modmail block <user> [unblock]"
+        },
+        {
+          "aliases": [],
+          "description": "Save a staff reply snippet",
+          "manager": false,
+          "options": [
+            {
+              "description": "Short name",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Reply text",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "modmail snippet-add",
+          "usage": "/modmail snippet-add <name> <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Send a saved reply to the member",
+          "manager": false,
+          "options": [
+            {
+              "description": "Snippet name",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "modmail snippet-use",
+          "usage": "/modmail snippet-use <name>"
+        },
+        {
+          "aliases": [],
+          "description": "List saved staff snippets",
+          "manager": false,
+          "options": [],
+          "path": "modmail snippet-list",
+          "usage": "/modmail snippet-list"
+        },
+        {
+          "aliases": [],
+          "description": "Set channel and time",
+          "manager": true,
+          "options": [
+            {
+              "description": "Daily channel",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Post hour",
+              "name": "hour",
+              "required": false
+            },
+            {
+              "description": "Time zone",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "Create thread",
+              "name": "thread",
+              "required": false
+            },
+            {
+              "description": "Ping role",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "community qotd settings",
+          "usage": "/community qotd settings [channel] [hour] [timezone] [thread] [role]"
+        },
+        {
+          "aliases": [],
+          "description": "Review questions",
+          "manager": true,
+          "options": [],
+          "path": "community qotd queue",
+          "usage": "/community qotd queue"
+        },
+        {
+          "aliases": [],
+          "description": "Set counting rules",
+          "manager": true,
+          "options": [
+            {
+              "description": "Counting channel",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Reset on fail",
+              "name": "reset_on_fail",
+              "required": false
+            },
+            {
+              "description": "Allow math",
+              "name": "allow_math",
+              "required": false
+            },
+            {
+              "description": "Fail role",
+              "name": "fail_role",
+              "required": false
+            }
+          ],
+          "path": "community counting setup",
+          "usage": "/community counting setup <channel> [reset_on_fail] [allow_math] [fail_role]"
+        },
+        {
+          "aliases": [],
+          "description": "Reset count",
+          "manager": true,
+          "options": [],
+          "path": "community counting reset",
+          "usage": "/community counting reset"
+        },
+        {
+          "aliases": [],
+          "description": "Create a form",
+          "manager": true,
+          "options": [
+            {
+              "description": "Form name",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Questions, separated by |",
+              "name": "questions",
+              "required": true
+            },
+            {
+              "description": "Review channel",
+              "name": "review_channel",
+              "required": true
+            },
+            {
+              "description": "Accept role",
+              "name": "accept_role",
+              "required": false
+            }
+          ],
+          "path": "community forms create",
+          "usage": "/community forms create <name> <questions> <review_channel> [accept_role]"
+        },
+        {
+          "aliases": [],
+          "description": "Post form",
+          "manager": true,
+          "options": [
+            {
+              "description": "Form ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community forms post",
+          "usage": "/community forms post <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Close a form",
+          "manager": true,
+          "options": [
+            {
+              "description": "Form ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "community forms close",
+          "usage": "/community forms close <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Set mail forum",
+          "manager": true,
+          "options": [
+            {
+              "description": "Enable mail",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Staff forum",
+              "name": "forum",
+              "required": false
+            },
+            {
+              "description": "Greeting",
+              "name": "greeting",
+              "required": false
+            },
+            {
+              "description": "Anonymous staff",
+              "name": "anonymous_staff",
+              "required": false
+            },
+            {
+              "description": "Staff role",
+              "name": "staff_role",
+              "required": false
+            },
+            {
+              "description": "Log channel",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Idle close hours",
+              "name": "close_after_hours",
+              "required": false
+            }
+          ],
+          "path": "community modmail settings",
+          "usage": "/community modmail settings [enabled] [forum] [greeting] [anonymous_staff] [staff_role] [log_channel] [close_after_hours]"
+        },
+        {
+          "aliases": [],
           "description": "Close this ticket and keep its transcript",
           "manager": false,
           "options": [
@@ -6569,5 +6867,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 340
+  "count": 357
 }
