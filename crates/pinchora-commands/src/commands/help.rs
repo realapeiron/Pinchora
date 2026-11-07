@@ -146,6 +146,9 @@ pub(crate) const AREAS: &[Area] = &[
         key: "moderation",
         covers: &[
             "automod",
+            "verify",
+            "verification",
+            "raid",
             "ban",
             "unban",
             "kick",

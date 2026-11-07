@@ -7,7 +7,7 @@
 //! strictly above the member.
 
 mod cases;
-mod channels;
+pub(crate) mod channels;
 mod members;
 pub(crate) mod setup;
 mod warns;

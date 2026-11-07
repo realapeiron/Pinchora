@@ -22,3 +22,7 @@ pub mod wrapped;
 
 pub use config::Config;
 pub mod automod;
+
+pub mod verification;
+
+pub mod anti_raid;

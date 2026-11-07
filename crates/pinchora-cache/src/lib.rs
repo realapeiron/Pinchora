@@ -306,3 +306,5 @@ impl Cache {
 }
 
 mod automod;
+mod verification;
+pub use verification::VerificationLease;

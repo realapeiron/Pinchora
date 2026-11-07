@@ -123,11 +123,13 @@ pub enum Module {
     Tickets,
     AutoMod,
     Feeds,
+    Verification,
+    AntiRaid,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 35] = [
+    pub const ALL: [Self; 37] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -163,6 +165,8 @@ impl Module {
         Self::Tickets,
         Self::AutoMod,
         Self::Feeds,
+        Self::Verification,
+        Self::AntiRaid,
     ];
 
     /// The key stored in the database and used in the API.
@@ -203,6 +207,8 @@ impl Module {
             Self::Tickets => "tickets",
             Self::AutoMod => "automod",
             Self::Feeds => "feeds",
+            Self::Verification => "verification",
+            Self::AntiRaid => "anti_raid",
         }
     }
 
@@ -247,6 +253,8 @@ impl Module {
             Self::Tickets => "Tickets",
             Self::AutoMod => "AutoMod",
             Self::Feeds => "Social feeds",
+            Self::Verification => "Verification",
+            Self::AntiRaid => "Raid protection",
         }
     }
 
@@ -305,6 +313,8 @@ impl Module {
             Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
             Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
             Self::AutoMod => "Automatic message rules and moderation actions.",
+            Self::Verification => "Join gate and pixel captcha verification.",
+            Self::AntiRaid => "Join detection and reversible raid lockdown.",
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -339,6 +349,8 @@ impl Module {
             Self::Tickets => Group::Community,
             Self::AutoMod => Group::Safety,
             Self::Feeds => Group::Feeds,
+            Self::Verification => Group::Safety,
+            Self::AntiRaid => Group::Safety,
         }
     }
 
@@ -349,6 +361,8 @@ impl Module {
             }
             Self::AutoMod => Scope::Server,
             Self::Feeds => Scope::Server,
+            Self::Verification => Scope::Server,
+            Self::AntiRaid => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -408,6 +422,8 @@ impl Module {
                 _ => return None,
             },
             "automod" => Self::AutoMod,
+            "verify" | "verification" => Self::Verification,
+            "raid" => Self::AntiRaid,
             _ => return None,
         })
     }
@@ -439,6 +455,8 @@ impl Module {
             "sc" => Self::Stats,
             "tk" | "tp" | "tf" | "tr" => Self::Tickets,
             "am" | "ax" => Self::AutoMod,
+            "vf" | "cq" => Self::Verification,
+            "rd" => Self::AntiRaid,
             "sn" => Self::Feeds,
             _ => return None,
         })

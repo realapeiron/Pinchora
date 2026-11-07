@@ -1,0 +1,21 @@
+[anti_raid]
+alert = "Baskın #{id}: {joins} katılım. Müdahale: {action}."
+ended = "Baskın #{id} sona erdi. Baskının değiştirdiği ayarlar geri yüklendi."
+status = "Baskın #{id}, <t:{until}:R> sona erecek. {error}"
+calm = "Etkin baskın yok."
+unlock = "Baskını bitir"
+kick = "Baskın katılımlarını at"
+ban = "Baskın katılımlarını yasakla"
+
+[anti_raid.action]
+alert = "Yalnızca bildir"
+lockdown = "Koruma modu"
+kick = "Üyeyi at"
+ban = "Üyeyi yasakla"
+
+[module]
+anti_raid = "Baskın koruması"
+
+[module-blurb]
+anti_raid = "Katılım tespiti ve geri alınabilir baskın koruması."
+

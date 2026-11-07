@@ -22,6 +22,8 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("verification_pending", "user_id"),
+    ("raid_joins", "user_id"),
     ("automod_hits", "user_id"),
     ("automod_strikes", "user_id"),
     ("placements", "user_id"),
@@ -118,6 +120,7 @@ pub enum ListEdit {
 
 /// Columns that hold a list of player ids, and what happens to the player's id in them.
 pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
+    ("verification", "exempt_users", ListEdit::Remove),
     ("contest_results", "winner_ids", ListEdit::Blank),
     ("giveaways", "winner_ids", ListEdit::Remove),
     // A critter drop's takers run in step with its cards.
@@ -129,6 +132,7 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
 pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("raid_events", "ended_by"),
     ("suggestions", "decided_by"),
     ("collection_drops", "host_id"),
     ("tickets", "claimed_by"),
@@ -172,6 +176,9 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "verification",
+    "raid_settings",
+    "raid_events",
     "automod_settings",
     "automod_rules",
     "automod_hit_actions",

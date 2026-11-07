@@ -65,6 +65,7 @@ pub(crate) mod tickets;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
+pub(crate) mod verification;
 pub(crate) mod wordle;
 mod wrapped;
 mod xp;
@@ -173,5 +174,8 @@ commands!(
     tickets::TicketCommand,
     tickets::TicketsCommand,
     automod::AutoMod,
+    verification::Verify,
+    verification::Verification,
+    verification::Raid,
     feeds::FeedsCommand,
 );

@@ -58,6 +58,8 @@ mod tickets;
 // The Feeds page.
 #[path = "api/feeds.rs"]
 mod feeds;
+#[path = "api/verification.rs"]
+mod verification;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

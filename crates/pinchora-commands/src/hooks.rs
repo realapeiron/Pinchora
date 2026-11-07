@@ -66,9 +66,13 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
 
 /// A member joined, before their join role and welcome.
 pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
-    // F9 stats counts every join, held or not, so it comes before the gate.
+    let verdict = crate::verification::on_member_join(app, event).await;
+    // F9 stats counts every join, held or not.
     crate::stats::count_member(app, event.guild_id.get(), true).await;
     // F10 join gate and captcha goes first: a member it holds is `JoinVerdict::Held`.
+    if verdict == JoinVerdict::Held {
+        return JoinVerdict::Held;
+    }
     // F2 auto roles (they honour Held).
     crate::commands::roles_pack::on_member_join(app, event).await;
     // F6 invite tracker works out who invited them.
@@ -77,6 +81,7 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
 
 /// A member left or was removed, before the goodbye.
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
+    crate::verification::on_member_leave(app, event).await;
     // F2 sticky roles remember what they held.
     crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.

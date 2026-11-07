@@ -15043,3 +15043,6 @@ fn simulator_message_identity_survives_updates_and_repeated_clicks() {
         Reply::new(InteractionResponseType::ChannelMessageWithSource).message_id
     );
 }
+
+#[path = "simulate/verification.rs"]
+mod verification;

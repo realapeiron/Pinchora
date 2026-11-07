@@ -1174,6 +1174,9 @@
       "ticket",
       "tickets",
       "automod",
+      "verify",
+      "verification",
+      "raid",
       "feeds"
     ],
     "responder_placeholders": {

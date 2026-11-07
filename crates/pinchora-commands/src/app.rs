@@ -135,6 +135,8 @@ pub struct App {
     /// with a server's prefix; without it they need an @mention of the bot, keyword auto-responders stay
     /// deaf, the server log keeps no message text and `/purge` filters nothing by what messages say.
     pub message_content: bool,
+    /// Public dashboard origin, including when configured through pinchora.toml.
+    pub public_url: String,
     pub web: reqwest::Client,
     pub sprites: Arc<crate::game::scene::Sprites>,
     renderer: Arc<Renderer>,
@@ -188,6 +190,7 @@ impl App {
             cache,
             node,
             message_content: false,
+            public_url: pinchora_core::config::WebConfig::default().public_url,
             web: reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .user_agent("Pinchora (https://github.com/realapeiron/Pinchora)")
