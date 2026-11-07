@@ -1,13 +1,14 @@
 # Command tree release rehearsal
 
-F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`)
-and configuration groups under `/community`. With D11, registration has **65 slash roots
-plus the Report message action** (66 total): D11 moved `/ban`, `/kick`, `/purge`,
-`/timeout` and `/warn` under `/mod`. The earlier 70-root projection did not account
-for that consolidation. `/community` is largest at **7,196 characters**, below
-the 7,200-character gate; `/mod` uses 4,265. There are 357 executable entries.
+F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`). Registration has
+**70 slash roots plus the Report message action** (71 total). `/ban`, `/kick`, `/warn`,
+`/timeout` and `/purge` remain direct roots with their D11 options and original Ban Members,
+Kick Members, Moderate Members and Manage Messages permissions. Secondary actions, including
+softban, stay under `/mod`. Old `/mod ban|kick|warn|timeout|purge` interactions and text aliases
+resolve during propagation; saved `/mod` parent restrictions still cover the restored roots.
+No migration is needed: runtime policy matching and backup normalization preserve old restrictions.
 
-Slices 13–18 complete the transition from 95 registered roots to **66 roots** and 330 executable actions.
+Slices 13–18 originally completed the transition from 95 registered roots to **66 roots** and 330 executable actions.
 The manifest is the action inventory; all 160 moved actions have one canonical destination. Old typed
 models remain internal for in-flight interactions and prefix compatibility. The eight planned feature
 families must share the domain roots; only four additional roots are reserved (66 + 4 = 70).
@@ -93,11 +94,11 @@ new help uses versioned controls. The public catalog searches old names but list
 
 Run the workspace Rust checks with the assigned real PostgreSQL/Redis URLs and `PINCHORA_TEST_MIX_SECS=60`,
 then the web lint/typecheck/Vitest/build checks. Re-run failing binaries alone. The manifest test requires
-66 roots and one reachable canonical leaf for every pre-migration action, preserves typed arguments,
+71 registrations and one reachable canonical leaf for every pre-migration action, preserves typed arguments,
 permissions/module metadata and defer behavior. Simulator feature fixtures rewrite both the root and
 nested Discord options to canonical paths; explicit legacy fixtures separately compare original handlers.
 Regenerate rules, command/fact catalogs and landing images through their ignored writer tests when stale.
-No registration, deployment, commit or production data changes are part of the local rehearsal.
+No registration, deployment or production data changes are part of the local rehearsal.
 
 ## Registration size incident and domain split
 

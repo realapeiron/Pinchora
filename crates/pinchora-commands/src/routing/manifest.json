@@ -161,7 +161,7 @@
   },
   {
     "legacy": "ban",
-    "canonical": "mod ban",
+    "canonical": "ban",
     "slice": 18
   },
   {
@@ -896,7 +896,7 @@
   },
   {
     "legacy": "kick",
-    "canonical": "mod kick",
+    "canonical": "kick",
     "slice": 18
   },
   {
@@ -1191,7 +1191,7 @@
   },
   {
     "legacy": "purge",
-    "canonical": "mod purge",
+    "canonical": "purge",
     "slice": 18
   },
   {
@@ -1526,7 +1526,7 @@
   },
   {
     "legacy": "timeout",
-    "canonical": "mod timeout",
+    "canonical": "timeout",
     "slice": 18
   },
   {
@@ -1646,7 +1646,7 @@
   },
   {
     "legacy": "warn",
-    "canonical": "mod warn",
+    "canonical": "warn",
     "slice": 18
   },
   {

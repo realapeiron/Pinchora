@@ -36,14 +36,17 @@ pub fn normalize_control(config: &Config) -> Config {
             .iter()
             .filter(|r| {
                 let previous = previous_path(r);
-                previous.starts_with("setup ")
+                (previous.starts_with("setup ") || previous != r.canonical)
                     && (previous == *path || previous.strip_prefix(path).is_some_and(|s| s.starts_with(' ')))
             })
             .collect();
         if !targets.iter().any(|r| previous_path(r) != r.canonical) {
             continue;
         }
-        result.rules.remove(path);
+        // `/mod` still owns secondary actions; retain its rule as we split off urgent roots.
+        if path != "mod" {
+            result.rules.remove(path);
+        }
         for target in targets {
             if protected(&target.canonical) {
                 continue;

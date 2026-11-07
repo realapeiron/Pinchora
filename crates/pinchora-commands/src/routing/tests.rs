@@ -46,7 +46,7 @@ fn every_alias_preserves_handler_arguments_permissions_and_metadata() {
     let setup = tree.iter().find(|c| c.name == "setup").unwrap();
     assert_eq!(setup.default_member_permissions, Some(Permissions::MANAGE_GUILD));
     assert_eq!(setup.options.len(), 5);
-    assert!(tree.len() <= 70);
+    assert!(tree.len() <= 100);
     for root in tree.iter().filter(|c| is_admin_path(&c.name)) {
         assert_eq!(root.default_member_permissions, Some(Permissions::MANAGE_GUILD));
     }
@@ -489,10 +489,9 @@ fn size_counts_longest_localizations_unicode_choices_and_nested_options() {
 #[test]
 fn previous_setup_paths_keep_arguments_and_migrate_flat_constraints() {
     use pinchora_core::command_control::{Config, Rule};
-    for route in MANIFEST
-        .iter()
-        .filter(|r| previous_path(r) != r.canonical && !r.legacy.starts_with("modtools "))
-    {
+    for route in MANIFEST.iter().filter(|r| {
+        previous_path(r).starts_with("setup ") && previous_path(r) != r.canonical && !r.legacy.starts_with("modtools ")
+    }) {
         let previous = previous_path(route);
         assert_eq!(canonical(&previous), route.canonical);
         assert_eq!(
@@ -601,4 +600,82 @@ fn remapped_setup_parent_restrictions_still_cover_old_component_owners() {
         );
     }
     assert!(matching(&migrated, "verification").iter().all(|(_, rule)| rule.enabled));
+}
+
+#[test]
+fn urgent_moderation_roots_keep_d11_options_permissions_and_previous_paths() {
+    use pinchora_core::command_control::{Config, Rule};
+    let tree = crate::command_definitions();
+    let old = crate::commands::legacy_definitions();
+    let mod_root = tree.iter().find(|c| c.name == "mod").unwrap();
+    for (name, permissions) in [
+        ("ban", Permissions::BAN_MEMBERS),
+        ("kick", Permissions::KICK_MEMBERS),
+        ("warn", Permissions::MODERATE_MEMBERS),
+        ("timeout", Permissions::MODERATE_MEMBERS),
+        ("purge", Permissions::MANAGE_MESSAGES),
+    ] {
+        let root = tree.iter().find(|c| c.name == name).unwrap();
+        assert_eq!(root.default_member_permissions, Some(permissions));
+        assert_eq!(root.options, old.iter().find(|c| c.name == name).unwrap().options);
+        assert!(!mod_root.options.iter().any(|o| o.name == name));
+        let previous = format!("mod {name}");
+        assert_eq!(canonical(&previous), name);
+        assert_eq!(
+            resolve_text(&format!("{previous} reason:\"two words\"")).0,
+            format!("{name} reason:\"two words\"")
+        );
+        let data = serde_json::from_value(json!({"id":"1", "type":1, "name":"mod",
+            "options":[{"type":1,"name":name,"options":[{"type":3,"name":"sentinel","value":"unchanged"}]}]}))
+        .unwrap();
+        let adapted = adapt(data).unwrap();
+        assert_eq!(adapted.name, name);
+        assert_eq!(adapted.options[0].value, CommandOptionValue::String("unchanged".into()));
+        let config = Config {
+            rules: [
+                (
+                    "mod".into(),
+                    Rule {
+                        enabled: false,
+                        ..Rule::default()
+                    },
+                ),
+                (
+                    previous.clone(),
+                    Rule {
+                        cooldown_secs: 17,
+                        ..Rule::default()
+                    },
+                ),
+            ]
+            .into(),
+            aliases: [("old-action".into(), previous)].into(),
+        };
+        let migrated = normalize_control(&config);
+        assert_eq!(normalize_control(&migrated), migrated);
+        assert_eq!(migrated.aliases["old-action"], name);
+        for policies in [&config, &migrated] {
+            let rules = matching(policies, name);
+            assert!(rules.iter().any(|(_, r)| !r.enabled));
+            assert!(rules.iter().any(|(_, r)| r.cooldown_secs == 17));
+        }
+        migrated
+            .validate(&crate::control_catalog(), &crate::command_reserved_aliases(), Lang::En)
+            .unwrap();
+    }
+    let purge = tree.iter().find(|c| c.name == "purge").unwrap();
+    for name in [
+        "humans",
+        "embeds",
+        "regex",
+        "after",
+        "before",
+        "starts",
+        "ends",
+        "not",
+        "mentions",
+        "reactions",
+    ] {
+        assert!(purge.options.iter().any(|o| o.name == name));
+    }
 }

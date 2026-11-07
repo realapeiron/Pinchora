@@ -4975,10 +4975,10 @@
         },
         {
           "aliases": [
-            "ban"
+            "mod ban"
           ],
           "description": "Birini kalıcı olarak ya da bir süreliğine yasakla",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Kim yasaklanacak: bir üye ya da kullanıcı kimliğiyle herhangi biri",
@@ -5001,8 +5001,8 @@
               "required": false
             }
           ],
-          "path": "mod ban",
-          "usage": "/mod ban <user> [reason] [duration] [delete_days]"
+          "path": "ban",
+          "usage": "/ban <user> [reason] [duration] [delete_days]"
         },
         {
           "aliases": [
@@ -5027,10 +5027,10 @@
         },
         {
           "aliases": [
-            "kick"
+            "mod kick"
           ],
           "description": "Bir üyeyi sunucudan at (tekrar katılabilir)",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Kim atılacak",
@@ -5043,15 +5043,15 @@
               "required": false
             }
           ],
-          "path": "mod kick",
-          "usage": "/mod kick <user> [reason]"
+          "path": "kick",
+          "usage": "/kick <user> [reason]"
         },
         {
           "aliases": [
-            "timeout"
+            "mod timeout"
           ],
           "description": "Bir üyeyi bir süreliğine yazmaktan ve konuşmaktan alıkoy",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Kim susturulacak",
@@ -5069,8 +5069,8 @@
               "required": false
             }
           ],
-          "path": "mod timeout",
-          "usage": "/mod timeout <user> <duration> [reason]"
+          "path": "timeout",
+          "usage": "/timeout <user> <duration> [reason]"
         },
         {
           "aliases": [
@@ -5095,10 +5095,10 @@
         },
         {
           "aliases": [
-            "warn"
+            "mod warn"
           ],
           "description": "Bir üyeyi uyar; yeterince uyarı kendiliğinden işlem yapar",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Kim uyarılacak",
@@ -5111,8 +5111,8 @@
               "required": true
             }
           ],
-          "path": "mod warn",
-          "usage": "/mod warn <user> <reason>"
+          "path": "warn",
+          "usage": "/warn <user> <reason>"
         },
         {
           "aliases": [
@@ -5153,10 +5153,10 @@
         },
         {
           "aliases": [
-            "purge"
+            "mod purge"
           ],
           "description": "Buradaki son mesajları sil (en fazla 100)",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Kaç mesaj silinecek",
@@ -5244,8 +5244,8 @@
               "required": false
             }
           ],
-          "path": "mod purge",
-          "usage": "/mod purge <count> [user] [bots] [humans] [embeds] [regex] [after] [before] [starts] [ends] [not] [mentions] [reactions] [contains] [links] [attachments] [reason]"
+          "path": "purge",
+          "usage": "/purge <count> [user] [bots] [humans] [embeds] [regex] [after] [before] [starts] [ends] [not] [mentions] [reactions] [contains] [links] [attachments] [reason]"
         },
         {
           "aliases": [

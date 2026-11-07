@@ -13,7 +13,7 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 62;
+pub const PROJECTED_ROOTS: usize = 67;
 pub const FUTURE_ROOT_RESERVE: usize = 4;
 
 /// Administration roots share the original setup permission and privacy boundary.
@@ -44,12 +44,20 @@ const ADMIN_GROUP_MOVES: &[(&str, &str)] = &[
     ("setup achievements", "progression achievements"),
 ];
 
-fn previous_path(route: &Route) -> String {
+pub(crate) const PREVIOUS_ACTIONS: &[(&str, &str)] = &[
+    ("mod ban", "ban"),
+    ("mod kick", "kick"),
+    ("mod warn", "warn"),
+    ("mod timeout", "timeout"),
+    ("mod purge", "purge"),
+];
+
+pub(crate) fn previous_path(route: &Route) -> String {
     previous_admin_path(&route.canonical)
 }
 
 fn previous_admin_path(path: &str) -> String {
-    for (old, new) in ADMIN_GROUP_MOVES {
+    for (old, new) in PREVIOUS_ACTIONS.iter().chain(ADMIN_GROUP_MOVES) {
         if let Some(suffix) = path.strip_prefix(new)
             && (suffix.is_empty() || suffix.starts_with(' '))
         {
@@ -240,7 +248,7 @@ pub(crate) fn adapt(mut data: CommandData) -> anyhow::Result<CommandData> {
         return Ok(data);
     };
     let mut options = data.options;
-    for _ in route.canonical.split(' ').skip(1) {
+    for _ in path.split(' ').skip(1) {
         anyhow::ensure!(options.len() == 1, "expected one command action");
         options = match options.remove(0).value {
             CommandOptionValue::SubCommand(children) | CommandOptionValue::SubCommandGroup(children) => children,
@@ -333,7 +341,7 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
         root.options.clear();
         tree.push(root);
     }
-    for route in MANIFEST.iter().filter(|r| r.active()) {
+    for route in MANIFEST.iter().filter(|r| r.active() && r.legacy != r.canonical) {
         let parts: Vec<_> = route.canonical.split(' ').collect();
         let root = tree.iter_mut().find(|c| c.name == parts[0]).expect("canonical root");
         let mut leaf = source(&original, &route.legacy);
@@ -405,7 +413,11 @@ pub(crate) fn remove_replaced(tree: &mut Vec<Command>) {
 pub fn has_legacy_paths(tree: &[Command]) -> bool {
     crate::commands::help::leaves(tree, pinchora_core::i18n::Lang::En)
         .iter()
-        .any(|leaf| MANIFEST.iter().any(|r| r.active() && r.legacy == leaf.path))
+        .any(|leaf| {
+            MANIFEST
+                .iter()
+                .any(|r| r.active() && r.legacy != r.canonical && r.legacy == leaf.path)
+        })
 }
 
 /// Discord counts the longest localized value (including the default) per field.

@@ -79,17 +79,19 @@ pub fn control_catalog() -> Vec<Command> {
 pub fn control_validation_catalog() -> Vec<Command> {
     let mut commands = control_catalog();
     for route in crate::routing::MANIFEST.iter() {
-        let parts: Vec<_> = route.legacy.split(' ').collect();
-        for end in 1..=parts.len() {
-            let path = parts[..end].join(" ");
-            if !commands.iter().any(|c| c.path == path) {
-                commands.push(Command {
-                    protected: crate::routing::protected(&path),
-                    path,
-                    description: "Legacy text shortcut".into(),
-                    permissions: "0".into(),
-                    ephemeral_supported: false,
-                });
+        for source in [&route.legacy, &crate::routing::previous_path(route)] {
+            let parts: Vec<_> = source.split(' ').collect();
+            for end in 1..=parts.len() {
+                let path = parts[..end].join(" ");
+                if !commands.iter().any(|c| c.path == path) {
+                    commands.push(Command {
+                        protected: crate::routing::protected(&path),
+                        path,
+                        description: "Legacy text shortcut".into(),
+                        permissions: "0".into(),
+                        ephemeral_supported: false,
+                    });
+                }
             }
         }
     }

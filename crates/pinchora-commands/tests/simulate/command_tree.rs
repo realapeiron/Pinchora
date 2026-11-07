@@ -232,7 +232,12 @@ async fn mod_every_action_preserves_its_own_permission_checks() {
             )
             .await;
         let new = sim
-            .legacy_command_resolved(user, "mod", options_for(&route.canonical, args), resolved.clone())
+            .legacy_command_resolved(
+                user,
+                route.canonical.split(' ').next().unwrap(),
+                options_for(&route.canonical, args),
+                resolved.clone(),
+            )
             .await;
         assert!(old.ephemeral && new.ephemeral, "{}", route.canonical);
         assert_eq!(old.content(), new.content(), "{}", route.canonical);

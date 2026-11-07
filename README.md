@@ -1503,10 +1503,11 @@ Chat and movement give no rewards. See [the Reef protocol and test instructions]
 
 ### Moderation + roles parity (D11)
 
-All member actions use `/mod`; configuration uses `/safety moderation policy` and the dashboard's
-**Moderation desk** (`/g/:guildId/mod-parity`). Existing ban, kick, timeout, warn and purge roots move
-under `/mod`; their old text paths and stored restrictions remain compatible. The message context
-menu is **Report**. There are 61 slash roots plus this message context command.
+Urgent actions use `/ban`, `/kick`, `/timeout`, `/warn` and `/purge`; secondary actions use
+`/mod`. Configuration uses `/safety moderation policy` and the dashboard's
+**Moderation desk** (`/g/:guildId/mod-parity`). The five urgent roots retain their permission masks and all D11 options.
+Old `/mod` payloads, text paths and stored restrictions remain compatible. The message context
+menu is **Report**. There are 70 slash roots plus this message context command, including F20.
 
 | Command | Behavior |
 |---|---|
@@ -1519,7 +1520,7 @@ menu is **Report**. There are 61 slash roots plus this message context command.
 | `/mod voice action:move\|disconnect\|ban\|unban\|mute\|unmute\|deafen\|undeafen [user] [source] [destination] [confirm]` | Individual or all source members; own Move/Mute/Deafen permission and hierarchy checks. Voice bans survive reconnects. |
 | `/mod roles action:create\|edit\|delete [role] [name] [color] [mentionable] [confirm]` | Role CRUD with role safety and delete confirmation; bulk give/take uses `/mod mass`. |
 | `/mod roles action:booster [name] [color]` | Opt-in personal cosmetic role for a current booster, capped at 25/server. |
-| `/mod purge count [user] [bots] [humans] [regex] [embeds] [after] [before] [starts] [ends] [not] [mentions] [reactions]` | Existing link/text/attachment filters remain; filters combine, pinned/old messages are protected, content filters require Message Content. |
+| `/purge count [user] [bots] [humans] [regex] [embeds] [after] [before] [starts] [ends] [not] [mentions] [reactions]` | Existing link/text/attachment filters remain; filters combine, pinned/old messages are protected, content filters require Message Content. |
 
 The dashboard adds per-channel autopurge (1 hour–14 days, pinned messages protected), booster reward
 roles and AND/OR role conditions, optionally limited to a voice channel. Automated roles never grant

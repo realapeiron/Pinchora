@@ -116,7 +116,7 @@ fn command_catalog_lang(lang: Lang) -> Value {
             order,
             json!({
                 "path": leaf.path,
-                "aliases": crate::routing::MANIFEST.iter().filter(|r| r.canonical == leaf.path && r.legacy != r.canonical).map(|r| &r.legacy).collect::<Vec<_>>(),
+                "aliases": crate::routing::MANIFEST.iter().filter(|r| r.canonical == leaf.path && r.legacy != r.canonical).map(|r| r.legacy.as_str()).chain(crate::routing::PREVIOUS_ACTIONS.iter().filter(|(_, new)| *new == leaf.path).map(|(old, _)| *old)).collect::<Vec<_>>(),
                 "usage": if leaf.path == "Report" { pinchora_core::t!(lang, "parity.context-usage") } else { usage(&leaf.path, &leaf.options) },
                 "description": leaf.text,
                 "manager": leaf.manager,

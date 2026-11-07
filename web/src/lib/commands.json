@@ -4975,10 +4975,10 @@
         },
         {
           "aliases": [
-            "ban"
+            "mod ban"
           ],
           "description": "Ban someone, for good or for a while",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Who to ban: a member, or anyone by their user id",
@@ -5001,8 +5001,8 @@
               "required": false
             }
           ],
-          "path": "mod ban",
-          "usage": "/mod ban <user> [reason] [duration] [delete_days]"
+          "path": "ban",
+          "usage": "/ban <user> [reason] [duration] [delete_days]"
         },
         {
           "aliases": [
@@ -5027,10 +5027,10 @@
         },
         {
           "aliases": [
-            "kick"
+            "mod kick"
           ],
           "description": "Remove a member (they can join again)",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Who to kick",
@@ -5043,15 +5043,15 @@
               "required": false
             }
           ],
-          "path": "mod kick",
-          "usage": "/mod kick <user> [reason]"
+          "path": "kick",
+          "usage": "/kick <user> [reason]"
         },
         {
           "aliases": [
-            "timeout"
+            "mod timeout"
           ],
           "description": "Stop a member chatting and talking for a while",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Who to time out",
@@ -5069,8 +5069,8 @@
               "required": false
             }
           ],
-          "path": "mod timeout",
-          "usage": "/mod timeout <user> <duration> [reason]"
+          "path": "timeout",
+          "usage": "/timeout <user> <duration> [reason]"
         },
         {
           "aliases": [
@@ -5095,10 +5095,10 @@
         },
         {
           "aliases": [
-            "warn"
+            "mod warn"
           ],
           "description": "Warn a member; enough warns act on their own",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Who to warn",
@@ -5111,8 +5111,8 @@
               "required": true
             }
           ],
-          "path": "mod warn",
-          "usage": "/mod warn <user> <reason>"
+          "path": "warn",
+          "usage": "/warn <user> <reason>"
         },
         {
           "aliases": [
@@ -5153,10 +5153,10 @@
         },
         {
           "aliases": [
-            "purge"
+            "mod purge"
           ],
           "description": "Delete recent messages here (up to 100)",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "How many messages to delete",
@@ -5244,8 +5244,8 @@
               "required": false
             }
           ],
-          "path": "mod purge",
-          "usage": "/mod purge <count> [user] [bots] [humans] [embeds] [regex] [after] [before] [starts] [ends] [not] [mentions] [reactions] [contains] [links] [attachments] [reason]"
+          "path": "purge",
+          "usage": "/purge <count> [user] [bots] [humans] [embeds] [regex] [after] [before] [starts] [ends] [not] [mentions] [reactions] [contains] [links] [attachments] [reason]"
         },
         {
           "aliases": [
