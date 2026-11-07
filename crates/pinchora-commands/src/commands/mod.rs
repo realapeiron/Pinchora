@@ -26,6 +26,7 @@ pub(crate) mod help;
 pub(crate) mod house;
 pub(crate) mod info;
 pub(crate) mod interact;
+pub(crate) mod invites;
 pub(crate) mod language;
 pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
@@ -182,4 +183,6 @@ commands!(
     tempvoice::VoiceCommand,
     xp_admin::XpAdmin,
     info::Info,
+    invites::InvitesCommand,
+    invites::InviteAdmin,
 );

@@ -91,6 +91,7 @@ export const router = createBrowserRouter([
       { path: "roles", element: <Roles /> },
       { path: "audit", element: <AuditLog /> },
       { path: "starboard", lazy: async () => ({ Component: (await import("./pages/Starboard")).Starboard }) },
+      { path: "invites", lazy: async () => ({ Component: (await import("./pages/Invites")).Invites }) },
       { path: "stats", lazy: async () => ({ Component: (await import("./pages/Stats")).Stats }) },
       {
         path: "tickets/:ticketId?",

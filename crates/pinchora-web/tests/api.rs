@@ -53,6 +53,8 @@ mod tags;
 #[path = "api/roles.rs"]
 mod roles;
 // Tickets: settings, panels, the tickets list and transcripts.
+#[path = "api/invites.rs"]
+mod invites;
 #[path = "api/starboard.rs"]
 mod starboard;
 #[path = "api/tickets.rs"]

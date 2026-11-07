@@ -15,6 +15,7 @@ export function SaveBar({
   blocked = false,
   onSave,
   onReset,
+  words,
 }: {
   count: number;
   saving: boolean;
@@ -23,7 +24,14 @@ export function SaveBar({
   blocked?: boolean;
   onSave: () => void;
   onReset: () => void;
+  words?: (key: string, values?: Record<string, string | number>) => string;
 }) {
+  const t =
+    words ??
+    ((key: string, values: Record<string, string | number> = {}) =>
+      key.replace(/\{(\w+)\}/g, (match, name: string) => String(values[name] ?? match)));
+  const changes = (n: number) =>
+    words ? t(n === 1 ? "1 unsaved change" : "{count} unsaved changes", { count: n }) : unsavedLabel(n);
   const dirty = count > 0;
   // While the bar slides away after a save, it keeps showing what it said.
   const lastCount = useRef(count);
@@ -44,17 +52,17 @@ export function SaveBar({
       <div
         className={`save-bar ${dirty ? "is-open" : ""}`}
         role="region"
-        aria-label="Unsaved changes"
+        aria-label={t("Unsaved changes")}
         inert={!dirty}
       >
         <div className="save-bar-inner">
-          <span className="save-bar-count">{error ? error : unsavedLabel(lastCount.current)}</span>
+          <span className="save-bar-count">{error ? error : changes(lastCount.current)}</span>
           <div className="save-bar-actions">
             <PixelButton variant="ghost" onClick={onReset} disabled={saving || !dirty}>
-              Reset
+              {t("Reset")}
             </PixelButton>
             <PixelButton onClick={onSave} disabled={saving || !dirty || blocked}>
-              {saving ? "Saving…" : "Save changes"}
+              {t(saving ? "Saving…" : "Save changes")}
             </PixelButton>
           </div>
         </div>
@@ -64,14 +72,16 @@ export function SaveBar({
           <div className="panel panel-gold dialog" role="alertdialog" aria-labelledby="leave-title">
             <div className="panel-body">
               <h2 id="leave-title" className="pixel-title">
-                Unsaved changes
+                {t("Unsaved changes")}
               </h2>
-              <p>You have {unsavedLabel(count)} on this page. Leave without saving?</p>
+              <p>
+                {t("You have {changes} on this page. Leave without saving?", { changes: changes(count) })}
+              </p>
               <div className="dialog-actions">
                 <PixelButton variant="secondary" onClick={() => blocker.reset()}>
-                  Stay
+                  {t("Stay")}
                 </PixelButton>
-                <PixelButton onClick={() => blocker.proceed()}>Leave</PixelButton>
+                <PixelButton onClick={() => blocker.proceed()}>{t("Leave")}</PixelButton>
               </div>
             </div>
           </div>

@@ -169,6 +169,21 @@ impl Cache {
         Ok(self.conn().get(format!("{PREFIX}:kv:{key}")).await?)
     }
 
+    /// Atomically consumes one observed use from the same value namespace read by `get`.
+    /// A missing baseline is initialized without crediting an old use.
+    pub async fn claim_observed_value(&self, key: &str, observed: u64, ttl: Duration) -> anyhow::Result<bool> {
+        let script = redis::Script::new(
+            "local old=redis.call('GET',KEYS[1]); if not old then redis.call('SET',KEYS[1],ARGV[1],'EX',ARGV[2]); return 0 end; if tonumber(old)<tonumber(ARGV[1]) then redis.call('SET',KEYS[1],tonumber(old)+1,'EX',ARGV[2]); return 1 end; return 0",
+        );
+        let claimed: i32 = script
+            .key(format!("{PREFIX}:kv:{key}"))
+            .arg(observed)
+            .arg(ttl.as_secs().max(1))
+            .invoke_async(&mut self.conn())
+            .await?;
+        Ok(claimed == 1)
+    }
+
     /// Pushes back the expiry of a value stored with [`Cache::put`]; `false` when it is gone.
     pub async fn extend(&self, key: &str, ttl: Duration) -> anyhow::Result<bool> {
         let set: i64 = self

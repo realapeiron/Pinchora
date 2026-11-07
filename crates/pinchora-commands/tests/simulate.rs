@@ -139,6 +139,8 @@ mod stats;
 #[path = "simulate/starboard.rs"]
 mod starboard;
 // Tickets: panels, ticket channels and threads, closing with transcripts, the idle ticker.
+#[path = "simulate/invites.rs"]
+mod invites;
 #[path = "simulate/tickets.rs"]
 mod tickets;
 // Social feeds: /feeds and the poller, against a local feed server.
@@ -12644,6 +12646,33 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("inviteadmin settings", json!([sub("settings", vec![])])),
+        ("inviteadmin post", json!([sub("post", vec![])])),
+        (
+            "inviteadmin bonus-add",
+            json!([sub(
+                "bonus-add",
+                vec![user_option("user", target), int_option("amount", 1)]
+            )]),
+        ),
+        (
+            "inviteadmin bonus-remove",
+            json!([sub(
+                "bonus-remove",
+                vec![user_option("user", target), int_option("amount", 1)]
+            )]),
+        ),
+        (
+            "inviteadmin reward-add",
+            json!([sub(
+                "reward-add",
+                vec![int_option("invites", 1), role_option("role", &role)]
+            )]),
+        ),
+        (
+            "inviteadmin reward-remove",
+            json!([sub("reward-remove", vec![int_option("invites", 1)])]),
+        ),
         (
             "voice creators add",
             json!([group(

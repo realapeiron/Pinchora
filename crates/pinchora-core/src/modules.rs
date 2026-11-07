@@ -126,11 +126,12 @@ pub enum Module {
     TempVoice,
     Info,
     Starboard,
+    Invites,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 38] = [
+    pub const ALL: [Self; 39] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -169,6 +170,7 @@ impl Module {
         Self::TempVoice,
         Self::Info,
         Self::Starboard,
+        Self::Invites,
     ];
 
     /// The key stored in the database and used in the API.
@@ -212,6 +214,7 @@ impl Module {
             Self::TempVoice => "temp_voice",
             Self::Info => "info",
             Self::Starboard => "starboard",
+            Self::Invites => "invites",
         }
     }
 
@@ -259,6 +262,7 @@ impl Module {
             Self::TempVoice => "Temp voice",
             Self::Info => "Info commands",
             Self::Starboard => "Starboard",
+            Self::Invites => "Invites",
         }
     }
 
@@ -323,6 +327,7 @@ impl Module {
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
             Self::Starboard => "/starboard: highlight popular posts and set up vote channels.",
+            Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
         }
     }
 
@@ -350,7 +355,7 @@ impl Module {
             | Self::Gambling => Group::Games,
             Self::Moderation => Group::Safety,
             Self::RolePanels | Self::AutoRoles | Self::ColorRoles => Group::Roles,
-            Self::Stats => Group::Server,
+            Self::Stats | Self::Invites => Group::Server,
             Self::Tickets => Group::Community,
             Self::AutoMod => Group::Safety,
             Self::Feeds => Group::Feeds,
@@ -368,6 +373,7 @@ impl Module {
             Self::AutoMod => Scope::Server,
             Self::Feeds => Scope::Server,
             Self::TempVoice => Scope::Server,
+            Self::Invites => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -416,6 +422,7 @@ impl Module {
             "stats" | "counters" => Self::Stats,
             "ticket" | "tickets" => Self::Tickets,
             "starboard" => Self::Starboard,
+            "invites" | "inviteadmin" => Self::Invites,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -467,6 +474,7 @@ impl Module {
             "nf" => Self::Info,
             "xi" => Self::Leveling,
             "sr" => Self::Starboard,
+            "in" | "tl" => Self::Invites,
             _ => return None,
         })
     }

@@ -2,8 +2,8 @@ use std::{
     collections::HashMap,
     future::Future,
     sync::{
-        Arc,
-        atomic::{AtomicI64, Ordering},
+        Arc, Mutex,
+        atomic::{AtomicI64, AtomicU64, Ordering},
     },
     time::Duration,
 };
@@ -160,6 +160,8 @@ pub struct App {
     shutdown: CancellationToken,
     event_slots: Arc<Semaphore>,
     rebuild_slots: Arc<Semaphore>,
+    invite_baselines: Mutex<HashMap<u64, u64>>,
+    invite_epoch: AtomicU64,
     /// Last-seen names and voice channels, so the server log can say what changed.
     pub(crate) log_state: LogState,
     /// Server owners, role positions and the bot's roles, for the moderation hierarchy.
@@ -261,6 +263,8 @@ impl App {
             shutdown: CancellationToken::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),
+            invite_baselines: Mutex::new(HashMap::new()),
+            invite_epoch: AtomicU64::new(0),
             log_state: LogState::new(),
             moderation: ModState::new(),
             clock_shift: AtomicI64::new(0),
@@ -271,6 +275,29 @@ impl App {
     /// The time as game rules that span days and weeks see it (the room contest).
     pub fn now(&self) -> DateTime<Utc> {
         Utc::now() + chrono::Duration::seconds(self.clock_shift.load(Ordering::Relaxed))
+    }
+
+    /// A gateway epoch must have a fresh invite baseline before joins can be attributed.
+    pub fn begin_invite_baseline(&self, guild: u64) -> u64 {
+        let mut pending = self.invite_baselines.lock().unwrap();
+        let epoch = self.invite_epoch.fetch_add(1, Ordering::Relaxed).wrapping_add(1);
+        pending.insert(guild, epoch);
+        epoch
+    }
+
+    pub fn invite_baseline_current(&self, guild: u64, epoch: u64) -> bool {
+        self.invite_baselines.lock().unwrap().get(&guild).copied() == Some(epoch)
+    }
+
+    pub fn finish_invite_baseline(&self, guild: u64, epoch: u64) {
+        let mut pending = self.invite_baselines.lock().unwrap();
+        if pending.get(&guild).copied() == Some(epoch) {
+            pending.remove(&guild);
+        }
+    }
+
+    pub fn invite_baseline_pending(&self, guild: u64) -> bool {
+        self.invite_baselines.lock().unwrap().contains_key(&guild)
     }
 
     /// Moves [`App::now`] forward, so tests can end a contest week without waiting for it.
