@@ -1,4 +1,4 @@
-# Sunucu istatistikleri (/stats, /setup stats) ve istatistik kartları. Kart etiketlerini piksel yazı büyük harfle çizer.
+# Sunucu istatistikleri (/stats, /integrations stats) ve istatistik kartları. Kart etiketlerini piksel yazı büyük harfle çizer.
 
 [module]
 stats = "İstatistikler"
@@ -105,13 +105,13 @@ days = { other = "{count} gün" }
 needs-role = "Sayılacak rolü `role:` ile seç."
 bad-template = "Sayaç adında sayının geleceği yere `{count}` yazmalısın; en fazla {max} karakter olabilir, örneğin `Üyeler: {count}`."
 missing = "{channel} kanalını yeniden adlandırmam için orada **{permission}** iznine ihtiyacım var. Bu izni o kanalda rolüme verip tekrar dene."
-full = "Bu sunucuda zaten {max} sayaç kanalı var. Önce `/setup stats counter-remove` ile birini kaldır."
+full = "Bu sunucuda zaten {max} sayaç kanalı var. Önce `/integrations stats counter-remove` ile birini kaldır."
 added = "{channel} artık bir sayaç: adı **{name}** olacak. Sayı değiştikçe ad her 10 dakikada bir güncellenir. ({used}/{max} kullanılıyor)"
 added-problem = "{channel} artık bir sayaç, ama sayısını henüz gösteremiyor: {problem}"
 added-later = "{channel} artık bir sayaç. Discord sayıyı şu an söylemedi; birkaç dakika içinde görünür."
 not-a-counter = "{channel} bir sayaç kanalı değil."
 removed = "{channel} artık sayaç değil. Son adını korur; istediğin zaman yeniden adlandırabilirsin."
-none = "Henüz sayaç kanalı yok. `/setup stats counter-add` ile bir tane oluştur: kilitli bir ses kanalı en iyisi."
+none = "Henüz sayaç kanalı yok. `/integrations stats counter-add` ile bir tane oluştur: kilitli bir ses kanalı en iyisi."
 heading = "**Sayaç kanalları** ({used}/{max} kullanılıyor)"
 line = "• {channel} · {kind} · {name}"
 not-yet = "henüz adlandırılmadı"
@@ -124,7 +124,7 @@ connect = "Bağlan"
 [stats.problem]
 missing = "⚠️ O kanalı yeniden adlandırmam için **{permission}** iznine ihtiyacım var."
 too-many-members = "⚠️ Bu sunucuda 10.000'den fazla üye var; tek tek saymak için çok fazla. Üyeler, Şu an çevrimiçi ve Takviyeler sayaçları yine çalışır."
-role-gone = "⚠️ Saydığı rol silinmiş. `/setup stats counter-add` ile başka bir rol seç."
+role-gone = "⚠️ Saydığı rol silinmiş. `/integrations stats counter-add` ile başka bir rol seç."
 other = "⚠️ Son yeniden adlandırma gerçekleşmedi; 10 dakika sonra yeniden denenecek."
 
 # Slash command descriptions (names stay English).
@@ -148,4 +148,4 @@ other = "⚠️ Son yeniden adlandırma gerçekleşmedi; 10 dakika sonra yeniden
 "stats channel period=Last 90 days" = "Son 90 gün"
 
 [module-blurb]
-stats = "/stats, /setup stats ve İstatistikler sayfası; mesajları, sesli sohbet dakikalarını, katılmaları ve ayrılmaları sayar."
+stats = "/stats, /integrations stats ve İstatistikler sayfası; mesajları, sesli sohbet dakikalarını, katılmaları ve ayrılmaları sayar."

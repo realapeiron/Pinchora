@@ -118,11 +118,11 @@ earned = "🏅 {user} earned {role}!"
 cooldown = "You can give reputation again {when}."
 
 [rep-roles]
-full = "A server can have {max} reputation roles. Remove one with `/setup economy rep-roles-remove` first."
+full = "A server can have {max} reputation roles. Remove one with `/progression economy rep-roles-remove` first."
 added = "Members who reach **{reputation}** reputation now get {role} the moment they receive a point."
 removed = "{role} is no longer a reputation role. Members keep the role they already have."
 not-one = "{role} isn't a reputation role."
-empty = "No reputation roles yet. Add one with `/setup economy rep-roles-add`."
+empty = "No reputation roles yet. Add one with `/progression economy rep-roles-add`."
 row = "**{reputation}** reputation · {role}"
 title = "Reputation roles"
 footer = "{count}/{max} · members keep every role they earn"

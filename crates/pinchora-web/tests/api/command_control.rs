@@ -218,7 +218,12 @@ async fn backup_utility_and_event_settings_validate_and_localize() {
     );
     assert_eq!(h.state.app.db.config_restore_points(guild).await.unwrap(), before);
     let catalog = browser.get(&format!("{path}/command-control")).await.json();
-    for command in ["afk", "setup utility sticky-set", "setup utility schedule-add", "event"] {
+    for command in [
+        "afk",
+        "community utility sticky-set",
+        "community utility schedule-add",
+        "event",
+    ] {
         assert!(
             catalog["commands"]
                 .as_array()

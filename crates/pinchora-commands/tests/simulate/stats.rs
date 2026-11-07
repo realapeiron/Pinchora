@@ -1,5 +1,5 @@
 //! Server stats: chat, joins and leaves counted in Redis, flushed to Postgres once and only once, the
-//! `/stats` cards and their period buttons, and `/setup stats` with its limit and permission checks.
+//! `/stats` cards and their period buttons, and `/integrations stats` with its limit and permission checks.
 
 use chrono::Utc;
 use pinchora_commands::{stats_flush, stats_refresh_counters};

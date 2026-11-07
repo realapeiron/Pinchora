@@ -11,7 +11,7 @@ invalid = "Emoji, renk, kanal kimlikleri ve rol ağırlıklarını kontrol et. A
 saved = "#{id} numaralı pano artık {channel} kanalına gönderiyor."
 changed = "Yıldız panosu ayarları kaydedildi."
 removed = "Yıldız panosu kaldırıldı."
-empty = "Henüz yıldız panosu yok. /setup starboard setup ile kurabilirsin."
+empty = "Henüz yıldız panosu yok. /community starboard setup ile kurabilirsin."
 list-line = "#{id} · {emoji} **{name}** → {channel} · {threshold} yıldız"
 [starboard.post]
 title = "{board}"

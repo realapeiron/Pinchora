@@ -13,7 +13,51 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 62;
+pub const PROJECTED_ROOTS: usize = 66;
+pub const FUTURE_ROOT_RESERVE: usize = 4;
+
+/// Administration roots share the original setup permission and privacy boundary.
+pub fn is_admin_path(path: &str) -> bool {
+    matches!(
+        path.split(' ').next(),
+        Some("setup" | "safety" | "community" | "integrations" | "progression")
+    )
+}
+
+/// The applied 0066 paths remain valid for stored policies, backups and typed shortcuts.
+const ADMIN_GROUP_MOVES: &[(&str, &str)] = &[
+    ("setup moderation", "safety moderation"),
+    ("setup automod", "safety automod"),
+    ("setup verification", "safety verification"),
+    ("setup antinuke", "safety antinuke"),
+    ("setup tickets", "community tickets"),
+    ("setup starboard", "community starboard"),
+    ("setup events", "community events"),
+    ("setup birthdays", "community birthdays"),
+    ("setup utility", "community utility"),
+    ("setup community", "community server"),
+    ("setup feeds", "integrations feeds"),
+    ("setup stats", "integrations stats"),
+    ("setup invites", "integrations invites"),
+    ("setup leveling", "progression leveling"),
+    ("setup economy", "progression economy"),
+    ("setup achievements", "progression achievements"),
+];
+
+fn previous_path(route: &Route) -> String {
+    previous_admin_path(&route.canonical)
+}
+
+fn previous_admin_path(path: &str) -> String {
+    for (old, new) in ADMIN_GROUP_MOVES {
+        if let Some(suffix) = path.strip_prefix(new)
+            && (suffix.is_empty() || suffix.starts_with(' '))
+        {
+            return format!("{old}{suffix}");
+        }
+    }
+    path.to_owned()
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Route {
@@ -39,7 +83,7 @@ impl Route {
         ActionMetadata {
             operation: &self.legacy,
             module: self.module(),
-            setup_permissions: if self.active() && self.canonical.starts_with("setup ") {
+            setup_permissions: if self.active() && is_admin_path(&self.canonical) {
                 Permissions::MANAGE_GUILD
             } else {
                 Permissions::empty()
@@ -66,7 +110,7 @@ pub static MANIFEST: LazyLock<Vec<Route>> =
 pub fn route(path: &str) -> Option<&'static Route> {
     MANIFEST
         .iter()
-        .find(|r| r.legacy == path || (r.active() && r.canonical == path))
+        .find(|r| r.legacy == path || (r.active() && (r.canonical == path || previous_path(r) == path)))
 }
 
 pub fn legacy(path: &str) -> &str {
@@ -76,6 +120,9 @@ pub fn legacy(path: &str) -> &str {
 pub fn canonical(path: &str) -> &str {
     if let Some(route) = route(path).filter(|r| r.active()) {
         return &route.canonical;
+    }
+    if let Some((_, new)) = ADMIN_GROUP_MOVES.iter().find(|(old, _)| *old == path) {
+        return new;
     }
     // Old component owners can name a whole family (am -> automod, an -> antinuke).
     // Only map parents whose complete family has moved; voice and color still have member leaves.
@@ -126,17 +173,20 @@ pub(crate) fn matching<'a>(
 ) -> Vec<(&'a String, &'a pinchora_core::command_control::Rule)> {
     let old = legacy(path);
     let new = canonical(path);
+    let previous = previous_admin_path(new);
     let mut result = Vec::new();
     let matches = |key: &str, p: &str| p == key || p.strip_prefix(key).is_some_and(|s| s.starts_with(' '));
     for (key, rule) in &config.rules {
-        if [old, new].iter().any(|p| matches(key, p)) {
+        if [old, new, previous.as_str()].into_iter().any(|p| matches(key, p)) {
             result.push((key, rule));
             result.extend(rule.constraints.iter());
         } else if route(path).is_none() {
             // Old generic component owners name a family, not a leaf. Its migrated parent
             // constraint is still authoritative; unrelated leaf constraints are not inherited.
             for (source, constraint) in &rule.constraints {
-                if matches(source, old) && !result.contains(&(source, constraint)) {
+                if [old, new, previous.as_str()].into_iter().any(|p| matches(source, p))
+                    && !result.contains(&(source, constraint))
+                {
                     result.push((source, constraint));
                 }
             }
@@ -150,24 +200,27 @@ pub(crate) fn matching<'a>(
 pub(crate) fn resolve_text(text: &str) -> (String, Option<&'static Route>) {
     let text = text.trim_start();
     let mut best = None;
+    let mut best_len = 0;
     for route in MANIFEST.iter().filter(|r| r.active()) {
-        let mut rest = text;
-        let mut matched = true;
-        let parts: Vec<_> = route.legacy.split(' ').collect();
-        for (index, part) in parts.iter().enumerate() {
-            let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
-            if !rest[..end].eq_ignore_ascii_case(part) {
-                matched = false;
-                break;
+        for source in [&route.legacy, &previous_path(route)] {
+            let mut rest = text;
+            let mut matched = true;
+            let parts: Vec<_> = source.split(' ').collect();
+            for (index, part) in parts.iter().enumerate() {
+                let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+                if !rest[..end].eq_ignore_ascii_case(part) {
+                    matched = false;
+                    break;
+                }
+                rest = &rest[end..];
+                if index + 1 < parts.len() {
+                    rest = rest.trim_start();
+                }
             }
-            rest = &rest[end..];
-            // Keep the separator before arguments; only trim between path tokens.
-            if index + 1 < parts.len() {
-                rest = rest.trim_start();
+            if matched && source.len() > best_len && source != &route.canonical {
+                best = Some((route, rest));
+                best_len = source.len();
             }
-        }
-        if matched && best.is_none_or(|(r, _): (&Route, &str)| route.legacy.len() > r.legacy.len()) {
-            best = Some((route, rest));
         }
     }
     match best {
@@ -179,9 +232,9 @@ pub(crate) fn resolve_text(text: &str) -> (String, Option<&'static Route>) {
 /// Rebuild the exact old nesting without changing resolved objects, focused options or values.
 pub(crate) fn adapt(mut data: CommandData) -> anyhow::Result<CommandData> {
     let path = crate::command_control::path(&data);
-    let Some(route) = route(&path).filter(|r| r.active() && r.canonical == path) else {
+    let Some(route) = route(&path).filter(|r| r.active() && (r.canonical == path || previous_path(r) == path)) else {
         anyhow::ensure!(
-            !matches!(data.name.as_str(), "setup" | "mod" | "rewards"),
+            !(is_admin_path(&data.name) || matches!(data.name.as_str(), "mod" | "rewards")),
             "unknown command action `{path}`"
         );
         return Ok(data);
@@ -234,7 +287,7 @@ fn source(tree: &[Command], path: &str) -> CommandOption {
 }
 
 /// Clone typed definitions, including limits, choices, autocomplete and localized descriptions.
-/// Legacy roots remain registered throughout the transition.
+/// Only canonical roots are registered; legacy models remain available to dispatch.
 pub(crate) fn extend(tree: &mut Vec<Command>) {
     let original = tree.clone();
     // Wrapped remains usable in DMs. The existing info handlers retain their own guild guard.
@@ -244,6 +297,26 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
         (
             "setup",
             "Configure server settings and administration tools",
+            Some(Permissions::MANAGE_GUILD),
+        ),
+        (
+            "safety",
+            "Configure moderation and server protection",
+            Some(Permissions::MANAGE_GUILD),
+        ),
+        (
+            "community",
+            "Configure tickets, highlights, events and utilities",
+            Some(Permissions::MANAGE_GUILD),
+        ),
+        (
+            "integrations",
+            "Configure feeds, counters and invite tracking",
+            Some(Permissions::MANAGE_GUILD),
+        ),
+        (
+            "progression",
+            "Configure leveling, economy and achievements",
             Some(Permissions::MANAGE_GUILD),
         ),
         ("mod", "Manage moderation actions and records", None),
@@ -335,6 +408,43 @@ pub fn has_legacy_paths(tree: &[Command]) -> bool {
         .any(|leaf| MANIFEST.iter().any(|r| r.active() && r.legacy == leaf.path))
 }
 
+/// Discord counts the longest localized value (including the default) per field.
+/// https://docs.discord.com/developers/interactions/application-commands#slash-commands
+pub const COMMAND_SIZE_LIMIT: usize = 8_000;
+pub const COMMAND_SIZE_BUDGET: usize = COMMAND_SIZE_LIMIT * 9 / 10;
+
+pub fn command_size(command: &Command) -> usize {
+    size_of_node(&serde_json::to_value(command).expect("serializable command"))
+}
+
+fn size_of_node(node: &serde_json::Value) -> usize {
+    let text_len = |value: &serde_json::Value| match value {
+        serde_json::Value::String(text) => text.chars().count(),
+        serde_json::Value::Number(number) => number.to_string().chars().count(),
+        _ => 0,
+    };
+    let mut size = text_len(&node["value"]);
+    for field in ["name", "description"] {
+        size += node[format!("{field}_localizations")]
+            .as_object()
+            .into_iter()
+            .flat_map(|map| map.values())
+            .map(text_len)
+            .chain(std::iter::once(text_len(&node[field])))
+            .max()
+            .unwrap_or_default();
+    }
+    for field in ["options", "choices"] {
+        size += node[field]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(size_of_node)
+            .sum::<usize>();
+    }
+    size
+}
+
 /// Validate the complete registration payload before any Discord HTTP request.
 pub fn validate(tree: &[Command]) -> anyhow::Result<()> {
     anyhow::ensure!(
@@ -391,6 +501,12 @@ pub fn validate(tree: &[Command]) -> anyhow::Result<()> {
         Ok(())
     }
     for root in tree {
+        let size = command_size(root);
+        anyhow::ensure!(
+            size <= COMMAND_SIZE_BUDGET,
+            "/{}: {size} characters exceeds {COMMAND_SIZE_BUDGET} (10% margin below Discord's {COMMAND_SIZE_LIMIT})",
+            root.name
+        );
         anyhow::ensure!(roots.insert(&root.name), "duplicate root {}", root.name);
         walk(&root.options, 0, &root.name)?;
     }

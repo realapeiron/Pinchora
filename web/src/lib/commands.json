@@ -312,8 +312,8 @@
               "required": false
             }
           ],
-          "path": "setup achievements add",
-          "usage": "/setup achievements add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
+          "path": "progression achievements add",
+          "usage": "/progression achievements add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
         },
         {
           "aliases": [
@@ -401,8 +401,8 @@
               "required": false
             }
           ],
-          "path": "setup achievements edit",
-          "usage": "/setup achievements edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
+          "path": "progression achievements edit",
+          "usage": "/progression achievements edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
         },
         {
           "aliases": [
@@ -422,8 +422,8 @@
               "required": true
             }
           ],
-          "path": "setup achievements grant",
-          "usage": "/setup achievements grant <id> <user>"
+          "path": "progression achievements grant",
+          "usage": "/progression achievements grant <id> <user>"
         },
         {
           "aliases": [
@@ -432,8 +432,8 @@
           "description": "List configured achievements",
           "manager": true,
           "options": [],
-          "path": "setup achievements list",
-          "usage": "/setup achievements list"
+          "path": "progression achievements list",
+          "usage": "/progression achievements list"
         },
         {
           "aliases": [
@@ -448,8 +448,8 @@
               "required": true
             }
           ],
-          "path": "setup achievements remove",
-          "usage": "/setup achievements remove <id>"
+          "path": "progression achievements remove",
+          "usage": "/progression achievements remove <id>"
         }
       ],
       "intro": "Your look, your character, and what other people may see of you.",
@@ -944,8 +944,8 @@
           "description": "Arrange the plaza's donated furniture (Manage Server)",
           "manager": true,
           "options": [],
-          "path": "setup community plaza-edit",
-          "usage": "/setup community plaza-edit"
+          "path": "community server plaza-edit",
+          "usage": "/community server plaza-edit"
         }
       ],
       "intro": "Your own pixel house, the weekly room contest, and the plaza the whole server shares.",
@@ -2134,8 +2134,8 @@
               "required": true
             }
           ],
-          "path": "setup economy points-give",
-          "usage": "/setup economy points-give <user> <amount>"
+          "path": "progression economy points-give",
+          "usage": "/progression economy points-give <user> <amount>"
         },
         {
           "aliases": [
@@ -2155,8 +2155,8 @@
               "required": true
             }
           ],
-          "path": "setup economy points-take",
-          "usage": "/setup economy points-take <user> <amount>"
+          "path": "progression economy points-take",
+          "usage": "/progression economy points-take <user> <amount>"
         },
         {
           "aliases": [],
@@ -2420,8 +2420,8 @@
               "required": false
             }
           ],
-          "path": "setup utility voice-add",
-          "usage": "/setup utility voice-add <channel> [category] [limit] [template]"
+          "path": "community utility voice-add",
+          "usage": "/community utility voice-add <channel> [category] [limit] [template]"
         },
         {
           "aliases": [
@@ -2430,8 +2430,8 @@
           "description": "The creator channels of this server (Manage Server)",
           "manager": true,
           "options": [],
-          "path": "setup utility voice-list",
-          "usage": "/setup utility voice-list"
+          "path": "community utility voice-list",
+          "usage": "/community utility voice-list"
         },
         {
           "aliases": [
@@ -2446,8 +2446,8 @@
               "required": true
             }
           ],
-          "path": "setup utility voice-remove",
-          "usage": "/setup utility voice-remove <channel>"
+          "path": "community utility voice-remove",
+          "usage": "/community utility voice-remove <channel>"
         },
         {
           "aliases": [
@@ -2489,8 +2489,8 @@
               "required": false
             }
           ],
-          "path": "setup feeds add",
-          "usage": "/setup feeds add <kind> <source> <channel> [message] [role]"
+          "path": "integrations feeds add",
+          "usage": "/integrations feeds add <kind> <source> <channel> [message] [role]"
         },
         {
           "aliases": [
@@ -2545,8 +2545,8 @@
               "required": false
             }
           ],
-          "path": "setup feeds edit",
-          "usage": "/setup feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+          "path": "integrations feeds edit",
+          "usage": "/integrations feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
         },
         {
           "aliases": [
@@ -2555,8 +2555,8 @@
           "description": "The feeds this server follows, with how they are doing",
           "manager": true,
           "options": [],
-          "path": "setup feeds list",
-          "usage": "/setup feeds list"
+          "path": "integrations feeds list",
+          "usage": "/integrations feeds list"
         },
         {
           "aliases": [
@@ -2571,8 +2571,8 @@
               "required": true
             }
           ],
-          "path": "setup feeds remove",
-          "usage": "/setup feeds remove <id>"
+          "path": "integrations feeds remove",
+          "usage": "/integrations feeds remove <id>"
         },
         {
           "aliases": [
@@ -2587,8 +2587,8 @@
               "required": true
             }
           ],
-          "path": "setup feeds test",
-          "usage": "/setup feeds test <id>"
+          "path": "integrations feeds test",
+          "usage": "/integrations feeds test <id>"
         },
         {
           "aliases": [
@@ -2977,8 +2977,8 @@
           "description": "Show an event template and create button",
           "manager": true,
           "options": [],
-          "path": "setup events template",
-          "usage": "/setup events template"
+          "path": "community events template",
+          "usage": "/community events template"
         },
         {
           "aliases": [],
@@ -3129,8 +3129,8 @@
               "required": false
             }
           ],
-          "path": "setup tickets panel-create",
-          "usage": "/setup tickets panel-create <name> <channel> [title] [description] [topics] [style] [support_role]"
+          "path": "community tickets panel-create",
+          "usage": "/community tickets panel-create <name> <channel> [title] [description] [topics] [style] [support_role]"
         },
         {
           "aliases": [
@@ -3145,8 +3145,8 @@
               "required": true
             }
           ],
-          "path": "setup tickets panel-delete",
-          "usage": "/setup tickets panel-delete <panel>"
+          "path": "community tickets panel-delete",
+          "usage": "/community tickets panel-delete <panel>"
         },
         {
           "aliases": [
@@ -3210,8 +3210,8 @@
               "required": false
             }
           ],
-          "path": "setup tickets panel-edit",
-          "usage": "/setup tickets panel-edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
+          "path": "community tickets panel-edit",
+          "usage": "/community tickets panel-edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
         },
         {
           "aliases": [
@@ -3220,8 +3220,8 @@
           "description": "The server's panels",
           "manager": true,
           "options": [],
-          "path": "setup tickets panel-list",
-          "usage": "/setup tickets panel-list"
+          "path": "community tickets panel-list",
+          "usage": "/community tickets panel-list"
         },
         {
           "aliases": [
@@ -3236,8 +3236,8 @@
               "required": true
             }
           ],
-          "path": "setup tickets panel-post",
-          "usage": "/setup tickets panel-post <panel>"
+          "path": "community tickets panel-post",
+          "usage": "/community tickets panel-post <panel>"
         },
         {
           "aliases": [
@@ -3307,8 +3307,8 @@
               "required": false
             }
           ],
-          "path": "setup tickets settings",
-          "usage": "/setup tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
+          "path": "community tickets settings",
+          "usage": "/community tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
         },
         {
           "aliases": [
@@ -3383,8 +3383,8 @@
               "required": false
             }
           ],
-          "path": "setup starboard edit",
-          "usage": "/setup starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
+          "path": "community starboard edit",
+          "usage": "/community starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
         },
         {
           "aliases": [
@@ -3393,8 +3393,8 @@
           "description": "List this server's starboards",
           "manager": true,
           "options": [],
-          "path": "setup starboard list",
-          "usage": "/setup starboard list"
+          "path": "community starboard list",
+          "usage": "/community starboard list"
         },
         {
           "aliases": [
@@ -3409,8 +3409,8 @@
               "required": true
             }
           ],
-          "path": "setup starboard remove",
-          "usage": "/setup starboard remove <id>"
+          "path": "community starboard remove",
+          "usage": "/community starboard remove <id>"
         },
         {
           "aliases": [
@@ -3480,8 +3480,8 @@
               "required": false
             }
           ],
-          "path": "setup starboard setup",
-          "usage": "/setup starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
+          "path": "community starboard setup",
+          "usage": "/community starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
         },
         {
           "aliases": [
@@ -3496,8 +3496,8 @@
               "required": false
             }
           ],
-          "path": "setup starboard top",
-          "usage": "/setup starboard top [board]"
+          "path": "community starboard top",
+          "usage": "/community starboard top [board]"
         },
         {
           "aliases": [
@@ -3532,8 +3532,8 @@
               "required": false
             }
           ],
-          "path": "setup starboard votes-add",
-          "usage": "/setup starboard votes-add <channel> [up] [down] [only_media] [thread]"
+          "path": "community starboard votes-add",
+          "usage": "/community starboard votes-add <channel> [up] [down] [only_media] [thread]"
         },
         {
           "aliases": [
@@ -3542,8 +3542,8 @@
           "description": "List vote channels",
           "manager": true,
           "options": [],
-          "path": "setup starboard votes-list",
-          "usage": "/setup starboard votes-list"
+          "path": "community starboard votes-list",
+          "usage": "/community starboard votes-list"
         },
         {
           "aliases": [
@@ -3558,8 +3558,8 @@
               "required": true
             }
           ],
-          "path": "setup starboard votes-remove",
-          "usage": "/setup starboard votes-remove <channel>"
+          "path": "community starboard votes-remove",
+          "usage": "/community starboard votes-remove <channel>"
         },
         {
           "aliases": [],
@@ -3620,8 +3620,8 @@
               "required": true
             }
           ],
-          "path": "setup invites bonus-add",
-          "usage": "/setup invites bonus-add <user> <amount>"
+          "path": "integrations invites bonus-add",
+          "usage": "/integrations invites bonus-add <user> <amount>"
         },
         {
           "aliases": [
@@ -3641,8 +3641,8 @@
               "required": true
             }
           ],
-          "path": "setup invites bonus-remove",
-          "usage": "/setup invites bonus-remove <user> <amount>"
+          "path": "integrations invites bonus-remove",
+          "usage": "/integrations invites bonus-remove <user> <amount>"
         },
         {
           "aliases": [
@@ -3651,8 +3651,8 @@
           "description": "Post an Invite a friend button in this channel",
           "manager": true,
           "options": [],
-          "path": "setup invites post",
-          "usage": "/setup invites post"
+          "path": "integrations invites post",
+          "usage": "/integrations invites post"
         },
         {
           "aliases": [
@@ -3672,8 +3672,8 @@
               "required": true
             }
           ],
-          "path": "setup invites reward-add",
-          "usage": "/setup invites reward-add <invites> <role>"
+          "path": "integrations invites reward-add",
+          "usage": "/integrations invites reward-add <invites> <role>"
         },
         {
           "aliases": [
@@ -3688,8 +3688,8 @@
               "required": true
             }
           ],
-          "path": "setup invites reward-remove",
-          "usage": "/setup invites reward-remove <invites>"
+          "path": "integrations invites reward-remove",
+          "usage": "/integrations invites reward-remove <invites>"
         },
         {
           "aliases": [
@@ -3739,8 +3739,8 @@
               "required": false
             }
           ],
-          "path": "setup invites settings",
-          "usage": "/setup invites settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
+          "path": "integrations invites settings",
+          "usage": "/integrations invites settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
         },
         {
           "aliases": [],
@@ -3779,8 +3779,8 @@
               "required": true
             }
           ],
-          "path": "setup utility sticky-remove",
-          "usage": "/setup utility sticky-remove <channel>"
+          "path": "community utility sticky-remove",
+          "usage": "/community utility sticky-remove <channel>"
         },
         {
           "aliases": [
@@ -3810,8 +3810,8 @@
               "required": false
             }
           ],
-          "path": "setup utility sticky-set",
-          "usage": "/setup utility sticky-set <channel> <text> [messages] [seconds]"
+          "path": "community utility sticky-set",
+          "usage": "/community utility sticky-set <channel> <text> [messages] [seconds]"
         },
         {
           "aliases": [
@@ -3820,8 +3820,8 @@
           "description": "List sticky messages",
           "manager": true,
           "options": [],
-          "path": "setup utility sticky-show",
-          "usage": "/setup utility sticky-show"
+          "path": "community utility sticky-show",
+          "usage": "/community utility sticky-show"
         },
         {
           "aliases": [
@@ -3856,8 +3856,8 @@
               "required": false
             }
           ],
-          "path": "setup utility schedule-add",
-          "usage": "/setup utility schedule-add <channel> <text> <when> [every] [tz]"
+          "path": "community utility schedule-add",
+          "usage": "/community utility schedule-add <channel> <text> <when> [every] [tz]"
         },
         {
           "aliases": [
@@ -3866,8 +3866,8 @@
           "description": "List scheduled messages",
           "manager": true,
           "options": [],
-          "path": "setup utility schedule-list",
-          "usage": "/setup utility schedule-list"
+          "path": "community utility schedule-list",
+          "usage": "/community utility schedule-list"
         },
         {
           "aliases": [
@@ -3882,8 +3882,8 @@
               "required": true
             }
           ],
-          "path": "setup utility schedule-pause",
-          "usage": "/setup utility schedule-pause <id>"
+          "path": "community utility schedule-pause",
+          "usage": "/community utility schedule-pause <id>"
         },
         {
           "aliases": [
@@ -3898,8 +3898,8 @@
               "required": true
             }
           ],
-          "path": "setup utility schedule-preview",
-          "usage": "/setup utility schedule-preview <id>"
+          "path": "community utility schedule-preview",
+          "usage": "/community utility schedule-preview <id>"
         },
         {
           "aliases": [
@@ -3914,8 +3914,8 @@
               "required": true
             }
           ],
-          "path": "setup utility schedule-remove",
-          "usage": "/setup utility schedule-remove <id>"
+          "path": "community utility schedule-remove",
+          "usage": "/community utility schedule-remove <id>"
         },
         {
           "aliases": [
@@ -3930,8 +3930,8 @@
               "required": true
             }
           ],
-          "path": "setup utility schedule-resume",
-          "usage": "/setup utility schedule-resume <id>"
+          "path": "community utility schedule-resume",
+          "usage": "/community utility schedule-resume <id>"
         },
         {
           "aliases": [
@@ -3946,8 +3946,8 @@
               "required": true
             }
           ],
-          "path": "setup utility schedule-run-now",
-          "usage": "/setup utility schedule-run-now <id>"
+          "path": "community utility schedule-run-now",
+          "usage": "/community utility schedule-run-now <id>"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -3979,8 +3979,8 @@
               "required": false
             }
           ],
-          "path": "setup automod exempt-channel",
-          "usage": "/setup automod exempt-channel <action> <channel> [rule]"
+          "path": "safety automod exempt-channel",
+          "usage": "/safety automod exempt-channel <action> <channel> [rule]"
         },
         {
           "aliases": [
@@ -4005,8 +4005,8 @@
               "required": false
             }
           ],
-          "path": "setup automod exempt-role",
-          "usage": "/setup automod exempt-role <action> <role> [rule]"
+          "path": "safety automod exempt-role",
+          "usage": "/safety automod exempt-role <action> <role> [rule]"
         },
         {
           "aliases": [
@@ -4021,8 +4021,8 @@
               "required": true
             }
           ],
-          "path": "setup automod profile",
-          "usage": "/setup automod profile <name>"
+          "path": "safety automod profile",
+          "usage": "/safety automod profile <name>"
         },
         {
           "aliases": [
@@ -4031,8 +4031,8 @@
           "description": "Show the AutoMod profile and active rules",
           "manager": true,
           "options": [],
-          "path": "setup automod show",
-          "usage": "/setup automod show"
+          "path": "safety automod show",
+          "usage": "/safety automod show"
         },
         {
           "aliases": [
@@ -4047,8 +4047,8 @@
               "required": true
             }
           ],
-          "path": "setup automod test",
-          "usage": "/setup automod test <text>"
+          "path": "safety automod test",
+          "usage": "/safety automod test <text>"
         },
         {
           "aliases": [
@@ -4068,8 +4068,8 @@
               "required": true
             }
           ],
-          "path": "setup automod toggle",
-          "usage": "/setup automod toggle <rule> <enabled>"
+          "path": "safety automod toggle",
+          "usage": "/safety automod toggle <rule> <enabled>"
         },
         {
           "aliases": [
@@ -4246,8 +4246,8 @@
               "required": true
             }
           ],
-          "path": "setup verification message",
-          "usage": "/setup verification message <text>"
+          "path": "safety verification message",
+          "usage": "/safety verification message <text>"
         },
         {
           "aliases": [
@@ -4262,8 +4262,8 @@
               "required": true
             }
           ],
-          "path": "setup verification mode",
-          "usage": "/setup verification mode <mode>"
+          "path": "safety verification mode",
+          "usage": "/safety verification mode <mode>"
         },
         {
           "aliases": [
@@ -4272,8 +4272,8 @@
           "description": "Post the verification panel to the configured channel",
           "manager": true,
           "options": [],
-          "path": "setup verification post",
-          "usage": "/setup verification post"
+          "path": "safety verification post",
+          "usage": "/safety verification post"
         },
         {
           "aliases": [
@@ -4308,8 +4308,8 @@
               "required": false
             }
           ],
-          "path": "setup verification setup",
-          "usage": "/setup verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
+          "path": "safety verification setup",
+          "usage": "/safety verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
         },
         {
           "aliases": [
@@ -4354,8 +4354,8 @@
           "description": "Show protection status and recovery limits",
           "manager": true,
           "options": [],
-          "path": "setup antinuke status",
-          "usage": "/setup antinuke status"
+          "path": "safety antinuke status",
+          "usage": "/safety antinuke status"
         },
         {
           "aliases": [
@@ -4364,8 +4364,8 @@
           "description": "Show recent anti-nuke incidents",
           "manager": true,
           "options": [],
-          "path": "setup antinuke events",
-          "usage": "/setup antinuke events"
+          "path": "safety antinuke events",
+          "usage": "/safety antinuke events"
         },
         {
           "aliases": [],
@@ -4910,8 +4910,8 @@
               "required": false
             }
           ],
-          "path": "setup leveling settings",
-          "usage": "/setup leveling settings [enabled] [channel] [message] [mode]"
+          "path": "progression leveling settings",
+          "usage": "/progression leveling settings [enabled] [channel] [message] [mode]"
         },
         {
           "aliases": [
@@ -4978,8 +4978,8 @@
               "required": false
             }
           ],
-          "path": "setup community suggestions",
-          "usage": "/setup community suggestions [channel] [off]"
+          "path": "community server suggestions",
+          "usage": "/community server suggestions [channel] [off]"
         },
         {
           "aliases": [
@@ -5162,8 +5162,8 @@
               "required": false
             }
           ],
-          "path": "setup stats counter-add",
-          "usage": "/setup stats counter-add <channel> <kind> [role] [template]"
+          "path": "integrations stats counter-add",
+          "usage": "/integrations stats counter-add <channel> <kind> [role] [template]"
         },
         {
           "aliases": [
@@ -5172,8 +5172,8 @@
           "description": "This server's counter channels",
           "manager": true,
           "options": [],
-          "path": "setup stats counter-list",
-          "usage": "/setup stats counter-list"
+          "path": "integrations stats counter-list",
+          "usage": "/integrations stats counter-list"
         },
         {
           "aliases": [
@@ -5188,8 +5188,8 @@
               "required": true
             }
           ],
-          "path": "setup stats counter-remove",
-          "usage": "/setup stats counter-remove <channel>"
+          "path": "integrations stats counter-remove",
+          "usage": "/integrations stats counter-remove <channel>"
         }
       ],
       "intro": "Welcome cards, goodbyes, suggestions, the language, the text prefix and the settings overview.",
@@ -5205,8 +5205,8 @@
           "description": "Pause anti-nuke detection",
           "manager": true,
           "options": [],
-          "path": "setup antinuke disable",
-          "usage": "/setup antinuke disable"
+          "path": "safety antinuke disable",
+          "usage": "/safety antinuke disable"
         },
         {
           "aliases": [
@@ -5251,8 +5251,8 @@
               "required": false
             }
           ],
-          "path": "setup antinuke enable",
-          "usage": "/setup antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
+          "path": "safety antinuke enable",
+          "usage": "/safety antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
         },
         {
           "aliases": [
@@ -5277,8 +5277,8 @@
               "required": true
             }
           ],
-          "path": "setup antinuke limits",
-          "usage": "/setup antinuke limits <kind> <count> <seconds>"
+          "path": "safety antinuke limits",
+          "usage": "/safety antinuke limits <kind> <count> <seconds>"
         },
         {
           "aliases": [
@@ -5293,8 +5293,8 @@
               "required": true
             }
           ],
-          "path": "setup antinuke trust-add",
-          "usage": "/setup antinuke trust-add <user>"
+          "path": "safety antinuke trust-add",
+          "usage": "/safety antinuke trust-add <user>"
         },
         {
           "aliases": [
@@ -5309,8 +5309,8 @@
               "required": true
             }
           ],
-          "path": "setup antinuke trust-remove",
-          "usage": "/setup antinuke trust-remove <user>"
+          "path": "safety antinuke trust-remove",
+          "usage": "/safety antinuke trust-remove <user>"
         },
         {
           "aliases": [
@@ -5325,8 +5325,8 @@
               "required": true
             }
           ],
-          "path": "setup antinuke vip-add",
-          "usage": "/setup antinuke vip-add <role>"
+          "path": "safety antinuke vip-add",
+          "usage": "/safety antinuke vip-add <role>"
         },
         {
           "aliases": [
@@ -5341,8 +5341,8 @@
               "required": true
             }
           ],
-          "path": "setup antinuke vip-remove",
-          "usage": "/setup antinuke vip-remove <role>"
+          "path": "safety antinuke vip-remove",
+          "usage": "/safety antinuke vip-remove <role>"
         },
         {
           "aliases": [
@@ -5378,8 +5378,8 @@
               "required": false
             }
           ],
-          "path": "setup moderation log",
-          "usage": "/setup moderation log [channel] [off] [category]"
+          "path": "safety moderation log",
+          "usage": "/safety moderation log [channel] [off] [category]"
         },
         {
           "aliases": [
@@ -5444,8 +5444,8 @@
               "required": false
             }
           ],
-          "path": "setup moderation log-events",
-          "usage": "/setup moderation log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
+          "path": "safety moderation log-events",
+          "usage": "/safety moderation log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
         },
         {
           "aliases": [
@@ -5480,8 +5480,8 @@
               "required": false
             }
           ],
-          "path": "setup moderation log-ignore",
-          "usage": "/setup moderation log-ignore [channel] [role] [user] [bots] [remove]"
+          "path": "safety moderation log-ignore",
+          "usage": "/safety moderation log-ignore [channel] [role] [user] [bots] [remove]"
         },
         {
           "aliases": [
@@ -5506,8 +5506,8 @@
               "required": false
             }
           ],
-          "path": "setup moderation settings",
-          "usage": "/setup moderation settings [channel] [off] [dm]"
+          "path": "safety moderation settings",
+          "usage": "/safety moderation settings [channel] [off] [dm]"
         },
         {
           "aliases": [
@@ -5542,8 +5542,8 @@
               "required": false
             }
           ],
-          "path": "setup moderation warn-ladder",
-          "usage": "/setup moderation warn-ladder [warns] [action] [duration] [remove]"
+          "path": "safety moderation warn-ladder",
+          "usage": "/safety moderation warn-ladder [warns] [action] [duration] [remove]"
         }
       ],
       "intro": "The server log's channels, events and ignore lists; the mod-log and the warn ladder.",
@@ -5570,8 +5570,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling roles-add",
-          "usage": "/setup leveling roles-add <level> <role>"
+          "path": "progression leveling roles-add",
+          "usage": "/progression leveling roles-add <level> <role>"
         },
         {
           "aliases": [
@@ -5580,8 +5580,8 @@
           "description": "Show the level roles",
           "manager": true,
           "options": [],
-          "path": "setup leveling roles-list",
-          "usage": "/setup leveling roles-list"
+          "path": "progression leveling roles-list",
+          "usage": "/progression leveling roles-list"
         },
         {
           "aliases": [
@@ -5600,8 +5600,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling roles-mode",
-          "usage": "/setup leveling roles-mode <mode>"
+          "path": "progression leveling roles-mode",
+          "usage": "/progression leveling roles-mode <mode>"
         },
         {
           "aliases": [
@@ -5616,8 +5616,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling roles-remove",
-          "usage": "/setup leveling roles-remove <role>"
+          "path": "progression leveling roles-remove",
+          "usage": "/progression leveling roles-remove <role>"
         },
         {
           "aliases": [
@@ -5626,8 +5626,8 @@
           "description": "Give members who are already past a level the roles they earned",
           "manager": true,
           "options": [],
-          "path": "setup leveling roles-sync",
-          "usage": "/setup leveling roles-sync"
+          "path": "progression leveling roles-sync",
+          "usage": "/progression leveling roles-sync"
         },
         {
           "aliases": [
@@ -5647,8 +5647,8 @@
               "required": false
             }
           ],
-          "path": "setup leveling xp-clear",
-          "usage": "/setup leveling xp-clear [channel] [role]"
+          "path": "progression leveling xp-clear",
+          "usage": "/progression leveling xp-clear [channel] [role]"
         },
         {
           "aliases": [
@@ -5673,8 +5673,8 @@
               "required": false
             }
           ],
-          "path": "setup leveling xp-multiplier",
-          "usage": "/setup leveling xp-multiplier <value> [channel] [role]"
+          "path": "progression leveling xp-multiplier",
+          "usage": "/progression leveling xp-multiplier <value> [channel] [role]"
         },
         {
           "aliases": [
@@ -5683,8 +5683,8 @@
           "description": "Show the multipliers and voice XP settings",
           "manager": true,
           "options": [],
-          "path": "setup leveling xp-show",
-          "usage": "/setup leveling xp-show"
+          "path": "progression leveling xp-show",
+          "usage": "/progression leveling xp-show"
         },
         {
           "aliases": [
@@ -5704,8 +5704,8 @@
               "required": false
             }
           ],
-          "path": "setup leveling xp-voice",
-          "usage": "/setup leveling xp-voice [enabled] [amount]"
+          "path": "progression leveling xp-voice",
+          "usage": "/progression leveling xp-voice [enabled] [amount]"
         },
         {
           "aliases": [
@@ -5725,8 +5725,8 @@
               "required": true
             }
           ],
-          "path": "setup economy rep-roles-add",
-          "usage": "/setup economy rep-roles-add <reputation> <role>"
+          "path": "progression economy rep-roles-add",
+          "usage": "/progression economy rep-roles-add <reputation> <role>"
         },
         {
           "aliases": [
@@ -5735,8 +5735,8 @@
           "description": "Show the reputation roles",
           "manager": true,
           "options": [],
-          "path": "setup economy rep-roles-list",
-          "usage": "/setup economy rep-roles-list"
+          "path": "progression economy rep-roles-list",
+          "usage": "/progression economy rep-roles-list"
         },
         {
           "aliases": [
@@ -5751,8 +5751,8 @@
               "required": true
             }
           ],
-          "path": "setup economy rep-roles-remove",
-          "usage": "/setup economy rep-roles-remove <role>"
+          "path": "progression economy rep-roles-remove",
+          "usage": "/progression economy rep-roles-remove <role>"
         },
         {
           "aliases": [
@@ -5787,8 +5787,8 @@
               "required": false
             }
           ],
-          "path": "setup economy points-settings",
-          "usage": "/setup economy points-settings [enabled] [name] [emoji] [min] [max]"
+          "path": "progression economy points-settings",
+          "usage": "/progression economy points-settings [enabled] [name] [emoji] [min] [max]"
         },
         {
           "aliases": [
@@ -5813,8 +5813,8 @@
               "required": false
             }
           ],
-          "path": "setup economy store-add",
-          "usage": "/setup economy store-add <role> <price> [stock]"
+          "path": "progression economy store-add",
+          "usage": "/progression economy store-add <role> <price> [stock]"
         },
         {
           "aliases": [
@@ -5823,8 +5823,8 @@
           "description": "Show what is on sale",
           "manager": true,
           "options": [],
-          "path": "setup economy store-list",
-          "usage": "/setup economy store-list"
+          "path": "progression economy store-list",
+          "usage": "/progression economy store-list"
         },
         {
           "aliases": [
@@ -5839,8 +5839,8 @@
               "required": true
             }
           ],
-          "path": "setup economy store-remove",
-          "usage": "/setup economy store-remove <role>"
+          "path": "progression economy store-remove",
+          "usage": "/progression economy store-remove <role>"
         },
         {
           "aliases": [
@@ -5860,8 +5860,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling xp-add",
-          "usage": "/setup leveling xp-add <user> <amount>"
+          "path": "progression leveling xp-add",
+          "usage": "/progression leveling xp-add <user> <amount>"
         },
         {
           "aliases": [
@@ -5880,8 +5880,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling xp-import-mee6",
-          "usage": "/setup leveling xp-import-mee6 <mode>"
+          "path": "progression leveling xp-import-mee6",
+          "usage": "/progression leveling xp-import-mee6 <mode>"
         },
         {
           "aliases": [
@@ -5901,8 +5901,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling xp-remove",
-          "usage": "/setup leveling xp-remove <user> <amount>"
+          "path": "progression leveling xp-remove",
+          "usage": "/progression leveling xp-remove <user> <amount>"
         },
         {
           "aliases": [
@@ -5917,8 +5917,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling xp-reset",
-          "usage": "/setup leveling xp-reset <user>"
+          "path": "progression leveling xp-reset",
+          "usage": "/progression leveling xp-reset <user>"
         },
         {
           "aliases": [
@@ -5927,8 +5927,8 @@
           "description": "Reset everyone's server XP; requires two confirmations",
           "manager": true,
           "options": [],
-          "path": "setup leveling xp-reset-all",
-          "usage": "/setup leveling xp-reset-all"
+          "path": "progression leveling xp-reset-all",
+          "usage": "/progression leveling xp-reset-all"
         },
         {
           "aliases": [
@@ -5948,8 +5948,8 @@
               "required": true
             }
           ],
-          "path": "setup leveling xp-set",
-          "usage": "/setup leveling xp-set <user> <amount>"
+          "path": "progression leveling xp-set",
+          "usage": "/progression leveling xp-set <user> <amount>"
         }
       ],
       "intro": "Level roles, XP multipliers, voice XP, reputation roles and the points store.",
@@ -5981,8 +5981,8 @@
               "required": false
             }
           ],
-          "path": "setup economy critters",
-          "usage": "/setup economy critters [enabled] [channel] [anywhere]"
+          "path": "progression economy critters",
+          "usage": "/progression economy critters [enabled] [channel] [anywhere]"
         },
         {
           "aliases": [
@@ -5997,8 +5997,8 @@
               "required": true
             }
           ],
-          "path": "setup economy gambling",
-          "usage": "/setup economy gambling <enabled>"
+          "path": "progression economy gambling",
+          "usage": "/progression economy gambling <enabled>"
         },
         {
           "aliases": [
@@ -6030,8 +6030,8 @@
               "required": false
             }
           ],
-          "path": "setup economy surge",
-          "usage": "/setup economy surge [enabled] [channel] [every]"
+          "path": "progression economy surge",
+          "usage": "/progression economy surge [enabled] [channel] [every]"
         },
         {
           "aliases": [
@@ -6046,8 +6046,8 @@
               "required": false
             }
           ],
-          "path": "setup economy partygames",
-          "usage": "/setup economy partygames [strict]"
+          "path": "progression economy partygames",
+          "usage": "/progression economy partygames [strict]"
         },
         {
           "aliases": [
@@ -6123,8 +6123,8 @@
           "description": "Preview the birthday card and message",
           "manager": true,
           "options": [],
-          "path": "setup birthdays preview",
-          "usage": "/setup birthdays preview"
+          "path": "community birthdays preview",
+          "usage": "/community birthdays preview"
         },
         {
           "aliases": [
@@ -6184,8 +6184,8 @@
               "required": false
             }
           ],
-          "path": "setup birthdays settings",
-          "usage": "/setup birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
+          "path": "community birthdays settings",
+          "usage": "/community birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
         }
       ],
       "intro": "Switch games and whole parts of Pinchora on or off, for the server or per channel.",

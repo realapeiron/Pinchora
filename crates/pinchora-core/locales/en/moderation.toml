@@ -188,7 +188,7 @@ ban-for = "{duration} ban"
 ban = "permanent ban"
 kick = "kick"
 
-# /setup moderation settings, /setup moderation warn-ladder and /setup moderation log-ignore.
+# /safety moderation settings, /safety moderation warn-ladder and /safety moderation log-ignore.
 [mod.setup]
 field = "Moderation"
 channel-or-off = "Pick a channel or `off`, not both."

@@ -1,4 +1,4 @@
-//! Social feeds: `/setup feeds` and the poller, against a local feed server. Every address a feed names is
+//! Social feeds: `/integrations feeds` and the poller, against a local feed server. Every address a feed names is
 //! answered by that server (`Fetcher::local`), so nothing here reaches the internet; YouTube, Reddit
 //! and Bluesky are served at the paths their real addresses have.
 
@@ -115,7 +115,7 @@ fn add_options(kind: &str, source: &str, channel: u64, extra: Vec<Value>) -> Val
     json!([sub("add", options)])
 }
 
-/// The number `/setup feeds add` gave the feed, read from its answer ("Following **#12** · …").
+/// The number `/integrations feeds add` gave the feed, read from its answer ("Following **#12** · …").
 fn feed_id(reply: &Reply) -> i64 {
     let text = reply.content();
     let start = text.find("**#").unwrap_or_else(|| panic!("no feed number in {text:?}")) + 3;

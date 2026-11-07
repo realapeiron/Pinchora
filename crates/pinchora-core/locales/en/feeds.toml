@@ -1,4 +1,4 @@
-# Social feeds: /setup feeds, the posts the poller sends, and the problems the dashboard shows.
+# Social feeds: /integrations feeds, the posts the poller sends, and the problems the dashboard shows.
 
 [module]
 feeds = "Social feeds"
@@ -8,13 +8,13 @@ name = "**#{id}** · {kind} · **{account}**"
 no-everyone = "A feed can't ping @everyone. Pick a role, or leave the role out."
 cannot-read = "I can't follow that: {why}"
 test-cannot-read = "I couldn't read the source just now: {why}"
-full = "This server already follows {max} feeds. Remove one with `/setup feeds remove` first."
+full = "This server already follows {max} feeds. Remove one with `/integrations feeds remove` first."
 duplicate = "That source is already posted in {channel}."
-added = "Following {name} in {channel}. {latest}\nI look for new posts every {minutes} minutes or so. Try `/setup feeds test {id}` to see a post now, and `/setup feeds edit {id}` to change the message, the card or the filters."
+added = "Following {name} in {channel}. {latest}\nI look for new posts every {minutes} minutes or so. Try `/integrations feeds test {id}` to see a post now, and `/integrations feeds edit {id}` to change the message, the card or the filters."
 added-latest = "Its latest post: “{title}”."
 added-empty = "It has nothing posted yet."
 list-title = "Feeds ({count}/{max})"
-list-empty = "This server follows no feed yet. Add one with `/setup feeds add` or on the dashboard's Feeds page."
+list-empty = "This server follows no feed yet. Add one with `/integrations feeds add` or on the dashboard's Feeds page."
 list-footer = "Page {page} of {pages}"
 list-pings = " · pings {role}"
 previous = "Previous"
@@ -22,7 +22,7 @@ next = "Next"
 expired = "This button has expired."
 slow-down = "That is a lot of lookups in a minute. Try again in a moment."
 edit-nothing = "Name at least one thing to change: the channel, the message, the role, the card, the filters or the switch."
-no-such = "This server has no feed #{id}. `/setup feeds list` shows the numbers."
+no-such = "This server has no feed #{id}. `/integrations feeds list` shows the numbers."
 edited = "Saved {name}. New posts go to {channel}."
 removed = "Stopped following {name}."
 test-empty = "The source has nothing to show yet, so there is nothing to test with."
@@ -130,7 +130,7 @@ ping-role = "Pings @{role} with every new post (a test post pings nobody)."
 role = "role"
 
 [module-blurb]
-feeds = "/setup feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
+feeds = "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
 
 [feeds.ui]
 social-feeds = "SOCIAL FEEDS"

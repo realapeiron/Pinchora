@@ -48,6 +48,10 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 const SLASH_ONLY: &[&str] = &[
     "character",
     "setup",
+    "safety",
+    "community",
+    "integrations",
+    "progression",
     "customize",
     "house decorate",
     "house edit",
@@ -489,7 +493,7 @@ async fn prepare(
             return Ok(Prepared::Notice(hint));
         }
     };
-    if parsed.command.name == "setup" {
+    if crate::routing::is_admin_path(&parsed.command.name) {
         let facts = app.permission_facts(guild).await?;
         if !guild_permissions(&facts, guild, user, held).contains(Permissions::MANAGE_GUILD) {
             return Ok(Prepared::Notice(t!(lang, "config.needs-manage-server")));

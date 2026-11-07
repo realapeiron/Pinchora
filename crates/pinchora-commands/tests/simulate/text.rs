@@ -913,7 +913,7 @@ async fn legacy_paths_and_server_aliases_redirect_with_localized_daily_notices()
     let (ran, replies) = sim.text(user, &[], "p!config xp voice", &[]).await;
     assert!(ran);
     assert_eq!(replies.len(), 1);
-    assert!(replies[0].content().contains("/setup leveling xp-voice"));
+    assert!(replies[0].content().contains("/progression leveling xp-voice"));
     assert!(replies[0].content().contains("artık"));
     assert!(!replies[0].content().contains("Your shortcut"));
     let (_, again) = sim.text(user, &[], "p!config xp voice", &[]).await;
@@ -925,10 +925,10 @@ async fn legacy_paths_and_server_aliases_redirect_with_localized_daily_notices()
     sim.app.db.set_command_control(sim.guild, &config).await.unwrap();
     sim.app.announce_guild_change(sim.guild).await;
     let (_, alias) = sim.text(user, &[], "p!panel", &[]).await;
-    assert!(alias[0].content().contains("/setup tickets panel-list"));
+    assert!(alias[0].content().contains("/community tickets panel-list"));
     assert!(alias[0].files.is_empty());
     assert!(alias[0].components.is_empty());
     sim.app.set_user_lang(user, Some(Lang::En)).await.unwrap();
     let (_, english) = sim.text(user, &[], "p!feeds list", &[]).await;
-    assert!(english[0].content().contains("moved to `/setup feeds list`"));
+    assert!(english[0].content().contains("moved to `/integrations feeds list`"));
 }

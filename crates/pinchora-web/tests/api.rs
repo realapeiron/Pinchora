@@ -1687,7 +1687,7 @@ async fn settings_answer_with_the_field_and_the_command_sentence() {
     );
     assert_eq!(
         errors[4].1, "The least points per message can't be above the most.",
-        "the /setup economy points-settings sentence, checked against the stored maximum of 3"
+        "the /progression economy points-settings sentence, checked against the stored maximum of 3"
     );
 
     // Channels must be text or announcement channels that exist; the join role one the bot can give.
@@ -1808,7 +1808,7 @@ async fn xp_multipliers_follow_the_command_and_reach_the_bot() {
         .await;
     assert_eq!(wrong_kind.status, StatusCode::NOT_FOUND);
 
-    // 1 drops a rule, like `/setup leveling xp-multiplier value:1`.
+    // 1 drops a rule, like `/progression leveling xp-multiplier value:1`.
     let normal = browser
         .write(
             Method::PUT,

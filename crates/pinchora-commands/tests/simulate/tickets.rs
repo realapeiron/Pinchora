@@ -1010,7 +1010,7 @@ async fn idle_tickets_close_themselves() {
     );
 }
 
-/// Every `/setup tickets` subcommand asks for Manage Server itself (a server can show the command to anyone), and
+/// Every `/community tickets` subcommand asks for Manage Server itself (a server can show the command to anyone), and
 /// a refused one changes nothing.
 #[tokio::test]
 async fn ticket_admin_paths_refuse_members_without_manage_server() {
@@ -1071,7 +1071,7 @@ async fn ticket_admin_paths_refuse_members_without_manage_server() {
                 .await;
             assert!(
                 reply.ephemeral && reply.content().contains("Manage Server"),
-                "/setup tickets {label} with {permissions}: {reply}"
+                "/community tickets {label} with {permissions}: {reply}"
             );
         }
     }

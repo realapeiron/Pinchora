@@ -1,9 +1,9 @@
-# The server log: its entries (in the server's language) and the /setup moderation log summaries.
+# The server log: its entries (in the server's language) and the /safety moderation log summaries.
 
 [log]
 prefix = "Server log: {summary}"
 head-on = "**on** · {channel}"
-head-off = "**off** · pick a channel with `/setup moderation log`"
+head-off = "**off** · pick a channel with `/safety moderation log`"
 category-line = "> {category}: {on}/{total} on · {channel}"
 log-channel = "log channel"
 no-channel = "no channel"

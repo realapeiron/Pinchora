@@ -142,7 +142,7 @@ mod turkish_shop;
 // The roles pack: auto roles, sticky roles, role panels, expiring roles and colour roles.
 #[path = "simulate/roles.rs"]
 mod roles;
-// Server stats: counting, the flush, the /stats cards and /setup stats.
+// Server stats: counting, the flush, the /stats cards and /integrations stats.
 #[path = "simulate/stats.rs"]
 mod stats;
 // Starboards and vote channels.
@@ -153,7 +153,7 @@ mod starboard;
 mod invites;
 #[path = "simulate/tickets.rs"]
 mod tickets;
-// Social feeds: /setup feeds and the poller, against a local feed server.
+// Social feeds: /integrations feeds and the poller, against a local feed server.
 #[path = "simulate/feeds.rs"]
 mod feeds;
 // Birthdays: opt-in confirmation, privacy and pixel card.
@@ -3124,7 +3124,7 @@ async fn points_and_store_flow() {
     let vip = sim.guild_role(vip_id, "VIP", 2);
     let pricey = sim.guild_role(pricey_id, "Whale", 3);
 
-    // /setup economy points-settings renames the currency; an upside-down range is refused.
+    // /progression economy points-settings renames the currency; an upside-down range is refused.
     sim.permissions = MANAGE_GUILD;
     let config = sim
         .command(
@@ -3312,7 +3312,7 @@ async fn points_and_store_flow() {
     assert_eq!(sim.app.db.member_points(sim.guild, buyer).await.unwrap().0, 35);
     assert!(sim.role_changes().is_empty());
 
-    // /setup economy store-remove takes it off sale.
+    // /progression economy store-remove takes it off sale.
     sim.permissions = MANAGE_GUILD;
     let removed = sim
         .command(
@@ -5440,7 +5440,7 @@ async fn join_role_goodbye_and_server_log() {
         reply.content()
     );
 
-    // /setup welcome goodbye and /setup moderation log.
+    // /setup welcome goodbye and /safety moderation log.
     let goodbye = sim
         .command_resolved(
             admin,
@@ -5639,7 +5639,7 @@ async fn join_role_goodbye_and_server_log() {
     sim.voice(robot, "RoboBot", true, Some(lounge), false).await;
     assert!(sim.posts().is_empty());
 
-    // /setup moderation log-events switches kinds off; the others keep working.
+    // /safety moderation log-events switches kinds off; the others keep working.
     let events = |options: Vec<Value>| config(sub("log-events", options));
     let reply = sim
         .command(
@@ -7365,7 +7365,7 @@ impl Sim {
         self.app.db.member_points(self.guild, user).await.expect("points").0
     }
 
-    /// Runs `/setup leveling ...`.
+    /// Runs `/progression leveling ...`.
     async fn xp(&mut self, admin: u64, sub_command: Value) -> Reply {
         self.command(admin, "config", json!([group("xp", sub_command)])).await
     }
@@ -7582,7 +7582,7 @@ async fn xp_multipliers_and_voice_xp_are_configured_with_config() {
         "{}",
         reply.field("XP rules and voice XP")
     );
-    let leveling = command_tree::definition("setup leveling settings");
+    let leveling = command_tree::definition("progression leveling settings");
     let leveling_message = leveling["options"]
         .as_array()
         .unwrap()
@@ -13199,11 +13199,11 @@ async fn admin_paths_refuse_members_without_manage_server() {
         for (label, options) in &rows {
             let name = label.split(' ').next().expect("a command name");
             let reply = sim.command_resolved(member, name, options.clone(), known.clone()).await;
-            if let Some((group_name, action, arguments)) = command_tree::setup_options(label, options) {
+            if let Some((root, group_name, action, arguments)) = command_tree::setup_options(label, options) {
                 let canonical = sim
                     .command_resolved(
                         member,
-                        "setup",
+                        &root,
                         json!([group(&group_name, sub(&action, arguments))]),
                         known.clone(),
                     )
@@ -13589,7 +13589,7 @@ async fn staked_derbies_need_the_gambling_switch_and_stop_at_the_daily_loss_limi
     assert!(
         refused.ephemeral
             && refused.content().contains("**off**")
-            && refused.content().contains("/setup economy gambling")
+            && refused.content().contains("/progression economy gambling")
             && refused.files.is_empty(),
         "{}",
         refused.content()
@@ -13994,7 +13994,7 @@ async fn turkish_server(sim: &Sim) {
         .expect("set the server's language");
 }
 
-/// `/setup economy gambling enabled:<on>` as a manager.
+/// `/progression economy gambling enabled:<on>` as a manager.
 async fn gambling(sim: &mut Sim, manager: u64, on: bool) -> Reply {
     sim.permissions = MANAGE_GUILD;
     let reply = sim
@@ -14921,7 +14921,7 @@ async fn module_off_refuses_commands_and_xp() {
     modules(&mut sim, manager, toggle("gambling", true), &[]).await;
     assert!(
         sim.app.db.gambling_enabled(sim.guild).await.unwrap(),
-        "the module is the /setup economy gambling switch"
+        "the module is the /progression economy gambling switch"
     );
 
     // Chat XP and points stop in the channels leveling and points are off in; the rest earns.

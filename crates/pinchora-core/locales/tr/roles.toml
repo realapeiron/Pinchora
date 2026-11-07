@@ -1,11 +1,11 @@
-# /setup leveling and /setup roles.
+# /progression leveling and /setup roles.
 
 [level-roles]
-full = "Bir sunucuda en fazla {max} seviye rolü olabilir. Önce `/setup leveling roles-remove` ile birini kaldır."
-added = "**{level}.** seviyeye ulaşan üyeler artık {role} rolünü alacak. Zaten o seviyede olanlara vermek için `/setup leveling roles-sync` çalıştır."
+full = "Bir sunucuda en fazla {max} seviye rolü olabilir. Önce `/progression leveling roles-remove` ile birini kaldır."
+added = "**{level}.** seviyeye ulaşan üyeler artık {role} rolünü alacak. Zaten o seviyede olanlara vermek için `/progression leveling roles-sync` çalıştır."
 removed = "{role} artık bir seviye rolü değil. Üyeler zaten sahip oldukları rolü korur."
 not-one = "{role} bir seviye rolü değil."
-empty = "Henüz seviye rolü yok. `/setup leveling roles-add` ile bir tane ekle."
+empty = "Henüz seviye rolü yok. `/progression leveling roles-add` ile bir tane ekle."
 row = "**{level}.** seviye · {role}"
 title = "Seviye rolleri"
 footer = "{count}/{max} · {mode}"

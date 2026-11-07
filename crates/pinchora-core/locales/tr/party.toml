@@ -81,7 +81,7 @@ kept-changing = "Oyun sürekli değişti. Birazdan tekrar durdurmayı dene!"
 
 [party.filter]
 strict = "**sıkı** · hafif sözler ve lakap takmalar da engelli"
-normal = "**normal** · ağır sözler ve hakaretler engelli · `/setup economy partygames strict:true` daha fazlasını engeller"
+normal = "**normal** · ağır sözler ve hakaretler engelli · `/progression economy partygames strict:true` daha fazlasını engeller"
 says = "Parti oyunları filtresi: {summary}"
 
 [party.refused]
@@ -90,7 +90,7 @@ profane = "Ortamı güzel tutalım: yazdığında bu masanın kabul etmediği bi
 
 [party.gambling]
 denied = "Şans oyunu tarzı oyunları yalnızca Sunucuyu Yönet yetkisi olanlar açıp kapatabilir."
-on = "🎲 Şans oyunu tarzı oyunlar **açık**. Üyeler masada `/play shells` ile, yengeçlere de `/play derby bet` ile kabuk yatırabilir; oynama, kazanma ve kaybetmede günlük sınırlar var. Tekrar kapatmak için `/setup economy gambling enabled:false` kullan."
+on = "🎲 Şans oyunu tarzı oyunlar **açık**. Üyeler masada `/play shells` ile, yengeçlere de `/play derby bet` ile kabuk yatırabilir; oynama, kazanma ve kaybetmede günlük sınırlar var. Tekrar kapatmak için `/progression economy gambling enabled:false` kullan."
 off = "🎲 Şans oyunu tarzı oyunlar **kapalı**. Burada kimse şans oyunlarına kabuk yatıramaz."
 
 [party.vote]

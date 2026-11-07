@@ -1,4 +1,4 @@
-# Geçici ses: /voice, odadaki düğme paneli ve /setup utility.
+# Geçici ses: /voice, odadaki düğme paneli ve /community utility.
 
 [module]
 temp_voice = "Geçici ses"
@@ -97,7 +97,7 @@ full = "Bir sunucuda en fazla {count} oluşturucu olabilir. Önce birini kaldır
 taken = "{channel} oluşturucu olamaz."
 removed = "{channel} artık oluşturucu değil. Açtığı odalar boşalana kadar durur."
 unknown = "{channel} bir oluşturucu değil."
-none = "Henüz oluşturucu yok. `/setup utility voice-add` ile bir tane yap."
+none = "Henüz oluşturucu yok. `/community utility voice-add` ile bir tane yap."
 head = "**Oluşturucular** ({count}/{max})"
 line = "{channel} · {template} · {limit} · {rooms} · {state}"
 rooms-now = { other = "{count} oda açık" }

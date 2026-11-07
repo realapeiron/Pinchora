@@ -406,7 +406,7 @@ function PanelEditor({
                   label="Name"
                   htmlFor={`${base}-name`}
                   error={errors.name}
-                  hint="How /setup tickets and this page find it. Members never see it."
+                  hint="How /community tickets and this page find it. Members never see it."
                 >
                   <input
                     id={`${base}-name`}

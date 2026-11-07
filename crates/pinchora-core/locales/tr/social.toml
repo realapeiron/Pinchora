@@ -118,11 +118,11 @@ earned = "🏅 {user}, {role} rolünü kazandı!"
 cooldown = "İtibarı yeniden {when} verebilirsin."
 
 [rep-roles]
-full = "Bir sunucuda en fazla {max} itibar rolü olabilir. Önce `/setup economy rep-roles-remove` ile birini kaldır."
+full = "Bir sunucuda en fazla {max} itibar rolü olabilir. Önce `/progression economy rep-roles-remove` ile birini kaldır."
 added = "**{reputation}** itibara ulaşan üyeler artık puanı aldıkları anda {role} rolünü kazanacak."
 removed = "{role} artık bir itibar rolü değil. Üyeler zaten sahip oldukları rolü korur."
 not-one = "{role} bir itibar rolü değil."
-empty = "Henüz itibar rolü yok. `/setup economy rep-roles-add` ile bir tane ekle."
+empty = "Henüz itibar rolü yok. `/progression economy rep-roles-add` ile bir tane ekle."
 row = "**{reputation}** itibar · {role}"
 title = "İtibar rolleri"
 footer = "{count}/{max} · üyeler kazandıkları her rolü korur"

@@ -188,7 +188,7 @@ ban-for = "{duration} yasak"
 ban = "kalıcı yasak"
 kick = "atma"
 
-# /setup moderation settings, /setup moderation warn-ladder and /setup moderation log-ignore.
+# /safety moderation settings, /safety moderation warn-ladder and /safety moderation log-ignore.
 [mod.setup]
 field = "Moderasyon"
 channel-or-off = "Ya bir kanal seç ya da `off`, ikisini birden değil."
