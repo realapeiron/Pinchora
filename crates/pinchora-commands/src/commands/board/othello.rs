@@ -12,7 +12,7 @@ use chrono::{Duration, Utc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GameSession;
 use pinchora_game::play::{Game as Play, quick::Othello};
-use pinchora_render::{QuickCard, Theme};
+use pinchora_render::{QuickCard, QuickDetails, QuickKind, Theme};
 use serde::{Deserialize, Serialize};
 use std::str::Split;
 use twilight_model::{
@@ -30,6 +30,8 @@ struct State {
     game: Othello,
     plies: usize,
     nonce: u64,
+    #[serde(default)]
+    display_last: Option<usize>,
 }
 impl State {
     fn mover(&self) -> usize {
@@ -46,6 +48,7 @@ pub(crate) fn initial_fields() -> String {
         game: Othello::new(),
         plies: 0,
         nonce: rand::random(),
+        display_last: None,
     })
     .expect("othello state")
 }
@@ -79,13 +82,19 @@ async fn view(
         })
         .collect();
     let title = Play::Othello.name(lang);
-    let subtitle = format!(
-        "{} O {}  ·  {} X {}",
-        names[s.pearl],
-        s.game.score(1),
-        names[1 - s.pearl],
-        s.game.score(2)
-    );
+    let subtitle = t!(lang, "othello.hint");
+    let card_names = [names[s.pearl].clone(), names[1 - s.pearl].clone()];
+    let turn = (!ended).then_some(s.game.turn - 1);
+    let winner = if ended {
+        match s.game.score(1).cmp(&s.game.score(2)) {
+            std::cmp::Ordering::Greater => Some(0),
+            std::cmp::Ordering::Less => Some(1),
+            std::cmp::Ordering::Equal => None,
+        }
+    } else {
+        None
+    };
+    let last = s.display_last;
     let status = if ended {
         t!(lang, "othello.finished")
     } else {
@@ -94,6 +103,15 @@ async fn view(
     let png = app
         .render(move |r| {
             r.quick_card(&QuickCard {
+                kind: QuickKind::Othello,
+                details: QuickDetails {
+                    names: [&card_names[0], &card_names[1]],
+                    turn,
+                    winner,
+                    last,
+                    finished: ended,
+                    ..Default::default()
+                },
                 lang,
                 title: &title,
                 subtitle: &subtitle,
@@ -255,6 +273,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
     if !s.game.play(cell) {
         return cx.reply_ephemeral(t!(cx.lang(), "board.illegal")).await;
     }
+    s.display_last = Some(cell);
     s.plies += 1;
     s.nonce = rand::random();
     let done = s.game.over();

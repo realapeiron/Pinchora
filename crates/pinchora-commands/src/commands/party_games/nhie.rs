@@ -8,7 +8,7 @@ use crate::{
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, NewParty, PartyGame, PollChoice};
 use pinchora_game::{party::Party, play::Game};
-use pinchora_render::{QuickCard, Theme};
+use pinchora_render::{QuickCard, QuickDetails, QuickKind, Theme};
 use serde::{Deserialize, Serialize};
 use std::{str::Split, sync::Arc, time::Duration};
 use twilight_model::{channel::message::component::ButtonStyle, http::interaction::InteractionResponseData};
@@ -113,6 +113,11 @@ async fn view(app: &App, game: &PartyGame, counts: Option<(i64, i64)>) -> anyhow
     let png = app
         .render(move |r| {
             r.quick_card(&QuickCard {
+                kind: QuickKind::Nhie,
+                details: QuickDetails {
+                    finished: counts.is_some(),
+                    ..Default::default()
+                },
                 lang,
                 title: &title,
                 subtitle: &subtitle,

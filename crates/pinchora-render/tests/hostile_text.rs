@@ -942,6 +942,8 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "quick",
         r.quick_card(&QuickCard {
+            kind: pinchora_render::QuickKind::Typing,
+            details: Default::default(),
             lang: pinchora_core::i18n::Lang::Tr,
             title: HOSTILE,
             subtitle: HOSTILE,

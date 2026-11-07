@@ -6,7 +6,7 @@ use crate::{
 };
 use pinchora_core::t;
 use pinchora_game::play::Game;
-use pinchora_render::{QuickCard, Theme};
+use pinchora_render::{QuickCard, QuickDetails, QuickKind, Theme};
 use twilight_model::channel::message::AllowedMentions;
 use twilight_util::builder::embed::EmbedBuilder;
 
@@ -72,11 +72,21 @@ pub(crate) async fn run(
             format!("{} / {n}", rand::random_range(1..=n))
         }
     };
+    let card_kind = match mode {
+        super::FunMode::Conch => QuickKind::Conch,
+        super::FunMode::Choose => QuickKind::Choose,
+        super::FunMode::Roll => QuickKind::Roll,
+    };
     let status = t!(lang, "fun.result");
     let png = cx
         .app
         .render(move |r| {
             r.quick_card(&QuickCard {
+                kind: card_kind,
+                details: QuickDetails {
+                    finished: true,
+                    ..Default::default()
+                },
                 lang,
                 title: &title,
                 subtitle: &subtitle,

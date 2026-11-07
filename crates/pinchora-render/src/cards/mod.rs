@@ -66,7 +66,7 @@ pub use pet::{PetCard, PetStatus};
 pub use picross::{PicrossCard, Reveal};
 pub use poll::{PollCard, PollOption};
 pub use profile::ProfileCard;
-pub use quick::QuickCard;
+pub use quick::{QuickCard, QuickDetails, QuickHeat, QuickKind};
 pub use rank::{NextRole, RankCard};
 pub use showcase::{ShowcaseKind, ShowcaseSlot};
 pub use tide2048::Tide2048Card;

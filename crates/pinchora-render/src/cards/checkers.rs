@@ -12,7 +12,7 @@ const PEARL_SIZE: usize = 14;
 
 /// A round pearl as `x` outline, `#` body, `o` shine and `s` shade, worked out from a circle so it is
 /// the same on every side.
-fn pearl() -> Vec<String> {
+pub(super) fn pearl() -> Vec<String> {
     let centre = (PEARL_SIZE as f32 - 1.0) / 2.0;
     let radius = PEARL_SIZE as f32 / 2.0;
     let inside = |r: isize, c: isize| {
@@ -51,7 +51,7 @@ fn pearl() -> Vec<String> {
 /// A king's crown: `y` gold, `x` its shadow.
 const CROWN: [&str; 3] = ["y..y..y", "yyyyyyy", "yyyyyyy"];
 
-fn pearl_color(c: char, (body, light, shade): (&str, &str, &str)) -> Option<String> {
+pub(super) fn pearl_color(c: char, (body, light, shade): (&str, &str, &str)) -> Option<String> {
     match c {
         'x' => Some(OUTLINE.to_owned()),
         '#' => Some(body.to_owned()),

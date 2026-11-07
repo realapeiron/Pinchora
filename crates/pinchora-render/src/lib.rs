@@ -19,7 +19,6 @@ use std::sync::{Arc, LazyLock};
 use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
-pub use cards::QuickCard;
 pub use cards::stats::{HEAT, HEAT_EMPTY, SERIES, StatFlows, StatHeat, StatList, StatRow, StatTile, StatsCard};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BirthdayCard, CORRECT, CharacterCard,
@@ -43,6 +42,7 @@ pub use cards::{
 };
 pub use cards::{HelpCard, HelpRow};
 pub use cards::{IDLE_KEY, WRONG_LETTER};
+pub use cards::{QuickCard, QuickDetails, QuickHeat, QuickKind};
 pub use derby::{DerbyScene, LANES as DERBY_LANES, derby_gif, derby_still, tint_crab};
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};

@@ -10,7 +10,7 @@ use pinchora_game::play::{
     Game, PlayContent,
     quick::{self as rules, Memory, Mines},
 };
-use pinchora_render::{QuickCard, Theme};
+use pinchora_render::{QuickCard, QuickDetails, QuickHeat, QuickKind, Theme};
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::str::Split;
@@ -94,6 +94,11 @@ struct State {
     nonce: u64,
     payload: Payload,
     note: String,
+    /// Card-only metadata; defaults preserve sessions created before illustrated cards.
+    #[serde(default)]
+    display_last: Option<usize>,
+    #[serde(default)]
+    display_wpm: Option<u32>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 enum Payload {
@@ -175,6 +180,8 @@ fn new_state(app: &App, kind: Kind, lang: Lang, size: usize) -> State {
         nonce: rand::random(),
         payload,
         note: String::new(),
+        display_last: None,
+        display_wpm: None,
     }
 }
 
@@ -289,14 +296,73 @@ async fn view(app: &App, kind: Kind, game: &SoloGame) -> anyhow::Result<Interact
             false,
         ),
         Payload::Typing { sentence } => (vec![], 0, sentence.clone(), t!(lang, "quick.type-status"), true),
-        Payload::GuessNumber { tries, .. } => {
-            (vec![], 0, "?".to_owned(), t!(lang, "quick.tries", tries = tries), false)
-        }
+        Payload::GuessNumber { tries, last, .. } => (
+            vec![],
+            0,
+            last.map_or_else(|| "?".to_owned(), |n| n.to_string()),
+            t!(lang, "quick.tries", tries = tries),
+            false,
+        ),
     };
     let subtitle = t!(lang, "quick.subtitle");
+    let card_kind = match kind {
+        Kind::Memory => QuickKind::Memory,
+        Kind::Mines => QuickKind::Minesweeper,
+        Kind::HigherLower => QuickKind::HigherLower,
+        Kind::Anagram => QuickKind::Anagram,
+        Kind::Typing => QuickKind::Typing,
+        Kind::GuessNumber => QuickKind::GuessNumber,
+    };
+    let matched: Vec<usize> = match &s.payload {
+        Payload::Memory(m) => m
+            .shown
+            .iter()
+            .enumerate()
+            .filter_map(|(i, shown)| shown.then_some(i))
+            .collect(),
+        _ => Vec::new(),
+    };
+    let last = match &s.payload {
+        Payload::Memory(m) => m.first.or_else(|| m.last.map(|(_, b)| b)),
+        _ => s.display_last,
+    };
+    let heat = match &s.payload {
+        Payload::GuessNumber {
+            answer, last: Some(n), ..
+        } => Some(if answer == n {
+            QuickHeat::Found
+        } else {
+            match rules::temperature(*answer, *n) {
+                rules::Temperature::Cold => QuickHeat::Cold,
+                rules::Temperature::Warm => QuickHeat::Warm,
+                rules::Temperature::Hot => QuickHeat::Hot,
+            }
+        }),
+        _ => None,
+    };
+    let progress = match &s.payload {
+        Payload::HigherLower { streak, .. } => *streak,
+        _ => 0,
+    };
+    let wpm = s.display_wpm;
+    let status = if over {
+        t!(lang, "quick.finished", note = s.note)
+    } else {
+        status
+    };
     let png = app
         .render(move |r| {
             r.quick_card(&QuickCard {
+                kind: card_kind,
+                details: QuickDetails {
+                    last,
+                    matched: &matched,
+                    finished: over,
+                    heat,
+                    progress,
+                    wpm,
+                    ..Default::default()
+                },
                 lang,
                 title: &title,
                 subtitle: &subtitle,
@@ -536,6 +602,7 @@ async fn step(cx: &Cx, kind: Kind, game: SoloGame, mut s: State, action: &str) -
                         return cx.reply_ephemeral(t!(s.lang, "quick.invalid")).await;
                     }
                 }
+                s.display_last = Some(cell);
                 won = m.won();
                 over = won || m.lost;
             }
@@ -569,6 +636,7 @@ async fn step(cx: &Cx, kind: Kind, game: SoloGame, mut s: State, action: &str) -
             let (correct, wpm) = rules::typing_score(sentence, action, elapsed);
             won = correct;
             over = true;
+            s.display_wpm = Some(wpm.max(0) as u32);
             s.note = t!(s.lang, "quick.wpm", wpm = wpm);
         }
         Payload::GuessNumber { answer, tries, last } => {
