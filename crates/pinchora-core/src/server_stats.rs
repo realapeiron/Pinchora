@@ -190,18 +190,46 @@ pub fn check_template(raw: &str) -> Result<String, FieldError> {
 
 /// `n` with a comma between thousands, the way counter channels show it.
 pub fn grouped(n: i64) -> String {
+    grouped_in(Lang::En, n)
+}
+
+/// Grouping separator used in messages and cards for `lang`.
+pub fn grouped_in(lang: Lang, n: i64) -> String {
     let digits = n.unsigned_abs().to_string();
-    let mut out = String::with_capacity(digits.len() + digits.len() / 3 + 1);
-    if n < 0 {
-        out.push('-');
-    }
+    let sign = if n < 0 { "-" } else { "" };
+    format!("{sign}{}", grouped_digits(lang, &digits))
+}
+
+fn grouped_digits(lang: Lang, digits: &str) -> String {
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
     for (i, c) in digits.chars().enumerate() {
         if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
+            out.push(if lang == Lang::Tr { '.' } else { ',' });
         }
         out.push(c);
     }
     out
+}
+
+/// Fixed precision decimal in the language's notation.
+pub fn decimal_in(lang: Lang, value: impl Into<f64>, places: usize) -> String {
+    let value = value.into();
+    let formatted = format!("{value:.places$}");
+    if lang == Lang::En {
+        return formatted;
+    }
+    let (whole, fraction) = formatted
+        .split_once('.')
+        .map_or((formatted.as_str(), None), |(a, b)| (a, Some(b)));
+    let (sign, digits) = whole.strip_prefix('-').map_or(("", whole), |digits| ("-", digits));
+    if !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return formatted;
+    }
+    let grouped = grouped_digits(lang, digits);
+    match fraction {
+        Some(fraction) => format!("{sign}{grouped}{}{fraction}", if lang == Lang::Tr { ',' } else { '.' }),
+        None => format!("{sign}{grouped}"),
+    }
 }
 
 /// The name a counter channel gets: the template with the number in it, cut to Discord's 100 characters.
@@ -447,7 +475,7 @@ pub fn minutes_text(minutes: i64, lang: Lang) -> String {
             hours = minutes / 60,
             minutes = minutes % 60
         ),
-        _ => t!(lang, "stats.duration.hours", hours = grouped(minutes / 60)),
+        _ => t!(lang, "stats.duration.hours", hours = grouped_in(lang, minutes / 60)),
     }
 }
 
@@ -632,6 +660,11 @@ mod tests {
         assert_eq!(grouped(999), "999");
         assert_eq!(grouped(1_000), "1,000");
         assert_eq!(grouped(1_234_567), "1,234,567");
+        assert_eq!(grouped_in(Lang::Tr, 1_234_567), "1.234.567");
+        assert_eq!(decimal_in(Lang::Tr, 12.5, 1), "12,5");
+        assert_eq!(decimal_in(Lang::Tr, 1_234.5, 1), "1.234,5");
+        assert_eq!(decimal_in(Lang::En, 1_234.5, 1), "1234.5");
+        assert_eq!(decimal_in(Lang::Tr, -1_234.5, 1), "-1.234,5");
         assert_eq!(minutes_text(45, Lang::En), "45m");
         assert_eq!(minutes_text(200, Lang::En), "3h 20m");
         assert_eq!(minutes_text(120, Lang::En), "2h");

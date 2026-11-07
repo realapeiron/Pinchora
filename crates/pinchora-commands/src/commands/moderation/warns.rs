@@ -49,7 +49,7 @@ impl Warn {
         let reason = match check_reason(Some(&self.reason)) {
             Ok(Some(reason)) => reason,
             Ok(None) => return cx.reply_ephemeral(t!(lang, "mod.warn-why")).await,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         if self.user.member.is_none() {
             return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
@@ -241,7 +241,7 @@ impl Unwarn {
         };
         let reason = match check_reason(self.reason.as_deref()) {
             Ok(reason) => reason,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         let moderator = Moderator::of(cx)?;
         let number = self.case.clamp(1, i64::from(i32::MAX)) as i32;

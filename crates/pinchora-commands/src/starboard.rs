@@ -7,7 +7,7 @@ use std::{
 
 use tokio::sync::Semaphore;
 
-use pinchora_core::{modules::Module, t};
+use pinchora_core::{modules::Module, server_stats::grouped_in, t};
 use pinchora_db::{StarPost, Starboard};
 use twilight_http::request::channel::reaction::RequestReactionType;
 use twilight_model::{
@@ -402,7 +402,7 @@ async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Opti
     let heading = t!(
         lang,
         "starboard.post.heading",
-        count = post.star_count,
+        count = grouped_in(lang, i64::from(post.star_count)),
         channel = format!("<#{}>", post.channel_id)
     );
     let mut embed = EmbedBuilder::new()

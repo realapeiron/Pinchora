@@ -732,7 +732,7 @@ async fn reminders_go_out_once_and_survive_a_crash() {
     let past = now - Duration::minutes(5);
 
     let first = db
-        .add_text_reminder(user, "tea", past)
+        .add_text_reminder_in(user, "tea", "tr", past)
         .await
         .unwrap()
         .expect("room for one");
@@ -748,7 +748,9 @@ async fn reminders_go_out_once_and_survive_a_crash() {
     db.schedule_reminder(user, "daily", 0, "daily is ready", past + Duration::seconds(1))
         .await
         .unwrap();
-    assert_eq!(db.text_reminders(user).await.unwrap().len(), 2);
+    let texts = db.text_reminders(user).await.unwrap();
+    assert_eq!(texts.len(), 2);
+    assert_eq!(texts[0].language, "tr");
 
     // Pods that ask at the same moment never get the same reminder.
     let mine = |rows: Vec<pinchora_db::ReminderRow>| {

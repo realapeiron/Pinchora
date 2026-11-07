@@ -84,16 +84,16 @@
   "description": "100 itibar puanına ulaş."
  },
  "shell_collector": {
-  "name": "Deniz Kabuğu Toplayıcısı",
-  "description": "Elinde 5.000 deniz kabuğu bulundur."
+  "name": "Kabuk Toplayıcısı",
+  "description": "Elinde 5.000 kabuk bulundur."
  },
  "shell_tycoon": {
-  "name": "Deniz Kabuğu Patronu",
-  "description": "Elinde 50.000 deniz kabuğu bulundur."
+  "name": "Kabuk Patronu",
+  "description": "Elinde 50.000 kabuk bulundur."
  },
  "pearl_baron": {
   "name": "İnci Baronu",
-  "description": "Elinde 500.000 deniz kabuğu bulundur."
+  "description": "Elinde 500.000 kabuk bulundur."
  },
  "capn_crab": {
   "name": "Kaptan Yengeç",

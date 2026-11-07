@@ -20,7 +20,7 @@ use super::{
 };
 use crate::{
     App, Cx,
-    util::{mention, relative, resolved_display_name, thousands},
+    util::{mention, relative, resolved_display_name, thousands_in},
 };
 
 /// Shells for a win; paid at most once per pair of players per hour.
@@ -457,8 +457,8 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
                 .reply_ephemeral(t!(
                     lang,
                     "duel.cant-wager",
-                    balance = thousands(balance),
-                    bet = thousands(bet)
+                    balance = thousands_in(lang, balance),
+                    bet = thousands_in(lang, bet)
                 ))
                 .await;
         }
@@ -504,15 +504,20 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
         (Kind::ShareGrab, true) => t!(
             board_lang,
             "duel.wager-share",
-            stake = thousands(bet),
-            pot = thousands(bet * 2)
+            stake = thousands_in(lang, bet),
+            pot = thousands_in(lang, bet * 2)
         ),
         (Kind::ShareGrab, false) => t!(
             board_lang,
             "duel.wager-share-free",
             pool = pinchora_game::party::share::POOL
         ),
-        (_, true) => t!(board_lang, "duel.wager", bet = thousands(bet), pot = thousands(bet * 2)),
+        (_, true) => t!(
+            board_lang,
+            "duel.wager",
+            bet = thousands_in(lang, bet),
+            pot = thousands_in(lang, bet * 2)
+        ),
         (_, false) => t!(board_lang, "duel.no-wager"),
     };
     let prefix = kind.prefix();
@@ -640,15 +645,15 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
                 t!(
                     lang,
                     "duel.broke-self",
-                    balance = thousands(balance),
-                    bet = thousands(session.bet)
+                    balance = thousands_in(lang, balance),
+                    bet = thousands_in(lang, session.bet)
                 )
             } else {
                 t!(
                     lang,
                     "duel.broke-other",
                     user = mention(user),
-                    bet = thousands(session.bet)
+                    bet = thousands_in(lang, session.bet)
                 )
             };
             cx.reply_ephemeral(text).await
@@ -764,7 +769,7 @@ pub(crate) fn timeout_text(session: &GameSession, lang: Lang) -> String {
             "duel.timeout-forfeit",
             who = who,
             winner = mention(other),
-            pot = thousands(session.bet * 2)
+            pot = thousands_in(lang, session.bet * 2)
         );
     }
     if session.bet > 0 {

@@ -18,7 +18,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use crate::{
     App, Cx,
     game::scene::slot_sprite,
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 const PER_PAGE: usize = 8;
@@ -216,6 +216,7 @@ pub(crate) async fn grid_png(
             })
             .collect();
         r.item_grid(&ItemGridCard {
+            lang,
             title,
             subtitle,
             slots,
@@ -240,16 +241,16 @@ fn fit_badge(mut text: String) -> String {
 /// A price as the cards draw it: shells are a bare number next to the shell icon.
 fn price_label(lang: Lang, price: i64, currency: Currency) -> String {
     match currency {
-        Currency::Shells => thousands(price),
-        Currency::Pearls => t!(lang, "shop.price-pearls", price = thousands(price)),
+        Currency::Shells => thousands_in(lang, price),
+        Currency::Pearls => t!(lang, "shop.price-pearls", price = thousands_in(lang, price)),
     }
 }
 
 /// A price as a menu description writes it.
 fn option_price(lang: Lang, price: i64, currency: Currency) -> String {
     match currency {
-        Currency::Shells => t!(lang, "shop.option-price-shells", price = thousands(price)),
-        Currency::Pearls => t!(lang, "shop.option-price-pearls", price = thousands(price)),
+        Currency::Shells => t!(lang, "shop.option-price-shells", price = thousands_in(lang, price)),
+        Currency::Pearls => t!(lang, "shop.option-price-pearls", price = thousands_in(lang, price)),
     }
 }
 
@@ -271,7 +272,7 @@ async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionRespons
             let left = (r.stock - r.sold).max(0);
             SlotSpec {
                 item_id: r.item_id.clone(),
-                line1: thousands(r.price),
+                line1: thousands_in(lang, r.price),
                 line2: if left == 0 {
                     t!(lang, "shop.sold-out-line")
                 } else {
@@ -293,7 +294,7 @@ async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionRespons
                 description: Some(t!(
                     lang,
                     "shop.market-option",
-                    price = thousands(r.price),
+                    price = thousands_in(lang, r.price),
                     rarity = item.base.rarity.label_in(lang),
                     left = r.stock - r.sold
                 )),
@@ -495,17 +496,17 @@ fn buy_text(lang: Lang, outcome: BuyOutcome, name: &str, price: i64, currency: C
             lang,
             "shop.bought",
             name = name,
-            price = thousands(price),
+            price = thousands_in(lang, price),
             unit = unit,
-            balance = thousands(balance)
+            balance = thousands_in(lang, balance)
         ),
         BuyOutcome::Insufficient { balance } => t!(
             lang,
             "shop.insufficient",
             name = name,
-            price = thousands(price),
+            price = thousands_in(lang, price),
             unit = unit,
-            balance = thousands(balance)
+            balance = thousands_in(lang, balance)
         ),
         BuyOutcome::SoldOut => t!(lang, "shop.sold-out", name = name),
     }

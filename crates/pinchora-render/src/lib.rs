@@ -44,7 +44,7 @@ pub use cards::{IDLE_KEY, WRONG_LETTER};
 pub use derby::{DerbyScene, LANES as DERBY_LANES, derby_gif, derby_still, tint_crab};
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
-pub use svg::{compact, thousands};
+pub use svg::{compact, compact_in, thousands, thousands_in};
 pub use theme::Theme;
 
 /// The font files the cards are drawn in, by file name; the web dashboard serves the same ones.

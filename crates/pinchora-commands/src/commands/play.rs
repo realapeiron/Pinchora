@@ -12,7 +12,7 @@ use super::{
 };
 use crate::{
     Cx,
-    util::{BRAND, resolved_display_name, thousands},
+    util::{BRAND, resolved_display_name, thousands_in},
 };
 
 /// How many fields Discord takes in one embed.
@@ -209,7 +209,7 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
                 played += r.played;
                 won += r.won;
                 let best = if game == Game::Tide2048 && r.best > 0 {
-                    t!(lang, "play.stats.best", score = thousands(i64::from(r.best)))
+                    t!(lang, "play.stats.best", score = thousands_in(lang, i64::from(r.best)))
                 } else {
                     String::new()
                 };

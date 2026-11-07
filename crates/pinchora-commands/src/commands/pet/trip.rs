@@ -26,7 +26,7 @@ use super::{
 use crate::{
     App, Cx,
     commands::customize,
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 // /Commands
@@ -439,7 +439,7 @@ impl Souvenir {
             name = name,
             trip = content.name(&self.trip.id, lang),
             story = self.haul.story,
-            shells = thousands(self.haul.shells)
+            shells = thousands_in(lang, self.haul.shells)
         );
         if self.haul.xp > 0 && before < pets::MAX_LEVEL {
             note.push_str(&t!(lang, "trip.home-xp", xp = self.haul.xp));
@@ -551,8 +551,8 @@ async fn claim_command(cx: &Cx, user: u64) -> anyhow::Result<()> {
                     .description(t!(
                         lang,
                         "trip.many-total",
-                        total = thousands(total),
-                        balance = thousands(balance)
+                        total = thousands_in(lang, total),
+                        balance = thousands_in(lang, balance)
                     ))
                     .build(),
             )

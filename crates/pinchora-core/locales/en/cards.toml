@@ -23,6 +23,10 @@ monthly = "MONTHLY"
 help-title = "PINCHORA HELP"
 page = "PAGE {page}/{pages}"
 needs-manage-server = "NEEDS MANAGE SERVER"
+badge-new = "NEW"
+
+[card.grid]
+empty = "NOTHING HERE YET"
 
 [card.days]
 one = "{count} DAY"

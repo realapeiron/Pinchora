@@ -208,3 +208,53 @@ async fn vote_thread_flood_obeys_channel_budget() {
     tokio::time::sleep(std::time::Duration::from_millis(700)).await;
     assert!(threads.load(std::sync::atomic::Ordering::SeqCst) <= 1);
 }
+
+#[tokio::test]
+async fn starboard_rankings_use_the_players_number_format() {
+    let Some(mut sim) = Sim::new("starboard_rankings_use_the_players_number_format").await else {
+        return;
+    };
+    let admin = unique();
+    let channel = unique();
+    sim.permissions = MANAGE_GUILD;
+    sim.command_resolved(
+        admin,
+        "starboard",
+        json!([sub(
+            "setup",
+            vec![text_option("name", "Yıldızlar"), channel_option("channel", channel)]
+        )]),
+        resolved_channels(&[channel]),
+    )
+    .await;
+    let board = sim.app.db.starboards(sim.guild).await.unwrap().remove(0);
+    let message = unique();
+    sim.app
+        .db
+        .star_change(board.id, message, CHANNEL_ID, admin, unique(), Some(1))
+        .await
+        .unwrap();
+    sqlx::query("UPDATE starboard_posts SET star_count=1234 WHERE starboard_id=$1 AND message_id=$2")
+        .bind(board.id)
+        .bind(message as i64)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    for (locale, count, title) in [
+        ("tr", "1.234", "En çok yıldız alanlar"),
+        ("en-US", "1,234", "Top posts"),
+    ] {
+        sim.locale = locale;
+        let top = sim.command(admin, "starboard", json!([sub("top", vec![])])).await;
+        assert!(top.title().starts_with(title), "{}", top.title());
+        assert!(
+            top.description().contains(&format!("⭐ {count} ·")),
+            "{}",
+            top.description()
+        );
+        assert!(
+            top.description().contains(&format!("/{message}")),
+            "message IDs stay literal"
+        );
+    }
+}

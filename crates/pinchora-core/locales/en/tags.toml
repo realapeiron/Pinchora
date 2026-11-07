@@ -23,6 +23,7 @@ roles-no = "Your roles don't allow that command."
 role-needed = "That command is for members with a particular role."
 
 [customcommand]
+this-server = "this server"
 guild-only = "Custom commands live in servers."
 needs-manage = "You need the Manage Server permission to manage custom commands."
 none = "There is no custom command called `{name}`. See them with `/customcommand list`."

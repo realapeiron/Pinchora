@@ -10,7 +10,8 @@ use super::{
 use crate::{
     Theme,
     svg::{
-        SHELL, background, background_plain, compact, escape, mix, notched_path, panel, sprite, truncate, truncate_to,
+        SHELL, background, background_plain, compact_in, escape, mix, notched_path, panel, sprite, truncate,
+        truncate_to,
     },
 };
 
@@ -261,7 +262,14 @@ impl RadarCard<'_> {
         panel(&mut s, 24.0, 470.0, w - 48.0, 56.0, 4.0, &t.panel, &t.panel_edge);
         // The pot sits at the right; the words get what is left of the panel.
         let max = if self.pot > 0 { 654.0 } else { 748.0 };
-        fitted_pixel_text(&mut s, (44.0, 505.0), max, &t.ink, "start", &self.status.to_uppercase());
+        fitted_pixel_text(
+            &mut s,
+            (44.0, 505.0),
+            max,
+            &t.ink,
+            "start",
+            &self.lang.upper(self.status),
+        );
         if self.pot > 0 {
             sprite(&mut s, SHELL, w - 126.0, 486.0, 3.0, &t.gold, "#ffffff");
             text(
@@ -273,7 +281,7 @@ impl RadarCard<'_> {
                 false,
                 &t.gold,
                 "end",
-                &compact(self.pot),
+                &compact_in(self.lang, self.pot),
             );
         }
         s.push_str("</svg>");
@@ -318,7 +326,7 @@ impl FleetCard<'_> {
             false,
             &t.ink,
             "start",
-            &escape(&truncate(&self.title.to_uppercase(), 24)),
+            &escape(&truncate(&self.lang.upper(self.title), 24)),
         );
         text(
             &mut s,
@@ -329,7 +337,7 @@ impl FleetCard<'_> {
             false,
             &t.muted,
             "start",
-            &escape(&truncate(&self.subtitle.to_uppercase(), 48)),
+            &escape(&truncate(&self.lang.upper(self.subtitle), 48)),
         );
         sea(&mut s, t, 24.0, 80.0, &self.sea, self.last, &t.panel_edge);
         // The fleet list.
@@ -390,7 +398,7 @@ impl FleetCard<'_> {
             false,
             &t.muted,
             "middle",
-            &escape(&truncate(&self.footer.to_uppercase(), 60)),
+            &escape(&truncate(&self.lang.upper(self.footer), 60)),
         );
         s.push_str("</svg>");
         s

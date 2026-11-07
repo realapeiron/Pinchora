@@ -53,7 +53,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     assert_eq!(options[0].label, "Reedline Oltası");
     assert_eq!(
         options[0].description.as_deref(),
-        Some("800 kabuk · çekme süresi 2.8 sn · nadir balık şansı +6%")
+        Some("800 kabuk · çekme süresi 2,8 sn · nadir balık şansı +6%")
     );
     let worm = options.iter().find(|o| o.value == "b:glow_worm").expect("worms");
     assert_eq!(worm.label, "Işıklı Solucan (paket: 5)");
@@ -76,7 +76,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     );
     assert_eq!(shells(&sim, angler).await, 200);
     let poor = sim.pick(angler, &bought, "fx:p:", "r:tidecaller_rod").await;
-    assert_eq!(poor.description(), "**Tidecaller Oltası** 12,000 kabuk; sende 200 var.");
+    assert_eq!(poor.description(), "**Tidecaller Oltası** 12.000 kabuk; sende 200 var.");
     let again = sim
         .component(
             angler,
@@ -160,7 +160,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     assert_eq!(rod.description(), "**Reedline Oltası** takıldı.");
     assert!(
         rod.field("Olta")
-            .contains("çekme süresi 2.8 sn · nadir balık şansı +6%"),
+            .contains("çekme süresi 2,8 sn · nadir balık şansı +6%"),
         "{}",
         rod.field("Olta")
     );
@@ -244,7 +244,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     let rarity = lower(Lang::Tr, fish.rarity.label_in(Lang::Tr));
     assert_eq!(
         catch.title(),
-        format!("🆕 Bir {rarity} {name} yakaladın!"),
+        format!("🆕 Balık yakaladın: {rarity} bir {name}!"),
         "{}",
         catch.title()
     );
@@ -253,9 +253,10 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     let flavor = content.description(&fish.id, Lang::Tr).expect("a Turkish flavour");
     let value = pinchora_game::fishing::sale_value(fish, size);
     assert!(
-        catch
-            .description()
-            .starts_with(&format!("*{flavor}*\n**{size:.1} cm** · kovandaki değeri **")),
+        catch.description().starts_with(&format!(
+            "*{flavor}*\n**{} cm** · kovandaki değeri **",
+            pinchora_core::server_stats::decimal_in(Lang::Tr, size, 1)
+        )),
         "{}",
         catch.description()
     );
@@ -265,7 +266,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
         catch.description()
     );
     assert!(
-        footer(&catch).starts_with("Kıyı · Tepki 0.")
+        footer(&catch).starts_with("Kıyı · Tepki 0,")
             && footer(&catch).ends_with("sn · Balık defteri 1/72 · Kova 1/60"),
         "{}",
         footer(&catch)
@@ -342,7 +343,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     assert_eq!(
         all.embeds[2].description.as_deref(),
         Some(
-            "**+1,000 kabuk** ve **Brinebell Pazarı** profil arka planı kazandın! `/customize background` ile takabilirsin."
+            "**+1.000 kabuk** ve **Brinebell Pazarı** profil arka planı kazandın! `/customize background` ile takabilirsin."
         )
     );
 

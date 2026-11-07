@@ -21,6 +21,8 @@ message = "Message"
 attachments = "Attachments"
 locked = "Message text and attachments need the Message Content intent."
 [starboard.top]
+post-line = "{rank}. ⭐ {count} · {url}"
+stargazer-line = "{user} · {count}"
 title = "Top posts · {board}"
 empty = "No starred posts yet."
 stargazers = "Top stargazers"

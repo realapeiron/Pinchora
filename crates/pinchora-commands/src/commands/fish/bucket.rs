@@ -18,7 +18,7 @@ use super::art::{Art, Slot, grid_png};
 use crate::{
     App, Cx,
     commands::customize,
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 const PER_PAGE: usize = 8;
@@ -140,12 +140,12 @@ async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> any
                 hidden: false,
             },
             name: content.name(&g.fish.id, lang).into_owned(),
-            line1: thousands(g.value()),
+            line1: thousands_in(lang, g.value()),
             line2: t!(
                 lang,
                 "fish.bucket.slot",
                 fish = g.rows.len(),
-                size = format!("{:.1}", g.rows[0].size_cm)
+                size = pinchora_core::server_stats::decimal_in(lang, g.rows[0].size_cm, 1)
             ),
             bar: None,
             frame: g.fish.rarity.color(),
@@ -155,6 +155,7 @@ async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> any
         .collect();
     let png = grid_png(
         app,
+        lang,
         lang.upper(&t!(lang, "fish.bucket.title")),
         t!(
             lang,
@@ -164,7 +165,7 @@ async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> any
             page = page + 1,
             pages = pages
         ),
-        t!(lang, "fish.bucket.footer", shells = thousands(total(&all))),
+        t!(lang, "fish.bucket.footer", shells = thousands_in(lang, total(&all))),
         slots,
     )
     .await?;
@@ -212,7 +213,7 @@ async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> any
                     lang,
                     "fish.bucket.sell-all",
                     fish = all.len(),
-                    shells = thousands(total(&all))
+                    shells = thousands_in(lang, total(&all))
                 ),
                 ButtonStyle::Success,
                 all.is_empty(),
@@ -223,7 +224,7 @@ async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> any
                     lang,
                     "fish.bucket.sell-duplicates",
                     fish = duplicates.len(),
-                    shells = thousands(total(&duplicates))
+                    shells = thousands_in(lang, total(&duplicates))
                 ),
                 ButtonStyle::Primary,
                 duplicates.is_empty(),
@@ -272,8 +273,8 @@ pub(crate) async fn on_bucket(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
                     lang,
                     "fish.bucket.sold",
                     fish = sold.fish,
-                    shells = thousands(sold.shells),
-                    balance = thousands(sold.balance)
+                    shells = thousands_in(lang, sold.shells),
+                    balance = thousands_in(lang, sold.balance)
                 )
             };
             cx.update(panel(&cx.app, lang, user, 0, &note).await?).await?;

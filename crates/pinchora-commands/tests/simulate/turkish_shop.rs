@@ -374,7 +374,7 @@ async fn turkish_gifts_stalls_and_the_plaza() {
     let own = sim.pick(giver, &own_view, "sb:", &dear).await;
     assert!(own.content().contains("kendi ilanın"), "{}", own.content());
     let poor = sim.pick(buyer, &own_view, "sb:", &dear).await;
-    assert_eq!(poor.content(), "Fiyatı 5,000 kabuk; sende 800 var.");
+    assert_eq!(poor.content(), "Fiyatı 5.000 kabuk; sende 800 var.");
     let manage = sim.command(giver, "stall", json!([sub("manage", vec![])])).await;
     assert!(
         manage.content().starts_with("Envanterine geri almak"),
@@ -383,7 +383,7 @@ async fn turkish_gifts_stalls_and_the_plaza() {
     );
     assert_eq!(
         manage.options("su")[0].description.as_deref(),
-        Some("5,000 kabuğa satışta")
+        Some("5.000 kabuğa satışta")
     );
     let id = manage.options("su")[0].value.clone();
     let back = sim.pick(giver, &manage, "su", &id).await;
@@ -614,9 +614,10 @@ async fn turkish_quests_points_and_the_store() {
         .await;
     assert_eq!(list.title(), "İyilik mağazası");
     assert_eq!(footer(&list), "2/25 rol");
+    sim.app.set_guild_lang(sim.guild, Some(Lang::Tr)).await.unwrap();
     sim.permissions = 0;
     let store = sim.command(buyer, "store", json!([])).await;
-    assert_eq!(store.title(), "Sunucu mağazası");
+    assert_eq!(store.title(), "Puan mağazası");
     assert!(
         store
             .description()
@@ -666,8 +667,8 @@ async fn turkish_quests_points_and_the_store() {
         "{}",
         receipt.description()
     );
-    // The shared store message is nobody's in particular: it follows the server's language, English here.
-    assert!(bought.description().contains("sold out"), "{}", bought.description());
+    // The shared store message follows the server's language before and after a purchase.
+    assert!(bought.description().contains("tükendi"), "{}", bought.description());
     // Restocked, a member who already holds the role is turned away without paying.
     sim.permissions = MANAGE_GUILD;
     sim.command_resolved(admin, "config", sell(&vip, 20, Some(5)), resolved(&[], &[&vip]))

@@ -27,7 +27,7 @@ use super::{
 use crate::{
     App, Cx,
     server_events::{button, row},
-    util::{BRAND, DANGER, SUCCESS, mention, relative, thousands},
+    util::{BRAND, DANGER, SUCCESS, mention, relative, thousands_in},
 };
 
 /// What a game that has not been guessed yet shows, and what a finished one shows.
@@ -149,8 +149,8 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
                 .reply_ephemeral(t!(
                     lang,
                     "shells.broke",
-                    balance = thousands(balance),
-                    stake = thousands(stake)
+                    balance = thousands_in(lang, balance),
+                    stake = thousands_in(lang, stake)
                 ))
                 .await;
         }
@@ -161,20 +161,27 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
         }
         ShellStart::Down { net } => {
             return cx
-                .reply_ephemeral(t!(lang, "shells.down", limit = DAILY_LOSS_LIMIT, net = thousands(net)))
+                .reply_ephemeral(t!(
+                    lang,
+                    "shells.down",
+                    limit = DAILY_LOSS_LIMIT,
+                    net = thousands_in(lang, net)
+                ))
                 .await;
         }
         ShellStart::Up { net } => {
-            return cx.reply_ephemeral(t!(lang, "shells.up", net = thousands(net))).await;
+            return cx
+                .reply_ephemeral(t!(lang, "shells.up", net = thousands_in(lang, net)))
+                .await;
         }
     };
     let content = t!(
         board_lang,
         "shells.sits",
         player = mention(me),
-        stake = thousands(stake),
+        stake = thousands_in(lang, stake),
         when = relative(session.expires_at),
-        payout = thousands(payout(stake))
+        payout = thousands_in(lang, payout(stake))
     );
     let data = message(
         &cx.app,
@@ -232,7 +239,7 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
 /// What the table shows once the guess is in, and the line under it.
 fn ending(done: &ShellDone, lang: Lang) -> (Table, String) {
     let player = mention(done.session.host_id);
-    let stake = thousands(done.session.bet);
+    let stake = thousands_in(lang, done.session.bet);
     if done.paid > 0 {
         (
             Table {
@@ -245,7 +252,7 @@ fn ending(done: &ShellDone, lang: Lang) -> (Table, String) {
                 "shells.found",
                 player = player,
                 pearl = done.pearl + 1,
-                paid = thousands(done.paid),
+                paid = thousands_in(lang, done.paid),
                 stake = stake
             ),
         )
@@ -273,7 +280,7 @@ async fn timeout_message(app: &App, session: &GameSession, lang: Lang) -> anyhow
         lang,
         "shells.timeout",
         player = mention(session.host_id),
-        stake = thousands(session.bet)
+        stake = thousands_in(lang, session.bet)
     );
     // The pearl stays hidden: nothing was guessed.
     let mut data = message(

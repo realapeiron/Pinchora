@@ -220,7 +220,7 @@ async fn choices(app: &App, user: u64, slot: Slot, lang: Lang) -> anyhow::Result
                         lang,
                         "customize.showcase.fish-description",
                         rarity = fish.rarity.label_in(lang),
-                        best = format!("{:.1}", b.best_cm),
+                        best = pinchora_core::server_stats::decimal_in(lang, b.best_cm, 1),
                         caught = b.caught
                     ),
                 })

@@ -13,7 +13,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 use super::social::{self, button, character_of, row};
 use crate::{
     Cx,
-    util::{BRAND, mention, thousands},
+    util::{BRAND, mention, thousands_in},
 };
 
 /// Time between two of one player's interactions.
@@ -99,7 +99,7 @@ async fn deliver(cx: &Cx, kind: Interaction, from: u64, to: u64) -> anyhow::Resu
             lang,
             "interact.tally",
             noun = t!(lang, &format!("interact.{}.noun", kind.key())),
-            number = thousands(i64::from(tally.pair)),
+            number = thousands_in(lang, i64::from(tally.pair)),
             from = mention(from),
             to = mention(to)
         ))
@@ -138,7 +138,11 @@ async fn name(cx: &Cx, user: u64) -> String {
 
 /// "12 hugs" or "1 hug", in `lang`.
 pub(super) fn count_text(lang: Lang, kind: Interaction, n: i64) -> String {
-    t!(lang, &format!("interact.{}.count", kind.key()), count = thousands(n))
+    t!(
+        lang,
+        &format!("interact.{}.count", kind.key()),
+        count = thousands_in(lang, n)
+    )
 }
 
 /// "Pip: 12 hugs given · Sam: 7 hugs received", and a nudge for a player who never designed a

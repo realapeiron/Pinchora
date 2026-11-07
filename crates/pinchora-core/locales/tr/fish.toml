@@ -25,8 +25,8 @@ nothing = "Bugün balık yok"
 nothing-text = "Deniz sakin. Biraz sonra tekrar dene."
 
 [fish.catch]
-title-a = "{new}Bir {rarity} {fish} yakaladın!"
-title-an = "{new}Bir {rarity} {fish} yakaladın!"
+title-a = "{new}Balık yakaladın: {rarity} bir {fish}!"
+title-an = "{new}Balık yakaladın: {rarity} bir {fish}!"
 body = "*{flavor}*\n**{size} cm** · kovandaki değeri **{value}** kabuk{notes}"
 footer = "{spot} · Tepki {reaction} sn · Balık defteri {species}/{total} · Kova {bucket}/{capacity}"
 new-species = "Balık defterin için yeni bir tür!"

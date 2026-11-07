@@ -112,9 +112,11 @@ async fn card_job(
         Some(id) => app.db.card_upload(guild, id).await?,
         None => None,
     };
+    let lang = app.guild_lang(guild).await;
     let (design, subject) = (design.clone(), subject.clone());
     Ok(move |r: &Renderer| {
         let fill = CardFill {
+            lang,
             user: &subject.name,
             username: &subject.username,
             server: &subject.server,

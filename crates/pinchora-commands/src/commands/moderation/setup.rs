@@ -130,7 +130,7 @@ impl ConfigWarnLadder {
                 };
                 let rung = match check_threshold(warns, action.value(), duration) {
                     Ok(rung) => rung,
-                    Err(error) => return cx.reply_ephemeral(error.message).await,
+                    Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
                 };
                 match db.put_warn_threshold(guild, rung).await? {
                     Ok(_) => {

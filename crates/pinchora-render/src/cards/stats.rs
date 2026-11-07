@@ -3,12 +3,13 @@
 //! Every label comes in already worded (and in capitals where the pixel font draws it), so the card
 //! itself knows no language.
 
+use pinchora_core::i18n::Lang;
 use std::fmt::Write;
 
 use super::{PIXEL, SANS, text};
 use crate::{
     Renderer, Theme,
-    svg::{CRAB, background, compact, escape, pixel_width, sprite, thousands, truncate_pixel_to, truncate_to},
+    svg::{CRAB, background, compact_in, escape, pixel_width, sprite, thousands_in, truncate_pixel_to, truncate_to},
 };
 
 /// The chart colours, checked for colour-blind separation on the card's navy panel: messages (and
@@ -76,6 +77,7 @@ pub struct StatHeat {
 /// server card adds joins and leaves, the busiest hours and two ranked lists.
 #[derive(Debug, Clone)]
 pub struct StatsCard {
+    pub lang: Lang,
     /// Above the title, in capitals: `SERVER STATS`.
     pub kicker: String,
     pub title: String,
@@ -347,7 +349,7 @@ impl StatsCard {
                     false,
                     &t.muted,
                     "end",
-                    &compact(value),
+                    &compact_in(self.lang, value),
                 );
             }
         }
@@ -377,7 +379,7 @@ impl StatsCard {
                 column(s, bx, base - height, bar, height, SERIES[0]);
                 if Some(i) == peak {
                     // The busiest day says how busy it was; the scale and the dashboard carry the rest.
-                    let label = thousands(*value);
+                    let label = thousands_in(self.lang, *value);
                     let half = pixel_width(&label, 11.0) / 2.0;
                     let lx = (bx + bar / 2.0).clamp(x0 + half, x1 - half);
                     text(s, lx, base - height - 8.0, 11.0, PIXEL, false, &t.ink, "middle", &label);
@@ -446,7 +448,7 @@ impl StatsCard {
             false,
             &t.muted,
             "end",
-            &format!("+{}", compact(scale)),
+            &format!("+{}", compact_in(self.lang, scale)),
         );
         text(
             s,
@@ -457,7 +459,7 @@ impl StatsCard {
             false,
             &t.muted,
             "end",
-            &format!("-{}", compact(scale)),
+            &format!("-{}", compact_in(self.lang, scale)),
         );
         let n = flows.joins.len().max(flows.leaves.len()).max(1) as f32;
         let slot = (x1 - x0) / n;
@@ -706,6 +708,7 @@ mod tests {
             }
         }
         StatsCard {
+            lang: Lang::En,
             kicker: "SERVER STATS".into(),
             title: "Pinchora Reef".into(),
             period: "LAST 30 DAYS".into(),
@@ -765,7 +768,7 @@ mod tests {
                     .map(|(name, n)| StatRow {
                         name: format!("#{name}"),
                         value: n,
-                        shown: thousands(n),
+                        shown: thousands_in(Lang::En, n),
                     })
                     .collect(),
                     empty: "No messages yet".into(),
@@ -781,7 +784,7 @@ mod tests {
                     .map(|(name, n)| StatRow {
                         name: name.into(),
                         value: n,
-                        shown: thousands(n),
+                        shown: thousands_in(Lang::En, n),
                     })
                     .collect(),
                     empty: "No messages yet".into(),

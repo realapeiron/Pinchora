@@ -101,15 +101,15 @@
  },
  "pocket_rattle": {
   "name": "Cep Şıngırtısı",
-  "description": "Aynı anda elinde 10.000 deniz kabuğu bulundur."
+  "description": "Aynı anda elinde 10.000 kabuk bulundur."
  },
  "shell_stacker": {
-  "name": "Deniz Kabuğu İstifçisi",
-  "description": "Aynı anda elinde 100.000 deniz kabuğu bulundur."
+  "name": "Kabuk İstifçisi",
+  "description": "Aynı anda elinde 100.000 kabuk bulundur."
  },
  "tide_treasurer": {
   "name": "Gelgit Haznedarı",
-  "description": "Aynı anda elinde 1.000.000 deniz kabuğu bulundur."
+  "description": "Aynı anda elinde 1.000.000 kabuk bulundur."
  },
  "tiny_tide": {
   "name": "Minik Gelgit",

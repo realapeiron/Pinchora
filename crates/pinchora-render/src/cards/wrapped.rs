@@ -5,7 +5,7 @@ use pinchora_core::{i18n::Lang, t};
 use super::{Backdrop, PIXEL, SANS, SpriteArt, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, sprite, thousands, truncate},
+    svg::{CRAB, HEART, SHELL, STAR, background, compact_in, data_uri_png, escape, sprite, thousands_in, truncate},
 };
 
 /// A speech bubble: messages.
@@ -201,7 +201,7 @@ impl WrappedCard<'_> {
                     false,
                     &t.ink,
                     "end",
-                    &t!(self.lang, "card.wrapped.things-done", num = compact(n)),
+                    &t!(self.lang, "card.wrapped.things-done", num = compact_in(self.lang, n)),
                 );
             }
             None => text(
@@ -320,7 +320,7 @@ impl WrappedCard<'_> {
                 false,
                 &t.ink,
                 "start",
-                &escape(&compact(*value)),
+                &escape(&compact_in(self.lang, *value)),
             );
             // Centred in a 40 x 28 box at the right of the tile, whatever its shape.
             let (cols, rows) = (icon[0].chars().count() as f32, icon.len() as f32);
@@ -375,7 +375,7 @@ impl WrappedCard<'_> {
                         self.lang,
                         "card.wrapped.caught",
                         count = fish.caught,
-                        num = thousands(fish.caught)
+                        num = thousands_in(self.lang, fish.caught)
                     ),
                 );
                 if let Some(art) = &fish.art {
@@ -440,7 +440,7 @@ impl WrappedCard<'_> {
                         self.lang,
                         "card.wrapped.visits",
                         count = house.visits,
-                        num = thousands(house.visits)
+                        num = thousands_in(self.lang, house.visits)
                     ),
                 );
                 sprite(&mut s, HOUSE, 548.0, y + 34.0, 6.0, &t.gold, "#ffffff");

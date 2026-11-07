@@ -25,7 +25,7 @@ use crate::{
     App, Cx,
     game::scene::slot_sprite,
     server_events::{button, row},
-    util::{BRAND, SUCCESS, display_name, resolved_display_name, thousands},
+    util::{BRAND, SUCCESS, display_name, resolved_display_name, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -120,7 +120,7 @@ pub(crate) async fn view(
         .collect();
     let mine = owner == viewer;
     let footer = if mine {
-        let fragments = thousands(app.db.fragments(owner).await?);
+        let fragments = thousands_in(lang, app.db.fragments(owner).await?);
         t!(
             lang,
             "dex.footer-mine",
@@ -203,7 +203,7 @@ async fn exchange_panel(
                 description: Some(t!(
                     lang,
                     "dex.option-desc",
-                    cost = thousands(cost),
+                    cost = thousands_in(lang, cost),
                     pieces = exchange_pool(content, rarity).len()
                 )),
                 emoji: None,
@@ -238,7 +238,7 @@ async fn exchange_panel(
     let mut text = t!(
         lang,
         "dex.exchange-text",
-        fragments = thousands(fragments),
+        fragments = thousands_in(lang, fragments),
         rule = soulbound_rule(lang)
     );
     if let Some(note) = note {
@@ -302,7 +302,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
                     lang,
                     "dex.costs",
                     rarity = letters::lower(lang, rarity.label_in(lang)),
-                    cost = thousands(cost)
+                    cost = thousands_in(lang, cost)
                 );
                 let data = exchange_panel(&cx.app, lang, owner, Some(&note)).await?;
                 return cx.update(data).await;
@@ -316,7 +316,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
                     lang,
                     "dex.got-text",
                     rarity = letters::lower(lang, rarity.label_in(lang)),
-                    left = thousands(left)
+                    left = thousands_in(lang, left)
                 ));
             let back = row(vec![
                 button(

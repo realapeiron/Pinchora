@@ -3,6 +3,7 @@
 use std::{borrow::Cow, fmt::Write};
 
 use base64::Engine;
+use pinchora_core::i18n::Lang;
 use resvg::usvg;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -247,31 +248,37 @@ pub fn wrap(text: &str, per_line: usize, max_lines: usize) -> Vec<String> {
 
 /// `12345` → `12,345`.
 pub fn thousands(n: i64) -> String {
-    let digits = n.unsigned_abs().to_string();
-    let mut out = String::new();
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    if n < 0 { format!("-{out}") } else { out }
+    thousands_in(Lang::En, n)
+}
+
+/// Grouped integer in the language's number notation.
+pub fn thousands_in(lang: Lang, n: i64) -> String {
+    pinchora_core::server_stats::grouped_in(lang, n)
 }
 
 /// `1234567` → `1.2M`, for tight boxes.
 pub fn compact(n: i64) -> String {
+    compact_in(Lang::En, n)
+}
+
+/// Compact number with the language's decimal and grouping marks.
+pub fn compact_in(lang: Lang, n: i64) -> String {
     let a = n.unsigned_abs() as f64;
     let sign = if n < 0 { "-" } else { "" };
     // One decimal, and none when it would be a zero: `49K`, not `49.0K`.
     let scaled = |value: f64, unit: &str| {
         let text = format!("{value:.1}");
-        format!("{sign}{}{unit}", text.strip_suffix(".0").unwrap_or(&text))
+        let number = text.strip_suffix(".0").unwrap_or(&text);
+        format!(
+            "{sign}{}{unit}",
+            number.replace('.', if lang == Lang::Tr { "," } else { "." })
+        )
     };
     match a {
         a if a >= 1e9 => scaled(a / 1e9, "B"),
         a if a >= 1e6 => scaled(a / 1e6, "M"),
         a if a >= 1e4 => scaled(a / 1e3, "K"),
-        _ => thousands(n),
+        _ => thousands_in(lang, n),
     }
 }
 
@@ -484,6 +491,10 @@ mod tests {
         assert_eq!(compact(49_000), "49K");
         assert_eq!(compact(2_000_000), "2M");
         assert_eq!(compact(-12_000), "-12K");
+        assert_eq!(thousands_in(Lang::Tr, 1_234_567), "1.234.567");
+        assert_eq!(thousands_in(Lang::Tr, -1000), "-1.000");
+        assert_eq!(compact_in(Lang::Tr, 12_500), "12,5K");
+        assert_eq!(compact_in(Lang::Tr, 2310), "2.310");
         assert_eq!(compact(10_049), "10K");
     }
 

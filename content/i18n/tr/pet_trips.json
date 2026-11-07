@@ -60,7 +60,7 @@
   ]
  },
  "moonpearl_isles": {
-  "name": "Moonpearl Adaları",
+  "name": "Ay İncisi Adaları",
   "description": "Gelgitin seni örtüp yatırdığı, inci ışıklı adalar.",
   "stories": [
    "{pet} üç ayın aydınlığı kadar inci ışığının altında uyudu.",
@@ -70,7 +70,7 @@
   ]
  },
  "starfall_sandbar": {
-  "name": "Starfall Kum Şeridi",
+  "name": "Yıldız Yağmuru Kumluğu",
   "description": "Yıldız izlemek ve büyük dilekler için bir kum şeridi.",
   "stories": [
    "{pet} düşen bir yıldızı yakaladı ve onu usulca göğe geri koydu.",

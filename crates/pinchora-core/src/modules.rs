@@ -601,7 +601,7 @@ pub fn check_channels(module: Module, mode: ChannelMode, channels: &[u64]) -> Re
                 module.label()
             ),
         )
-        .keyed("whole-server", [("module", module.label().to_owned())]));
+        .keyed("whole-server", [("module", module.key().to_owned())]));
     }
     let mut clean: Vec<u64> = Vec::with_capacity(channels.len());
     for &id in channels {
@@ -875,6 +875,7 @@ mod tests {
         let error = check_channels(Module::Welcome, ChannelMode::Only, &[1]).unwrap_err();
         assert_eq!(error.field, "channel_mode");
         assert!(error.message.contains("whole server"), "{}", error.message);
+        assert!(error.text(Lang::Tr).contains("Karşılama kartları"));
         assert!(check_channels(Module::Welcome, ChannelMode::All, &[]).is_ok());
     }
 

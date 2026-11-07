@@ -23,7 +23,7 @@ use super::{
 };
 use crate::{
     App, Cx,
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 /// The rarity colours the five rods are framed in, plainest first.
@@ -80,7 +80,7 @@ fn rod_stats(lang: Lang, rod: &Rod) -> String {
     t!(
         lang,
         "fish.gear.rod-stats",
-        reel = format!("{:.1}", rod.window_ms as f64 / 1000.0),
+        reel = pinchora_core::server_stats::decimal_in(lang, rod.window_ms as f64 / 1000.0, 1),
         luck = ((rod.luck - 1.0) * 100.0).round()
     )
 }
@@ -108,7 +108,7 @@ async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Res
         let (line1, shell_price) = match (on_line.rod == rod.id, owned) {
             (true, _) => (t!(lang, "fish.shop.equipped"), false),
             (false, true) => (t!(lang, "fish.shop.owned"), false),
-            (false, false) => (thousands(rod.price), true),
+            (false, false) => (thousands_in(lang, rod.price), true),
         };
         slots.push(Slot {
             art: Art::Rod(n),
@@ -117,7 +117,7 @@ async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Res
             line2: t!(
                 lang,
                 "fish.shop.rod-line",
-                reel = format!("{:.1}", rod.window_ms as f64 / 1000.0),
+                reel = pinchora_core::server_stats::decimal_in(lang, rod.window_ms as f64 / 1000.0, 1),
                 luck = ((rod.luck - 1.0) * 100.0).round()
             ),
             bar: None,
@@ -132,7 +132,7 @@ async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Res
                 t!(
                     lang,
                     "fish.shop.price-line",
-                    price = thousands(rod.price),
+                    price = thousands_in(lang, rod.price),
                     text = rod_stats(lang, rod)
                 ),
                 false,
@@ -147,7 +147,7 @@ async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Res
         slots.push(Slot {
             art: Art::Bait(BaitArt::of(bait)),
             name: content.name(&bait.id, lang).into_owned(),
-            line1: thousands(bait.price),
+            line1: thousands_in(lang, bait.price),
             line2: t!(lang, "fish.shop.bait-line", pack = bait.pack, have = have(&bait.id)),
             bar: None,
             frame,
@@ -165,7 +165,7 @@ async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Res
             t!(
                 lang,
                 "fish.shop.price-line",
-                price = thousands(bait.price),
+                price = thousands_in(lang, bait.price),
                 text = blurb(content, &bait.id, lang, &bait.blurb)
             ),
             false,
@@ -173,8 +173,9 @@ async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Res
     }
     let png = grid_png(
         app,
+        lang,
         lang.upper(&t!(lang, "fish.shop.title")),
-        t!(lang, "fish.shop.balance", shells = thousands(balance)),
+        t!(lang, "fish.shop.balance", shells = thousands_in(lang, balance)),
         t!(lang, "fish.shop.footer", price = BAIT_PRICE),
         slots,
     )
@@ -418,15 +419,15 @@ async fn buy(app: &App, lang: Lang, user: u64, value: &str) -> anyhow::Result<St
                     lang,
                     "fish.buy.rod-bought",
                     rod = content.name(&rod.id, lang),
-                    price = thousands(rod.price)
+                    price = thousands_in(lang, rod.price)
                 ),
                 GearBuy::AlreadyOwned => t!(lang, "fish.buy.rod-owned", rod = content.name(&rod.id, lang)),
                 GearBuy::Insufficient { balance } => t!(
                     lang,
                     "fish.buy.rod-poor",
                     rod = content.name(&rod.id, lang),
-                    price = thousands(rod.price),
-                    balance = thousands(balance)
+                    price = thousands_in(lang, rod.price),
+                    balance = thousands_in(lang, balance)
                 ),
             },
             None => t!(lang, "fish.gear.no-rod"),
@@ -438,7 +439,7 @@ async fn buy(app: &App, lang: Lang, user: u64, value: &str) -> anyhow::Result<St
                     "fish.buy.bait-bought",
                     pack = bait.pack,
                     bait = content.name(&bait.id, lang),
-                    price = thousands(bait.price),
+                    price = thousands_in(lang, bait.price),
                     owned = owned
                 ),
                 GearBuy::AlreadyOwned => String::new(),
@@ -446,8 +447,8 @@ async fn buy(app: &App, lang: Lang, user: u64, value: &str) -> anyhow::Result<St
                     lang,
                     "fish.buy.bait-poor",
                     bait = content.name(&bait.id, lang),
-                    price = thousands(bait.price),
-                    balance = thousands(balance)
+                    price = thousands_in(lang, bait.price),
+                    balance = thousands_in(lang, balance)
                 ),
             },
             None => t!(lang, "fish.gear.no-bait"),

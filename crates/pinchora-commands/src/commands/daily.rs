@@ -6,7 +6,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use crate::{
     Cx,
     commands::{customize, remind},
-    util::{SUCCESS, WARN, relative, thousands},
+    util::{SUCCESS, WARN, relative, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -32,8 +32,13 @@ impl Daily {
                 balance,
             } => EmbedBuilder::new()
                 .color(SUCCESS)
-                .title(t!(lang, "daily.claimed-title", amount = thousands(amount)))
-                .description(t!(lang, "daily.claimed", streak = streak, balance = thousands(balance)))
+                .title(t!(lang, "daily.claimed-title", amount = thousands_in(lang, amount)))
+                .description(t!(
+                    lang,
+                    "daily.claimed",
+                    streak = streak,
+                    balance = thousands_in(lang, balance)
+                ))
                 .build(),
             DailyOutcome::Cooldown { next_at } => EmbedBuilder::new()
                 .color(WARN)

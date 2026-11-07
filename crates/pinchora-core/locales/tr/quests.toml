@@ -4,7 +4,7 @@
 title = "Bugünün görevleri"
 line = "{mark} **{text}** — {bar} `{progress}/{target}` · +{reward} kabuk"
 all-clear = "Üçünü de bitirirsen **{pearls} inci** kazanırsın."
-footer = "Yeni görevlere {hours}sa {minutes}dk var"
+footer = "Yeni görevlere {hours} sa {minutes} dk var"
 claim = "Ödülleri al"
 expired = "Bu görev listesi eski bir güne ait, bu yüzden düğmesi artık çalışmıyor. Bugünün görevleri aşağıda."
 shells = "+{shells} kabuk"

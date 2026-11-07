@@ -17,7 +17,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use super::art::{Art, Slot, grid_png};
 use crate::{
     App, Cx,
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 const PER_PAGE: usize = 8;
@@ -71,7 +71,11 @@ async fn page(app: &App, lang: Lang, owner: u64, page: usize) -> anyhow::Result<
                     hidden: false,
                 },
                 name: content.name(&fish.id, lang).into_owned(),
-                line1: t!(lang, "fish.book.record", size = format!("{:.1}", entry.best_cm)),
+                line1: t!(
+                    lang,
+                    "fish.book.record",
+                    size = pinchora_core::server_stats::decimal_in(lang, entry.best_cm, 1)
+                ),
                 line2: t!(lang, "fish.book.caught", fish = entry.caught),
                 // How close the record is to the biggest the species grows.
                 bar: Some((entry.best_cm - fish.min_cm) / (fish.max_cm - fish.min_cm)),
@@ -97,6 +101,7 @@ async fn page(app: &App, lang: Lang, owner: u64, page: usize) -> anyhow::Result<
     let next = content.fishing.next_milestone(species);
     let png = grid_png(
         app,
+        lang,
         lang.upper(&t!(lang, "fish.book.title")),
         t!(
             lang,
@@ -128,7 +133,7 @@ async fn page(app: &App, lang: Lang, owner: u64, page: usize) -> anyhow::Result<
                 key,
                 mark = if species >= m.species { "✅" } else { "▫️" },
                 species = m.species,
-                shells = thousands(m.shells),
+                shells = thousands_in(lang, m.shells),
                 name = content.name(id, lang)
             )
         })

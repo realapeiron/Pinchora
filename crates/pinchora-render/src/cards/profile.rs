@@ -8,8 +8,8 @@ use super::{
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, fit_laid_out, pixel_shadow, pixel_width,
-        segment_bar, sprite, thousands, truncate, truncate_pixel_to, truncate_to, wrap,
+        CRAB, HEART, SHELL, STAR, background, compact_in, data_uri_png, escape, fit_laid_out, pixel_shadow,
+        pixel_width, segment_bar, sprite, thousands_in, truncate, truncate_pixel_to, truncate_to, wrap,
     },
 };
 
@@ -212,7 +212,11 @@ impl ProfileCard<'_> {
             false,
             &t.ink,
             "start",
-            &t!(self.lang, "card.rep", count = compact(i64::from(self.reputation))),
+            &t!(
+                self.lang,
+                "card.rep",
+                count = compact_in(self.lang, i64::from(self.reputation))
+            ),
         );
 
         t.panel(&mut s, 40.0, 456.0, 224.0, 56.0, 4.0);
@@ -325,16 +329,16 @@ impl ProfileCard<'_> {
 
         let server_rank = self
             .server_rank
-            .map_or_else(|| "-".to_owned(), |r| format!("#{}", thousands(r)));
+            .map_or_else(|| "-".to_owned(), |r| format!("#{}", thousands_in(self.lang, r)));
         let stats = [
             (
                 t!(self.lang, "card.shells"),
-                compact(self.credits),
+                compact_in(self.lang, self.credits),
                 Some((SHELL, t.gold.as_str())),
             ),
             (
                 t!(self.lang, "card.global"),
-                format!("#{}", compact(self.global_rank)),
+                format!("#{}", compact_in(self.lang, self.global_rank)),
                 None,
             ),
             (t!(self.lang, "card.server"), server_rank, None),
@@ -390,8 +394,8 @@ impl ProfileCard<'_> {
         );
         let xp_label = format!(
             "{} / {} XP",
-            thousands(self.xp_current as i64),
-            thousands(self.xp_needed as i64)
+            thousands_in(self.lang, self.xp_current as i64),
+            thousands_in(self.lang, self.xp_needed as i64)
         );
         text(&mut s, 920.0, rows.xp_y, 16.0, PIXEL, false, &t.ink, "end", &xp_label);
         let fraction = self.xp_current as f32 / self.xp_needed.max(1) as f32;
@@ -409,9 +413,9 @@ impl ProfileCard<'_> {
         );
         // Seven digits would run into the badges.
         let total = if self.total_xp >= 1_000_000 {
-            t!(self.lang, "card.total-xp", xp = compact(self.total_xp))
+            t!(self.lang, "card.total-xp", xp = compact_in(self.lang, self.total_xp))
         } else {
-            t!(self.lang, "card.total-xp", xp = thousands(self.total_xp))
+            t!(self.lang, "card.total-xp", xp = thousands_in(self.lang, self.total_xp))
         };
         text(
             &mut s,

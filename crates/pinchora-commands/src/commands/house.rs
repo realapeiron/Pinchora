@@ -30,7 +30,7 @@ use super::{
 use crate::{
     App, Cx,
     game::scene::{RoomPet, RoomView, render_view},
-    util::{BRAND, DANGER, SUCCESS, WARN, resolved_display_name, thousands},
+    util::{BRAND, DANGER, SUCCESS, WARN, resolved_display_name, thousands_in},
 };
 
 /// Shells a guest earns for the first visit to a house each day.
@@ -1780,8 +1780,8 @@ async fn upgrade_offer(cx: &Cx, user_id: u64) -> anyhow::Result<()> {
             to = next.rooms,
             width = next.width,
             depth = next.depth,
-            price = thousands(next.price),
-            balance = thousands(balance)
+            price = thousands_in(cx.lang(), next.price),
+            balance = thousands_in(cx.lang(), balance)
         ))
         .build();
     let button = Component::Button(Button {
@@ -1789,7 +1789,11 @@ async fn upgrade_offer(cx: &Cx, user_id: u64) -> anyhow::Result<()> {
         disabled: balance < next.price,
         emoji: None,
         id: None,
-        label: Some(t!(cx.lang(), "house.upgrade.button", price = thousands(next.price))),
+        label: Some(t!(
+            cx.lang(),
+            "house.upgrade.button",
+            price = thousands_in(cx.lang(), next.price)
+        )),
         sku_id: None,
         style: ButtonStyle::Success,
         url: None,
@@ -1824,13 +1828,13 @@ pub(crate) async fn on_upgrade(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Re
             "house.upgrade.done",
             house = next.name,
             count = new_rooms.len(),
-            balance = thousands(balance)
+            balance = thousands_in(cx.lang(), balance)
         ),
         UpgradeOutcome::Insufficient { balance } => t!(
             cx.lang(),
             "house.upgrade.short",
-            price = thousands(next.price),
-            balance = thousands(balance)
+            price = thousands_in(cx.lang(), next.price),
+            balance = thousands_in(cx.lang(), balance)
         ),
         UpgradeOutcome::WrongTier { .. } => t!(cx.lang(), "house.upgrade.changed"),
     };

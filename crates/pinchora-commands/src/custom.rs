@@ -34,7 +34,7 @@ use twilight_util::builder::embed::{
 
 use crate::{
     App,
-    util::{BRAND, avatar_url, display_name, mention, strip_mentions, thousands},
+    util::{BRAND, avatar_url, display_name, mention, strip_mentions, thousands_in},
 };
 
 /// How long the bot keeps a server's commands and responders before asking the database again.
@@ -441,7 +441,7 @@ impl Scene {
 
 /// The values for a scene. The server, its size and the points are only looked up when a template uses
 /// them; `balance` is the member's points when an action just changed them.
-pub(crate) async fn scene_vars(app: &App, scene: &Scene, templates: &[&str], balance: Option<i64>) -> Vars {
+pub(crate) async fn scene_vars(app: &App, scene: &Scene, templates: &[&str], balance: Option<i64>, lang: Lang) -> Vars {
     let uses = |needle: &str| templates.iter().any(|t| t.contains(needle));
     let mut vars = Vars::new();
     vars.set("user", mention(scene.user))
@@ -459,7 +459,7 @@ pub(crate) async fn scene_vars(app: &App, scene: &Scene, templates: &[&str], bal
             "server",
             facts
                 .as_ref()
-                .map_or_else(|| "this server".to_owned(), |f| escape_markdown(&f.name)),
+                .map_or_else(|| t!(lang, "customcommand.this-server"), |f| escape_markdown(&f.name)),
         );
         let members = facts.and_then(|f| f.members).map(|m| m.to_string()).unwrap_or_default();
         vars.set("server.members", members.clone());
@@ -574,7 +574,7 @@ pub(crate) async fn run_points(app: &App, lang: Lang, guild: u64, user: u64, act
                 run.capped = Some(t!(
                     lang,
                     "customcommand.capped",
-                    max = thousands(ACTION_POINTS_DAILY_MAX),
+                    max = thousands_in(lang, ACTION_POINTS_DAILY_MAX),
                     name = settings.points_name
                 ));
             }

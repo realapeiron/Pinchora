@@ -36,14 +36,7 @@ pub fn lower(lang: Lang, text: &str) -> String {
 
 /// The capital of one letter: Turkish `i` is `İ` and `ı` is `I`.
 pub fn upper_char(lang: Lang, c: char) -> char {
-    match lang {
-        Lang::En => c.to_ascii_uppercase(),
-        Lang::Tr => match c {
-            'i' => 'İ',
-            'ı' => 'I',
-            c => c.to_uppercase().next().unwrap_or(c),
-        },
-    }
+    lang.upper(&c.to_string()).chars().next().unwrap_or(c)
 }
 
 /// The keyboard a wordle card draws, three rows of lowercase letters: QWERTY, or the Turkish Q layout

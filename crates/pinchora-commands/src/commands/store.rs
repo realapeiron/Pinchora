@@ -14,7 +14,7 @@ use crate::{
     App, Cx,
     commands::{points::capitalized, stall::menu},
     roles,
-    util::{BRAND, SUCCESS, thousands},
+    util::{BRAND, SUCCESS, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -67,7 +67,7 @@ fn stock_text(lang: Lang, stock: Option<i32>) -> Option<String> {
 }
 
 fn line(lang: Lang, item: &StoreItem, emoji: &str) -> String {
-    let mut line = format!("<@&{}> · **{}** {emoji}", item.role_id, thousands(item.price));
+    let mut line = format!("<@&{}> · **{}** {emoji}", item.role_id, thousands_in(lang, item.price));
     if let Some(stock) = stock_text(lang, item.stock) {
         line.push_str(" · ");
         line.push_str(&stock);
@@ -93,7 +93,7 @@ async fn store_message(app: &App, guild: u64, lang: Lang) -> anyhow::Result<Opti
                 t!(
                     lang,
                     "store.option",
-                    price = thousands(i.price),
+                    price = thousands_in(lang, i.price),
                     name = settings.points_name
                 ),
                 stock_text(lang, i.stock).map_or_else(String::new, |s| format!(" · {s}"))
@@ -130,7 +130,7 @@ impl StoreCommand {
         let Some(guild) = cx.guild_id() else {
             return cx.reply_ephemeral(t!(lang, "store.guild-only")).await;
         };
-        match store_message(&cx.app, guild, lang).await? {
+        match store_message(&cx.app, guild, cx.app.guild_lang(guild).await).await? {
             Some(message) => cx.reply(message).await,
             None => cx.reply_ephemeral(t!(lang, "store.empty")).await,
         }
@@ -243,10 +243,10 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
                     lang,
                     "store.insufficient",
                     role = role,
-                    price = thousands(price),
+                    price = thousands_in(lang, price),
                     emoji = emoji,
                     name = name,
-                    balance = thousands(balance)
+                    balance = thousands_in(lang, balance)
                 ))
                 .await;
         }
@@ -266,7 +266,7 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
             "store.couldnt-give",
             role = role,
             why = roles::refusal_in(lang, &error),
-            balance = thousands(balance),
+            balance = thousands_in(lang, balance),
             emoji = emoji,
             name = name
         );
@@ -293,10 +293,10 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
                     lang,
                     "store.bought",
                     role = role,
-                    price = thousands(price),
+                    price = thousands_in(lang, price),
                     emoji = emoji,
                     name = name,
-                    balance = thousands(balance)
+                    balance = thousands_in(lang, balance)
                 ))
                 .build(),
         ]),

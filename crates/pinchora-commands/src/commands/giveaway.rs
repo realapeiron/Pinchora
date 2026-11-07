@@ -27,7 +27,7 @@ use crate::{
     App, Cx,
     commands::games::{edit_message, quiet},
     server_events::{button, is_permanent, message_link, post_refusal, row, tell},
-    util::{BRAND, SUCCESS, relative, single_line, strip_mentions, thousands},
+    util::{BRAND, SUCCESS, relative, single_line, strip_mentions, thousands_in},
 };
 
 /// Entry counts shown on the message change at most this often per giveaway.
@@ -150,7 +150,7 @@ fn giveaway_embed(lang: Lang, g: &GiveawayRow) -> Embed {
     }
     lines.push(t!(lang, "giveaway.winners-line", count = g.winners));
     if g.shells > 0 {
-        lines.push(t!(lang, "giveaway.prize-line", amount = thousands(g.shells)));
+        lines.push(t!(lang, "giveaway.prize-line", amount = thousands_in(lang, g.shells)));
     }
     if let Some(role) = g.required_role_id {
         lines.push(t!(lang, "giveaway.requires", role = format!("<@&{role}>")));
@@ -253,9 +253,9 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
                     cx.lang(),
                     "giveaway.broke",
                     count = c.winners,
-                    each = thousands(shells),
-                    total = thousands(shells * c.winners),
-                    balance = thousands(balance)
+                    each = thousands_in(cx.lang(), shells),
+                    total = thousands_in(cx.lang(), shells * c.winners),
+                    balance = thousands_in(cx.lang(), balance)
                 ),
             )
             .await;
@@ -299,7 +299,11 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
         }
     }
     let held = if giveaway.escrow() > 0 {
-        t!(cx.lang(), "giveaway.held", amount = thousands(giveaway.escrow()))
+        t!(
+            cx.lang(),
+            "giveaway.held",
+            amount = thousands_in(cx.lang(), giveaway.escrow())
+        )
     } else {
         String::new()
     };
@@ -601,13 +605,13 @@ async fn announce(app: &Arc<App>, g: &GiveawayRow) -> anyhow::Result<()> {
         t!(lang, "giveaway.congrats", winners = winners, prize = g.prize)
     };
     if g.shells > 0 && !g.winner_ids.is_empty() {
-        text.push_str(&t!(lang, "giveaway.paid", amount = thousands(g.shells)));
+        text.push_str(&t!(lang, "giveaway.paid", amount = thousands_in(lang, g.shells)));
     }
     if unpaid > 0 {
         text.push_str(&t!(
             lang,
             "giveaway.unclaimed",
-            amount = thousands(unpaid),
+            amount = thousands_in(lang, unpaid),
             host = format!("<@{}>", g.host_id)
         ));
     }

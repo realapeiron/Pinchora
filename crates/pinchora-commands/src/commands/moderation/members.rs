@@ -120,7 +120,7 @@ impl Ban {
         let duration = match self.duration.as_deref().map(str::trim).filter(|d| !d.is_empty()) {
             Some(text) => match parse_duration(text).map(check_temp_ban) {
                 Some(Ok(d)) => Some(d),
-                Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
+                Some(Err(error)) => return cx.reply_ephemeral(error.text(lang)).await,
                 None => return cx.reply_ephemeral(t!(lang, "mod.ban-duration-format")).await,
             },
             None => None,
@@ -321,7 +321,7 @@ impl Timeout {
         };
         let duration = match check_timeout(parse_duration(&self.duration)) {
             Ok(d) => d,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         let Some(member) = &self.user.member else {
             return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;

@@ -5,7 +5,7 @@ use pinchora_core::{i18n::Lang, t};
 use super::{PIXEL, SANS, avatar_frame, text};
 use crate::{
     Theme,
-    svg::{CRAB, background, escape, sprite, thousands, truncate},
+    svg::{CRAB, background, escape, sprite, thousands_in, truncate},
 };
 
 /// 1100×500 welcome card.
@@ -63,7 +63,7 @@ impl WelcomeCard<'_> {
                 self.lang,
                 "card.welcome.to-member",
                 server = truncate(self.server_name, 32),
-                number = thousands(n as i64)
+                number = thousands_in(self.lang, n as i64)
             ),
             None => t!(self.lang, "card.welcome.to", server = truncate(self.server_name, 40)),
         };

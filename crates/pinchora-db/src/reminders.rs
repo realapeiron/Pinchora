@@ -28,6 +28,7 @@ pub struct ReminderRow {
     pub kind: String,
     pub ref_id: i64,
     pub body: String,
+    pub language: String,
     pub due_at: DateTime<Utc>,
 }
 
@@ -86,7 +87,20 @@ impl Db {
 
     /// Adds a reminder the player wrote; `None` when they already have [`MAX_TEXT_REMINDERS`] open.
     pub async fn add_text_reminder(&self, user: u64, body: &str, due_at: DateTime<Utc>) -> anyhow::Result<Option<i64>> {
-        retry("add_text_reminder", || self.add_text_reminder_once(user, body, due_at)).await
+        self.add_text_reminder_in(user, body, "en", due_at).await
+    }
+
+    pub async fn add_text_reminder_in(
+        &self,
+        user: u64,
+        body: &str,
+        language: &str,
+        due_at: DateTime<Utc>,
+    ) -> anyhow::Result<Option<i64>> {
+        retry("add_text_reminder", || {
+            self.add_text_reminder_once(user, body, language, due_at)
+        })
+        .await
     }
 
     /// One attempt of [`Db::add_text_reminder`].
@@ -94,6 +108,7 @@ impl Db {
         &self,
         user: u64,
         body: &str,
+        language: &str,
         due_at: DateTime<Utc>,
     ) -> anyhow::Result<Option<i64>> {
         let id = sql_id(user);
@@ -108,14 +123,16 @@ impl Db {
         if open >= MAX_TEXT_REMINDERS {
             return Ok(None);
         }
-        let (reminder,): (i64,) =
-            sqlx::query_as("INSERT INTO reminders (user_id, kind, body, due_at) VALUES ($1, $2, $3, $4) RETURNING id")
-                .bind(id)
-                .bind(TEXT)
-                .bind(body)
-                .bind(due_at)
-                .fetch_one(&mut *tx)
-                .await?;
+        let (reminder,): (i64,) = sqlx::query_as(
+            "INSERT INTO reminders (user_id, kind, body, language, due_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        )
+        .bind(id)
+        .bind(TEXT)
+        .bind(body)
+        .bind(language)
+        .bind(due_at)
+        .fetch_one(&mut *tx)
+        .await?;
         tx.commit().await?;
         Ok(Some(reminder))
     }
@@ -123,7 +140,7 @@ impl Db {
     /// The reminders the player wrote, soonest first.
     pub async fn text_reminders(&self, user: u64) -> anyhow::Result<Vec<ReminderRow>> {
         Ok(sqlx::query_as::<_, ReminderRow>(
-            "SELECT id, user_id, kind, ref_id, body, due_at FROM reminders
+            "SELECT id, user_id, kind, ref_id, body, language, due_at FROM reminders
              WHERE user_id = $1 AND kind = $2 ORDER BY due_at, id",
         )
         .bind(sql_id(user))
@@ -210,7 +227,7 @@ impl Db {
                  ORDER BY due_at, id LIMIT $2
                  FOR UPDATE SKIP LOCKED
              )
-             RETURNING id, user_id, kind, ref_id, body, due_at",
+             RETURNING id, user_id, kind, ref_id, body, language, due_at",
         )
         .bind(now)
         .bind(limit)

@@ -19,7 +19,7 @@ use crate::{
         shop::{SlotSpec, grid_png, soulbound_rule},
         social::ping_only,
     },
-    util::{BRAND, mention, resolved_display_name, thousands},
+    util::{BRAND, mention, resolved_display_name, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -104,7 +104,7 @@ impl StallCommand {
                                 lang,
                                 "stall.sell-option",
                                 count = row.quantity,
-                                price = thousands(item.base.price)
+                                price = thousands_in(lang, item.base.price)
                             )),
                             emoji: None,
                             label: item.name_in(lang),
@@ -125,8 +125,8 @@ impl StallCommand {
                     content: Some(t!(
                         lang,
                         "stall.sell-prompt",
-                        price = thousands(c.price),
-                        net = thousands(c.price - c.price * STALL_FEE_PERCENT / 100),
+                        price = thousands_in(lang, c.price),
+                        net = thousands_in(lang, c.price - c.price * STALL_FEE_PERCENT / 100),
                         fee = STALL_FEE_PERCENT
                     )),
                     components: Some(menu(
@@ -150,7 +150,7 @@ impl StallCommand {
                     .into_iter()
                     .map(|l| SelectMenuOption {
                         default: false,
-                        description: Some(t!(lang, "stall.manage-option", price = thousands(l.price))),
+                        description: Some(t!(lang, "stall.manage-option", price = thousands_in(lang, l.price))),
                         emoji: None,
                         label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name_in(lang)),
                         value: l.id.to_string(),
@@ -179,9 +179,9 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
         .iter()
         .map(|l| SlotSpec {
             item_id: l.item_id.clone(),
-            line1: thousands(l.price),
+            line1: thousands_in(lang, l.price),
             line2: content.item(&l.item_id).map_or_else(String::new, |i| {
-                t!(lang, "stall.catalog-price", price = thousands(i.base.price))
+                t!(lang, "stall.catalog-price", price = thousands_in(lang, i.base.price))
             }),
             bar: None,
             badge: String::new(),
@@ -201,7 +201,7 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
         .iter()
         .map(|l| SelectMenuOption {
             default: false,
-            description: Some(t!(lang, "stall.option-price", price = thousands(l.price))),
+            description: Some(t!(lang, "stall.option-price", price = thousands_in(lang, l.price))),
             emoji: None,
             label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name_in(lang)),
             value: l.id.to_string(),
@@ -250,7 +250,7 @@ pub(crate) async fn on_list(cx: &Cx, mut args: std::str::Split<'_, char>, value:
             lang,
             "stall.listed",
             name = item.name_in(lang),
-            price = thousands(price)
+            price = thousands_in(lang, price)
         )
     } else {
         t!(lang, "stall.list-failed", max = MAX_LISTINGS)
@@ -308,8 +308,8 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
                         buyer = mention(buyer),
                         name = name,
                         seller = mention(seller),
-                        price = thousands(price),
-                        balance = thousands(balance)
+                        price = thousands_in(lang, price),
+                        balance = thousands_in(lang, balance)
                     )),
                     allowed_mentions: ping_only(seller as u64),
                     ..Default::default()
@@ -322,8 +322,8 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
             t!(
                 lang,
                 "stall.insufficient",
-                price = thousands(price),
-                balance = thousands(balance)
+                price = thousands_in(lang, price),
+                balance = thousands_in(lang, balance)
             )
         }
     };

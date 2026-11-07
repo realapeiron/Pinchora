@@ -2,6 +2,7 @@
 
 use std::str::Split;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{BuyOutcome, Currency as DbCurrency};
 use pinchora_game::{Content, Currency, Surface, house};
 use twilight_model::{
@@ -17,28 +18,28 @@ use super::house::ensure_house;
 use crate::{
     Cx,
     game::scene::{RoomView, render_view},
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 const PAGE: usize = 25;
 
-fn price_text(s: &Surface) -> String {
+fn price_text(lang: Lang, s: &Surface) -> String {
     match s.currency {
-        Currency::Shells => format!("{} shells", thousands(s.price)),
-        Currency::Pearls => format!("{} pearls", thousands(s.price)),
+        Currency::Shells => t!(lang, "house.decorate.shell-price", price = thousands_in(lang, s.price)),
+        Currency::Pearls => t!(lang, "house.decorate.pearl-price", price = thousands_in(lang, s.price)),
     }
 }
 
-fn menu(custom_id: String, placeholder: String, list: &[Surface], page: usize, current: &str) -> Component {
+fn menu(lang: Lang, custom_id: String, placeholder: String, list: &[Surface], page: usize, current: &str) -> Component {
     let options = list
         .iter()
         .skip(page * PAGE)
         .take(PAGE)
         .map(|s| SelectMenuOption {
             default: s.id == current,
-            description: Some(format!("{} · {}", s.rarity.label(), price_text(s))),
+            description: Some(format!("{} · {}", s.rarity.label_in(lang), price_text(lang, s))),
             emoji: None,
-            label: s.name.clone(),
+            label: Content::get().name(&s.id, lang).into_owned(),
             value: s.id.clone(),
         })
         .collect();
@@ -61,6 +62,7 @@ fn menu(custom_id: String, placeholder: String, list: &[Surface], page: usize, c
 }
 
 pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let user = cx.author()?.id.get();
     let content = Content::get();
     let (house_row, rooms) = ensure_house(&cx.app, user).await?;
@@ -94,24 +96,31 @@ pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow
     let name = |list: &[Surface], id: &str| {
         list.iter()
             .find(|s| s.id == id)
-            .map_or(id.to_owned(), |s| s.name.clone())
+            .map_or(id.to_owned(), |s| content.name(&s.id, lang).into_owned())
     };
-    let embed = EmbedBuilder::new().color(BRAND).title(format!("Decorating room {}", room + 1)).description(format!(
-        "{note}\nWallpaper: **{}** · Floor: **{}**\nA new pattern is bought the first time you use it; switching back is free.",
-        name(&content.surfaces.wallpapers, &wp),
-        name(&content.surfaces.floors, &fl)
-    ));
+    let embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(t!(lang, "house.decorate.title", room = room + 1))
+        .description(t!(
+            lang,
+            "house.decorate.body",
+            note = note,
+            wallpaper = name(&content.surfaces.wallpapers, &wp),
+            floor = name(&content.surfaces.floors, &fl)
+        ));
     let components = vec![
         menu(
+            lang,
             format!("dw:{room}:{page}"),
-            format!("Wallpaper (page {}/{pages})…", page + 1),
+            t!(lang, "house.decorate.wallpaper-menu", page = page + 1, pages = pages),
             &content.surfaces.wallpapers,
             page,
             &wp,
         ),
         menu(
+            lang,
             format!("df:{room}:{page}"),
-            format!("Floor (page {}/{pages})…", page + 1),
+            t!(lang, "house.decorate.floor-menu", page = page + 1, pages = pages),
             &content.surfaces.floors,
             page,
             &fl,
@@ -124,7 +133,7 @@ pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow
                     disabled: pages < 2,
                     emoji: None,
                     id: None,
-                    label: Some("More patterns ▶".to_owned()),
+                    label: Some(t!(lang, "house.decorate.more")),
                     sku_id: None,
                     style: ButtonStyle::Secondary,
                     url: None,
@@ -134,7 +143,7 @@ pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow
                     disabled: rooms.len() < 2,
                     emoji: None,
                     id: None,
-                    label: Some("Next room".to_owned()),
+                    label: Some(t!(lang, "house.decorate.next-room")),
                     sku_id: None,
                     style: ButtonStyle::Secondary,
                     url: None,
@@ -166,7 +175,7 @@ pub(crate) async fn on_component(
         &content.surfaces.floors
     };
     let Some(surface) = value.and_then(|v| list.iter().find(|s| s.id == v)) else {
-        return cx.reply_ephemeral("Pick a pattern.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "house.decorate.pick")).await;
     };
     let user = cx.author()?.id.get();
     let key = format!("{}:{}", if wall { "wp" } else { "fl" }, surface.id);
@@ -177,10 +186,22 @@ pub(crate) async fn on_component(
             Currency::Pearls => DbCurrency::Pearls,
         };
         match cx.app.db.buy_item(user, &key, surface.price, currency, 1).await? {
-            BuyOutcome::Bought { .. } => note = format!("Bought **{}** for {}.", surface.name, price_text(surface)),
+            BuyOutcome::Bought { .. } => {
+                note = t!(
+                    cx.lang(),
+                    "house.decorate.bought",
+                    name = content.name(&surface.id, cx.lang()),
+                    price = price_text(cx.lang(), surface)
+                )
+            }
             _ => {
                 return cx
-                    .reply_ephemeral(format!("**{}** costs {}.", surface.name, price_text(surface)))
+                    .reply_ephemeral(t!(
+                        cx.lang(),
+                        "house.decorate.costs",
+                        name = content.name(&surface.id, cx.lang()),
+                        price = price_text(cx.lang(), surface)
+                    ))
                     .await;
             }
         }

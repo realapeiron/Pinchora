@@ -1,6 +1,7 @@
 //! `/starboard`: boards, top posts and vote channel setup.
 
 use pinchora_core::{
+    server_stats::grouped_in,
     settings::parse_hex_color,
     starboard::{MAX_BOARDS, MAX_ROLE_WEIGHT},
     t,
@@ -424,7 +425,7 @@ async fn list(cx: &Cx, guild: u64) -> anyhow::Result<()> {
                 emoji = &b.emoji,
                 name = crate::custom::scrub_value(&b.name),
                 channel = format!("<#{}>", b.channel_id),
-                threshold = b.threshold
+                threshold = grouped_in(cx.lang(), i64::from(b.threshold))
             )
         })
         .collect();
@@ -508,13 +509,15 @@ async fn top(cx: &Cx, guild: u64, id: Option<i64>, page: i64, update: bool) -> a
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            format!(
-                "{}. ⭐ {} · https://discord.com/channels/{}/{}/{}",
-                page * 10 + i as i64 + 1,
-                p.star_count,
-                guild,
-                p.channel_id,
-                p.message_id
+            t!(
+                cx.lang(),
+                "starboard.top.post-line",
+                rank = grouped_in(cx.lang(), page * 10 + i as i64 + 1),
+                count = grouped_in(cx.lang(), i64::from(p.star_count)),
+                url = format!(
+                    "https://discord.com/channels/{}/{}/{}",
+                    guild, p.channel_id, p.message_id
+                )
             )
         })
         .collect();
@@ -524,7 +527,14 @@ async fn top(cx: &Cx, guild: u64, id: Option<i64>, page: i64, update: bool) -> a
     let gazers = cx.app.db.top_stargazers(board.id).await?;
     if !gazers.is_empty() {
         lines.push(t!(cx.lang(), "starboard.top.stargazers"));
-        lines.extend(gazers.iter().map(|(user, count)| format!("<@{user}> · {count}")));
+        lines.extend(gazers.iter().map(|(user, count)| {
+            t!(
+                cx.lang(),
+                "starboard.top.stargazer-line",
+                user = format!("<@{user}>"),
+                count = grouped_in(cx.lang(), *count)
+            )
+        }));
     }
     let embed = EmbedBuilder::new()
         .title(t!(

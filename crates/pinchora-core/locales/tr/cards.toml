@@ -15,7 +15,7 @@ total-xp = "TOPLAM {xp} XP"
 next-role = "Sonraki rol: {level}. seviyede {role}"
 wallet = "CÜZDAN"
 streak = "SERİ"
-pets = "EVCİL"
+pets = "HAYVAN"
 fish-book = "BALIKLAR"
 daily = "GÜNLÜK"
 weekly = "HAFTALIK"
@@ -23,6 +23,10 @@ monthly = "AYLIK"
 help-title = "PINCHORA YARDIM"
 page = "SAYFA {page}/{pages}"
 needs-manage-server = "SUNUCUYU YÖNET İZNİ GEREKİR"
+badge-new = "YENİ"
+
+[card.grid]
+empty = "HENÜZ HİÇBİR ŞEY YOK"
 
 [card.days]
 other = "{count} GÜN"
