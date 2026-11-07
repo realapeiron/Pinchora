@@ -1180,12 +1180,15 @@
       "verify",
       "verification",
       "raid",
+      "antinuke",
       "feeds",
       "voice",
       "xp",
       "info",
       "invites",
-      "inviteadmin"
+      "inviteadmin",
+      "birthday",
+      "birthdays"
     ],
     "responder_placeholders": {
       "keyword": [
