@@ -2712,6 +2712,166 @@
           "options": [],
           "path": "starboard votes list",
           "usage": "/starboard votes list"
+        },
+        {
+          "description": "See a member's invite card",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose invitations to show",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "invites user",
+          "usage": "/invites user [user]"
+        },
+        {
+          "description": "See the invitation leaderboard",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "All time",
+                "Last 7 days",
+                "Last 30 days"
+              ],
+              "description": "Time period",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "invites top",
+          "usage": "/invites top [period]"
+        },
+        {
+          "description": "Get a short-lived invite link for a friend",
+          "manager": false,
+          "options": [],
+          "path": "invites temp",
+          "usage": "/invites temp"
+        },
+        {
+          "description": "Set the tracking and friend-link options",
+          "manager": true,
+          "options": [
+            {
+              "description": "Count new joins",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Account age below this is suspicious",
+              "name": "fake_days",
+              "required": false
+            },
+            {
+              "description": "Channel for join logs",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Let members create friend links",
+              "name": "temp_enabled",
+              "required": false
+            },
+            {
+              "description": "Channel friend links lead to",
+              "name": "temp_channel",
+              "required": false
+            },
+            {
+              "description": "Daily links allowed per member",
+              "name": "temp_daily",
+              "required": false
+            },
+            {
+              "description": "Friend link lifetime in seconds",
+              "name": "temp_age",
+              "required": false
+            },
+            {
+              "description": "Maximum uses for each friend link",
+              "name": "temp_uses",
+              "required": false
+            }
+          ],
+          "path": "inviteadmin settings",
+          "usage": "/inviteadmin settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
+        },
+        {
+          "description": "Add invitations to a member's score",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin bonus-add",
+          "usage": "/inviteadmin bonus-add <user> <amount>"
+        },
+        {
+          "description": "Remove a bonus from a member's score",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin bonus-remove",
+          "usage": "/inviteadmin bonus-remove <user> <amount>"
+        },
+        {
+          "description": "Give a role at an invite milestone",
+          "manager": true,
+          "options": [
+            {
+              "description": "Invite threshold",
+              "name": "invites",
+              "required": true
+            },
+            {
+              "description": "Role to give",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin reward-add",
+          "usage": "/inviteadmin reward-add <invites> <role>"
+        },
+        {
+          "description": "Remove an invite reward",
+          "manager": true,
+          "options": [
+            {
+              "description": "Invite threshold",
+              "name": "invites",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin reward-remove",
+          "usage": "/inviteadmin reward-remove <invites>"
+        },
+        {
+          "description": "Post an Invite a friend button in this channel",
+          "manager": true,
+          "options": [],
+          "path": "inviteadmin post",
+          "usage": "/inviteadmin post"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -2816,6 +2976,106 @@
           ],
           "path": "automod test",
           "usage": "/automod test <text>"
+        },
+        {
+          "description": "Pass this server's join gate",
+          "manager": false,
+          "options": [],
+          "path": "verify",
+          "usage": "/verify"
+        },
+        {
+          "description": "Enable or disable the gate and choose safe roles",
+          "manager": true,
+          "options": [
+            {
+              "description": "Enable the join gate",
+              "name": "enabled",
+              "required": true
+            },
+            {
+              "description": "Role granted after verification (keep onboarding permissions restricted until then)",
+              "name": "verified_role",
+              "required": false
+            },
+            {
+              "description": "Role removed after verification",
+              "name": "unverified_role",
+              "required": false
+            },
+            {
+              "description": "Channel for the verification panel",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Optional kick timeout in minutes; zero disables it",
+              "name": "kick_after",
+              "required": false
+            }
+          ],
+          "path": "verification setup",
+          "usage": "/verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
+        },
+        {
+          "description": "Choose button, captcha or web verification",
+          "manager": true,
+          "options": [
+            {
+              "description": "button, captcha or web",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "verification mode",
+          "usage": "/verification mode <mode>"
+        },
+        {
+          "description": "Set the message displayed above the verification button",
+          "manager": true,
+          "options": [
+            {
+              "description": "Message to display",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "verification message",
+          "usage": "/verification message <text>"
+        },
+        {
+          "description": "Post the verification panel to the configured channel",
+          "manager": true,
+          "options": [],
+          "path": "verification post",
+          "usage": "/verification post"
+        },
+        {
+          "description": "Force captcha and temporarily restrict the server",
+          "manager": true,
+          "options": [
+            {
+              "description": "Minutes before restoring settings automatically",
+              "name": "minutes",
+              "required": false
+            }
+          ],
+          "path": "raid lockdown",
+          "usage": "/raid lockdown [minutes]"
+        },
+        {
+          "description": "End the raid and restore the settings it changed",
+          "manager": true,
+          "options": [],
+          "path": "raid unlock",
+          "usage": "/raid unlock"
+        },
+        {
+          "description": "Show the live raid state",
+          "manager": true,
+          "options": [],
+          "path": "raid status",
+          "usage": "/raid status"
         },
         {
           "description": "Ban someone, for good or for a while",
@@ -4232,5 +4492,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 255
+  "count": 272
 }

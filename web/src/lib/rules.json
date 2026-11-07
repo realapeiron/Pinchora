@@ -1175,10 +1175,15 @@
       "ticket",
       "tickets",
       "automod",
+      "verify",
+      "verification",
+      "raid",
       "feeds",
       "voice",
       "xp",
-      "info"
+      "info",
+      "invites",
+      "inviteadmin"
     ],
     "responder_placeholders": {
       "keyword": [
