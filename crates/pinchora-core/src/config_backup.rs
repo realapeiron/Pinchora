@@ -24,6 +24,15 @@ macro_rules! section {
         }
     };
 }
+/// Reef records are player data, never server configuration (including moderation evidence).
+pub const EXCLUDED_REEF_TABLES: &[&str] = &[
+    "reef_consents",
+    "reef_sanctions",
+    "reef_chat_evidence",
+    "reef_chat_recipients",
+    "reef_reports",
+    "reef_moderator_audit",
+];
 pub const SECTIONS: &[Section] = &[
     section!(
         "guilds",
@@ -770,9 +779,15 @@ mod tests {
             )],
         );
         validate_shape(&backup, Lang::En).unwrap();
-        backup.sections.insert("members".into(), vec![]);
-        assert!(validate_shape(&backup, Lang::En).is_err());
-        backup.sections.remove("members");
+        for table in std::iter::once("members").chain(EXCLUDED_REEF_TABLES.iter().copied()) {
+            assert!(!SECTIONS.iter().any(|section| section.table == table));
+            backup.sections.insert(table.into(), vec![json!({"user_id":"1234"})]);
+            assert!(
+                validate_shape(&backup, Lang::En).is_err(),
+                "{table} must never be imported"
+            );
+            backup.sections.remove(table);
+        }
         backup
             .sections
             .get_mut("command_control")

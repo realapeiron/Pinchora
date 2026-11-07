@@ -32,6 +32,7 @@ pub struct WebSettings {
     pub message_content: bool,
     /// Proxies whose `X-Forwarded-For` names the client.
     pub trusted_proxies: TrustedProxies,
+    pub operator_ids: Vec<u64>,
     /// Environment variables still needed before anyone can log in.
     pub missing: Vec<&'static str>,
 }
@@ -64,6 +65,16 @@ impl WebSettings {
             static_dir: web.static_dir.clone(),
             message_content: false,
             trusted_proxies: TrustedProxies::parse(&web.trusted_proxies)?,
+            operator_ids: web
+                .operator_ids
+                .split(',')
+                .filter(|s| !s.trim().is_empty())
+                .map(|s| {
+                    let id = s.trim().parse::<u64>().context("invalid PINCHORA_WEB__OPERATOR_IDS")?;
+                    anyhow::ensure!(id > 0 && id <= i64::MAX as u64, "invalid operator id");
+                    Ok(id)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
             missing,
         })
     }

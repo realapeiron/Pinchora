@@ -1,7 +1,7 @@
 //! AutoMod's shared limits, profiles and pure matchers. No Discord or database access.
 mod matcher;
 mod native;
-pub use matcher::{Input, matches, words};
+pub use matcher::{Input, hosts, matches, words};
 pub use native::{NativeRule, native_rule};
 
 use crate::{i18n::Lang, t};

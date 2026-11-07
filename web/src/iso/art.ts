@@ -7,12 +7,12 @@ import { type Img, blank } from "./image";
 import { petSprite, placeholderItem, placeholderTile, recolor, sleepingPet } from "./sprites";
 
 export class Art {
-  readonly atlas: Atlas;
+  readonly atlas: Pick<Atlas, "get" | "has">;
   readonly content: Content;
   private readonly made = new Map<string, Img>();
   private readonly characters = new Map<string, Img>();
 
-  constructor(atlas: Atlas, content: Content) {
+  constructor(atlas: Pick<Atlas, "get" | "has">, content: Content) {
     this.atlas = atlas;
     this.content = content;
   }

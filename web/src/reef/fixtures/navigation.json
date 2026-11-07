@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "neighbor_order": [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1]
+  ],
+  "tie_break": ["f", "h", "insertion"],
+  "cases": [
+    {
+      "name": "straight",
+      "size": [4, 3],
+      "blocked": [],
+      "start": [0, 0],
+      "goal": [3, 0],
+      "path": [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [3, 0]
+      ]
+    },
+    {
+      "name": "deterministic tie",
+      "size": [3, 3],
+      "blocked": [],
+      "start": [0, 0],
+      "goal": [2, 2],
+      "path": [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [2, 1],
+        [2, 2]
+      ]
+    },
+    {
+      "name": "detour",
+      "size": [3, 3],
+      "blocked": [
+        [1, 0],
+        [1, 1]
+      ],
+      "start": [0, 0],
+      "goal": [2, 0],
+      "path": [
+        [0, 0],
+        [0, 1],
+        [0, 2],
+        [1, 2],
+        [2, 2],
+        [2, 1],
+        [2, 0]
+      ]
+    },
+    {
+      "name": "no corner cutting",
+      "size": [2, 2],
+      "blocked": [
+        [1, 0],
+        [0, 1]
+      ],
+      "start": [0, 0],
+      "goal": [1, 1],
+      "path": null
+    },
+    {
+      "name": "blocked goal",
+      "size": [3, 3],
+      "blocked": [[2, 2]],
+      "start": [0, 0],
+      "goal": [2, 2],
+      "path": null
+    },
+    { "name": "off grid", "size": [3, 3], "blocked": [], "start": [0, 0], "goal": [-1, 0], "path": null },
+    {
+      "name": "already there",
+      "size": [3, 3],
+      "blocked": [],
+      "start": [1, 1],
+      "goal": [1, 1],
+      "path": [[1, 1]]
+    }
+  ]
+}

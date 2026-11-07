@@ -6017,7 +6017,11 @@ async fn guestbook_sign_read_delete_block() {
         "the owner can unblock them"
     );
     let refused = sim.click(stranger, &stranger_visit, "Sign guestbook").await;
-    assert!(refused.content().contains("blocked you"), "{}", refused.content());
+    assert!(
+        refused.content().contains("guestbook is unavailable"),
+        "{}",
+        refused.content()
+    );
 
     // Only the owner manages the book; anyone can read it.
     let meddling = sim.pick(guest, &blocked, "gb:b:", &format!("u{stranger}")).await;

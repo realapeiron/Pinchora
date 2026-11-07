@@ -16,6 +16,7 @@ mod extract;
 mod guild_info;
 mod invalidate;
 mod ratelimit;
+mod reef;
 mod routes;
 #[cfg(test)]
 mod rules;
@@ -55,6 +56,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     let bind = settings.bind;
     let state = WebState::new(app.clone(), settings);
     tokio::spawn(prune_audit(app.clone()));
+    tokio::spawn(reef::safety::retention(app.clone()));
 
     let listener = tokio::net::TcpListener::bind(bind).await?;
     tracing::info!(%bind, "web dashboard listening");

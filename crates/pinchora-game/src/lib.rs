@@ -16,3 +16,5 @@ pub mod quests;
 pub mod trips;
 
 pub use content::*;
+
+pub mod chat;

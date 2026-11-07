@@ -156,6 +156,15 @@ fn no_house(whose: Whose) -> ApiError {
 
 /// The house and its rooms, or why they cannot be shown: no house, a hidden one, or a locked door for a visitor.
 async fn open(state: &WebState, whose: Whose) -> ApiResult<(HouseRow, Vec<RoomRow>)> {
+    if let Whose::Visit { owner, guest } = whose
+        && state.app.db.socially_blocked(owner, guest).await?
+    {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "private",
+            "This house is private.",
+        ));
+    }
     if whose.scope() == "visit" {
         // The bot's order: a hidden house is not there at all, so it comes before missing or locked. And a
         // server's plaza (a house owned by the server's id) is only ever reached through the server.

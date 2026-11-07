@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "cases": [
+    { "name": "behind wide furniture", "furniture": [2, 2, 3, 1], "actor": [1, 2], "order": [1, 0] },
+    { "name": "overlap wide furniture", "furniture": [2, 2, 3, 1], "actor": [1.5, 2], "order": [0, 1] },
+    { "name": "past front edge", "furniture": [2, 2, 3, 1], "actor": [3, 3.1], "order": [0, 1] },
+    { "name": "behind back edge", "furniture": [2, 2, 3, 1], "actor": [3, 0.9], "order": [1, 0] },
+    { "name": "fractional overlap", "furniture": [2, 2, 3, 1], "actor": [4.75, 2], "order": [0, 1] }
+  ]
+}

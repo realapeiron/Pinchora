@@ -35,6 +35,8 @@ pub enum VisitOutcome {
         reward: i64,
     },
     AlreadyToday,
+    /// Social consent prevents this visit; no visit or reward is recorded.
+    Unavailable,
 }
 
 impl Db {
@@ -172,6 +174,11 @@ impl Db {
         // The visit row is both players' (a delete of the host's data rewrites it), and the guest's
         // day, with what a delete of their data left of it, is read and written under their lock.
         lock_users(&mut tx, &[host, guest]).await?;
+        let blocked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1))")
+            .bind(host).bind(guest).fetch_one(&mut *tx).await?;
+        if blocked {
+            return Ok(VisitOutcome::Unavailable);
+        }
         // `xmax` is 0 on a row this statement inserted and set on one it updated.
         let (fresh,): (bool,) = sqlx::query_as(
             "INSERT INTO visits (host_id, guest_id, day) VALUES ($1, $2, $3)

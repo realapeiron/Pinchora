@@ -42,7 +42,7 @@ signed-note = "✍️ Signed! Your note is in their guestbook:\n> {note}"
 signed = "Signed!"
 already-today = "You already signed this guestbook today. Come back tomorrow!"
 locked = "This house is locked, so its guestbook is closed."
-blocked = "The owner of this house has blocked you from signing their guestbook."
+blocked = "This guestbook is unavailable."
 no-visit = "Visit the house first with `/house visit`, then sign its guestbook."
 
 [contest]

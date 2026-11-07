@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { Panel } from "../components/Panel";
@@ -11,9 +11,12 @@ import { renderRoom } from "../iso/render";
 import { buildScene } from "../iso/scene";
 import type { Me } from "../lib/api";
 import { type HouseTarget, loadCharacters, renderUrl, useArt, useHouse, useRoom } from "../lib/house";
+import { t } from "../reef/i18n";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/house.css";
+
+const ReefStage = lazy(() => import("../reef/ReefStage"));
 
 /** `/me/house`: the logged-in player's house. */
 export function MyHouse({ me }: { me: Me }) {
@@ -30,7 +33,18 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const house = useHouse(target);
-  const art = useArt();
+  const playEnabled = params.get("play") === "1";
+  const [mode, setMode] = useState<"view" | "play">("play");
+  const playing = playEnabled && mode === "play";
+  useEffect(() => {
+    if (!playing) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [playing]);
+  const art = useArt(!playing);
   const [grid, setGrid] = useState(false);
   const [compare, setCompare] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -39,7 +53,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   const first = house.data?.rooms[0]?.idx ?? null;
   const asked = Number(params.get("room"));
   const idx = house.data?.rooms.find((r) => r.idx === asked)?.idx ?? first;
-  const room = useRoom(target, idx);
+  const room = useRoom(target, idx, !playing);
 
   // The characters in the room are drawn by the server; the room waits for their sprites.
   const codes = room.data?.characters ?? [];
@@ -49,7 +63,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
       if (art.data) await loadCharacters(art.data, codes);
       return true;
     },
-    enabled: art.isSuccess && room.isSuccess,
+    enabled: !playing && art.isSuccess && room.isSuccess,
     staleTime: Infinity,
   });
 
@@ -57,10 +71,10 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   // The bot's picture has no grid, so comparing draws without one.
   const edit = grid && !compare;
   const drawn = useMemo(() => {
-    if (!art.data || !room.data || !sprites.isSuccess) return null;
+    if (playing || !art.data || !room.data || !sprites.isSuccess) return null;
     const scene = buildScene(art.data.content, art.data, room.data, { edit, characterLabel: owner });
     return { scene, rendered: renderRoom(scene) };
-  }, [art.data, room.data, sprites.isSuccess, edit, owner]);
+  }, [art.data, room.data, sprites.isSuccess, edit, owner, playing]);
 
   useEffect(() => setHover(null), [drawn]);
 
@@ -68,88 +82,137 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
 
   const title = house.data
     ? house.data.scope === "own"
-      ? "MY HOUSE"
-      : `${house.data.owner.name.toUpperCase()}'S HOUSE`
-    : "HOUSE";
+      ? t("MY HOUSE")
+      : t("{name}'S HOUSE", { name: house.data.owner.name.toLocaleUpperCase() })
+    : t("HOUSE");
   const summary = house.data?.rooms.find((r) => r.idx === idx);
   const info = drawn && hover !== null ? drawn.scene.items[hover]?.info : null;
 
   return (
-    <div className="page">
+    <div className={playing ? "page house-playing" : "page"}>
       <TopBar me={me} />
       <main className="content content-wide">
         <div className="house-page">
-          <PageHead
-            title={title}
-            lead={
-              house.data
-                ? `${house.data.house.tier_name} · ${house.data.rooms.length} ${house.data.rooms.length === 1 ? "room" : "rooms"} · ${house.data.house.likes} likes`
-                : target.kind === "own"
-                  ? "Your rooms, as they stand."
-                  : "Somebody else's rooms, as they stand."
-            }
-            action={
-              house.data?.scope === "own" ? (
-                <form
-                  className="house-visit"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (/^\d{15,21}$/.test(visitId.trim())) navigate(`/house/${visitId.trim()}`);
-                  }}
-                >
-                  <input
-                    value={visitId}
-                    onChange={(event) => setVisitId(event.target.value)}
-                    inputMode="numeric"
-                    placeholder="Player ID to visit"
-                    aria-label="Discord ID of a player to visit"
-                  />
-                  <PixelButton
-                    type="submit"
-                    variant="secondary"
-                    disabled={!/^\d{15,21}$/.test(visitId.trim())}
+          {!playing && (
+            <PageHead
+              title={title}
+              lead={
+                house.data
+                  ? t("{tier} · {rooms} rooms · {likes} likes", {
+                      tier: house.data.house.tier_name,
+                      rooms: house.data.rooms.length,
+                      likes: house.data.house.likes,
+                    })
+                  : target.kind === "own"
+                    ? t("Your rooms, as they stand.")
+                    : t("Somebody else's rooms, as they stand.")
+              }
+              action={
+                house.data?.scope === "own" ? (
+                  <form
+                    className="house-visit"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (/^\d{15,21}$/.test(visitId.trim())) navigate(`/house/${visitId.trim()}`);
+                    }}
                   >
-                    Visit
+                    <input
+                      value={visitId}
+                      onChange={(event) => setVisitId(event.target.value)}
+                      inputMode="numeric"
+                      placeholder={t("Player ID to visit")}
+                      aria-label={t("Discord ID of a player to visit")}
+                    />
+                    <PixelButton
+                      type="submit"
+                      variant="secondary"
+                      disabled={!/^\d{15,21}$/.test(visitId.trim())}
+                    >
+                      {t("Visit")}
+                    </PixelButton>
+                  </form>
+                ) : (
+                  <PixelButton variant="secondary" onClick={() => navigate("/me/house")}>
+                    {t("My house")}
                   </PixelButton>
-                </form>
-              ) : (
-                <PixelButton variant="secondary" onClick={() => navigate("/me/house")}>
-                  My house
-                </PixelButton>
-              )
-            }
-          />
-          {house.isPending && <Loading label="Opening the door" />}
+                )
+              }
+            />
+          )}
+          {house.isPending && <Loading label={t("Opening the door")} />}
           {house.isError && <Problem error={house.error} />}
           {house.isSuccess && (
             <>
-              {house.data.rooms.length > 1 && (
-                <div className="house-tabs" role="tablist" aria-label="Rooms">
+              {!playing && house.data.rooms.length > 1 && (
+                <div className="house-tabs" role="tablist" aria-label={t("Rooms")}>
                   {house.data.rooms.map((r) => (
                     <PixelButton
                       key={r.idx}
                       role="tab"
                       aria-selected={r.idx === idx}
                       variant={r.idx === idx ? "primary" : "secondary"}
-                      onClick={() => setParams({ room: String(r.idx) }, { replace: true })}
+                      onClick={() =>
+                        setParams(
+                          (previous) => {
+                            const next = new URLSearchParams(previous);
+                            next.set("room", String(r.idx));
+                            return next;
+                          },
+                          { replace: true },
+                        )
+                      }
                     >
                       {r.name} <span className="house-tab-count">{r.items}</span>
                     </PixelButton>
                   ))}
                 </div>
               )}
-              {(room.isPending || art.isPending || (room.isSuccess && sprites.isPending)) && !art.isError && (
-                <Loading label="Drawing the room" />
+              {playEnabled && !playing && (
+                <div className="house-options" role="group" aria-label={t("Room mode")}>
+                  <PixelButton aria-pressed={playing} onClick={() => setMode("play")}>
+                    {t("Play")}
+                  </PixelButton>
+                  <PixelButton variant="secondary" aria-pressed={!playing} onClick={() => setMode("view")}>
+                    {t("View")}
+                  </PixelButton>
+                </div>
               )}
+              {playing && room.data && (
+                <Suspense fallback={<Loading label={t("Opening Play")} />}>
+                  <ReefStage
+                    room={room.data}
+                    own={house.data.scope === "own"}
+                    roomKey={`house:${house.data.owner.id}:${room.data.idx}`}
+                    onLayout={() => void room.refetch()}
+                    roomName={summary?.name ?? house.data.house.name}
+                    playerName={me.user.global_name ?? me.user.username}
+                    onExit={() => setMode("view")}
+                    rooms={house.data.rooms}
+                    onRoom={(nextRoom) =>
+                      setParams(
+                        (previous) => {
+                          const next = new URLSearchParams(previous);
+                          next.set("room", String(nextRoom));
+                          return next;
+                        },
+                        { replace: true },
+                      )
+                    }
+                  />
+                </Suspense>
+              )}
+              {!playing &&
+                (room.isPending || art.isPending || (room.isSuccess && sprites.isPending)) &&
+                !art.isError && <Loading label={t("Drawing the room")} />}
               {room.isError && <Problem error={room.error} />}
-              {art.isError && <Problem error={art.error} />}
+              {!playing && art.isError && <Problem error={art.error} />}
               {drawn && summary && (
                 <>
                   <RoomStage
                     rendered={drawn.rendered}
                     hover={hover}
                     onHover={setHover}
-                    label={`${summary.name}, ${summary.items} ${summary.items === 1 ? "item" : "items"}`}
+                    label={t("{name}, {count} items", { name: summary.name, count: summary.items })}
                     botPicture={compare && bot.url ? bot.url : null}
                   />
                   <div className="house-info" aria-live="polite">
@@ -160,7 +223,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                       </>
                     ) : (
                       <span className="muted">
-                        Hover or tap a piece to see what it is. Drag to pan, Ctrl + wheel to zoom.
+                        {t("Hover or tap a piece to see what it is. Drag to pan, Ctrl + wheel to zoom.")}
                       </span>
                     )}
                   </div>
@@ -171,14 +234,14 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                       disabled={compare}
                       onClick={() => setGrid(!grid)}
                     >
-                      Tile grid
+                      {t("Tile grid")}
                     </PixelButton>
                     <PixelButton
                       variant={compare ? "primary" : "secondary"}
                       aria-pressed={compare}
                       onClick={() => setCompare(!compare)}
                     >
-                      {compare ? "Back to this view" : "Compare with Discord"}
+                      {compare ? t("Back to this view") : t("Compare with Discord")}
                     </PixelButton>
                     {compare && (
                       <span className="muted" role="status">
@@ -202,14 +265,16 @@ function Contents({ drawn }: { drawn: { kind: string; label: string }[] }) {
   const counts = new Map<string, number>();
   for (const info of drawn) {
     const key =
-      info.kind === "furniture" ? info.label : `${info.kind === "pet" ? "Pet" : "Character"}: ${info.label}`;
+      info.kind === "furniture"
+        ? info.label
+        : `${info.kind === "pet" ? t("Pet") : t("Character")}: ${info.label}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   const rows = [...counts].sort(([a], [b]) => a.localeCompare(b));
   return (
-    <Panel title="In this room" aside={<span className="pixel-label muted">{drawn.length}</span>}>
+    <Panel title={t("In this room")} aside={<span className="pixel-label muted">{drawn.length}</span>}>
       {rows.length === 0 ? (
-        <p className="muted">Nothing yet.</p>
+        <p className="muted">{t("Nothing yet.")}</p>
       ) : (
         <ul className="house-contents">
           {rows.map(([name, n]) => (
@@ -241,7 +306,7 @@ function useBotPicture(
       const response = await fetch(renderUrl(target, idx ?? 0, seed ?? 0, 1), {
         credentials: "same-origin",
       });
-      if (!response.ok) throw new Error(`The server answered ${response.status}.`);
+      if (!response.ok) throw new Error(t("The server answered {status}.", { status: response.status }));
       const bytes = new Uint8Array(await response.arrayBuffer());
       return { bytes, image: await decodePng(bytes) };
     },
@@ -253,12 +318,15 @@ function useBotPicture(
     [query.data],
   );
   useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url]);
-  let status = "Fetching Discord's picture…";
-  if (query.isError) status = "Could not fetch Discord's picture.";
+  let status = t("Fetching Discord's picture…");
+  if (query.isError) status = t("Could not fetch Discord's picture.");
   else if (query.data && mine) {
     const theirs = query.data.image;
     if (theirs.width !== mine.width || theirs.height !== mine.height) {
-      status = `Discord's picture is ${theirs.width}×${theirs.height}, this view ${mine.width}×${mine.height}.`;
+      status = t("Discord’s picture is {theirs}, this view {mine}.", {
+        theirs: `${theirs.width}×${theirs.height}`,
+        mine: `${mine.width}×${mine.height}`,
+      });
     } else {
       let differing = 0;
       for (let i = 0; i < theirs.data.length; i += 4) {
@@ -272,8 +340,8 @@ function useBotPicture(
       }
       status =
         differing === 0
-          ? "Showing Discord's picture: identical to this view."
-          : `Showing Discord's picture: ${differing} pixels differ from this view.`;
+          ? t("Showing Discord's picture: identical to this view.")
+          : t("Discord’s picture: {count} pixels differ from this view.", { count: differing });
     }
   }
   return { url, status };

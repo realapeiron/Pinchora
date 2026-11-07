@@ -14,7 +14,12 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "reef:assets": "python3 scripts/build-reef.py",
+    "prebuild": "npm run reef:assets",
+    "predev": "npm run reef:assets",
+    "e2e:reef": "playwright test --config playwright.reef.config.ts",
+    "reef:budget": "node scripts/measure-reef.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.106.1",

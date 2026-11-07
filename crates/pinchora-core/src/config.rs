@@ -179,6 +179,8 @@ pub struct WebConfig {
     /// (`172.16.0.0/12, 10.0.0.1`). Only requests from these may name the client with
     /// `X-Forwarded-For`; everyone else is who the connection says.
     pub trusted_proxies: String,
+    /// Comma-separated Reef moderation operator account ids.
+    pub operator_ids: String,
 }
 
 impl Default for WebConfig {
@@ -193,6 +195,7 @@ impl Default for WebConfig {
             dev_login: false,
             static_dir: None,
             trusted_proxies: String::new(),
+            operator_ids: String::new(),
         }
     }
 }

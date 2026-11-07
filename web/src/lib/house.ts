@@ -46,12 +46,12 @@ export function useHouse(target: HouseTarget) {
 }
 
 /** One room. Refetched every minute so the pets move on with the ten-minute window the server picks them by. */
-export function useRoom(target: HouseTarget, idx: number | null) {
+export function useRoom(target: HouseTarget, idx: number | null, refresh = true) {
   return useQuery({
     queryKey: [`${base(target)}/rooms/${idx}`],
     queryFn: () => api<RoomJson>(`${base(target)}/rooms/${idx}`),
     enabled: idx !== null,
-    refetchInterval: 60_000,
+    refetchInterval: refresh ? 60_000 : false,
     retry: false,
   });
 }
@@ -62,9 +62,10 @@ export function renderUrl(target: HouseTarget, idx: number, seed: number, scale 
 }
 
 /** The catalogue and the atlas, read once: the art every room is drawn from. */
-export function useArt() {
+export function useArt(enabled = true) {
   return useQuery({
     queryKey: ["house-art"],
+    enabled,
     queryFn: async () => {
       const catalog = await api<CatalogResponse>("/api/house/content");
       const atlas = await loadAtlas(catalog.assets.atlas_png, catalog.assets.atlas_json);
