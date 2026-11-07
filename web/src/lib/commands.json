@@ -3,6 +3,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Show a profile card",
           "manager": false,
           "options": [
@@ -16,6 +17,7 @@
           "usage": "/profile [user]"
         },
         {
+          "aliases": [],
           "description": "Show a server level card",
           "manager": false,
           "options": [
@@ -29,6 +31,7 @@
           "usage": "/rank [user]"
         },
         {
+          "aliases": [],
           "description": "Top members by XP, shells, server points or biggest catch",
           "manager": false,
           "options": [
@@ -50,6 +53,7 @@
           "usage": "/leaderboard [board]"
         },
         {
+          "aliases": [],
           "description": "Collect your daily shells",
           "manager": false,
           "options": [],
@@ -57,6 +61,7 @@
           "usage": "/daily"
         },
         {
+          "aliases": [],
           "description": "Show a shell wallet",
           "manager": false,
           "options": [
@@ -70,6 +75,7 @@
           "usage": "/balance [user]"
         },
         {
+          "aliases": [],
           "description": "Today's three quests and their rewards",
           "manager": false,
           "options": [],
@@ -77,6 +83,7 @@
           "usage": "/quests"
         },
         {
+          "aliases": [],
           "description": "What Pinchora can do",
           "manager": false,
           "options": [],
@@ -84,6 +91,7 @@
           "usage": "/help"
         },
         {
+          "aliases": [],
           "description": "Pick your language, or follow your Discord language",
           "manager": false,
           "options": [
@@ -102,6 +110,7 @@
           "usage": "/language set <language>"
         },
         {
+          "aliases": [],
           "description": "Check that Pinchora is awake and how fast it answers",
           "manager": false,
           "options": [],
@@ -116,6 +125,9 @@
     {
       "commands": [
         {
+          "aliases": [
+            "bio"
+          ],
           "description": "Set the about-me text on your profile card",
           "manager": false,
           "options": [
@@ -125,10 +137,11 @@
               "required": true
             }
           ],
-          "path": "bio",
-          "usage": "/bio <text>"
+          "path": "customize bio",
+          "usage": "/customize bio <text>"
         },
         {
+          "aliases": [],
           "description": "Design your pixel character: looks, colours, accessories and outfits",
           "manager": false,
           "options": [],
@@ -136,6 +149,7 @@
           "usage": "/character"
         },
         {
+          "aliases": [],
           "description": "Buy and wear a background for your profile, rank and wallet cards",
           "manager": false,
           "options": [],
@@ -143,6 +157,7 @@
           "usage": "/customize background"
         },
         {
+          "aliases": [],
           "description": "Your badge collection: earn, buy and wear the badges on your profile card",
           "manager": false,
           "options": [],
@@ -150,6 +165,7 @@
           "usage": "/customize badges"
         },
         {
+          "aliases": [],
           "description": "Pick the title under your name on your profile and rank cards",
           "manager": false,
           "options": [],
@@ -157,6 +173,7 @@
           "usage": "/customize title"
         },
         {
+          "aliases": [],
           "description": "Accent colour, panel opacity and a frame for your profile, rank and wallet cards",
           "manager": false,
           "options": [],
@@ -164,6 +181,7 @@
           "usage": "/customize style"
         },
         {
+          "aliases": [],
           "description": "Put a favourite fish, a pet, a furniture item and your house on your profile card",
           "manager": false,
           "options": [],
@@ -171,6 +189,9 @@
           "usage": "/customize showcase"
         },
         {
+          "aliases": [
+            "wrapped"
+          ],
           "description": "Your year in numbers (open from 1 December to 31 January)",
           "manager": false,
           "options": [
@@ -180,10 +201,11 @@
               "required": false
             }
           ],
-          "path": "wrapped",
-          "usage": "/wrapped [year]"
+          "path": "info wrapped",
+          "usage": "/info wrapped [year]"
         },
         {
+          "aliases": [],
           "description": "Choose what others can see of you, whether servers may DM you, or delete your data",
           "manager": false,
           "options": [
@@ -197,6 +219,7 @@
           "usage": "/privacy [server_dms]"
         },
         {
+          "aliases": [],
           "description": "How many games someone played and won",
           "manager": false,
           "options": [
@@ -210,6 +233,7 @@
           "usage": "/play stats [user]"
         },
         {
+          "aliases": [],
           "description": "Show server achievements",
           "manager": false,
           "options": [
@@ -223,6 +247,9 @@
           "usage": "/achievements [user]"
         },
         {
+          "aliases": [
+            "achievementadmin add"
+          ],
           "description": "Create an achievement (up to 25)",
           "manager": true,
           "options": [
@@ -285,10 +312,13 @@
               "required": false
             }
           ],
-          "path": "achievementadmin add",
-          "usage": "/achievementadmin add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
+          "path": "setup achievements add",
+          "usage": "/setup achievements add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
         },
         {
+          "aliases": [
+            "achievementadmin edit"
+          ],
           "description": "Edit an achievement",
           "manager": true,
           "options": [
@@ -371,30 +401,13 @@
               "required": false
             }
           ],
-          "path": "achievementadmin edit",
-          "usage": "/achievementadmin edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
+          "path": "setup achievements edit",
+          "usage": "/setup achievements edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
         },
         {
-          "description": "Remove an achievement and its grants",
-          "manager": true,
-          "options": [
-            {
-              "description": "Achievement ID",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "achievementadmin grant"
           ],
-          "path": "achievementadmin remove",
-          "usage": "/achievementadmin remove <id>"
-        },
-        {
-          "description": "List configured achievements",
-          "manager": true,
-          "options": [],
-          "path": "achievementadmin list",
-          "usage": "/achievementadmin list"
-        },
-        {
           "description": "Give a custom achievement to a member",
           "manager": true,
           "options": [
@@ -409,8 +422,34 @@
               "required": true
             }
           ],
-          "path": "achievementadmin grant",
-          "usage": "/achievementadmin grant <id> <user>"
+          "path": "setup achievements grant",
+          "usage": "/setup achievements grant <id> <user>"
+        },
+        {
+          "aliases": [
+            "achievementadmin list"
+          ],
+          "description": "List configured achievements",
+          "manager": true,
+          "options": [],
+          "path": "setup achievements list",
+          "usage": "/setup achievements list"
+        },
+        {
+          "aliases": [
+            "achievementadmin remove"
+          ],
+          "description": "Remove an achievement and its grants",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup achievements remove",
+          "usage": "/setup achievements remove <id>"
         }
       ],
       "intro": "Your look, your character, and what other people may see of you.",
@@ -420,20 +459,27 @@
     {
       "commands": [
         {
+          "aliases": [
+            "weekly"
+          ],
           "description": "Collect your weekly shells (every 7 days)",
           "manager": false,
           "options": [],
-          "path": "weekly",
-          "usage": "/weekly"
+          "path": "rewards weekly",
+          "usage": "/rewards weekly"
         },
         {
+          "aliases": [
+            "monthly"
+          ],
           "description": "Collect your monthly shells (every 30 days)",
           "manager": false,
           "options": [],
-          "path": "monthly",
-          "usage": "/monthly"
+          "path": "rewards monthly",
+          "usage": "/rewards monthly"
         },
         {
+          "aliases": [],
           "description": "Send shells to someone",
           "manager": false,
           "options": [
@@ -452,6 +498,7 @@
           "usage": "/give <user> <amount>"
         },
         {
+          "aliases": [],
           "description": "Give someone a reputation point (once a day)",
           "manager": false,
           "options": [
@@ -465,6 +512,7 @@
           "usage": "/rep <user>"
         },
         {
+          "aliases": [],
           "description": "Message me when a reward, my pet or a pet trip is ready",
           "manager": false,
           "options": [
@@ -494,6 +542,7 @@
           "usage": "/remind me when <what> <state>"
         },
         {
+          "aliases": [],
           "description": "Message me after a while: 45m, 2h30m, 3d",
           "manager": false,
           "options": [
@@ -512,6 +561,7 @@
           "usage": "/remind me in <duration> <text>"
         },
         {
+          "aliases": [],
           "description": "Your reminders and which notifications are on",
           "manager": false,
           "options": [],
@@ -519,6 +569,7 @@
           "usage": "/remind list"
         },
         {
+          "aliases": [],
           "description": "Cancel a reminder you set with /remind me in",
           "manager": false,
           "options": [
@@ -532,6 +583,7 @@
           "usage": "/remind cancel <id>"
         },
         {
+          "aliases": [],
           "description": "Save your birthday privately; you choose whether others can see it",
           "manager": false,
           "options": [
@@ -570,6 +622,7 @@
           "usage": "/birthday set <day> <month> [year] [timezone] [public] [show_age]"
         },
         {
+          "aliases": [],
           "description": "Remove your birthday and stop future celebrations",
           "manager": false,
           "options": [],
@@ -577,6 +630,7 @@
           "usage": "/birthday remove"
         },
         {
+          "aliases": [],
           "description": "See the birthday and privacy choices you saved",
           "manager": false,
           "options": [],
@@ -584,6 +638,7 @@
           "usage": "/birthday me"
         },
         {
+          "aliases": [],
           "description": "See a member's birthday if they share it",
           "manager": false,
           "options": [
@@ -597,6 +652,7 @@
           "usage": "/birthday view <user>"
         },
         {
+          "aliases": [],
           "description": "See the next public birthday in this server",
           "manager": false,
           "options": [],
@@ -604,6 +660,7 @@
           "usage": "/birthday next"
         },
         {
+          "aliases": [],
           "description": "Public birthdays in this server",
           "manager": false,
           "options": [
@@ -624,6 +681,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "The hourly market: rare pieces with limited global stock",
           "manager": false,
           "options": [],
@@ -631,6 +689,7 @@
           "usage": "/shop market"
         },
         {
+          "aliases": [],
           "description": "Browse the furniture catalog",
           "manager": false,
           "options": [
@@ -644,6 +703,7 @@
           "usage": "/shop catalog [category]"
         },
         {
+          "aliases": [],
           "description": "Furniture you own but have not placed",
           "manager": false,
           "options": [],
@@ -651,6 +711,7 @@
           "usage": "/inventory"
         },
         {
+          "aliases": [],
           "description": "Send a piece of furniture to a friend",
           "manager": false,
           "options": [
@@ -664,6 +725,7 @@
           "usage": "/gift <user>"
         },
         {
+          "aliases": [],
           "description": "Browse a player's stall",
           "manager": false,
           "options": [
@@ -677,6 +739,7 @@
           "usage": "/stall view [user]"
         },
         {
+          "aliases": [],
           "description": "Put an item from your inventory on your stall",
           "manager": false,
           "options": [
@@ -690,6 +753,7 @@
           "usage": "/stall sell <price>"
         },
         {
+          "aliases": [],
           "description": "Take items back off your stall",
           "manager": false,
           "options": [],
@@ -704,6 +768,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Look at your house",
           "manager": false,
           "options": [
@@ -717,6 +782,7 @@
           "usage": "/house view [room]"
         },
         {
+          "aliases": [],
           "description": "Visit someone's house (first visit each day pays shells)",
           "manager": false,
           "options": [
@@ -735,6 +801,7 @@
           "usage": "/house visit [user] [room]"
         },
         {
+          "aliases": [],
           "description": "Decorate a room: move the cursor, pick furniture, place it",
           "manager": false,
           "options": [
@@ -753,6 +820,7 @@
           "usage": "/house edit [room] [owner]"
         },
         {
+          "aliases": [],
           "description": "Move up to a bigger house (your furniture stays)",
           "manager": false,
           "options": [],
@@ -760,6 +828,7 @@
           "usage": "/house upgrade"
         },
         {
+          "aliases": [],
           "description": "Lock or unlock your house for visitors",
           "manager": false,
           "options": [
@@ -773,6 +842,7 @@
           "usage": "/house lock <locked>"
         },
         {
+          "aliases": [],
           "description": "Leave a like on someone's house (once a day)",
           "manager": false,
           "options": [
@@ -786,6 +856,7 @@
           "usage": "/house like <user>"
         },
         {
+          "aliases": [],
           "description": "Change a room's wallpaper and floor",
           "manager": false,
           "options": [
@@ -799,6 +870,7 @@
           "usage": "/house decorate [room]"
         },
         {
+          "aliases": [],
           "description": "Read a house's guestbook and see who visited",
           "manager": false,
           "options": [
@@ -812,6 +884,7 @@
           "usage": "/house guestbook [user]"
         },
         {
+          "aliases": [],
           "description": "This week's theme, time left, entries and last week's winners",
           "manager": false,
           "options": [],
@@ -819,6 +892,7 @@
           "usage": "/house contest view"
         },
         {
+          "aliases": [],
           "description": "Enter a room as it looks now (entering again updates it)",
           "manager": false,
           "options": [
@@ -832,6 +906,7 @@
           "usage": "/house contest enter [room]"
         },
         {
+          "aliases": [],
           "description": "Judge the rooms other members entered",
           "manager": false,
           "options": [],
@@ -839,6 +914,7 @@
           "usage": "/house contest vote"
         },
         {
+          "aliases": [],
           "description": "Last week's winning room",
           "manager": false,
           "options": [],
@@ -846,6 +922,7 @@
           "usage": "/house contest winners"
         },
         {
+          "aliases": [],
           "description": "Look around the server plaza",
           "manager": false,
           "options": [],
@@ -853,6 +930,7 @@
           "usage": "/plaza view"
         },
         {
+          "aliases": [],
           "description": "Give a piece of furniture to the server plaza",
           "manager": false,
           "options": [],
@@ -860,11 +938,14 @@
           "usage": "/plaza donate"
         },
         {
+          "aliases": [
+            "plaza edit"
+          ],
           "description": "Arrange the plaza's donated furniture (Manage Server)",
           "manager": true,
           "options": [],
-          "path": "plaza edit",
-          "usage": "/plaza edit"
+          "path": "setup community plaza-edit",
+          "usage": "/setup community plaza-edit"
         }
       ],
       "intro": "Your own pixel house, the weekly room contest, and the plaza the whole server shares.",
@@ -874,6 +955,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "See your active pet and look after it",
           "manager": false,
           "options": [],
@@ -881,6 +963,7 @@
           "usage": "/pet view"
         },
         {
+          "aliases": [],
           "description": "Adopt your first pet for free",
           "manager": false,
           "options": [],
@@ -888,6 +971,7 @@
           "usage": "/pet adopt"
         },
         {
+          "aliases": [],
           "description": "Open a pet capsule (1,500 shells) for a random pet",
           "manager": false,
           "options": [],
@@ -895,6 +979,7 @@
           "usage": "/pet capsule"
         },
         {
+          "aliases": [],
           "description": "Your nursery: every pet at a glance; open one or pick your active pet",
           "manager": false,
           "options": [],
@@ -902,6 +987,7 @@
           "usage": "/pet list"
         },
         {
+          "aliases": [],
           "description": "Rename your active pet",
           "manager": false,
           "options": [
@@ -915,6 +1001,7 @@
           "usage": "/pet rename <name>"
         },
         {
+          "aliases": [],
           "description": "Send a pet away for 1, 4 or 8 hours; it brings back shells and sometimes furniture",
           "manager": false,
           "options": [
@@ -943,6 +1030,7 @@
           "usage": "/pet trip go <destination> [pet]"
         },
         {
+          "aliases": [],
           "description": "Collect the souvenirs of pets that are back, or see who is still away",
           "manager": false,
           "options": [],
@@ -957,6 +1045,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Cast a line (10 shells of plain bait). Press Reel the moment something bites!",
           "manager": false,
           "options": [
@@ -977,6 +1066,7 @@
           "usage": "/fish cast [spot]"
         },
         {
+          "aliases": [],
           "description": "Buy rods and bait with shells",
           "manager": false,
           "options": [],
@@ -984,6 +1074,7 @@
           "usage": "/fish shop"
         },
         {
+          "aliases": [],
           "description": "Pick your spot, rod and bait",
           "manager": false,
           "options": [],
@@ -991,6 +1082,7 @@
           "usage": "/fish gear"
         },
         {
+          "aliases": [],
           "description": "Sell the fish in your bucket for shells",
           "manager": false,
           "options": [],
@@ -998,6 +1090,7 @@
           "usage": "/fish sell"
         },
         {
+          "aliases": [],
           "description": "Your fish book: every species, record sizes and milestone rewards",
           "manager": false,
           "options": [],
@@ -1012,6 +1105,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Ask someone to be your friend",
           "manager": false,
           "options": [
@@ -1025,6 +1119,7 @@
           "usage": "/friends add <user>"
         },
         {
+          "aliases": [],
           "description": "Stop being friends with someone",
           "manager": false,
           "options": [
@@ -1038,6 +1133,7 @@
           "usage": "/friends remove <user>"
         },
         {
+          "aliases": [],
           "description": "Your friends, or somebody else's",
           "manager": false,
           "options": [
@@ -1051,6 +1147,7 @@
           "usage": "/friends list [user]"
         },
         {
+          "aliases": [],
           "description": "Ask someone to be your partner",
           "manager": false,
           "options": [
@@ -1064,6 +1161,7 @@
           "usage": "/partner propose <user>"
         },
         {
+          "aliases": [],
           "description": "See a pair: since when, days together, what they share",
           "manager": false,
           "options": [
@@ -1077,6 +1175,7 @@
           "usage": "/partner view [user]"
         },
         {
+          "aliases": [],
           "description": "End your partnership",
           "manager": false,
           "options": [],
@@ -1084,6 +1183,7 @@
           "usage": "/partner leave"
         },
         {
+          "aliases": [],
           "description": "Give someone a hug",
           "manager": false,
           "options": [
@@ -1097,6 +1197,7 @@
           "usage": "/hug <user>"
         },
         {
+          "aliases": [],
           "description": "Give someone a pat on the head",
           "manager": false,
           "options": [
@@ -1110,6 +1211,7 @@
           "usage": "/pat <user>"
         },
         {
+          "aliases": [],
           "description": "Wave at someone",
           "manager": false,
           "options": [
@@ -1123,6 +1225,7 @@
           "usage": "/wave <user>"
         },
         {
+          "aliases": [],
           "description": "Give someone a high five",
           "manager": false,
           "options": [
@@ -1143,6 +1246,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Tic-tac-toe with buttons; the winner earns shells",
           "manager": false,
           "options": [
@@ -1156,6 +1260,7 @@
           "usage": "/duel tictactoe <user>"
         },
         {
+          "aliases": [],
           "description": "Connect four on a pixel board; the winner earns shells, or the pot",
           "manager": false,
           "options": [
@@ -1174,6 +1279,7 @@
           "usage": "/duel connect4 <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Rock paper scissors, picked in secret; the winner earns shells, or the pot",
           "manager": false,
           "options": [
@@ -1202,6 +1308,7 @@
           "usage": "/duel rps <user> [rounds] [bet]"
         },
         {
+          "aliases": [],
           "description": "Share or Grab: split the pool, or grab it all and hope they share",
           "manager": false,
           "options": [
@@ -1220,6 +1327,7 @@
           "usage": "/duel share <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Sea Fleet: hide your ships, sink theirs; the winner earns shells, or the pot",
           "manager": false,
           "options": [
@@ -1238,6 +1346,7 @@
           "usage": "/duel seafleet <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Pearl Checkers on a pixel board; the winner earns shells, or the pot",
           "manager": false,
           "options": [
@@ -1256,6 +1365,7 @@
           "usage": "/duel checkers <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Reef Chess on a pixel board; the winner earns shells, or the pot",
           "manager": false,
           "options": [
@@ -1274,6 +1384,7 @@
           "usage": "/duel chess <user> [bet]"
         },
         {
+          "aliases": [],
           "description": "Pearl Flip on an 8 by 8 board; flip the other player's pearls",
           "manager": false,
           "options": [
@@ -1299,6 +1410,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Guess the word before the tide takes the sandcastle",
           "manager": false,
           "options": [],
@@ -1306,6 +1418,7 @@
           "usage": "/play hangman"
         },
         {
+          "aliases": [],
           "description": "Guess the five-letter word in six tries",
           "manager": false,
           "options": [
@@ -1323,6 +1436,7 @@
           "usage": "/play wordle [mode]"
         },
         {
+          "aliases": [],
           "description": "A trivia round for the channel: 20 seconds, anyone can answer",
           "manager": false,
           "options": [
@@ -1346,6 +1460,7 @@
           "usage": "/play trivia [category]"
         },
         {
+          "aliases": [],
           "description": "Pixel Picross: fill in the grid from its clues to find the sea creature",
           "manager": false,
           "options": [
@@ -1363,6 +1478,7 @@
           "usage": "/play picross [mode]"
         },
         {
+          "aliases": [],
           "description": "Tide 2048: slide the sea creatures and merge them into bigger ones",
           "manager": false,
           "options": [],
@@ -1370,6 +1486,7 @@
           "usage": "/play 2048"
         },
         {
+          "aliases": [],
           "description": "Find all eight shell pairs on a pixel grid",
           "manager": false,
           "options": [],
@@ -1377,6 +1494,7 @@
           "usage": "/play memory"
         },
         {
+          "aliases": [],
           "description": "Reveal the safe sea squares, or flag the mines",
           "manager": false,
           "options": [
@@ -1394,6 +1512,7 @@
           "usage": "/play minesweeper [size]"
         },
         {
+          "aliases": [],
           "description": "Guess whether the next tide card is higher or lower",
           "manager": false,
           "options": [],
@@ -1401,6 +1520,7 @@
           "usage": "/play higherlower"
         },
         {
+          "aliases": [],
           "description": "Unscramble the sea word",
           "manager": false,
           "options": [],
@@ -1408,6 +1528,7 @@
           "usage": "/play anagram"
         },
         {
+          "aliases": [],
           "description": "Type the sentence on the pixel card accurately and quickly",
           "manager": false,
           "options": [],
@@ -1415,6 +1536,7 @@
           "usage": "/play typing"
         },
         {
+          "aliases": [],
           "description": "Find the secret number using hot and cold clues",
           "manager": false,
           "options": [],
@@ -1422,6 +1544,7 @@
           "usage": "/play guessnumber"
         },
         {
+          "aliases": [],
           "description": "Type a word with the syllable before the pearl pops; last one with lives wins",
           "manager": false,
           "options": [
@@ -1435,6 +1558,7 @@
           "usage": "/party hotpearl [lives]"
         },
         {
+          "aliases": [],
           "description": "Write a phrase from a few letters, then vote for the best one",
           "manager": false,
           "options": [
@@ -1448,6 +1572,7 @@
           "usage": "/party acronym [rounds]"
         },
         {
+          "aliases": [],
           "description": "Caption a pixel postcard, then vote for the funniest caption",
           "manager": false,
           "options": [
@@ -1461,6 +1586,7 @@
           "usage": "/party postcard [rounds]"
         },
         {
+          "aliases": [],
           "description": "Race two to four players to find the same five-letter word on private boards",
           "manager": false,
           "options": [],
@@ -1468,6 +1594,7 @@
           "usage": "/party wordrace"
         },
         {
+          "aliases": [],
           "description": "Post a would-you-rather question for the channel to vote on",
           "manager": false,
           "options": [
@@ -1489,6 +1616,7 @@
           "usage": "/party wouldyourrather [topic]"
         },
         {
+          "aliases": [],
           "description": "Take turns picking truth or dare; a random player is chosen each round",
           "manager": false,
           "options": [
@@ -1510,6 +1638,7 @@
           "usage": "/party truthordare [topic]"
         },
         {
+          "aliases": [],
           "description": "Stop the party game running in this channel (its host or a server manager)",
           "manager": false,
           "options": [],
@@ -1517,6 +1646,7 @@
           "usage": "/party stop"
         },
         {
+          "aliases": [],
           "description": "Never Have I Ever: a family-friendly group question",
           "manager": false,
           "options": [],
@@ -1524,6 +1654,7 @@
           "usage": "/party nhie"
         },
         {
+          "aliases": [],
           "description": "Ask the Magic Conch, choose an option or roll a die",
           "manager": false,
           "options": [
@@ -1559,6 +1690,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Hermit Crab Derby: everyone picks a crab and watches the race; winners share the stakes",
           "manager": false,
           "options": [
@@ -1572,6 +1704,7 @@
           "usage": "/play derby [bet]"
         },
         {
+          "aliases": [],
           "description": "Treasure Heist: crew up against a sunken vault, nobody loses shells",
           "manager": false,
           "options": [],
@@ -1579,6 +1712,7 @@
           "usage": "/play heist"
         },
         {
+          "aliases": [],
           "description": "Shell Game: find the pearl under one of three shells (needs gambling switched on)",
           "manager": false,
           "options": [
@@ -1592,6 +1726,7 @@
           "usage": "/play shells <bet>"
         },
         {
+          "aliases": [],
           "description": "Call a storm surge the whole server has to hold back (managers)",
           "manager": true,
           "options": [],
@@ -1599,6 +1734,7 @@
           "usage": "/surge"
         },
         {
+          "aliases": [],
           "description": "Walk the shore for shells, sea glass and critters (once every 20 minutes)",
           "manager": false,
           "options": [],
@@ -1606,6 +1742,7 @@
           "usage": "/beachcomb"
         },
         {
+          "aliases": [],
           "description": "Set a crab pot for a few hours, then haul in the critters it caught",
           "manager": false,
           "options": [],
@@ -1613,6 +1750,7 @@
           "usage": "/crabpot"
         },
         {
+          "aliases": [],
           "description": "Drop three critters in this channel for everyone to grab",
           "manager": false,
           "options": [],
@@ -1620,6 +1758,7 @@
           "usage": "/critterdrop"
         },
         {
+          "aliases": [],
           "description": "Your Tide Pool Dex: every critter and find you have collected",
           "manager": false,
           "options": [
@@ -1649,6 +1788,7 @@
     {
       "commands": [
         {
+          "aliases": [],
           "description": "Ask the server a question with up to five answers",
           "manager": false,
           "options": [
@@ -1672,6 +1812,7 @@
           "usage": "/poll <question> <options> [duration]"
         },
         {
+          "aliases": [],
           "description": "Suggest something for this server",
           "manager": false,
           "options": [
@@ -1685,6 +1826,9 @@
           "usage": "/suggest <text>"
         },
         {
+          "aliases": [
+            "suggestion approve"
+          ],
           "description": "Approve a suggestion and tell its author",
           "manager": true,
           "options": [
@@ -1699,10 +1843,13 @@
               "required": false
             }
           ],
-          "path": "suggestion approve",
-          "usage": "/suggestion approve <id> [reason]"
+          "path": "mod suggestion approve",
+          "usage": "/mod suggestion approve <id> [reason]"
         },
         {
+          "aliases": [
+            "suggestion deny"
+          ],
           "description": "Deny a suggestion and tell its author",
           "manager": true,
           "options": [
@@ -1717,10 +1864,11 @@
               "required": false
             }
           ],
-          "path": "suggestion deny",
-          "usage": "/suggestion deny <id> [reason]"
+          "path": "mod suggestion deny",
+          "usage": "/mod suggestion deny <id> [reason]"
         },
         {
+          "aliases": [],
           "description": "Start a giveaway",
           "manager": true,
           "options": [
@@ -1759,6 +1907,7 @@
           "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role]"
         },
         {
+          "aliases": [],
           "description": "End a running giveaway now and pick its winners",
           "manager": true,
           "options": [
@@ -1772,6 +1921,7 @@
           "usage": "/giveaway end <id>"
         },
         {
+          "aliases": [],
           "description": "Pick new winners for a giveaway that ended",
           "manager": true,
           "options": [
@@ -1790,6 +1940,7 @@
           "usage": "/giveaway reroll <id> [winners]"
         },
         {
+          "aliases": [],
           "description": "The giveaways running in this server",
           "manager": true,
           "options": [],
@@ -1797,6 +1948,45 @@
           "usage": "/giveaway list"
         },
         {
+          "aliases": [
+            "roles add"
+          ],
+          "description": "Add a role to a panel (up to 25), or change its label",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's title or number",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "The role the button gives and takes",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Text on the button",
+              "name": "label",
+              "required": true
+            },
+            {
+              "description": "Emoji on the button: a Unicode emoji or a custom one",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "A line under the label in a menu",
+              "name": "description",
+              "required": false
+            }
+          ],
+          "path": "setup roles panel-add",
+          "usage": "/setup roles panel-add <panel> <role> <label> [emoji] [description]"
+        },
+        {
+          "aliases": [
+            "roles panel"
+          ],
           "description": "Start a role panel, or change its text, style and rules",
           "manager": true,
           "options": [
@@ -1841,61 +2031,13 @@
               "required": false
             }
           ],
-          "path": "roles panel",
-          "usage": "/roles panel <title> [description] [style] [exclusive] [required] [min] [max]"
+          "path": "setup roles panel-create",
+          "usage": "/setup roles panel-create <title> [description] [style] [exclusive] [required] [min] [max]"
         },
         {
-          "description": "Add a role to a panel (up to 25), or change its label",
-          "manager": true,
-          "options": [
-            {
-              "description": "The panel's title or number",
-              "name": "panel",
-              "required": true
-            },
-            {
-              "description": "The role the button gives and takes",
-              "name": "role",
-              "required": true
-            },
-            {
-              "description": "Text on the button",
-              "name": "label",
-              "required": true
-            },
-            {
-              "description": "Emoji on the button: a Unicode emoji or a custom one",
-              "name": "emoji",
-              "required": false
-            },
-            {
-              "description": "A line under the label in a menu",
-              "name": "description",
-              "required": false
-            }
+          "aliases": [
+            "roles post"
           ],
-          "path": "roles add",
-          "usage": "/roles add <panel> <role> <label> [emoji] [description]"
-        },
-        {
-          "description": "Take a role off a panel",
-          "manager": true,
-          "options": [
-            {
-              "description": "The panel's title or number",
-              "name": "panel",
-              "required": true
-            },
-            {
-              "description": "The role to remove",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "roles remove",
-          "usage": "/roles remove <panel> <role>"
-        },
-        {
           "description": "Post a panel in a channel, or update it if it is already there",
           "manager": true,
           "options": [
@@ -1910,10 +2052,34 @@
               "required": true
             }
           ],
-          "path": "roles post",
-          "usage": "/roles post <panel> <channel>"
+          "path": "setup roles panel-post",
+          "usage": "/setup roles panel-post <panel> <channel>"
         },
         {
+          "aliases": [
+            "roles remove"
+          ],
+          "description": "Take a role off a panel",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's title or number",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "The role to remove",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup roles panel-remove",
+          "usage": "/setup roles panel-remove <panel> <role>"
+        },
+        {
+          "aliases": [
+            "roles temp"
+          ],
           "description": "Make a panel's role last only for a while after a member takes it",
           "manager": true,
           "options": [
@@ -1933,10 +2099,11 @@
               "required": false
             }
           ],
-          "path": "roles temp",
-          "usage": "/roles temp <role> <duration> [panel]"
+          "path": "setup roles panel-temp",
+          "usage": "/setup roles panel-temp <role> <duration> [panel]"
         },
         {
+          "aliases": [],
           "description": "Show a server points balance",
           "manager": false,
           "options": [
@@ -1950,6 +2117,9 @@
           "usage": "/points show [user]"
         },
         {
+          "aliases": [
+            "points give"
+          ],
           "description": "Give someone server points (Manage Server)",
           "manager": true,
           "options": [
@@ -1964,10 +2134,13 @@
               "required": true
             }
           ],
-          "path": "points give",
-          "usage": "/points give <user> <amount>"
+          "path": "setup economy points-give",
+          "usage": "/setup economy points-give <user> <amount>"
         },
         {
+          "aliases": [
+            "points take"
+          ],
           "description": "Take server points from someone (Manage Server)",
           "manager": true,
           "options": [
@@ -1982,10 +2155,11 @@
               "required": true
             }
           ],
-          "path": "points take",
-          "usage": "/points take <user> <amount>"
+          "path": "setup economy points-take",
+          "usage": "/setup economy points-take <user> <amount>"
         },
         {
+          "aliases": [],
           "description": "Spend your server points on roles",
           "manager": false,
           "options": [],
@@ -1993,6 +2167,7 @@
           "usage": "/store"
         },
         {
+          "aliases": [],
           "description": "Run one of this server's custom commands",
           "manager": false,
           "options": [
@@ -2011,6 +2186,9 @@
           "usage": "/tag <name> [args]"
         },
         {
+          "aliases": [
+            "customcommand create"
+          ],
           "description": "Write a new custom command (a form asks for its reply)",
           "manager": true,
           "options": [
@@ -2030,10 +2208,29 @@
               "required": false
             }
           ],
-          "path": "customcommand create",
-          "usage": "/customcommand create <name> [description] [private]"
+          "path": "setup commands custom-create",
+          "usage": "/setup commands custom-create <name> [description] [private]"
         },
         {
+          "aliases": [
+            "customcommand delete"
+          ],
+          "description": "Remove a custom command",
+          "manager": true,
+          "options": [
+            {
+              "description": "The command to remove (start typing its name)",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup commands custom-delete",
+          "usage": "/setup commands custom-delete <name>"
+        },
+        {
+          "aliases": [
+            "customcommand edit"
+          ],
           "description": "Change a custom command's reply, description or cooldown",
           "manager": true,
           "options": [
@@ -2048,30 +2245,13 @@
               "required": false
             }
           ],
-          "path": "customcommand edit",
-          "usage": "/customcommand edit <name> [private]"
+          "path": "setup commands custom-edit",
+          "usage": "/setup commands custom-edit <name> [private]"
         },
         {
-          "description": "Remove a custom command",
-          "manager": true,
-          "options": [
-            {
-              "description": "The command to remove (start typing its name)",
-              "name": "name",
-              "required": true
-            }
+          "aliases": [
+            "customcommand info"
           ],
-          "path": "customcommand delete",
-          "usage": "/customcommand delete <name>"
-        },
-        {
-          "description": "Every custom command of this server",
-          "manager": true,
-          "options": [],
-          "path": "customcommand list",
-          "usage": "/customcommand list"
-        },
-        {
           "description": "How one custom command is set up",
           "manager": true,
           "options": [
@@ -2081,10 +2261,21 @@
               "required": true
             }
           ],
-          "path": "customcommand info",
-          "usage": "/customcommand info <name>"
+          "path": "setup commands custom-info",
+          "usage": "/setup commands custom-info <name>"
         },
         {
+          "aliases": [
+            "customcommand list"
+          ],
+          "description": "Every custom command of this server",
+          "manager": true,
+          "options": [],
+          "path": "setup commands custom-list",
+          "usage": "/setup commands custom-list"
+        },
+        {
+          "aliases": [],
           "description": "Keep new people out of your room",
           "manager": false,
           "options": [],
@@ -2092,6 +2283,7 @@
           "usage": "/voice lock"
         },
         {
+          "aliases": [],
           "description": "Let anyone join your room again",
           "manager": false,
           "options": [],
@@ -2099,6 +2291,7 @@
           "usage": "/voice unlock"
         },
         {
+          "aliases": [],
           "description": "Set how many people your room takes",
           "manager": false,
           "options": [
@@ -2112,6 +2305,7 @@
           "usage": "/voice limit <people>"
         },
         {
+          "aliases": [],
           "description": "Rename your room",
           "manager": false,
           "options": [
@@ -2125,6 +2319,7 @@
           "usage": "/voice rename <name>"
         },
         {
+          "aliases": [],
           "description": "Send someone out of your room and keep them out",
           "manager": false,
           "options": [
@@ -2138,6 +2333,7 @@
           "usage": "/voice kick <user>"
         },
         {
+          "aliases": [],
           "description": "Give your room to someone who is in it",
           "manager": false,
           "options": [
@@ -2151,6 +2347,7 @@
           "usage": "/voice transfer <user>"
         },
         {
+          "aliases": [],
           "description": "Take over a room whose owner has left",
           "manager": false,
           "options": [],
@@ -2158,6 +2355,7 @@
           "usage": "/voice claim"
         },
         {
+          "aliases": [],
           "description": "Hide your room from people who are not in it",
           "manager": false,
           "options": [],
@@ -2165,6 +2363,7 @@
           "usage": "/voice hide"
         },
         {
+          "aliases": [],
           "description": "Show your hidden room to everyone again",
           "manager": false,
           "options": [],
@@ -2172,6 +2371,7 @@
           "usage": "/voice show"
         },
         {
+          "aliases": [],
           "description": "Let someone into your room, even if it is locked or they were kicked",
           "manager": false,
           "options": [
@@ -2185,6 +2385,7 @@
           "usage": "/voice invite <user>"
         },
         {
+          "aliases": [],
           "description": "Show the buttons that run your room",
           "manager": false,
           "options": [],
@@ -2192,6 +2393,9 @@
           "usage": "/voice panel"
         },
         {
+          "aliases": [
+            "voice creators add"
+          ],
           "description": "Make a voice channel a creator, or change one (Manage Server)",
           "manager": true,
           "options": [
@@ -2216,10 +2420,23 @@
               "required": false
             }
           ],
-          "path": "voice creators add",
-          "usage": "/voice creators add <channel> [category] [limit] [template]"
+          "path": "setup utility voice-add",
+          "usage": "/setup utility voice-add <channel> [category] [limit] [template]"
         },
         {
+          "aliases": [
+            "voice creators list"
+          ],
+          "description": "The creator channels of this server (Manage Server)",
+          "manager": true,
+          "options": [],
+          "path": "setup utility voice-list",
+          "usage": "/setup utility voice-list"
+        },
+        {
+          "aliases": [
+            "voice creators remove"
+          ],
           "description": "Stop a channel making rooms (Manage Server)",
           "manager": true,
           "options": [
@@ -2229,17 +2446,13 @@
               "required": true
             }
           ],
-          "path": "voice creators remove",
-          "usage": "/voice creators remove <channel>"
+          "path": "setup utility voice-remove",
+          "usage": "/setup utility voice-remove <channel>"
         },
         {
-          "description": "The creator channels of this server (Manage Server)",
-          "manager": true,
-          "options": [],
-          "path": "voice creators list",
-          "usage": "/voice creators list"
-        },
-        {
+          "aliases": [
+            "feeds add"
+          ],
           "description": "Follow a source and post what is new in a channel",
           "manager": true,
           "options": [
@@ -2276,17 +2489,13 @@
               "required": false
             }
           ],
-          "path": "feeds add",
-          "usage": "/feeds add <kind> <source> <channel> [message] [role]"
+          "path": "setup feeds add",
+          "usage": "/setup feeds add <kind> <source> <channel> [message] [role]"
         },
         {
-          "description": "The feeds this server follows, with how they are doing",
-          "manager": true,
-          "options": [],
-          "path": "feeds list",
-          "usage": "/feeds list"
-        },
-        {
+          "aliases": [
+            "feeds edit"
+          ],
           "description": "Change a feed's channel, message, role, card or filters",
           "manager": true,
           "options": [
@@ -2336,23 +2545,23 @@
               "required": false
             }
           ],
-          "path": "feeds edit",
-          "usage": "/feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+          "path": "setup feeds edit",
+          "usage": "/setup feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
         },
         {
-          "description": "Post the source's latest item in the feed's channel now",
-          "manager": true,
-          "options": [
-            {
-              "description": "The feed's number, from /feeds list",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "feeds list"
           ],
-          "path": "feeds test",
-          "usage": "/feeds test <id>"
+          "description": "The feeds this server follows, with how they are doing",
+          "manager": true,
+          "options": [],
+          "path": "setup feeds list",
+          "usage": "/setup feeds list"
         },
         {
+          "aliases": [
+            "feeds remove"
+          ],
           "description": "Stop following a source",
           "manager": true,
           "options": [
@@ -2362,10 +2571,29 @@
               "required": true
             }
           ],
-          "path": "feeds remove",
-          "usage": "/feeds remove <id>"
+          "path": "setup feeds remove",
+          "usage": "/setup feeds remove <id>"
         },
         {
+          "aliases": [
+            "feeds test"
+          ],
+          "description": "Post the source's latest item in the feed's channel now",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup feeds test",
+          "usage": "/setup feeds test <id>"
+        },
+        {
+          "aliases": [
+            "autoroles add"
+          ],
           "description": "Give a role to everyone who joins (up to 10), or change one",
           "manager": true,
           "options": [
@@ -2395,10 +2623,23 @@
               "required": false
             }
           ],
-          "path": "autoroles add",
-          "usage": "/autoroles add <role> [kind] [delay] [remove_after]"
+          "path": "setup roles auto-add",
+          "usage": "/setup roles auto-add <role> [kind] [delay] [remove_after]"
         },
         {
+          "aliases": [
+            "autoroles list"
+          ],
+          "description": "Show the auto roles and whether sticky roles are on",
+          "manager": true,
+          "options": [],
+          "path": "setup roles auto-list",
+          "usage": "/setup roles auto-list"
+        },
+        {
+          "aliases": [
+            "autoroles remove"
+          ],
           "description": "Stop giving a role automatically",
           "manager": true,
           "options": [
@@ -2418,17 +2659,13 @@
               "required": false
             }
           ],
-          "path": "autoroles remove",
-          "usage": "/autoroles remove <role> [kind]"
+          "path": "setup roles auto-remove",
+          "usage": "/setup roles auto-remove <role> [kind]"
         },
         {
-          "description": "Show the auto roles and whether sticky roles are on",
-          "manager": true,
-          "options": [],
-          "path": "autoroles list",
-          "usage": "/autoroles list"
-        },
-        {
+          "aliases": [
+            "autoroles sticky"
+          ],
           "description": "Give members back their roles when they leave and come back",
           "manager": true,
           "options": [
@@ -2438,10 +2675,11 @@
               "required": true
             }
           ],
-          "path": "autoroles sticky",
-          "usage": "/autoroles sticky <enabled>"
+          "path": "setup roles auto-sticky",
+          "usage": "/setup roles auto-sticky <enabled>"
         },
         {
+          "aliases": [],
           "description": "Pick a colour for your name from a menu",
           "manager": false,
           "options": [],
@@ -2449,6 +2687,7 @@
           "usage": "/color pick"
         },
         {
+          "aliases": [],
           "description": "Colour your name with any hex code, when the server allows it",
           "manager": false,
           "options": [
@@ -2462,6 +2701,7 @@
           "usage": "/color set <hex>"
         },
         {
+          "aliases": [],
           "description": "Take your name colour off",
           "manager": false,
           "options": [],
@@ -2469,6 +2709,7 @@
           "usage": "/color remove"
         },
         {
+          "aliases": [],
           "description": "Show the colours this server offers",
           "manager": false,
           "options": [],
@@ -2476,8 +2717,11 @@
           "usage": "/color list"
         },
         {
+          "aliases": [
+            "color setup"
+          ],
           "description": "Set up colour roles: switch them on, who may pick, which roles",
-          "manager": false,
+          "manager": true,
           "options": [
             {
               "description": "Switch colour roles on or off",
@@ -2514,10 +2758,11 @@
               "required": false
             }
           ],
-          "path": "color setup",
-          "usage": "/color setup [enabled] [mode] [allow] [disallow] [anchor] [roles]"
+          "path": "setup roles color-setup",
+          "usage": "/setup roles color-setup [enabled] [mode] [allow] [disallow] [anchor] [roles]"
         },
         {
+          "aliases": [],
           "description": "This server's activity, busiest channels and members",
           "manager": false,
           "options": [
@@ -2536,6 +2781,7 @@
           "usage": "/stats server [period]"
         },
         {
+          "aliases": [],
           "description": "Your messages and voice time in this server",
           "manager": false,
           "options": [
@@ -2554,6 +2800,7 @@
           "usage": "/stats me [period]"
         },
         {
+          "aliases": [],
           "description": "One channel's messages and voice time",
           "manager": false,
           "options": [
@@ -2577,6 +2824,7 @@
           "usage": "/stats channel <channel> [period]"
         },
         {
+          "aliases": [],
           "description": "Open a form for a new event",
           "manager": true,
           "options": [],
@@ -2584,6 +2832,7 @@
           "usage": "/event create"
         },
         {
+          "aliases": [],
           "description": "List upcoming events",
           "manager": true,
           "options": [],
@@ -2591,6 +2840,7 @@
           "usage": "/event list"
         },
         {
+          "aliases": [],
           "description": "Change an event, its capacity, role or repeat schedule",
           "manager": true,
           "options": [
@@ -2679,6 +2929,7 @@
           "usage": "/event edit <id> [title] [when] [duration] [description] [capacity] [maybe_capacity] [declined_capacity] [custom_one] [custom_one_capacity] [custom_two] [custom_two_capacity] [role] [repeat] [until] [sync]"
         },
         {
+          "aliases": [],
           "description": "Cancel an event",
           "manager": true,
           "options": [
@@ -2692,6 +2943,7 @@
           "usage": "/event cancel <id>"
         },
         {
+          "aliases": [],
           "description": "Show a paged list of RSVPs",
           "manager": true,
           "options": [
@@ -2705,6 +2957,7 @@
           "usage": "/event attendees <id>"
         },
         {
+          "aliases": [],
           "description": "Schedule the event reminders again",
           "manager": true,
           "options": [
@@ -2718,13 +2971,17 @@
           "usage": "/event remind <id>"
         },
         {
+          "aliases": [
+            "event template"
+          ],
           "description": "Show an event template and create button",
           "manager": true,
           "options": [],
-          "path": "event template",
-          "usage": "/event template"
+          "path": "setup events template",
+          "usage": "/setup events template"
         },
         {
+          "aliases": [],
           "description": "Close this ticket and keep its transcript",
           "manager": false,
           "options": [
@@ -2738,6 +2995,7 @@
           "usage": "/ticket close [reason]"
         },
         {
+          "aliases": [],
           "description": "Say you handle this ticket (staff)",
           "manager": false,
           "options": [],
@@ -2745,6 +3003,7 @@
           "usage": "/ticket claim"
         },
         {
+          "aliases": [],
           "description": "Hand this ticket back to the queue (staff)",
           "manager": false,
           "options": [],
@@ -2752,6 +3011,7 @@
           "usage": "/ticket unclaim"
         },
         {
+          "aliases": [],
           "description": "Let a member see and write in this ticket (staff)",
           "manager": false,
           "options": [
@@ -2765,6 +3025,7 @@
           "usage": "/ticket add <user>"
         },
         {
+          "aliases": [],
           "description": "Take a member out of this ticket (staff)",
           "manager": false,
           "options": [
@@ -2778,6 +3039,7 @@
           "usage": "/ticket remove <user>"
         },
         {
+          "aliases": [],
           "description": "Rename this ticket's channel (staff)",
           "manager": false,
           "options": [
@@ -2791,6 +3053,7 @@
           "usage": "/ticket rename <name>"
         },
         {
+          "aliases": [],
           "description": "Get this ticket's messages as a web page, only for you",
           "manager": false,
           "options": [],
@@ -2798,6 +3061,7 @@
           "usage": "/ticket transcript"
         },
         {
+          "aliases": [],
           "description": "Open this closed ticket again (staff)",
           "manager": false,
           "options": [],
@@ -2805,6 +3069,7 @@
           "usage": "/ticket reopen"
         },
         {
+          "aliases": [],
           "description": "Move this ticket's channel to another category (staff)",
           "manager": false,
           "options": [
@@ -2818,6 +3083,9 @@
           "usage": "/ticket move <category>"
         },
         {
+          "aliases": [
+            "tickets panel create"
+          ],
           "description": "Make a panel (up to 10); post it with /tickets panel post",
           "manager": true,
           "options": [
@@ -2861,10 +3129,29 @@
               "required": false
             }
           ],
-          "path": "tickets panel create",
-          "usage": "/tickets panel create <name> <channel> [title] [description] [topics] [style] [support_role]"
+          "path": "setup tickets panel-create",
+          "usage": "/setup tickets panel-create <name> <channel> [title] [description] [topics] [style] [support_role]"
         },
         {
+          "aliases": [
+            "tickets panel delete"
+          ],
+          "description": "Delete a panel; its tickets stay",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's name or number",
+              "name": "panel",
+              "required": true
+            }
+          ],
+          "path": "setup tickets panel-delete",
+          "usage": "/setup tickets panel-delete <panel>"
+        },
+        {
+          "aliases": [
+            "tickets panel edit"
+          ],
           "description": "Change a panel; posted already, post it again to update it",
           "manager": true,
           "options": [
@@ -2923,10 +3210,23 @@
               "required": false
             }
           ],
-          "path": "tickets panel edit",
-          "usage": "/tickets panel edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
+          "path": "setup tickets panel-edit",
+          "usage": "/setup tickets panel-edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
         },
         {
+          "aliases": [
+            "tickets panel list"
+          ],
+          "description": "The server's panels",
+          "manager": true,
+          "options": [],
+          "path": "setup tickets panel-list",
+          "usage": "/setup tickets panel-list"
+        },
+        {
+          "aliases": [
+            "tickets panel post"
+          ],
           "description": "Post a panel, or update it where it is",
           "manager": true,
           "options": [
@@ -2936,30 +3236,13 @@
               "required": true
             }
           ],
-          "path": "tickets panel post",
-          "usage": "/tickets panel post <panel>"
+          "path": "setup tickets panel-post",
+          "usage": "/setup tickets panel-post <panel>"
         },
         {
-          "description": "Delete a panel; its tickets stay",
-          "manager": true,
-          "options": [
-            {
-              "description": "The panel's name or number",
-              "name": "panel",
-              "required": true
-            }
+          "aliases": [
+            "tickets settings"
           ],
-          "path": "tickets panel delete",
-          "usage": "/tickets panel delete <panel>"
-        },
-        {
-          "description": "The server's panels",
-          "manager": true,
-          "options": [],
-          "path": "tickets panel list",
-          "usage": "/tickets panel list"
-        },
-        {
           "description": "How tickets run; with no options it shows the settings",
           "manager": true,
           "options": [
@@ -3024,78 +3307,13 @@
               "required": false
             }
           ],
-          "path": "tickets settings",
-          "usage": "/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
+          "path": "setup tickets settings",
+          "usage": "/setup tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
         },
         {
-          "description": "Create or replace a starboard (up to three)",
-          "manager": true,
-          "options": [
-            {
-              "description": "Name of this board",
-              "name": "name",
-              "required": true
-            },
-            {
-              "description": "The board channel",
-              "name": "channel",
-              "required": true
-            },
-            {
-              "description": "Star emoji, including custom emoji",
-              "name": "emoji",
-              "required": false
-            },
-            {
-              "description": "Stars needed before a message appears (1 to 50)",
-              "name": "threshold",
-              "required": false
-            },
-            {
-              "description": "Allow members to star their own posts",
-              "name": "self_star",
-              "required": false
-            },
-            {
-              "description": "Count stars on bot messages",
-              "name": "allow_bots",
-              "required": false
-            },
-            {
-              "description": "Require an image",
-              "name": "require_image",
-              "required": false
-            },
-            {
-              "description": "Delete the board post when its stars fall below the threshold",
-              "name": "remove_below",
-              "required": false
-            },
-            {
-              "description": "Limit sources to channel IDs or mentions, separated by commas",
-              "name": "only_channels",
-              "required": false
-            },
-            {
-              "description": "Exclude channel IDs or mentions, separated by commas",
-              "name": "except_channels",
-              "required": false
-            },
-            {
-              "description": "Role weights as role ID=weight pairs, separated by commas",
-              "name": "role_weights",
-              "required": false
-            },
-            {
-              "description": "Board colour, for example #ffc857",
-              "name": "color",
-              "required": false
-            }
+          "aliases": [
+            "starboard edit"
           ],
-          "path": "starboard setup",
-          "usage": "/starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
-        },
-        {
           "description": "Change a board's threshold, emoji or rules",
           "manager": true,
           "options": [
@@ -3165,10 +3383,23 @@
               "required": false
             }
           ],
-          "path": "starboard edit",
-          "usage": "/starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
+          "path": "setup starboard edit",
+          "usage": "/setup starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
         },
         {
+          "aliases": [
+            "starboard list"
+          ],
+          "description": "List this server's starboards",
+          "manager": true,
+          "options": [],
+          "path": "setup starboard list",
+          "usage": "/setup starboard list"
+        },
+        {
+          "aliases": [
+            "starboard remove"
+          ],
           "description": "Remove a starboard",
           "manager": true,
           "options": [
@@ -3178,17 +3409,84 @@
               "required": true
             }
           ],
-          "path": "starboard remove",
-          "usage": "/starboard remove <id>"
+          "path": "setup starboard remove",
+          "usage": "/setup starboard remove <id>"
         },
         {
-          "description": "List this server's starboards",
+          "aliases": [
+            "starboard setup"
+          ],
+          "description": "Create or replace a starboard (up to three)",
           "manager": true,
-          "options": [],
-          "path": "starboard list",
-          "usage": "/starboard list"
+          "options": [
+            {
+              "description": "Name of this board",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "The board channel",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Star emoji, including custom emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Stars needed before a message appears (1 to 50)",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Allow members to star their own posts",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Count stars on bot messages",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Require an image",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Delete the board post when its stars fall below the threshold",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Limit sources to channel IDs or mentions, separated by commas",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Exclude channel IDs or mentions, separated by commas",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Role weights as role ID=weight pairs, separated by commas",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Board colour, for example #ffc857",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "setup starboard setup",
+          "usage": "/setup starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
         },
         {
+          "aliases": [
+            "starboard top"
+          ],
           "description": "See the most starred posts and top stargazers",
           "manager": true,
           "options": [
@@ -3198,10 +3496,13 @@
               "required": false
             }
           ],
-          "path": "starboard top",
-          "usage": "/starboard top [board]"
+          "path": "setup starboard top",
+          "usage": "/setup starboard top [board]"
         },
         {
+          "aliases": [
+            "starboard votes add"
+          ],
           "description": "Add or change a vote channel",
           "manager": true,
           "options": [
@@ -3231,10 +3532,23 @@
               "required": false
             }
           ],
-          "path": "starboard votes add",
-          "usage": "/starboard votes add <channel> [up] [down] [only_media] [thread]"
+          "path": "setup starboard votes-add",
+          "usage": "/setup starboard votes-add <channel> [up] [down] [only_media] [thread]"
         },
         {
+          "aliases": [
+            "starboard votes list"
+          ],
+          "description": "List vote channels",
+          "manager": true,
+          "options": [],
+          "path": "setup starboard votes-list",
+          "usage": "/setup starboard votes-list"
+        },
+        {
+          "aliases": [
+            "starboard votes remove"
+          ],
           "description": "Stop automatic reactions in a channel",
           "manager": true,
           "options": [
@@ -3244,17 +3558,11 @@
               "required": true
             }
           ],
-          "path": "starboard votes remove",
-          "usage": "/starboard votes remove <channel>"
+          "path": "setup starboard votes-remove",
+          "usage": "/setup starboard votes-remove <channel>"
         },
         {
-          "description": "List vote channels",
-          "manager": true,
-          "options": [],
-          "path": "starboard votes list",
-          "usage": "/starboard votes list"
-        },
-        {
+          "aliases": [],
           "description": "See a member's invite card",
           "manager": false,
           "options": [
@@ -3268,6 +3576,7 @@
           "usage": "/invites user [user]"
         },
         {
+          "aliases": [],
           "description": "See the invitation leaderboard",
           "manager": false,
           "options": [
@@ -3286,6 +3595,7 @@
           "usage": "/invites top [period]"
         },
         {
+          "aliases": [],
           "description": "Get a short-lived invite link for a friend",
           "manager": false,
           "options": [],
@@ -3293,6 +3603,98 @@
           "usage": "/invites temp"
         },
         {
+          "aliases": [
+            "inviteadmin bonus-add"
+          ],
+          "description": "Add invitations to a member's score",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "setup invites bonus-add",
+          "usage": "/setup invites bonus-add <user> <amount>"
+        },
+        {
+          "aliases": [
+            "inviteadmin bonus-remove"
+          ],
+          "description": "Remove a bonus from a member's score",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "setup invites bonus-remove",
+          "usage": "/setup invites bonus-remove <user> <amount>"
+        },
+        {
+          "aliases": [
+            "inviteadmin post"
+          ],
+          "description": "Post an Invite a friend button in this channel",
+          "manager": true,
+          "options": [],
+          "path": "setup invites post",
+          "usage": "/setup invites post"
+        },
+        {
+          "aliases": [
+            "inviteadmin reward-add"
+          ],
+          "description": "Give a role at an invite milestone",
+          "manager": true,
+          "options": [
+            {
+              "description": "Invite threshold",
+              "name": "invites",
+              "required": true
+            },
+            {
+              "description": "Role to give",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup invites reward-add",
+          "usage": "/setup invites reward-add <invites> <role>"
+        },
+        {
+          "aliases": [
+            "inviteadmin reward-remove"
+          ],
+          "description": "Remove an invite reward",
+          "manager": true,
+          "options": [
+            {
+              "description": "Invite threshold",
+              "name": "invites",
+              "required": true
+            }
+          ],
+          "path": "setup invites reward-remove",
+          "usage": "/setup invites reward-remove <invites>"
+        },
+        {
+          "aliases": [
+            "inviteadmin settings"
+          ],
           "description": "Set the tracking and friend-link options",
           "manager": true,
           "options": [
@@ -3337,84 +3739,11 @@
               "required": false
             }
           ],
-          "path": "inviteadmin settings",
-          "usage": "/inviteadmin settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
+          "path": "setup invites settings",
+          "usage": "/setup invites settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
         },
         {
-          "description": "Add invitations to a member's score",
-          "manager": true,
-          "options": [
-            {
-              "description": "Member",
-              "name": "user",
-              "required": true
-            },
-            {
-              "description": "Amount",
-              "name": "amount",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin bonus-add",
-          "usage": "/inviteadmin bonus-add <user> <amount>"
-        },
-        {
-          "description": "Remove a bonus from a member's score",
-          "manager": true,
-          "options": [
-            {
-              "description": "Member",
-              "name": "user",
-              "required": true
-            },
-            {
-              "description": "Amount",
-              "name": "amount",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin bonus-remove",
-          "usage": "/inviteadmin bonus-remove <user> <amount>"
-        },
-        {
-          "description": "Give a role at an invite milestone",
-          "manager": true,
-          "options": [
-            {
-              "description": "Invite threshold",
-              "name": "invites",
-              "required": true
-            },
-            {
-              "description": "Role to give",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin reward-add",
-          "usage": "/inviteadmin reward-add <invites> <role>"
-        },
-        {
-          "description": "Remove an invite reward",
-          "manager": true,
-          "options": [
-            {
-              "description": "Invite threshold",
-              "name": "invites",
-              "required": true
-            }
-          ],
-          "path": "inviteadmin reward-remove",
-          "usage": "/inviteadmin reward-remove <invites>"
-        },
-        {
-          "description": "Post an Invite a friend button in this channel",
-          "manager": true,
-          "options": [],
-          "path": "inviteadmin post",
-          "usage": "/inviteadmin post"
-        },
-        {
+          "aliases": [],
           "description": "Set your AFK reason",
           "manager": false,
           "options": [
@@ -3438,6 +3767,25 @@
           "usage": "/afk set [reason] [global] [nickname]"
         },
         {
+          "aliases": [
+            "sticky remove"
+          ],
+          "description": "Remove a channel's sticky message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to remove",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "setup utility sticky-remove",
+          "usage": "/setup utility sticky-remove <channel>"
+        },
+        {
+          "aliases": [
+            "sticky set"
+          ],
           "description": "Create or replace a sticky message",
           "manager": true,
           "options": [
@@ -3462,30 +3810,23 @@
               "required": false
             }
           ],
-          "path": "sticky set",
-          "usage": "/sticky set <channel> <text> [messages] [seconds]"
+          "path": "setup utility sticky-set",
+          "usage": "/setup utility sticky-set <channel> <text> [messages] [seconds]"
         },
         {
-          "description": "Remove a channel's sticky message",
-          "manager": true,
-          "options": [
-            {
-              "description": "Channel to remove",
-              "name": "channel",
-              "required": true
-            }
+          "aliases": [
+            "sticky show"
           ],
-          "path": "sticky remove",
-          "usage": "/sticky remove <channel>"
-        },
-        {
           "description": "List sticky messages",
           "manager": true,
           "options": [],
-          "path": "sticky show",
-          "usage": "/sticky show"
+          "path": "setup utility sticky-show",
+          "usage": "/setup utility sticky-show"
         },
         {
+          "aliases": [
+            "schedule add"
+          ],
           "description": "Save a once or recurring message",
           "manager": true,
           "options": [
@@ -3515,30 +3856,23 @@
               "required": false
             }
           ],
-          "path": "schedule add",
-          "usage": "/schedule add <channel> <text> <when> [every] [tz]"
+          "path": "setup utility schedule-add",
+          "usage": "/setup utility schedule-add <channel> <text> <when> [every] [tz]"
         },
         {
+          "aliases": [
+            "schedule list"
+          ],
           "description": "List scheduled messages",
           "manager": true,
           "options": [],
-          "path": "schedule list",
-          "usage": "/schedule list"
+          "path": "setup utility schedule-list",
+          "usage": "/setup utility schedule-list"
         },
         {
-          "description": "Remove a scheduled message",
-          "manager": true,
-          "options": [
-            {
-              "description": "Scheduled message ID",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "schedule pause"
           ],
-          "path": "schedule remove",
-          "usage": "/schedule remove <id>"
-        },
-        {
           "description": "Pause a scheduled message",
           "manager": true,
           "options": [
@@ -3548,36 +3882,13 @@
               "required": true
             }
           ],
-          "path": "schedule pause",
-          "usage": "/schedule pause <id>"
+          "path": "setup utility schedule-pause",
+          "usage": "/setup utility schedule-pause <id>"
         },
         {
-          "description": "Resume a scheduled message",
-          "manager": true,
-          "options": [
-            {
-              "description": "Scheduled message ID",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "schedule preview"
           ],
-          "path": "schedule resume",
-          "usage": "/schedule resume <id>"
-        },
-        {
-          "description": "Send a scheduled message now",
-          "manager": true,
-          "options": [
-            {
-              "description": "Scheduled message ID",
-              "name": "id",
-              "required": true
-            }
-          ],
-          "path": "schedule run-now",
-          "usage": "/schedule run-now <id>"
-        },
-        {
           "description": "Show the next five runs",
           "manager": true,
           "options": [
@@ -3587,8 +3898,56 @@
               "required": true
             }
           ],
-          "path": "schedule preview",
-          "usage": "/schedule preview <id>"
+          "path": "setup utility schedule-preview",
+          "usage": "/setup utility schedule-preview <id>"
+        },
+        {
+          "aliases": [
+            "schedule remove"
+          ],
+          "description": "Remove a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-remove",
+          "usage": "/setup utility schedule-remove <id>"
+        },
+        {
+          "aliases": [
+            "schedule resume"
+          ],
+          "description": "Resume a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-resume",
+          "usage": "/setup utility schedule-resume <id>"
+        },
+        {
+          "aliases": [
+            "schedule run-now"
+          ],
+          "description": "Send a scheduled message now",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-run-now",
+          "usage": "/setup utility schedule-run-now <id>"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -3598,67 +3957,9 @@
     {
       "commands": [
         {
-          "description": "Show the AutoMod profile and active rules",
-          "manager": true,
-          "options": [],
-          "path": "automod show",
-          "usage": "/automod show"
-        },
-        {
-          "description": "Apply relaxed, standard (48h observe), strict or off",
-          "manager": true,
-          "options": [
-            {
-              "description": "relaxed, standard, strict or off",
-              "name": "name",
-              "required": true
-            }
+          "aliases": [
+            "automod exempt channel"
           ],
-          "path": "automod profile",
-          "usage": "/automod profile <name>"
-        },
-        {
-          "description": "Turn a rule on or off",
-          "manager": true,
-          "options": [
-            {
-              "description": "Rule name or id",
-              "name": "rule",
-              "required": true
-            },
-            {
-              "description": "Whether this rule is enabled",
-              "name": "enabled",
-              "required": true
-            }
-          ],
-          "path": "automod toggle",
-          "usage": "/automod toggle <rule> <enabled>"
-        },
-        {
-          "description": "Add or remove an exempt role",
-          "manager": true,
-          "options": [
-            {
-              "description": "add or remove",
-              "name": "action",
-              "required": true
-            },
-            {
-              "description": "Exempt role",
-              "name": "role",
-              "required": true
-            },
-            {
-              "description": "Rule name (omit for all rules)",
-              "name": "rule",
-              "required": false
-            }
-          ],
-          "path": "automod exempt role",
-          "usage": "/automod exempt role <action> <role> [rule]"
-        },
-        {
           "description": "Add or remove an exempt channel",
           "manager": true,
           "options": [
@@ -3678,10 +3979,65 @@
               "required": false
             }
           ],
-          "path": "automod exempt channel",
-          "usage": "/automod exempt channel <action> <channel> [rule]"
+          "path": "setup automod exempt-channel",
+          "usage": "/setup automod exempt-channel <action> <channel> [rule]"
         },
         {
+          "aliases": [
+            "automod exempt role"
+          ],
+          "description": "Add or remove an exempt role",
+          "manager": true,
+          "options": [
+            {
+              "description": "add or remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Exempt role",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Rule name (omit for all rules)",
+              "name": "rule",
+              "required": false
+            }
+          ],
+          "path": "setup automod exempt-role",
+          "usage": "/setup automod exempt-role <action> <role> [rule]"
+        },
+        {
+          "aliases": [
+            "automod profile"
+          ],
+          "description": "Apply relaxed, standard (48h observe), strict or off",
+          "manager": true,
+          "options": [
+            {
+              "description": "relaxed, standard, strict or off",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup automod profile",
+          "usage": "/setup automod profile <name>"
+        },
+        {
+          "aliases": [
+            "automod show"
+          ],
+          "description": "Show the AutoMod profile and active rules",
+          "manager": true,
+          "options": [],
+          "path": "setup automod show",
+          "usage": "/setup automod show"
+        },
+        {
+          "aliases": [
+            "automod test"
+          ],
           "description": "Test text privately without acting or adding strikes",
           "manager": true,
           "options": [
@@ -3691,17 +4047,71 @@
               "required": true
             }
           ],
-          "path": "automod test",
-          "usage": "/automod test <text>"
+          "path": "setup automod test",
+          "usage": "/setup automod test <text>"
         },
         {
-          "description": "Show command control settings",
+          "aliases": [
+            "automod toggle"
+          ],
+          "description": "Turn a rule on or off",
           "manager": true,
-          "options": [],
-          "path": "commandcontrol show",
-          "usage": "/commandcontrol show"
+          "options": [
+            {
+              "description": "Rule name or id",
+              "name": "rule",
+              "required": true
+            },
+            {
+              "description": "Whether this rule is enabled",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "setup automod toggle",
+          "usage": "/setup automod toggle <rule> <enabled>"
         },
         {
+          "aliases": [
+            "commandcontrol alias"
+          ],
+          "description": "Add a prefix alias, or remove it by omitting the command",
+          "manager": true,
+          "options": [
+            {
+              "description": "Shortcut name",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Target command path",
+              "name": "command",
+              "required": false
+            }
+          ],
+          "path": "setup commands alias",
+          "usage": "/setup commands alias <name> [command]"
+        },
+        {
+          "aliases": [
+            "commandcontrol reset"
+          ],
+          "description": "Remove a command override",
+          "manager": true,
+          "options": [
+            {
+              "description": "Command path",
+              "name": "command",
+              "required": true
+            }
+          ],
+          "path": "setup commands reset",
+          "usage": "/setup commands reset <command>"
+        },
+        {
+          "aliases": [
+            "commandcontrol set"
+          ],
           "description": "Set additional restrictions for a command or subcommand",
           "manager": true,
           "options": [
@@ -3756,55 +4166,53 @@
               "required": false
             }
           ],
-          "path": "commandcontrol set",
-          "usage": "/commandcontrol set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
+          "path": "setup commands set",
+          "usage": "/setup commands set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
         },
         {
-          "description": "Remove a command override",
-          "manager": true,
-          "options": [
-            {
-              "description": "Command path",
-              "name": "command",
-              "required": true
-            }
+          "aliases": [
+            "commandcontrol show"
           ],
-          "path": "commandcontrol reset",
-          "usage": "/commandcontrol reset <command>"
-        },
-        {
-          "description": "Add a prefix alias, or remove it by omitting the command",
+          "description": "Show command control settings",
           "manager": true,
-          "options": [
-            {
-              "description": "Shortcut name",
-              "name": "name",
-              "required": true
-            },
-            {
-              "description": "Target command path",
-              "name": "command",
-              "required": false
-            }
-          ],
-          "path": "commandcontrol alias",
-          "usage": "/commandcontrol alias <name> [command]"
+          "options": [],
+          "path": "setup commands show",
+          "usage": "/setup commands show"
         },
         {
+          "aliases": [
+            "backup export"
+          ],
           "description": "Download a versioned JSON configuration backup",
           "manager": true,
           "options": [],
-          "path": "backup export",
-          "usage": "/backup export"
+          "path": "setup backup export",
+          "usage": "/setup backup export"
         },
         {
+          "aliases": [
+            "backup import"
+          ],
+          "description": "Open the dashboard to preview and import a JSON backup",
+          "manager": true,
+          "options": [],
+          "path": "setup backup import",
+          "usage": "/setup backup import"
+        },
+        {
+          "aliases": [
+            "backup list"
+          ],
           "description": "List the last ten automatic restore points",
           "manager": true,
           "options": [],
-          "path": "backup list",
-          "usage": "/backup list"
+          "path": "setup backup list",
+          "usage": "/setup backup list"
         },
         {
+          "aliases": [
+            "backup restore"
+          ],
           "description": "Preview a restore point before applying it",
           "manager": true,
           "options": [
@@ -3814,17 +4222,11 @@
               "required": true
             }
           ],
-          "path": "backup restore",
-          "usage": "/backup restore <id>"
+          "path": "setup backup restore",
+          "usage": "/setup backup restore <id>"
         },
         {
-          "description": "Open the dashboard to preview and import a JSON backup",
-          "manager": true,
-          "options": [],
-          "path": "backup import",
-          "usage": "/backup import"
-        },
-        {
+          "aliases": [],
           "description": "Pass this server's join gate",
           "manager": false,
           "options": [],
@@ -3832,6 +4234,51 @@
           "usage": "/verify"
         },
         {
+          "aliases": [
+            "verification message"
+          ],
+          "description": "Set the message displayed above the verification button",
+          "manager": true,
+          "options": [
+            {
+              "description": "Message to display",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "setup verification message",
+          "usage": "/setup verification message <text>"
+        },
+        {
+          "aliases": [
+            "verification mode"
+          ],
+          "description": "Choose button, captcha or web verification",
+          "manager": true,
+          "options": [
+            {
+              "description": "button, captcha or web",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "setup verification mode",
+          "usage": "/setup verification mode <mode>"
+        },
+        {
+          "aliases": [
+            "verification post"
+          ],
+          "description": "Post the verification panel to the configured channel",
+          "manager": true,
+          "options": [],
+          "path": "setup verification post",
+          "usage": "/setup verification post"
+        },
+        {
+          "aliases": [
+            "verification setup"
+          ],
           "description": "Enable or disable the gate and choose safe roles",
           "manager": true,
           "options": [
@@ -3861,43 +4308,13 @@
               "required": false
             }
           ],
-          "path": "verification setup",
-          "usage": "/verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
+          "path": "setup verification setup",
+          "usage": "/setup verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
         },
         {
-          "description": "Choose button, captcha or web verification",
-          "manager": true,
-          "options": [
-            {
-              "description": "button, captcha or web",
-              "name": "mode",
-              "required": true
-            }
+          "aliases": [
+            "raid lockdown"
           ],
-          "path": "verification mode",
-          "usage": "/verification mode <mode>"
-        },
-        {
-          "description": "Set the message displayed above the verification button",
-          "manager": true,
-          "options": [
-            {
-              "description": "Message to display",
-              "name": "text",
-              "required": true
-            }
-          ],
-          "path": "verification message",
-          "usage": "/verification message <text>"
-        },
-        {
-          "description": "Post the verification panel to the configured channel",
-          "manager": true,
-          "options": [],
-          "path": "verification post",
-          "usage": "/verification post"
-        },
-        {
           "description": "Force captcha and temporarily restrict the server",
           "manager": true,
           "options": [
@@ -3907,38 +4324,51 @@
               "required": false
             }
           ],
-          "path": "raid lockdown",
-          "usage": "/raid lockdown [minutes]"
+          "path": "mod raid lockdown",
+          "usage": "/mod raid lockdown [minutes]"
         },
         {
-          "description": "End the raid and restore the settings it changed",
-          "manager": true,
-          "options": [],
-          "path": "raid unlock",
-          "usage": "/raid unlock"
-        },
-        {
+          "aliases": [
+            "raid status"
+          ],
           "description": "Show the live raid state",
           "manager": true,
           "options": [],
-          "path": "raid status",
-          "usage": "/raid status"
+          "path": "mod raid status",
+          "usage": "/mod raid status"
         },
         {
+          "aliases": [
+            "raid unlock"
+          ],
+          "description": "End the raid and restore the settings it changed",
+          "manager": true,
+          "options": [],
+          "path": "mod raid unlock",
+          "usage": "/mod raid unlock"
+        },
+        {
+          "aliases": [
+            "antinuke status"
+          ],
           "description": "Show protection status and recovery limits",
           "manager": true,
           "options": [],
-          "path": "antinuke status",
-          "usage": "/antinuke status"
+          "path": "setup antinuke status",
+          "usage": "/setup antinuke status"
         },
         {
+          "aliases": [
+            "antinuke events"
+          ],
           "description": "Show recent anti-nuke incidents",
           "manager": true,
           "options": [],
-          "path": "antinuke events",
-          "usage": "/antinuke events"
+          "path": "setup antinuke events",
+          "usage": "/setup antinuke events"
         },
         {
+          "aliases": [],
           "description": "Ban someone, for good or for a while",
           "manager": true,
           "options": [
@@ -3967,8 +4397,11 @@
           "usage": "/ban <user> [reason] [duration] [delete_days]"
         },
         {
+          "aliases": [
+            "unban"
+          ],
           "description": "Lift someone's ban",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Who to unban (paste their user id)",
@@ -3981,10 +4414,11 @@
               "required": false
             }
           ],
-          "path": "unban",
-          "usage": "/unban <user> [reason]"
+          "path": "mod unban",
+          "usage": "/mod unban <user> [reason]"
         },
         {
+          "aliases": [],
           "description": "Remove a member (they can join again)",
           "manager": true,
           "options": [
@@ -4003,6 +4437,7 @@
           "usage": "/kick <user> [reason]"
         },
         {
+          "aliases": [],
           "description": "Stop a member chatting and talking for a while",
           "manager": true,
           "options": [
@@ -4026,8 +4461,11 @@
           "usage": "/timeout <user> <duration> [reason]"
         },
         {
+          "aliases": [
+            "untimeout"
+          ],
           "description": "End a member's timeout early",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Whose timeout to end",
@@ -4040,10 +4478,11 @@
               "required": false
             }
           ],
-          "path": "untimeout",
-          "usage": "/untimeout <user> [reason]"
+          "path": "mod untimeout",
+          "usage": "/mod untimeout <user> [reason]"
         },
         {
+          "aliases": [],
           "description": "Warn a member; enough warns act on their own",
           "manager": true,
           "options": [
@@ -4062,8 +4501,11 @@
           "usage": "/warn <user> <reason>"
         },
         {
+          "aliases": [
+            "warnings"
+          ],
           "description": "A member's warns that still count",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Whose warns",
@@ -4071,12 +4513,15 @@
               "required": true
             }
           ],
-          "path": "warnings",
-          "usage": "/warnings <user>"
+          "path": "mod warnings",
+          "usage": "/mod warnings <user>"
         },
         {
+          "aliases": [
+            "unwarn"
+          ],
           "description": "Take a warn back, so it no longer counts",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "The warn's case number",
@@ -4089,10 +4534,11 @@
               "required": false
             }
           ],
-          "path": "unwarn",
-          "usage": "/unwarn <case> [reason]"
+          "path": "mod unwarn",
+          "usage": "/mod unwarn <case> [reason]"
         },
         {
+          "aliases": [],
           "description": "Delete recent messages here (up to 100)",
           "manager": true,
           "options": [
@@ -4136,8 +4582,11 @@
           "usage": "/purge <count> [user] [bots] [contains] [links] [attachments] [reason]"
         },
         {
+          "aliases": [
+            "slowmode"
+          ],
           "description": "How long members wait between messages in a channel",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Like 5s, 30s, 2m or 1h (up to 6 hours), or off",
@@ -4155,12 +4604,15 @@
               "required": false
             }
           ],
-          "path": "slowmode",
-          "usage": "/slowmode <duration> [channel] [reason]"
+          "path": "mod slowmode",
+          "usage": "/mod slowmode <duration> [channel] [reason]"
         },
         {
+          "aliases": [
+            "lock"
+          ],
           "description": "Stop members from sending messages in a channel",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "The channel (default: this one)",
@@ -4173,12 +4625,15 @@
               "required": false
             }
           ],
-          "path": "lock",
-          "usage": "/lock [channel] [reason]"
+          "path": "mod lock",
+          "usage": "/mod lock [channel] [reason]"
         },
         {
+          "aliases": [
+            "unlock"
+          ],
           "description": "Let members send messages in a locked channel again",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "The channel (default: this one)",
@@ -4191,12 +4646,15 @@
               "required": false
             }
           ],
-          "path": "unlock",
-          "usage": "/unlock [channel] [reason]"
+          "path": "mod unlock",
+          "usage": "/mod unlock [channel] [reason]"
         },
         {
+          "aliases": [
+            "nick"
+          ],
           "description": "Change or reset a member's nickname",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Whose nickname",
@@ -4214,12 +4672,15 @@
               "required": false
             }
           ],
-          "path": "nick",
-          "usage": "/nick <user> [nickname] [reason]"
+          "path": "mod nick",
+          "usage": "/mod nick <user> [nickname] [reason]"
         },
         {
+          "aliases": [
+            "role add"
+          ],
           "description": "Give a member a role",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Who gets it",
@@ -4237,12 +4698,15 @@
               "required": false
             }
           ],
-          "path": "role add",
-          "usage": "/role add <user> <role> [reason]"
+          "path": "mod role add",
+          "usage": "/mod role add <user> <role> [reason]"
         },
         {
+          "aliases": [
+            "role remove"
+          ],
           "description": "Take a role from a member",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Who loses it",
@@ -4260,12 +4724,15 @@
               "required": false
             }
           ],
-          "path": "role remove",
-          "usage": "/role remove <user> <role> [reason]"
+          "path": "mod role remove",
+          "usage": "/mod role remove <user> <role> [reason]"
         },
         {
+          "aliases": [
+            "case"
+          ],
           "description": "Look up a moderation case",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "The case number",
@@ -4273,12 +4740,15 @@
               "required": true
             }
           ],
-          "path": "case",
-          "usage": "/case <id>"
+          "path": "mod case",
+          "usage": "/mod case <id>"
         },
         {
+          "aliases": [
+            "reason"
+          ],
           "description": "Give a moderation case a new reason",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "The case number",
@@ -4291,8 +4761,8 @@
               "required": true
             }
           ],
-          "path": "reason",
-          "usage": "/reason <id> <reason>"
+          "path": "mod reason",
+          "usage": "/mod reason <id> <reason>"
         }
       ],
       "intro": "Bans, kicks, timeouts and warns, each a numbered case in the mod-log; cleaning up channels.",
@@ -4302,13 +4772,29 @@
     {
       "commands": [
         {
+          "aliases": [
+            "config show"
+          ],
           "description": "Show the current settings",
           "manager": true,
           "options": [],
-          "path": "config show",
-          "usage": "/config show"
+          "path": "setup server show",
+          "usage": "/setup server show"
         },
         {
+          "aliases": [
+            "config prefix reset"
+          ],
+          "description": "Go back to the default prefix, p!",
+          "manager": true,
+          "options": [],
+          "path": "setup server prefix-reset",
+          "usage": "/setup server prefix-reset"
+        },
+        {
+          "aliases": [
+            "config prefix set"
+          ],
           "description": "Pick the prefix (1-5 characters, no spaces)",
           "manager": true,
           "options": [
@@ -4318,24 +4804,23 @@
               "required": true
             }
           ],
-          "path": "config prefix set",
-          "usage": "/config prefix set <prefix>"
+          "path": "setup server prefix-set",
+          "usage": "/setup server prefix-set <prefix>"
         },
         {
-          "description": "Go back to the default prefix, p!",
-          "manager": true,
-          "options": [],
-          "path": "config prefix reset",
-          "usage": "/config prefix reset"
-        },
-        {
+          "aliases": [
+            "config prefix show"
+          ],
           "description": "Show the prefix",
           "manager": true,
           "options": [],
-          "path": "config prefix show",
-          "usage": "/config prefix show"
+          "path": "setup server prefix-show",
+          "usage": "/setup server prefix-show"
         },
         {
+          "aliases": [
+            "config welcome"
+          ],
           "description": "Welcome cards for new members",
           "manager": true,
           "options": [
@@ -4355,10 +4840,13 @@
               "required": false
             }
           ],
-          "path": "config welcome",
-          "usage": "/config welcome [enabled] [channel] [message]"
+          "path": "setup welcome message",
+          "usage": "/setup welcome message [enabled] [channel] [message]"
         },
         {
+          "aliases": [
+            "config welcome-card"
+          ],
           "description": "Design the welcome card and see a preview",
           "manager": true,
           "options": [
@@ -4385,10 +4873,13 @@
               "required": false
             }
           ],
-          "path": "config welcome-card",
-          "usage": "/config welcome-card [theme] [title] [color]"
+          "path": "setup welcome card",
+          "usage": "/setup welcome card [theme] [title] [color]"
         },
         {
+          "aliases": [
+            "config leveling"
+          ],
           "description": "XP and level-up messages",
           "manager": true,
           "options": [
@@ -4419,10 +4910,13 @@
               "required": false
             }
           ],
-          "path": "config leveling",
-          "usage": "/config leveling [enabled] [channel] [message] [mode]"
+          "path": "setup leveling settings",
+          "usage": "/setup leveling settings [enabled] [channel] [message] [mode]"
         },
         {
+          "aliases": [
+            "config join-role"
+          ],
           "description": "Give every new member a role",
           "manager": true,
           "options": [
@@ -4437,10 +4931,13 @@
               "required": false
             }
           ],
-          "path": "config join-role",
-          "usage": "/config join-role [role] [off]"
+          "path": "setup roles join-role",
+          "usage": "/setup roles join-role [role] [off]"
         },
         {
+          "aliases": [
+            "config goodbye"
+          ],
           "description": "Say goodbye when a member leaves",
           "manager": true,
           "options": [
@@ -4460,10 +4957,13 @@
               "required": false
             }
           ],
-          "path": "config goodbye",
-          "usage": "/config goodbye [channel] [message] [off]"
+          "path": "setup welcome goodbye",
+          "usage": "/setup welcome goodbye [channel] [message] [off]"
         },
         {
+          "aliases": [
+            "config suggestions"
+          ],
           "description": "Where /suggest posts suggestions",
           "manager": true,
           "options": [
@@ -4478,10 +4978,13 @@
               "required": false
             }
           ],
-          "path": "config suggestions",
-          "usage": "/config suggestions [channel] [off]"
+          "path": "setup community suggestions",
+          "usage": "/setup community suggestions [channel] [off]"
         },
         {
+          "aliases": [
+            "config language"
+          ],
           "description": "The default language for welcomes, level-ups and other server messages",
           "manager": true,
           "options": [
@@ -4496,10 +4999,11 @@
               "required": true
             }
           ],
-          "path": "config language",
-          "usage": "/config language <language>"
+          "path": "setup server language",
+          "usage": "/setup server language <language>"
         },
         {
+          "aliases": [],
           "description": "Show a member's account and server details",
           "manager": false,
           "options": [
@@ -4513,6 +5017,7 @@
           "usage": "/info user [user]"
         },
         {
+          "aliases": [],
           "description": "Show server details",
           "manager": false,
           "options": [],
@@ -4520,6 +5025,7 @@
           "usage": "/info server"
         },
         {
+          "aliases": [],
           "description": "Show a user's avatar",
           "manager": false,
           "options": [
@@ -4538,6 +5044,7 @@
           "usage": "/info avatar [user] [server]"
         },
         {
+          "aliases": [],
           "description": "Show a user's banner",
           "manager": false,
           "options": [
@@ -4551,6 +5058,7 @@
           "usage": "/info banner [user]"
         },
         {
+          "aliases": [],
           "description": "Show a role's details",
           "manager": false,
           "options": [
@@ -4564,6 +5072,7 @@
           "usage": "/info role <role>"
         },
         {
+          "aliases": [],
           "description": "Show a channel's details",
           "manager": false,
           "options": [
@@ -4577,6 +5086,7 @@
           "usage": "/info channel [channel]"
         },
         {
+          "aliases": [],
           "description": "Show member counts",
           "manager": false,
           "options": [],
@@ -4584,6 +5094,7 @@
           "usage": "/info members"
         },
         {
+          "aliases": [],
           "description": "Show a custom emoji",
           "manager": false,
           "options": [
@@ -4597,6 +5108,7 @@
           "usage": "/info emoji [emoji]"
         },
         {
+          "aliases": [],
           "description": "Show an invite's details",
           "manager": false,
           "options": [
@@ -4610,6 +5122,9 @@
           "usage": "/info invite <code>"
         },
         {
+          "aliases": [
+            "counters add"
+          ],
           "description": "Make a channel's name show a number, updated every 10 minutes",
           "manager": true,
           "options": [
@@ -4647,10 +5162,23 @@
               "required": false
             }
           ],
-          "path": "counters add",
-          "usage": "/counters add <channel> <kind> [role] [template]"
+          "path": "setup stats counter-add",
+          "usage": "/setup stats counter-add <channel> <kind> [role] [template]"
         },
         {
+          "aliases": [
+            "counters list"
+          ],
+          "description": "This server's counter channels",
+          "manager": true,
+          "options": [],
+          "path": "setup stats counter-list",
+          "usage": "/setup stats counter-list"
+        },
+        {
+          "aliases": [
+            "counters remove"
+          ],
           "description": "Stop updating a counter channel (it keeps its last name)",
           "manager": true,
           "options": [
@@ -4660,15 +5188,8 @@
               "required": true
             }
           ],
-          "path": "counters remove",
-          "usage": "/counters remove <channel>"
-        },
-        {
-          "description": "This server's counter channels",
-          "manager": true,
-          "options": [],
-          "path": "counters list",
-          "usage": "/counters list"
+          "path": "setup stats counter-remove",
+          "usage": "/setup stats counter-remove <channel>"
         }
       ],
       "intro": "Welcome cards, goodbyes, suggestions, the language, the text prefix and the settings overview.",
@@ -4678,6 +5199,19 @@
     {
       "commands": [
         {
+          "aliases": [
+            "antinuke disable"
+          ],
+          "description": "Pause anti-nuke detection",
+          "manager": true,
+          "options": [],
+          "path": "setup antinuke disable",
+          "usage": "/setup antinuke disable"
+        },
+        {
+          "aliases": [
+            "antinuke enable"
+          ],
           "description": "Enable protection; alert-only unless you choose a response",
           "manager": true,
           "options": [
@@ -4717,17 +5251,13 @@
               "required": false
             }
           ],
-          "path": "antinuke enable",
-          "usage": "/antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
+          "path": "setup antinuke enable",
+          "usage": "/setup antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
         },
         {
-          "description": "Pause anti-nuke detection",
-          "manager": true,
-          "options": [],
-          "path": "antinuke disable",
-          "usage": "/antinuke disable"
-        },
-        {
+          "aliases": [
+            "antinuke limits"
+          ],
           "description": "Set the maximum actions allowed per actor in a time window",
           "manager": true,
           "options": [
@@ -4747,10 +5277,13 @@
               "required": true
             }
           ],
-          "path": "antinuke limits",
-          "usage": "/antinuke limits <kind> <count> <seconds>"
+          "path": "setup antinuke limits",
+          "usage": "/setup antinuke limits <kind> <count> <seconds>"
         },
         {
+          "aliases": [
+            "antinuke trust add"
+          ],
           "description": "Trust another member (owner only)",
           "manager": true,
           "options": [
@@ -4760,10 +5293,13 @@
               "required": true
             }
           ],
-          "path": "antinuke trust add",
-          "usage": "/antinuke trust add <user>"
+          "path": "setup antinuke trust-add",
+          "usage": "/setup antinuke trust-add <user>"
         },
         {
+          "aliases": [
+            "antinuke trust remove"
+          ],
           "description": "Remove trust from a member (owner only)",
           "manager": true,
           "options": [
@@ -4773,10 +5309,13 @@
               "required": true
             }
           ],
-          "path": "antinuke trust remove",
-          "usage": "/antinuke trust remove <user>"
+          "path": "setup antinuke trust-remove",
+          "usage": "/setup antinuke trust-remove <user>"
         },
         {
+          "aliases": [
+            "antinuke vip add"
+          ],
           "description": "Protect a VIP role",
           "manager": true,
           "options": [
@@ -4786,10 +5325,13 @@
               "required": true
             }
           ],
-          "path": "antinuke vip add",
-          "usage": "/antinuke vip add <role>"
+          "path": "setup antinuke vip-add",
+          "usage": "/setup antinuke vip-add <role>"
         },
         {
+          "aliases": [
+            "antinuke vip remove"
+          ],
           "description": "Remove VIP protection from a role",
           "manager": true,
           "options": [
@@ -4799,10 +5341,13 @@
               "required": true
             }
           ],
-          "path": "antinuke vip remove",
-          "usage": "/antinuke vip remove <role>"
+          "path": "setup antinuke vip-remove",
+          "usage": "/setup antinuke vip-remove <role>"
         },
         {
+          "aliases": [
+            "config log"
+          ],
           "description": "The server log's channel, or one category's",
           "manager": true,
           "options": [
@@ -4833,10 +5378,13 @@
               "required": false
             }
           ],
-          "path": "config log",
-          "usage": "/config log [channel] [off] [category]"
+          "path": "setup moderation log",
+          "usage": "/setup moderation log [channel] [off] [category]"
         },
         {
+          "aliases": [
+            "config log-events"
+          ],
           "description": "Pick what the server log reports",
           "manager": true,
           "options": [
@@ -4896,10 +5444,13 @@
               "required": false
             }
           ],
-          "path": "config log-events",
-          "usage": "/config log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
+          "path": "setup moderation log-events",
+          "usage": "/setup moderation log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
         },
         {
+          "aliases": [
+            "config log-ignore"
+          ],
           "description": "Who and where the server log leaves alone",
           "manager": true,
           "options": [
@@ -4929,10 +5480,13 @@
               "required": false
             }
           ],
-          "path": "config log-ignore",
-          "usage": "/config log-ignore [channel] [role] [user] [bots] [remove]"
+          "path": "setup moderation log-ignore",
+          "usage": "/setup moderation log-ignore [channel] [role] [user] [bots] [remove]"
         },
         {
+          "aliases": [
+            "config moderation"
+          ],
           "description": "Where cases go and whether members are told",
           "manager": true,
           "options": [
@@ -4952,10 +5506,13 @@
               "required": false
             }
           ],
-          "path": "config moderation",
-          "usage": "/config moderation [channel] [off] [dm]"
+          "path": "setup moderation settings",
+          "usage": "/setup moderation settings [channel] [off] [dm]"
         },
         {
+          "aliases": [
+            "config warn-ladder"
+          ],
           "description": "What a number of warns brings",
           "manager": true,
           "options": [
@@ -4985,8 +5542,8 @@
               "required": false
             }
           ],
-          "path": "config warn-ladder",
-          "usage": "/config warn-ladder [warns] [action] [duration] [remove]"
+          "path": "setup moderation warn-ladder",
+          "usage": "/setup moderation warn-ladder [warns] [action] [duration] [remove]"
         }
       ],
       "intro": "The server log's channels, events and ignore lists; the mod-log and the warn ladder.",
@@ -4996,6 +5553,9 @@
     {
       "commands": [
         {
+          "aliases": [
+            "config level-roles add"
+          ],
           "description": "Give a role to everyone who reaches a level",
           "manager": true,
           "options": [
@@ -5010,30 +5570,23 @@
               "required": true
             }
           ],
-          "path": "config level-roles add",
-          "usage": "/config level-roles add <level> <role>"
+          "path": "setup leveling roles-add",
+          "usage": "/setup leveling roles-add <level> <role>"
         },
         {
-          "description": "Stop giving a role at a level",
-          "manager": true,
-          "options": [
-            {
-              "description": "The role to stop giving",
-              "name": "role",
-              "required": true
-            }
+          "aliases": [
+            "config level-roles list"
           ],
-          "path": "config level-roles remove",
-          "usage": "/config level-roles remove <role>"
-        },
-        {
           "description": "Show the level roles",
           "manager": true,
           "options": [],
-          "path": "config level-roles list",
-          "usage": "/config level-roles list"
+          "path": "setup leveling roles-list",
+          "usage": "/setup leveling roles-list"
         },
         {
+          "aliases": [
+            "config level-roles mode"
+          ],
           "description": "Keep every level role, or only the highest one",
           "manager": true,
           "options": [
@@ -5047,17 +5600,60 @@
               "required": true
             }
           ],
-          "path": "config level-roles mode",
-          "usage": "/config level-roles mode <mode>"
+          "path": "setup leveling roles-mode",
+          "usage": "/setup leveling roles-mode <mode>"
         },
         {
+          "aliases": [
+            "config level-roles remove"
+          ],
+          "description": "Stop giving a role at a level",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop giving",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup leveling roles-remove",
+          "usage": "/setup leveling roles-remove <role>"
+        },
+        {
+          "aliases": [
+            "config level-roles sync"
+          ],
           "description": "Give members who are already past a level the roles they earned",
           "manager": true,
           "options": [],
-          "path": "config level-roles sync",
-          "usage": "/config level-roles sync"
+          "path": "setup leveling roles-sync",
+          "usage": "/setup leveling roles-sync"
         },
         {
+          "aliases": [
+            "config xp clear"
+          ],
+          "description": "Remove one multiplier, or all of them",
+          "manager": true,
+          "options": [
+            {
+              "description": "The channel or category to reset",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "The role to reset",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "setup leveling xp-clear",
+          "usage": "/setup leveling xp-clear [channel] [role]"
+        },
+        {
+          "aliases": [
+            "config xp multiplier"
+          ],
           "description": "Scale the XP and points a channel or role earns",
           "manager": true,
           "options": [
@@ -5077,35 +5673,23 @@
               "required": false
             }
           ],
-          "path": "config xp multiplier",
-          "usage": "/config xp multiplier <value> [channel] [role]"
+          "path": "setup leveling xp-multiplier",
+          "usage": "/setup leveling xp-multiplier <value> [channel] [role]"
         },
         {
-          "description": "Remove one multiplier, or all of them",
-          "manager": true,
-          "options": [
-            {
-              "description": "The channel or category to reset",
-              "name": "channel",
-              "required": false
-            },
-            {
-              "description": "The role to reset",
-              "name": "role",
-              "required": false
-            }
+          "aliases": [
+            "config xp show"
           ],
-          "path": "config xp clear",
-          "usage": "/config xp clear [channel] [role]"
-        },
-        {
           "description": "Show the multipliers and voice XP settings",
           "manager": true,
           "options": [],
-          "path": "config xp show",
-          "usage": "/config xp show"
+          "path": "setup leveling xp-show",
+          "usage": "/setup leveling xp-show"
         },
         {
+          "aliases": [
+            "config xp voice"
+          ],
           "description": "Give XP for time spent in voice channels",
           "manager": true,
           "options": [
@@ -5120,10 +5704,13 @@
               "required": false
             }
           ],
-          "path": "config xp voice",
-          "usage": "/config xp voice [enabled] [amount]"
+          "path": "setup leveling xp-voice",
+          "usage": "/setup leveling xp-voice [enabled] [amount]"
         },
         {
+          "aliases": [
+            "config rep-roles add"
+          ],
           "description": "Give a role to everyone whose reputation reaches a count",
           "manager": true,
           "options": [
@@ -5138,10 +5725,23 @@
               "required": true
             }
           ],
-          "path": "config rep-roles add",
-          "usage": "/config rep-roles add <reputation> <role>"
+          "path": "setup economy rep-roles-add",
+          "usage": "/setup economy rep-roles-add <reputation> <role>"
         },
         {
+          "aliases": [
+            "config rep-roles list"
+          ],
+          "description": "Show the reputation roles",
+          "manager": true,
+          "options": [],
+          "path": "setup economy rep-roles-list",
+          "usage": "/setup economy rep-roles-list"
+        },
+        {
+          "aliases": [
+            "config rep-roles remove"
+          ],
           "description": "Stop giving a role for reputation",
           "manager": true,
           "options": [
@@ -5151,17 +5751,13 @@
               "required": true
             }
           ],
-          "path": "config rep-roles remove",
-          "usage": "/config rep-roles remove <role>"
+          "path": "setup economy rep-roles-remove",
+          "usage": "/setup economy rep-roles-remove <role>"
         },
         {
-          "description": "Show the reputation roles",
-          "manager": true,
-          "options": [],
-          "path": "config rep-roles list",
-          "usage": "/config rep-roles list"
-        },
-        {
+          "aliases": [
+            "config points"
+          ],
           "description": "Server points: what chatting earns",
           "manager": true,
           "options": [
@@ -5191,10 +5787,13 @@
               "required": false
             }
           ],
-          "path": "config points",
-          "usage": "/config points [enabled] [name] [emoji] [min] [max]"
+          "path": "setup economy points-settings",
+          "usage": "/setup economy points-settings [enabled] [name] [emoji] [min] [max]"
         },
         {
+          "aliases": [
+            "config store add"
+          ],
           "description": "Put a role on sale, or change its price and stock",
           "manager": true,
           "options": [
@@ -5214,10 +5813,23 @@
               "required": false
             }
           ],
-          "path": "config store add",
-          "usage": "/config store add <role> <price> [stock]"
+          "path": "setup economy store-add",
+          "usage": "/setup economy store-add <role> <price> [stock]"
         },
         {
+          "aliases": [
+            "config store list"
+          ],
+          "description": "Show what is on sale",
+          "manager": true,
+          "options": [],
+          "path": "setup economy store-list",
+          "usage": "/setup economy store-list"
+        },
+        {
+          "aliases": [
+            "config store remove"
+          ],
           "description": "Take a role off sale",
           "manager": true,
           "options": [
@@ -5227,17 +5839,13 @@
               "required": true
             }
           ],
-          "path": "config store remove",
-          "usage": "/config store remove <role>"
+          "path": "setup economy store-remove",
+          "usage": "/setup economy store-remove <role>"
         },
         {
-          "description": "Show what is on sale",
-          "manager": true,
-          "options": [],
-          "path": "config store list",
-          "usage": "/config store list"
-        },
-        {
+          "aliases": [
+            "xp add"
+          ],
           "description": "Add server XP to a member",
           "manager": true,
           "options": [
@@ -5252,10 +5860,33 @@
               "required": true
             }
           ],
-          "path": "xp add",
-          "usage": "/xp add <user> <amount>"
+          "path": "setup leveling xp-add",
+          "usage": "/setup leveling xp-add <user> <amount>"
         },
         {
+          "aliases": [
+            "xp import mee6"
+          ],
+          "description": "Import MEE6 XP (once per server per day)",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Merge: keep the higher XP",
+                "Replace: use MEE6 XP"
+              ],
+              "description": "How imported XP combines with existing XP",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "setup leveling xp-import-mee6",
+          "usage": "/setup leveling xp-import-mee6 <mode>"
+        },
+        {
+          "aliases": [
+            "xp remove"
+          ],
           "description": "Remove server XP from a member",
           "manager": true,
           "options": [
@@ -5270,10 +5901,39 @@
               "required": true
             }
           ],
-          "path": "xp remove",
-          "usage": "/xp remove <user> <amount>"
+          "path": "setup leveling xp-remove",
+          "usage": "/setup leveling xp-remove <user> <amount>"
         },
         {
+          "aliases": [
+            "xp reset"
+          ],
+          "description": "Reset one member's server XP",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to reset",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "setup leveling xp-reset",
+          "usage": "/setup leveling xp-reset <user>"
+        },
+        {
+          "aliases": [
+            "xp reset-all"
+          ],
+          "description": "Reset everyone's server XP; requires two confirmations",
+          "manager": true,
+          "options": [],
+          "path": "setup leveling xp-reset-all",
+          "usage": "/setup leveling xp-reset-all"
+        },
+        {
+          "aliases": [
+            "xp set"
+          ],
           "description": "Set a member's server XP",
           "manager": true,
           "options": [
@@ -5288,45 +5948,8 @@
               "required": true
             }
           ],
-          "path": "xp set",
-          "usage": "/xp set <user> <amount>"
-        },
-        {
-          "description": "Reset one member's server XP",
-          "manager": true,
-          "options": [
-            {
-              "description": "Member to reset",
-              "name": "user",
-              "required": true
-            }
-          ],
-          "path": "xp reset",
-          "usage": "/xp reset <user>"
-        },
-        {
-          "description": "Reset everyone's server XP; requires two confirmations",
-          "manager": true,
-          "options": [],
-          "path": "xp reset-all",
-          "usage": "/xp reset-all"
-        },
-        {
-          "description": "Import MEE6 XP (once per server per day)",
-          "manager": true,
-          "options": [
-            {
-              "choices": [
-                "Merge: keep the higher XP",
-                "Replace: use MEE6 XP"
-              ],
-              "description": "How imported XP combines with existing XP",
-              "name": "mode",
-              "required": true
-            }
-          ],
-          "path": "xp import mee6",
-          "usage": "/xp import mee6 <mode>"
+          "path": "setup leveling xp-set",
+          "usage": "/setup leveling xp-set <user> <amount>"
         }
       ],
       "intro": "Level roles, XP multipliers, voice XP, reputation roles and the points store.",
@@ -5336,6 +5959,9 @@
     {
       "commands": [
         {
+          "aliases": [
+            "config critters"
+          ],
           "description": "Critter drops and bottles that wash up while people chat",
           "manager": true,
           "options": [
@@ -5355,10 +5981,13 @@
               "required": false
             }
           ],
-          "path": "config critters",
-          "usage": "/config critters [enabled] [channel] [anywhere]"
+          "path": "setup economy critters",
+          "usage": "/setup economy critters [enabled] [channel] [anywhere]"
         },
         {
+          "aliases": [
+            "config gambling"
+          ],
           "description": "Switch the shell game, staked derbies and other gambling-style games on or off for this server",
           "manager": true,
           "options": [
@@ -5368,10 +5997,13 @@
               "required": true
             }
           ],
-          "path": "config gambling",
-          "usage": "/config gambling <enabled>"
+          "path": "setup economy gambling",
+          "usage": "/setup economy gambling <enabled>"
         },
         {
+          "aliases": [
+            "config surge"
+          ],
           "description": "Timed storm surges: switch them on, pick the channel and how often one comes",
           "manager": true,
           "options": [
@@ -5398,10 +6030,13 @@
               "required": false
             }
           ],
-          "path": "config surge",
-          "usage": "/config surge [enabled] [channel] [every]"
+          "path": "setup economy surge",
+          "usage": "/setup economy surge [enabled] [channel] [every]"
         },
         {
+          "aliases": [
+            "config partygames"
+          ],
           "description": "How strict the word filter is in Hot Pearl, acronyms and captions",
           "manager": true,
           "options": [
@@ -5411,35 +6046,13 @@
               "required": false
             }
           ],
-          "path": "config partygames",
-          "usage": "/config partygames [strict]"
+          "path": "setup economy partygames",
+          "usage": "/setup economy partygames [strict]"
         },
         {
-          "description": "Which parts of Pinchora are on, and where",
-          "manager": true,
-          "options": [],
-          "path": "config modules show",
-          "usage": "/config modules show"
-        },
-        {
-          "description": "Switch a part of Pinchora on or off for the whole server",
-          "manager": true,
-          "options": [
-            {
-              "description": "The part to switch (start typing its name)",
-              "name": "module",
-              "required": true
-            },
-            {
-              "description": "On, or off for everyone",
-              "name": "enabled",
-              "required": true
-            }
+          "aliases": [
+            "config modules channels"
           ],
-          "path": "config modules toggle",
-          "usage": "/config modules toggle <module> <enabled>"
-        },
-        {
           "description": "Limit a part of Pinchora to some channels, or keep it out of some, one channel at a time",
           "manager": true,
           "options": [
@@ -5469,10 +6082,54 @@
               "required": false
             }
           ],
-          "path": "config modules channels",
-          "usage": "/config modules channels <module> <where> [channel] [remove]"
+          "path": "setup server modules-channels",
+          "usage": "/setup server modules-channels <module> <where> [channel] [remove]"
         },
         {
+          "aliases": [
+            "config modules show"
+          ],
+          "description": "Which parts of Pinchora are on, and where",
+          "manager": true,
+          "options": [],
+          "path": "setup server modules-show",
+          "usage": "/setup server modules-show"
+        },
+        {
+          "aliases": [
+            "config modules toggle"
+          ],
+          "description": "Switch a part of Pinchora on or off for the whole server",
+          "manager": true,
+          "options": [
+            {
+              "description": "The part to switch (start typing its name)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "description": "On, or off for everyone",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "setup server modules-toggle",
+          "usage": "/setup server modules-toggle <module> <enabled>"
+        },
+        {
+          "aliases": [
+            "birthdays preview"
+          ],
+          "description": "Preview the birthday card and message",
+          "manager": true,
+          "options": [],
+          "path": "setup birthdays preview",
+          "usage": "/setup birthdays preview"
+        },
+        {
+          "aliases": [
+            "birthdays settings"
+          ],
           "description": "Set the birthday channel, role, message and gift",
           "manager": true,
           "options": [
@@ -5527,15 +6184,8 @@
               "required": false
             }
           ],
-          "path": "birthdays settings",
-          "usage": "/birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
-        },
-        {
-          "description": "Preview the birthday card and message",
-          "manager": true,
-          "options": [],
-          "path": "birthdays preview",
-          "usage": "/birthdays preview"
+          "path": "setup birthdays settings",
+          "usage": "/setup birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
         }
       ],
       "intro": "Switch games and whole parts of Pinchora on or off, for the server or per channel.",
