@@ -23,6 +23,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("event_rsvps", "user_id"),
+    ("event_reminder_deliveries", "user_id"),
     ("verification_pending", "user_id"),
     ("raid_joins", "user_id"),
     ("automod_hits", "user_id"),

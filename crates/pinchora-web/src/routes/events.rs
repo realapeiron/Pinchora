@@ -8,7 +8,10 @@ use axum::{
 use chrono::{DateTime, Utc};
 use pinchora_core::{
     events::{Recurrence, RsvpOption},
+    i18n::Lang,
+    modules::{Access, Module},
     settings::FieldError,
+    t,
 };
 use pinchora_db::{EventDraft, EventRow};
 use serde::Deserialize;
@@ -16,8 +19,10 @@ use serde_json::{Value, json};
 use twilight_model::id::Id;
 
 use crate::{
+    audit::{self, Change},
     error::{ApiError, ApiJson, ApiResult},
     extract::ManagedGuild,
+    guild_info,
     state::WebState,
 };
 
@@ -54,22 +59,15 @@ struct EventBody {
 fn bad(field: &'static str, message: impl Into<String>) -> ApiError {
     ApiError::invalid(vec![FieldError::new(field, message)])
 }
-fn sync_error(error: anyhow::Error) -> ApiError {
-    if error.to_string().contains("Manage Events") {
-        ApiError::blocked("The bot needs Manage Events to sync Discord Scheduled Events.")
-    } else {
-        ApiError::blocked(format!("Discord Scheduled Event sync failed: {error}"))
-    }
-}
-fn id(raw: &str, field: &'static str) -> ApiResult<i64> {
+fn id(raw: &str, field: &'static str, lang: Lang) -> ApiResult<i64> {
     raw.parse::<i64>()
         .ok()
         .filter(|n| *n > 0)
-        .ok_or_else(|| bad(field, "Choose a valid Discord ID."))
+        .ok_or_else(|| bad(field, t!(lang, "events.web.invalid-id")))
 }
-fn draft(body: EventBody) -> ApiResult<EventDraft> {
+fn draft(body: EventBody, lang: Lang) -> ApiResult<EventDraft> {
     if body.channel_id.is_none() {
-        return Err(bad("channel_id", "Choose a channel for the RSVP card."));
+        return Err(bad("channel_id", t!(lang, "events.web.channel")));
     }
     let d = EventDraft {
         title: body.title,
@@ -78,18 +76,22 @@ fn draft(body: EventBody) -> ApiResult<EventDraft> {
         ends_at: body.ends_at,
         tz: body.tz,
         location: body.location,
-        channel_id: body.channel_id.as_deref().map(|s| id(s, "channel_id")).transpose()?,
+        channel_id: body
+            .channel_id
+            .as_deref()
+            .map(|s| id(s, "channel_id", lang))
+            .transpose()?,
         host_id: None,
         options: body.options,
         required_role_id: body
             .required_role_id
             .as_deref()
-            .map(|s| id(s, "required_role_id"))
+            .map(|s| id(s, "required_role_id", lang))
             .transpose()?,
         reminders: vec![60, 15],
         recurrence: body.recurrence,
     };
-    d.validate().map_err(|e| bad("event", e.to_string()))?;
+    d.validate().map_err(|_| bad("event", t!(lang, "events.invalid")))?;
     Ok(d)
 }
 fn view(row: &EventRow) -> Value {
@@ -112,9 +114,15 @@ async fn timezone(
     ApiJson(body): ApiJson<TimezoneBody>,
 ) -> ApiResult<Json<Value>> {
     if body.timezone.parse::<chrono_tz::Tz>().is_err() {
-        return Err(bad("timezone", "Use an IANA time zone such as Europe/Istanbul."));
+        return Err(bad(
+            "timezone",
+            t!(state.app.guild_lang(managed.id).await, "events.web.timezone"),
+        ));
     }
+    enabled(&state, managed.id, None).await?;
+    let before = state.app.db.event_timezone(managed.id).await?;
     state.app.db.set_event_timezone(managed.id, &body.timezone).await?;
+    record(&state, &managed, "event.timezone", json!(before), json!(body.timezone)).await;
     Ok(Json(json!({"timezone":body.timezone})))
 }
 async fn create(
@@ -123,18 +131,14 @@ async fn create(
     ApiJson(body): ApiJson<EventBody>,
 ) -> ApiResult<Json<Value>> {
     let sync = body.sync;
-    let draft = draft(body)?;
-    if sync {
-        pinchora_commands::check_event_sync_permission(&state.app, managed.id)
-            .await
-            .map_err(sync_error)?;
-    }
+    let mut draft = draft(body, state.app.guild_lang(managed.id).await)?;
+    validate_scope(&state, &managed, &draft).await?;
+    draft.host_id = Some(managed.current.session.user_id as i64);
     let row = state.app.db.create_event(managed.id, &draft).await?;
-    pinchora_commands::publish_event(&state.app, &row).await?;
+    record(&state, &managed, "event.create", Value::Null, view(&row)).await;
+    let mut warning = publish_warning(&state, &row).await;
     if sync {
-        pinchora_commands::sync_discord_event(&state.app, &row, true)
-            .await
-            .map_err(sync_error)?;
+        warning = sync_warning(&state, &row, true).await.or(warning);
     }
     let posted = state
         .app
@@ -142,7 +146,7 @@ async fn create(
         .event(managed.id, row.id)
         .await?
         .ok_or_else(ApiError::not_found)?;
-    Ok(Json(view(&posted)))
+    Ok(Json(with_warning(&posted, warning)))
 }
 async fn one(
     State(state): State<WebState>,
@@ -164,26 +168,24 @@ async fn update(
     ApiJson(body): ApiJson<EventBody>,
 ) -> ApiResult<Json<Value>> {
     let sync = body.sync;
-    let draft = draft(body)?;
+    let draft = draft(body, state.app.guild_lang(managed.id).await)?;
     let existing = state
         .app
         .db
         .event(managed.id, path.id)
         .await?
         .ok_or_else(ApiError::not_found)?;
-    if sync || existing.discord_event_id.is_some() {
-        pinchora_commands::check_event_sync_permission(&state.app, managed.id)
-            .await
-            .map_err(sync_error)?;
-    }
+    validate_scope(&state, &managed, &draft).await?;
     let row = state
         .app
         .db
         .update_event(managed.id, path.id, &draft)
         .await?
         .ok_or_else(ApiError::not_found)?;
+    record(&state, &managed, "event.update", view(&existing), view(&row)).await;
+    let mut warning = None;
     if row.message_id.is_none() {
-        pinchora_commands::publish_event(&state.app, &row).await?;
+        warning = publish_warning(&state, &row).await;
         if let (Some(channel), Some(message)) = (existing.channel_id, existing.message_id)
             && let Err(error) = state
                 .app
@@ -196,16 +198,14 @@ async fn update(
     } else {
         pinchora_commands::refresh_event_card(&state.app, &row).await;
     }
-    pinchora_commands::sync_discord_event(&state.app, &row, sync)
-        .await
-        .map_err(sync_error)?;
+    warning = sync_warning(&state, &row, sync).await.or(warning);
     let posted = state
         .app
         .db
         .event(managed.id, row.id)
         .await?
         .ok_or_else(ApiError::not_found)?;
-    Ok(Json(view(&posted)))
+    Ok(Json(with_warning(&posted, warning)))
 }
 async fn cancel(
     State(state): State<WebState>,
@@ -218,19 +218,16 @@ async fn cancel(
         .event(managed.id, path.id)
         .await?
         .ok_or_else(ApiError::not_found)?;
-    if existing.discord_event_id.is_some() {
-        pinchora_commands::sync_discord_event(&state.app, &existing, false)
-            .await
-            .map_err(sync_error)?;
-    }
     let row = state
         .app
         .db
         .cancel_event(managed.id, path.id)
         .await?
         .ok_or_else(ApiError::not_found)?;
+    record(&state, &managed, "event.cancel", view(&existing), view(&row)).await;
+    let warning = sync_warning(&state, &row, false).await;
     pinchora_commands::refresh_event_card(&state.app, &row).await;
-    Ok(Json(view(&row)))
+    Ok(Json(with_warning(&row, warning)))
 }
 async fn attendees(
     State(state): State<WebState>,
@@ -248,4 +245,75 @@ async fn attendees(
     Ok(Json(
         json!({"count":count,"attendees":rows.iter().map(|r|json!({"user_id":r.user_id.to_string(),"option":r.option,"waitlisted":r.waitlisted,"responded_at":r.responded_at})).collect::<Vec<_>>()}),
     ))
+}
+
+async fn enabled(state: &WebState, guild: u64, channel: Option<u64>) -> ApiResult<()> {
+    if state.app.module_access(guild, channel, Module::Events).await? != Access::Allowed {
+        return Err(ApiError::blocked(t!(
+            state.app.guild_lang(guild).await,
+            "events.web.disabled"
+        )));
+    }
+    Ok(())
+}
+async fn validate_scope(state: &WebState, managed: &ManagedGuild, draft: &EventDraft) -> ApiResult<()> {
+    let channel = draft.channel_id.unwrap_or_default() as u64;
+    enabled(state, managed.id, Some(channel)).await?;
+    let info = guild_info::get(state, managed.id, false).await?;
+    let channel = info
+        .check_channel("channel_id", channel)
+        .map_err(|e| ApiError::invalid(vec![e]))?;
+    if !channel.takes_posts() {
+        return Err(bad(
+            "channel_id",
+            t!(state.app.guild_lang(managed.id).await, "events.web.channel"),
+        ));
+    }
+    if let Some(role) = draft.required_role_id {
+        info.check_role("required_role_id", role as u64)
+            .map_err(|e| ApiError::invalid(vec![e]))?;
+    }
+    Ok(())
+}
+async fn record(state: &WebState, managed: &ManagedGuild, action: &str, before: Value, after: Value) {
+    audit::finish(
+        state,
+        &managed.current.session,
+        Change {
+            guild: managed.id,
+            action,
+            target: None,
+            before,
+            after,
+        },
+        None,
+    )
+    .await;
+}
+fn with_warning(row: &EventRow, warning: Option<String>) -> Value {
+    let mut value = view(row);
+    value["warning"] = json!(warning);
+    value
+}
+async fn sync_warning(state: &WebState, row: &EventRow, sync: bool) -> Option<String> {
+    if let Err(error) = pinchora_commands::sync_discord_event(&state.app, row, sync).await {
+        tracing::warn!(%error, id=row.id, "event saved but Discord sync failed");
+        Some(t!(
+            state.app.guild_lang(row.guild_id as u64).await,
+            "events.web.sync-warning"
+        ))
+    } else {
+        None
+    }
+}
+async fn publish_warning(state: &WebState, row: &EventRow) -> Option<String> {
+    if let Err(error) = pinchora_commands::publish_event(&state.app, row).await {
+        tracing::warn!(%error, id=row.id, "event saved but card publication failed");
+        Some(t!(
+            state.app.guild_lang(row.guild_id as u64).await,
+            "events.web.post-warning"
+        ))
+    } else {
+        None
+    }
 }

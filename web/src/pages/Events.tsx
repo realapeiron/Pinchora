@@ -85,9 +85,10 @@ export function Events() {
   async function save() {
     if (!editing) return;
     try {
-      if (editing.id) await events.save.mutateAsync({ id: editing.id, body: editing.body });
-      else await events.create.mutateAsync(editing.body);
-      setNotice(editing.id ? "Event saved." : "Event created and posted.");
+      const saved = editing.id
+        ? await events.save.mutateAsync({ id: editing.id, body: editing.body })
+        : await events.create.mutateAsync(editing.body);
+      setNotice(saved.warning ?? (editing.id ? "Event saved." : "Event created and posted."));
       setEditing(null);
       setPreview(false);
     } catch (error) {
@@ -240,8 +241,8 @@ export function Events() {
                         onClick={async () => {
                           if (!window.confirm(`Cancel ${event.title}?`)) return;
                           try {
-                            await events.cancel.mutateAsync(event.id);
-                            setNotice("Event cancelled.");
+                            const saved = await events.cancel.mutateAsync(event.id);
+                            setNotice(saved.warning ?? "Event cancelled.");
                           } catch (error) {
                             setNotice(error instanceof Error ? error.message : "Could not cancel the event.");
                           }

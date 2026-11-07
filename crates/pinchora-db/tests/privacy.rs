@@ -108,6 +108,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         .await
         .unwrap();
     db.rsvp_event(guild, event.id, user, "going").await.unwrap();
+    sqlx::query("INSERT INTO event_reminder_deliveries(event_id,user_id,minutes) VALUES ($1,$2,60)")
+        .bind(event.id)
+        .bind(user as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
 
     // A wager both players put money on: deleting one player must not cost the other their bet.
     let game = |host: u64, guest: u64, bet: i64| NewGame {

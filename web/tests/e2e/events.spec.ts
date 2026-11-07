@@ -40,5 +40,13 @@ test("create, preview, edit and duplicate an event at desktop and phone widths",
   await expect(page.getByRole("heading", { name: "Moonlit crab night" })).toBeVisible();
   await page.getByRole("button", { name: "Duplicate" }).click();
   await expect(page.getByRole("dialog", { name: "Create event" })).toBeVisible();
+  // A page can fit the viewport while its scrollable dialog still clips form controls.
+  const duplicate = page.getByRole("dialog", { name: "Create event" });
+  expect(await duplicate.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+  const dialogBounds = await duplicate.boundingBox();
+  for (const input of await duplicate.locator("input, textarea, select, button").all()) {
+    const bounds = await input.boundingBox();
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(dialogBounds!.x + dialogBounds!.width);
+  }
   await shot(page, "events-editor-phone", true);
 });

@@ -2,7 +2,7 @@
 
 use std::{sync::Arc, time::Duration as StdDuration};
 
-use chrono::Duration;
+use pinchora_core::modules::{Access, Module};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::EventRow;
 use twilight_model::{
@@ -57,7 +57,7 @@ fn card(
         buttons.push(Component::Button(Button {
             id: None,
             custom_id: Some(format!("ev:r:{}:{}", row.id, o.key)),
-            disabled: row.status != "upcoming",
+            disabled: row.status != "upcoming" || row.ends_at <= chrono::Utc::now(),
             emoji: None,
             label: Some(label),
             style: if idx == 0 {
@@ -123,51 +123,30 @@ pub async fn refresh_card(app: &App, row: &EventRow) {
     }
 }
 
-pub(crate) async fn schedule_user(app: &App, row: &EventRow, user: u64) -> anyhow::Result<()> {
-    if row.status != "upcoming" || app.db.dm_opt_out(user).await? {
-        return Ok(());
-    }
-    let language = app.guild_lang(row.guild_id as u64).await;
-    for mins in &row.reminders {
-        let due = row.starts_at - Duration::minutes(i64::from(*mins));
-        if due > app.now() {
-            app.db
-                .schedule_reminder(user, &format!("event_{mins}"), row.id, language.code(), due)
-                .await?;
-        }
-    }
-    Ok(())
-}
-pub(crate) async fn unschedule_user(app: &App, id: i64, user: u64) -> anyhow::Result<()> {
-    for kind in ["event_60", "event_15"] {
-        app.db.unschedule_reminder(user, kind, id).await?;
-    }
-    Ok(())
-}
 pub(crate) async fn schedule_all(app: &App, row: &EventRow) -> anyhow::Result<()> {
-    for user in app.db.event_reminder_users(row.id).await? {
-        unschedule_user(app, row.id, user).await?;
-        schedule_user(app, row, user).await?;
-    }
-    Ok(())
+    app.db.reconcile_event_reminders(row.id).await
 }
 
 /// Checks the RSVP and privacy choice again at delivery time.
 pub(crate) async fn reminder_plan(
     app: &App,
-    id: i64,
-    user: u64,
-    minutes: i64,
+    reminder: &pinchora_db::ReminderRow,
+    minutes: i32,
     lang: Lang,
 ) -> anyhow::Result<Option<(String, String)>> {
-    let Some(row) = app.db.event_by_id(id).await? else {
+    let Some(row) = app.db.event_by_id(reminder.ref_id).await? else {
         return Ok(None);
     };
-    if row.status != "upcoming" || row.starts_at <= app.now() || app.db.dm_opt_out(user).await? {
+    if row.status != "upcoming"
+        || row.starts_at <= app.now()
+        || app
+            .module_access(row.guild_id as u64, row.channel_id.map(|id| id as u64), Module::Events)
+            .await?
+            != Access::Allowed
+    {
         return Ok(None);
     }
-    let exists = app.db.event_reminder_users(id).await?.contains(&user);
-    if !exists {
+    if !app.db.claim_event_delivery(reminder, minutes).await? {
         return Ok(None);
     }
     Ok(Some((
@@ -185,6 +164,7 @@ pub async fn sync_discord(app: &App, row: &EventRow, on: bool) -> anyhow::Result
     let guild = Id::new(row.guild_id as u64);
     if !on {
         if let Some(id) = row.discord_event_id {
+            check_manage_events(app, row.guild_id as u64).await?;
             app.http.delete_guild_scheduled_event(guild, Id::new(id as u64)).await?;
             app.db.set_discord_event(row.id, None).await?;
         }
@@ -251,6 +231,13 @@ pub async fn check_manage_events(app: &App, guild_id: u64) -> anyhow::Result<()>
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let new = app.db.advance_events(app.now()).await?;
     for row in &new {
+        if app
+            .module_access(row.guild_id as u64, row.channel_id.map(|id| id as u64), Module::Events)
+            .await?
+            != Access::Allowed
+        {
+            continue;
+        }
         if let Err(error) = publish(app, row).await {
             tracing::warn!(%error,id=row.id,"recurring event post failed");
         }

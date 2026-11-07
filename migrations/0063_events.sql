@@ -35,3 +35,12 @@ CREATE TABLE event_rsvps (
     PRIMARY KEY(event_id, user_id)
 );
 CREATE INDEX event_rsvps_queue_idx ON event_rsvps(event_id, option, responded_at) WHERE waitlisted;
+
+-- A durable delivery attempt survives queue deletion, RSVP toggles and pod restarts.
+-- Marked before Discord I/O: at-most-once delivery (a crash can lose a DM).
+CREATE TABLE event_reminder_deliveries (
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    minutes INT NOT NULL CHECK (minutes IN (15,60)),
+    PRIMARY KEY (event_id,user_id,minutes)
+);

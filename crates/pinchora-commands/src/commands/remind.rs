@@ -621,13 +621,11 @@ async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>, lang: Lang) -> any
             text: r.body.clone(),
         });
     }
-    if let Some(minutes) = r.kind.strip_prefix("event_").and_then(|v| v.parse::<i64>().ok()) {
-        return Ok(
-            match crate::event_rsvp::reminder_plan(app, r.ref_id, user, minutes, lang).await? {
-                Some((title, text)) => Delivery::Send { title, text },
-                None => Delivery::Drop,
-            },
-        );
+    if let Some(minutes) = r.kind.strip_prefix("event_").and_then(|v| v.parse::<i32>().ok()) {
+        return Ok(match crate::event_rsvp::reminder_plan(app, r, minutes, lang).await? {
+            Some((title, text)) => Delivery::Send { title, text },
+            None => Delivery::Drop,
+        });
     }
     // Everything else only goes out while the player still wants it.
     if !app.db.has_optin(user, &r.kind).await? {

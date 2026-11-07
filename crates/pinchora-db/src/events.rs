@@ -1,13 +1,13 @@
 //! Events and RSVP writes. A locked event serializes capacity checks, promotion and recurrence.
 
 use chrono::{DateTime, Utc};
-use pinchora_core::events::{Recurrence, RsvpOption, check_options, next_occurrence};
+use pinchora_core::events::{Recurrence, RsvpOption, check_options, next_occurrence, safe_text};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 use crate::{
     Db,
-    locks::{lock_users, retry},
+    locks::{lock_users, retry, try_lock_users},
     sql_id,
 };
 
@@ -68,6 +68,7 @@ impl EventDraft {
             self.description.chars().count() <= 1000,
             "description must be at most 1000 characters"
         );
+        anyhow::ensure!(self.starts_at > Utc::now(), "event must start in the future");
         anyhow::ensure!(self.ends_at > self.starts_at, "event must end after it starts");
         anyhow::ensure!(
             self.location.chars().count() <= 100,
@@ -99,6 +100,7 @@ pub enum RsvpResult {
     Removed,
     Closed,
     Invalid,
+    RequiredRole,
 }
 
 const COLUMNS: &str = "id, guild_id, title, description, starts_at, ends_at, tz, location, channel_id, message_id, host_id, options, required_role_id, reminders, discord_event_id, recurrence, parent_id, status";
@@ -155,25 +157,31 @@ impl Db {
     }
     pub async fn create_event(&self, guild: u64, draft: &EventDraft) -> anyhow::Result<EventRow> {
         draft.validate()?;
+        let mut tx = self.pool().begin().await?;
+        if let Some(host) = draft.host_id {
+            lock_users(&mut tx, &[host]).await?;
+        }
         let sql = format!(
             "INSERT INTO events (guild_id,title,description,starts_at,ends_at,tz,location,channel_id,host_id,options,required_role_id,reminders,recurrence) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING {COLUMNS}"
         );
-        Ok(sqlx::query_as::<_, EventRow>(sqlx::AssertSqlSafe(sql))
+        let row = sqlx::query_as::<_, EventRow>(sqlx::AssertSqlSafe(sql))
             .bind(sql_id(guild))
-            .bind(draft.title.trim())
-            .bind(&draft.description)
+            .bind(safe_text(draft.title.trim()))
+            .bind(safe_text(&draft.description))
             .bind(draft.starts_at)
             .bind(draft.ends_at)
             .bind(&draft.tz)
-            .bind(&draft.location)
+            .bind(safe_text(&draft.location))
             .bind(draft.channel_id)
             .bind(draft.host_id)
             .bind(serde_json::to_value(&draft.options)?)
             .bind(draft.required_role_id)
             .bind(&draft.reminders)
             .bind(draft.recurrence.as_ref().map(serde_json::to_value).transpose()?)
-            .fetch_one(self.pool())
-            .await?)
+            .fetch_one(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(row)
     }
     pub async fn event(&self, guild: u64, id: i64) -> anyhow::Result<Option<EventRow>> {
         let sql = format!("SELECT {COLUMNS} FROM events WHERE guild_id=$1 AND id=$2");
@@ -205,42 +213,72 @@ impl Db {
         Ok(rows)
     }
     pub async fn update_event(&self, guild: u64, id: i64, draft: &EventDraft) -> anyhow::Result<Option<EventRow>> {
+        retry("update_event", || self.update_event_once(guild, id, draft)).await
+    }
+    async fn update_event_once(&self, guild: u64, id: i64, draft: &EventDraft) -> anyhow::Result<Option<EventRow>> {
         draft.validate()?;
+        let mut tx = self.pool().begin().await?;
         let sql = format!(
             "UPDATE events SET title=$3,description=$4,starts_at=$5,ends_at=$6,tz=$7,location=$8,channel_id=$9,message_id=CASE WHEN channel_id IS DISTINCT FROM $9 THEN NULL ELSE message_id END,options=$10,required_role_id=$11,reminders=$12,recurrence=$13 WHERE guild_id=$1 AND id=$2 AND status='upcoming' RETURNING {COLUMNS}"
         );
-        Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        let row: Option<EventRow> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
             .bind(sql_id(guild))
             .bind(id)
-            .bind(draft.title.trim())
-            .bind(&draft.description)
+            .bind(safe_text(draft.title.trim()))
+            .bind(safe_text(&draft.description))
             .bind(draft.starts_at)
             .bind(draft.ends_at)
             .bind(&draft.tz)
-            .bind(&draft.location)
+            .bind(safe_text(&draft.location))
             .bind(draft.channel_id)
             .bind(serde_json::to_value(&draft.options)?)
             .bind(draft.required_role_id)
             .bind(&draft.reminders)
             .bind(draft.recurrence.as_ref().map(serde_json::to_value).transpose()?)
-            .fetch_optional(self.pool())
-            .await?)
+            .fetch_optional(&mut *tx)
+            .await?;
+        if row.is_some() {
+            let keys: Vec<_> = draft.options.iter().map(|o| o.key.as_str()).collect();
+            sqlx::query("DELETE FROM event_rsvps WHERE event_id=$1 AND NOT (option=ANY($2))")
+                .bind(id)
+                .bind(&keys)
+                .execute(&mut *tx)
+                .await?;
+            for option in &draft.options {
+                sqlx::query(
+                    "UPDATE event_rsvps SET waitlisted=false WHERE event_id=$1 AND user_id IN (
+                    SELECT user_id FROM event_rsvps WHERE event_id=$1 AND option=$2 AND waitlisted
+                    ORDER BY responded_at,user_id LIMIT CASE WHEN $3=0 THEN NULL ELSE GREATEST(0,$3-
+                        (SELECT count(*) FROM event_rsvps WHERE event_id=$1 AND option=$2 AND NOT waitlisted)) END)",
+                )
+                .bind(id)
+                .bind(&option.key)
+                .bind(i64::from(option.capacity))
+                .execute(&mut *tx)
+                .await?;
+            }
+            reconcile_reminders(&mut tx, id).await?;
+        }
+        tx.commit().await?;
+        Ok(row)
     }
     pub async fn cancel_event(&self, guild: u64, id: i64) -> anyhow::Result<Option<EventRow>> {
+        retry("cancel_event", || self.cancel_event_once(guild, id)).await
+    }
+    async fn cancel_event_once(&self, guild: u64, id: i64) -> anyhow::Result<Option<EventRow>> {
+        let mut tx = self.pool().begin().await?;
         let sql = format!(
             "UPDATE events SET status='cancelled' WHERE guild_id=$1 AND id=$2 AND status='upcoming' RETURNING {COLUMNS}"
         );
         let row: Option<EventRow> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
             .bind(sql_id(guild))
             .bind(id)
-            .fetch_optional(self.pool())
+            .fetch_optional(&mut *tx)
             .await?;
         if row.is_some() {
-            sqlx::query("DELETE FROM reminders WHERE kind IN ('event_60','event_15') AND ref_id=$1")
-                .bind(id)
-                .execute(self.pool())
-                .await?;
+            reconcile_reminders(&mut tx, id).await?;
         }
+        tx.commit().await?;
         Ok(row)
     }
     pub async fn set_event_message(&self, id: i64, channel: u64, message: u64) -> anyhow::Result<()> {
@@ -272,22 +310,49 @@ impl Db {
         Ok(n)
     }
     pub async fn rsvp_event(&self, guild: u64, event: i64, user: u64, option: &str) -> anyhow::Result<RsvpResult> {
-        retry("rsvp_event", || self.rsvp_event_once(guild, event, user, option)).await
+        retry("rsvp_event", || self.rsvp_event_once(guild, event, user, option, None)).await
     }
-    async fn rsvp_event_once(&self, guild: u64, event: i64, user: u64, option: &str) -> anyhow::Result<RsvpResult> {
+    pub async fn rsvp_event_with_roles(
+        &self,
+        guild: u64,
+        event: i64,
+        user: u64,
+        option: &str,
+        roles: &[u64],
+    ) -> anyhow::Result<RsvpResult> {
+        retry("rsvp_event", || {
+            self.rsvp_event_once(guild, event, user, option, Some(roles))
+        })
+        .await
+    }
+    async fn rsvp_event_once(
+        &self,
+        guild: u64,
+        event: i64,
+        user: u64,
+        option: &str,
+        roles: Option<&[u64]>,
+    ) -> anyhow::Result<RsvpResult> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
-        let row: Option<(serde_json::Value, String)> =
-            sqlx::query_as("SELECT options,status FROM events WHERE guild_id=$1 AND id=$2 FOR UPDATE")
-                .bind(sql_id(guild))
-                .bind(event)
-                .fetch_optional(&mut *tx)
-                .await?;
-        let Some((raw, status)) = row else {
+        let row: Option<(serde_json::Value, String, DateTime<Utc>, Option<i64>)> = sqlx::query_as(
+            "SELECT options,status,ends_at,required_role_id FROM events WHERE guild_id=$1 AND id=$2 FOR UPDATE",
+        )
+        .bind(sql_id(guild))
+        .bind(event)
+        .fetch_optional(&mut *tx)
+        .await?;
+        let Some((raw, status, ends_at, role)) = row else {
             return Ok(RsvpResult::Closed);
         };
-        if status != "upcoming" {
+        if status != "upcoming" || ends_at <= Utc::now() {
             return Ok(RsvpResult::Closed);
+        }
+        if let (Some(role), Some(roles)) = (role, roles)
+            && role != sql_id(guild)
+            && !roles.contains(&(role as u64))
+        {
+            return Ok(RsvpResult::RequiredRole);
         }
         let options: Vec<RsvpOption> = serde_json::from_value(raw)?;
         let old: Option<(String, bool)> =
@@ -309,6 +374,7 @@ impl Db {
                     .map_or(0, |o| o.capacity);
                 promote(&mut tx, event, &previous, capacity).await?;
             }
+            reconcile_reminders(&mut tx, event).await?;
             tx.commit().await?;
             return Ok(RsvpResult::Removed);
         }
@@ -331,6 +397,7 @@ impl Db {
                 .map_or(0, |o| o.capacity);
             promote(&mut tx, event, previous, capacity).await?;
         }
+        reconcile_reminders(&mut tx, event).await?;
         tx.commit().await?;
         Ok(if waitlisted {
             RsvpResult::Waitlisted
@@ -340,8 +407,11 @@ impl Db {
     }
     /// Materialises the next occurrence with a unique parent/time key while holding the old row.
     pub async fn advance_events(&self, now: DateTime<Utc>) -> anyhow::Result<Vec<EventRow>> {
+        retry("advance_events", || self.advance_events_once(now)).await
+    }
+    async fn advance_events_once(&self, now: DateTime<Utc>) -> anyhow::Result<Vec<EventRow>> {
         let mut tx = self.pool().begin().await?;
-        let due: Vec<EventRow> = sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM events WHERE status='upcoming' AND ends_at <= $1 ORDER BY ends_at LIMIT 25 FOR UPDATE SKIP LOCKED")))
+        let due: Vec<EventRow> = sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM events WHERE (status='upcoming' AND ends_at <= $1) OR (status='ended' AND recurrence IS NOT NULL AND NOT EXISTS (SELECT 1 FROM events child WHERE child.parent_id=events.id)) ORDER BY ends_at LIMIT 25 FOR UPDATE SKIP LOCKED")))
             .bind(now).fetch_all(&mut *tx).await?;
         let mut new_rows = Vec::new();
         for old in due {
@@ -349,9 +419,15 @@ impl Db {
                 .bind(old.id)
                 .execute(&mut *tx)
                 .await?;
+            reconcile_reminders(&mut tx, old.id).await?;
             let Some(rule) = old.recurrence() else { continue };
             let tz: chrono_tz::Tz = old.tz.parse()?;
             let Some(start) = next_occurrence(old.starts_at, tz, &rule) else {
+                // Exhausted series must not occupy the next ticker batch forever.
+                sqlx::query("UPDATE events SET recurrence=NULL WHERE id=$1")
+                    .bind(old.id)
+                    .execute(&mut *tx)
+                    .await?;
                 continue;
             };
             let end = start + (old.ends_at - old.starts_at);
@@ -386,51 +462,15 @@ async fn promote(
             return Ok(());
         }
     }
-    let promoted: Option<(i64,)> = sqlx::query_as(
+    sqlx::query(
         "UPDATE event_rsvps SET waitlisted=FALSE WHERE (event_id,user_id) IN
          (SELECT event_id,user_id FROM event_rsvps WHERE event_id=$1 AND option=$2 AND waitlisted
-          ORDER BY responded_at,user_id LIMIT 1) RETURNING user_id",
+          ORDER BY responded_at,user_id LIMIT 1)",
     )
     .bind(event)
     .bind(option)
-    .fetch_optional(&mut **tx)
+    .execute(&mut **tx)
     .await?;
-    if let Some((user,)) = promoted {
-        let (start, reminders): (DateTime<Utc>, Vec<i32>) =
-            sqlx::query_as("SELECT starts_at, reminders FROM events WHERE id=$1")
-                .bind(event)
-                .fetch_one(&mut **tx)
-                .await?;
-        let (off,): (bool,) = sqlx::query_as("SELECT COALESCE((SELECT dm_opt_out FROM users WHERE id=$1), FALSE)")
-            .bind(user)
-            .fetch_one(&mut **tx)
-            .await?;
-        if !off && option != "declined" {
-            let (language,): (String,) = sqlx::query_as(
-                "SELECT COALESCE((SELECT g.language FROM guilds g JOIN events e ON e.guild_id=g.id WHERE e.id=$1), 'en')",
-            )
-            .bind(event)
-            .fetch_one(&mut **tx)
-            .await?;
-            for minutes in reminders {
-                let due = start - chrono::Duration::minutes(i64::from(minutes));
-                if due > Utc::now() {
-                    sqlx::query(
-                        "INSERT INTO reminders (user_id,kind,ref_id,body,due_at) VALUES ($1,$2,$3,$4,$5)
-                         ON CONFLICT (user_id,kind,ref_id) WHERE kind <> 'text'
-                         DO UPDATE SET body=EXCLUDED.body, due_at=EXCLUDED.due_at, lease_until=NULL",
-                    )
-                    .bind(user)
-                    .bind(format!("event_{minutes}"))
-                    .bind(event)
-                    .bind(&language)
-                    .bind(due)
-                    .execute(&mut **tx)
-                    .await?;
-                }
-            }
-        }
-    }
     Ok(())
 }
 
@@ -472,14 +512,120 @@ impl Db {
         discord_id: u64,
         status: &str,
     ) -> anyhow::Result<Option<EventRow>> {
+        retry("update_scheduled_event_status", || {
+            self.update_scheduled_event_status_once(guild, discord_id, status)
+        })
+        .await
+    }
+    async fn update_scheduled_event_status_once(
+        &self,
+        guild: u64,
+        discord_id: u64,
+        status: &str,
+    ) -> anyhow::Result<Option<EventRow>> {
+        let mut tx = self.pool().begin().await?;
         let row = sqlx::query_as::<_, EventRow>(sqlx::AssertSqlSafe(format!(
             "UPDATE events SET status=$3 WHERE guild_id=$1 AND discord_event_id=$2 AND status='upcoming' RETURNING {COLUMNS}"
         )))
             .bind(sql_id(guild))
             .bind(sql_id(discord_id))
             .bind(status)
-            .fetch_optional(self.pool())
+            .fetch_optional(&mut *tx)
             .await?;
+        if let Some(row) = &row {
+            reconcile_reminders(&mut tx, row.id).await?;
+        }
+        tx.commit().await?;
         Ok(row)
+    }
+}
+
+/// Rebuild only changed queue entries; never release an unchanged delivery lease.
+/// Called with the event row locked, including RSVP changes and dashboard edits.
+async fn reconcile_reminders(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, event: i64) -> anyhow::Result<()> {
+    let users: Vec<(i64,)> = sqlx::query_as("SELECT user_id FROM event_rsvps WHERE event_id=$1 UNION SELECT host_id FROM events WHERE id=$1 AND host_id IS NOT NULL")
+        .bind(event).fetch_all(&mut **tx).await?;
+    // Event is already locked: never wait for user locks in the opposite order to privacy deletion.
+    try_lock_users(tx, &users.into_iter().map(|(id,)| id).collect::<Vec<_>>()).await?;
+    sqlx::query(
+        "DELETE FROM reminders q WHERE q.ref_id=$1 AND q.kind IN ('event_60','event_15') AND NOT EXISTS (
+        SELECT 1 FROM events e JOIN event_rsvps r ON r.event_id=e.id
+        WHERE e.id=q.ref_id AND r.user_id=q.user_id AND e.status='upcoming' AND e.starts_at>now()
+          AND NOT r.waitlisted AND r.option<>'declined'
+          AND NOT COALESCE((SELECT dm_opt_out FROM users WHERE id=r.user_id),false)
+          AND EXISTS (SELECT 1 FROM unnest(e.reminders) m WHERE q.kind='event_'||m::text
+              AND q.due_at=e.starts_at-m*interval '1 minute')
+          AND NOT EXISTS (SELECT 1 FROM event_reminder_deliveries d WHERE d.event_id=e.id
+              AND d.user_id=r.user_id AND q.kind='event_'||d.minutes::text))",
+    )
+    .bind(event)
+    .execute(&mut **tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO reminders(user_id,kind,ref_id,body,due_at)
+        SELECT r.user_id,'event_'||m::text,e.id,COALESCE(g.language,'en'),e.starts_at-m*interval '1 minute'
+        FROM events e JOIN event_rsvps r ON r.event_id=e.id
+        LEFT JOIN guilds g ON g.id=e.guild_id CROSS JOIN LATERAL unnest(e.reminders) m
+        WHERE e.id=$1 AND e.status='upcoming' AND e.starts_at-m*interval '1 minute'>now()
+          AND NOT r.waitlisted AND r.option<>'declined'
+          AND NOT COALESCE((SELECT dm_opt_out FROM users WHERE id=r.user_id),false)
+          AND NOT EXISTS (SELECT 1 FROM event_reminder_deliveries d WHERE d.event_id=e.id
+              AND d.user_id=r.user_id AND d.minutes=m)
+        ON CONFLICT (user_id,kind,ref_id) WHERE kind<>'text' DO NOTHING",
+    )
+    .bind(event)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
+impl Db {
+    pub async fn reconcile_event_reminders(&self, event: i64) -> anyhow::Result<()> {
+        retry("reconcile_event_reminders", || {
+            self.reconcile_event_reminders_once(event)
+        })
+        .await
+    }
+    async fn reconcile_event_reminders_once(&self, event: i64) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT id FROM events WHERE id=$1 FOR UPDATE")
+            .bind(event)
+            .execute(&mut *tx)
+            .await?;
+        reconcile_reminders(&mut tx, event).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Reserve a delivery durably before network I/O. A crash can lose this message, but cannot
+    /// send it twice. Discord DMs have no transactional exactly-once delivery primitive.
+    pub async fn claim_event_delivery(&self, reminder: &crate::ReminderRow, minutes: i32) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[reminder.user_id]).await?;
+        sqlx::query("SELECT id FROM events WHERE id=$1 FOR UPDATE")
+            .bind(reminder.ref_id)
+            .execute(&mut *tx)
+            .await?;
+        let n = sqlx::query(
+            "INSERT INTO event_reminder_deliveries(event_id,user_id,minutes)
+            SELECT e.id,r.user_id,$3 FROM events e JOIN event_rsvps r ON r.event_id=e.id
+            JOIN reminders q ON q.ref_id=e.id AND q.user_id=r.user_id
+            WHERE e.id=$1 AND r.user_id=$2 AND e.status='upcoming' AND e.starts_at>now()
+              AND $3=ANY(e.reminders) AND NOT r.waitlisted AND r.option<>'declined'
+              AND q.id=$4 AND q.due_at=$5 AND q.kind='event_'||$3::text
+              AND q.due_at=e.starts_at-$3*interval '1 minute'
+              AND NOT COALESCE((SELECT dm_opt_out FROM users WHERE id=r.user_id),false)
+            ON CONFLICT DO NOTHING",
+        )
+        .bind(reminder.ref_id)
+        .bind(reminder.user_id)
+        .bind(minutes)
+        .bind(reminder.id)
+        .bind(reminder.due_at)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        tx.commit().await?;
+        Ok(n == 1)
     }
 }

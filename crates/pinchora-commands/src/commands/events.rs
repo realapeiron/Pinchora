@@ -145,17 +145,20 @@ impl EventCommand {
                 let Some(existing) = cx.app.db.event(guild, c.id).await? else {
                     return gone(cx).await;
                 };
-                if existing.discord_event_id.is_some()
-                    && let Err(error) = sync_discord(&cx.app, &existing, false).await
-                {
+                let Some(row) = cx.app.db.cancel_event(guild, c.id).await? else {
+                    return gone(cx).await;
+                };
+                let sync_error = if existing.discord_event_id.is_some() {
+                    sync_discord(&cx.app, &existing, false).await.err()
+                } else {
+                    None
+                };
+                refresh_card(&cx.app, &row).await;
+                if let Some(error) = sync_error {
                     return cx
                         .reply_ephemeral(t!(cx.lang(), "events.sync-failed", reason = error))
                         .await;
                 }
-                let Some(row) = cx.app.db.cancel_event(guild, c.id).await? else {
-                    return gone(cx).await;
-                };
-                refresh_card(&cx.app, &row).await;
                 cx.reply_ephemeral(t!(cx.lang(), "events.cancelled", id = c.id)).await
             }
             Self::Attendees(c) => attendees(cx, guild, c.id, 0).await,
@@ -336,13 +339,6 @@ async fn edit(cx: &Cx, guild: u64, c: EventEdit) -> anyhow::Result<()> {
     let Some(old) = cx.app.db.event(guild, c.id).await? else {
         return gone(cx).await;
     };
-    if (c.sync == Some(true) || old.discord_event_id.is_some())
-        && let Err(e) = crate::event_rsvp::check_manage_events(&cx.app, guild).await
-    {
-        return cx
-            .reply_ephemeral(t!(cx.lang(), "events.sync-failed", reason = e))
-            .await;
-    }
     let mut d = draft_of(&old);
     if let Some(v) = c.title {
         d.title = v;
@@ -419,9 +415,14 @@ async fn edit(cx: &Cx, guild: u64, c: EventEdit) -> anyhow::Result<()> {
             _ => return cx.reply_ephemeral(t!(cx.lang(), "events.bad-repeat")).await,
         }
     }
+    if d.validate().is_err() {
+        return cx.reply_ephemeral(t!(cx.lang(), "events.invalid")).await;
+    }
     let Some(row) = cx.app.db.update_event(guild, c.id, &d).await? else {
         return gone(cx).await;
     };
+    refresh_card(&cx.app, &row).await;
+    crate::event_rsvp::schedule_all(&cx.app, &row).await?;
     if let Some(sync) = c.sync.or_else(|| row.discord_event_id.map(|_| true))
         && let Err(e) = sync_discord(&cx.app, &row, sync).await
     {
@@ -429,8 +430,6 @@ async fn edit(cx: &Cx, guild: u64, c: EventEdit) -> anyhow::Result<()> {
             .reply_ephemeral(t!(cx.lang(), "events.sync-failed", reason = e))
             .await;
     }
-    refresh_card(&cx.app, &row).await;
-    crate::event_rsvp::schedule_all(&cx.app, &row).await?;
     cx.reply_ephemeral(t!(cx.lang(), "events.updated", id = c.id)).await
 }
 async fn gone(cx: &Cx) -> anyhow::Result<()> {
@@ -442,13 +441,21 @@ async fn attendees(cx: &Cx, guild: u64, id: i64, page: i64) -> anyhow::Result<()
     };
     let count = cx.app.db.event_rsvp_count(id).await?;
     let people = cx.app.db.event_rsvps(id, page * 20, 20).await?;
+    let options = row.options();
     let lines = people
         .iter()
         .map(|r| {
             format!(
                 "<@{}> — {}{}",
                 r.user_id,
-                r.option,
+                if matches!(r.option.as_str(), "going" | "maybe" | "declined") {
+                    t!(cx.lang(), &format!("events.option.{}", r.option))
+                } else {
+                    options
+                        .iter()
+                        .find(|o| o.key == r.option)
+                        .map_or_else(|| r.option.clone(), |o| pinchora_core::events::safe_text(&o.label))
+                },
                 if r.waitlisted {
                     format!(" ({})", t!(cx.lang(), "events.waitlisted"))
                 } else {
@@ -515,7 +522,12 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
         Some("c") if cx.can_manage_guild() => open_form(cx).await,
         Some("p") if cx.can_manage_guild() => {
             let id = parts.next().unwrap_or("").parse().unwrap_or(0);
-            let page = parts.next().unwrap_or("").parse::<i64>().unwrap_or(0).max(0);
+            let page = parts
+                .next()
+                .unwrap_or("")
+                .parse::<i64>()
+                .unwrap_or(0)
+                .clamp(0, 1_000_000);
             attendees(cx, guild, id, page).await
         }
         Some("r") => {
@@ -528,6 +540,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
                 return gone(cx).await;
             }
             if let Some(role) = row.required_role_id
+                && role != guild as i64
                 && !cx
                     .interaction
                     .member
@@ -539,12 +552,13 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
                     .await;
             }
             let user = cx.author()?.id.get();
-            let result = cx.app.db.rsvp_event(guild, id, user, option).await?;
-            if result == RsvpResult::Confirmed && option != "declined" {
-                crate::event_rsvp::schedule_user(&cx.app, &row, user).await?;
-            } else {
-                crate::event_rsvp::unschedule_user(&cx.app, id, user).await?;
-            }
+            let roles: Vec<_> = cx
+                .interaction
+                .member
+                .as_ref()
+                .map(|m| m.roles.iter().map(|r| r.get()).collect())
+                .unwrap_or_default();
+            let result = cx.app.db.rsvp_event_with_roles(guild, id, user, option, &roles).await?;
             refresh_card(&cx.app, &row).await;
             let key = match result {
                 RsvpResult::Confirmed => "events.rsvp-confirmed",

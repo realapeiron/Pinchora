@@ -297,6 +297,15 @@ async fn scheduled_event_sync_creates_updates_and_deletes_with_manage_events() {
     pinchora_commands::sync_discord_event(&sim.app, &row, true)
         .await
         .unwrap();
+    // The bot's own update echo must never send another Scheduled Event write.
+    let echo = serde_json::from_value(json!({
+        "id":"90001","guild_id":sim.guild.to_string(),"name":"Crab night",
+        "privacy_level":2,"entity_type":3,"scheduled_start_time":row.starts_at,
+        "scheduled_end_time":row.ends_at,"status":1,"creator_id":APPLICATION_ID.to_string(),
+        "recurrence_rule":null,
+    }))
+    .unwrap();
+    pinchora_commands::on_scheduled_event_update(sim.app.clone(), Box::new(echo)).await;
     pinchora_commands::sync_discord_event(&sim.app, &row, false)
         .await
         .unwrap();
@@ -304,4 +313,195 @@ async fn scheduled_event_sync_creates_updates_and_deletes_with_manage_events() {
         sim.mock.mod_calls.lock().unwrap().as_slice(),
         &["scheduled create", "scheduled update", "scheduled delete"]
     );
+}
+
+#[tokio::test]
+async fn event_admin_paths_and_sync_failure_do_not_block_local_cancel() {
+    let Some(mut sim) = Sim::new("event_admin_review").await else {
+        return;
+    };
+    let user = unique();
+    sim.permissions = 0;
+    for command in ["create", "list", "edit", "cancel", "attendees", "remind", "template"] {
+        let options = if matches!(command, "edit" | "cancel" | "attendees" | "remind") {
+            json!([{"name":"id","type":4,"value":1}])
+        } else {
+            json!([])
+        };
+        let reply = sim
+            .command(user, "event", json!([{"name":command,"type":1,"options":options}]))
+            .await;
+        assert!(
+            reply.content.as_deref().unwrap_or_default().contains("Manage Server"),
+            "{command}: {reply}"
+        );
+    }
+    sim.permissions = MANAGE_GUILD;
+    let start = chrono::Utc::now() + chrono::Duration::hours(3);
+    let row = sim
+        .app
+        .db
+        .create_event(
+            sim.guild,
+            &pinchora_db::EventDraft {
+                title: "Review".into(),
+                description: String::new(),
+                starts_at: start,
+                ends_at: start + chrono::Duration::hours(1),
+                tz: "UTC".into(),
+                location: String::new(),
+                channel_id: None,
+                host_id: Some(user as i64),
+                options: pinchora_core::events::default_options(),
+                required_role_id: None,
+                reminders: vec![60, 15],
+                recurrence: None,
+            },
+        )
+        .await
+        .unwrap();
+    sim.app.db.set_discord_event(row.id, Some(90002)).await.unwrap();
+    let reply = sim
+        .command(
+            user,
+            "event",
+            json!([{"name":"cancel","type":1,"options":[{"name":"id","type":4,"value":row.id}]}]),
+        )
+        .await;
+    assert!(reply.content.as_deref().unwrap_or_default().contains("sync"), "{reply}");
+    assert_eq!(
+        sim.app.db.event(sim.guild, row.id).await.unwrap().unwrap().status,
+        "cancelled"
+    );
+}
+
+#[tokio::test]
+async fn event_module_blocks_commands_and_forged_cross_guild_components() {
+    let Some(mut sim) = Sim::new("event_scope_review").await else {
+        return;
+    };
+    sim.permissions = MANAGE_GUILD;
+    let manager = unique();
+    let form = sim.command(manager, "event", json!([{"name":"create","type":1}])).await;
+    let tomorrow = (chrono::Utc::now() + chrono::Duration::days(1))
+        .format("%Y-%m-%d %H:%M")
+        .to_string();
+    sim.submit_fields(
+        manager,
+        &form,
+        &[
+            ("title", "Scope"),
+            ("when", &tomorrow),
+            ("duration", "60"),
+            ("description", ""),
+        ],
+    )
+    .await;
+    let row = sim.app.db.events(sim.guild, false).await.unwrap().remove(0);
+    let posts = sim.posts();
+    let reply = posted_reply(posts.iter().find(|p| p.title().contains("Scope")).unwrap());
+    let attendee = unique();
+    sim.app
+        .db
+        .rsvp_event(sim.guild, row.id, attendee, "going")
+        .await
+        .unwrap();
+    sim.locale = "tr";
+    let shown = sim
+        .command(
+            manager,
+            "event",
+            json!([{"name":"attendees","type":1,"options":[{"name":"id","type":4,"value":row.id}]}]),
+        )
+        .await;
+    assert!(shown.description().contains("Katılıyorum"), "{shown}");
+    sim.locale = "en-US";
+    let page = sim
+        .component(manager, &format!("ev:p:{}:{}", row.id, i64::MAX), &[], &reply)
+        .await;
+    assert!(
+        page.description().contains("No RSVPs yet"),
+        "an oversized page must not overflow: {page}"
+    );
+    sim.app
+        .db
+        .rsvp_event(sim.guild, row.id, attendee, "going")
+        .await
+        .unwrap();
+    let owner_guild = sim.guild;
+    sim.guild = unique();
+    let rejected = sim
+        .component(unique(), &format!("ev:r:{}:going", row.id), &[], &reply)
+        .await;
+    assert!(
+        rejected.content.as_deref().unwrap_or_default().contains("not found"),
+        "{rejected}"
+    );
+    assert_eq!(sim.app.db.event_rsvp_count(row.id).await.unwrap(), 0);
+    sim.guild = owner_guild;
+    sim.app
+        .db
+        .set_module(sim.guild, pinchora_core::modules::Module::Events, Some(false), None)
+        .await
+        .unwrap();
+    sim.app.forget_guild_settings(sim.guild).await;
+    let denied = sim.command(manager, "event", json!([{"name":"create","type":1}])).await;
+    assert!(denied.modal.is_none(), "module gate must run before opening a form");
+    sim.component(unique(), &format!("ev:r:{}:going", row.id), &[], &reply)
+        .await;
+    assert_eq!(sim.app.db.event_rsvp_count(row.id).await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn event_reminders_two_pods_respect_delivery_privacy_and_replay() {
+    let Some(sim) = Sim::new("event_reminder_review").await else {
+        return;
+    };
+    let _turn = REMINDERS.lock().await;
+    let user = unique();
+    let private = unique();
+    for person in [user, private] {
+        DM_OVERRIDES.lock().unwrap().insert(person, false);
+    }
+    let start = chrono::Utc::now() + chrono::Duration::hours(2);
+    let row = sim
+        .app
+        .db
+        .create_event(
+            sim.guild,
+            &pinchora_db::EventDraft {
+                title: "Reminder review".into(),
+                description: String::new(),
+                starts_at: start,
+                ends_at: start + chrono::Duration::hours(1),
+                tz: "UTC".into(),
+                location: String::new(),
+                channel_id: None,
+                host_id: None,
+                options: pinchora_core::events::default_options(),
+                required_role_id: None,
+                reminders: vec![60, 15],
+                recurrence: None,
+            },
+        )
+        .await
+        .unwrap();
+    for person in [user, private] {
+        sim.app.db.rsvp_event(sim.guild, row.id, person, "going").await.unwrap();
+    }
+    sim.app.db.set_dm_opt_out(private, true).await.unwrap();
+    sim.app.shift_clock(chrono::Duration::minutes(65));
+    let (a, b) = tokio::join!(reminder_tick(&sim.app), reminder_tick(&sim.app));
+    a.unwrap();
+    b.unwrap();
+    let posts = sim.posts();
+    assert_eq!(dms_of(&posts, user).len(), 1);
+    assert!(dms_of(&posts, private).is_empty());
+    sim.app.db.reconcile_event_reminders(row.id).await.unwrap();
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(
+        dms_of(&sim.posts(), user).is_empty(),
+        "a delivered reminder is never rescheduled"
+    );
+    sim.app.db.cancel_event(sim.guild, row.id).await.unwrap();
 }

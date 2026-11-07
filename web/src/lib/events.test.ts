@@ -13,3 +13,8 @@ describe("event time zones", () => {
     expect(() => fromZonedInput("2026-03-29T01:30", "Europe/London")).toThrow("does not exist");
   });
 });
+
+it("rejects ambiguous autumn clocks including half-hour DST", () => {
+  expect(() => fromZonedInput("2026-10-25T01:30", "Europe/London")).toThrow("ambiguous");
+  expect(() => fromZonedInput("2026-04-05T01:45", "Australia/Lord_Howe")).toThrow("ambiguous");
+});

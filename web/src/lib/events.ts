@@ -15,6 +15,7 @@ export interface Event {
   recurrence: { repeat: "daily" | "weekly"; until: string } | null;
   status: "upcoming" | "ended" | "cancelled";
   discord_event_id: string | null;
+  warning?: string | null;
 }
 export interface EventBody {
   title: string;
@@ -100,5 +101,14 @@ export function fromZonedInput(value: string, zone: string): string {
   }
   const iso = new Date(instant).toISOString();
   if (zonedInput(iso, zone) !== value) throw new Error("This local time does not exist in that time zone.");
+  // Probe the offsets on both sides of a transition, including half-hour DST changes.
+  for (const hours of [-24, -2, -1, 1, 2, 24]) {
+    const probe = instant + hours * 3600000;
+    const shown = zonedInput(new Date(probe).toISOString(), zone);
+    const local = Date.parse(`${shown}:00Z`);
+    const candidate = target - (local - probe);
+    if (candidate !== instant && zonedInput(new Date(candidate).toISOString(), zone) === value)
+      throw new Error("This local time is ambiguous in that time zone.");
+  }
   return iso;
 }
