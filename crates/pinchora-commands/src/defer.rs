@@ -90,6 +90,7 @@ const PRIVATE: &[&str] = &[
     "ticket",
     "tickets",
     "automod",
+    "antinuke",
     "voice",
     "xp",
     "info channel",

@@ -304,6 +304,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO verification (guild_id,exempt_users) VALUES ($1,ARRAY[$1,$2])",
         "INSERT INTO raid_events (guild_id,started_at,ended_at,joins,action,ended_by,expires_at)
          VALUES ($1,now(),now(),3,'alert',$1,now())",
+        "INSERT INTO antinuke_events (id,guild_id,actor_id,target_user_id,target_id,kind) VALUES ($1,$1,$1,$1,$2,'ban')",
+        "INSERT INTO antinuke_role_backups (guild_id,user_id,role_ids) VALUES ($1,$1,ARRAY[$2::BIGINT])",
+        "INSERT INTO antinuke_snapshots (guild_id,kind,object_id,data) VALUES ($1,'channel',$2,'{\"permission_overwrites\":[]}')",
+        "INSERT INTO antinuke_overwrites (guild_id,channel_id,user_id,allow_bits,deny_bits) VALUES ($1,$2,$1,'1024','0')",
+        "INSERT INTO antinuke (guild_id,trusted_users) VALUES ($1,ARRAY[$1,$2])",
+
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

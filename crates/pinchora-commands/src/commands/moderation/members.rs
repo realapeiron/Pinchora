@@ -129,6 +129,9 @@ impl Ban {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
+        if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await? {
+            return cx.reply_ephemeral(why).await;
+        }
         if let Some(why) = ranks.refusal(lang, &self.user, "ban") {
             return cx.reply_ephemeral(why).await;
         }
@@ -241,6 +244,9 @@ impl Kick {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
+        if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await? {
+            return cx.reply_ephemeral(why).await;
+        }
         if let Some(why) = ranks.refusal(lang, &self.user, "kick") {
             return cx.reply_ephemeral(why).await;
         }
@@ -333,6 +339,9 @@ impl Timeout {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
+        if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await? {
+            return cx.reply_ephemeral(why).await;
+        }
         if let Some(why) = ranks.refusal(lang, &self.user, "timeout") {
             return cx.reply_ephemeral(why).await;
         }
@@ -554,6 +563,9 @@ impl RoleCommand {
             top_role: Some(ranks.actor.top),
         };
         if let Some(why) = role_refusal_for(facts, grantor, Some(ranks.bot.top), &label) {
+            return cx.reply_ephemeral(why).await;
+        }
+        if !add && let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, user.resolved.id.get()).await? {
             return cx.reply_ephemeral(why).await;
         }
         let kind = if add { CaseKind::RoleAdd } else { CaseKind::RoleRemove };

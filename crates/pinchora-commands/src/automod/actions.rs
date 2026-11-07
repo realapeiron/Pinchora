@@ -212,6 +212,11 @@ pub(crate) async fn execute(
         ));
     }
     let reason = t!(lang, "automod.reason", rule = crate::util::strip_mentions(&rule.name));
+    if matches!(action.kind.as_str(), "timeout" | "kick" | "ban")
+        && let Some(why) = crate::anti_nuke::vip_refusal(app, guild, target).await?
+    {
+        anyhow::bail!(why);
+    }
     let hierarchy = matches!(action.kind.as_str(), "warn" | "timeout" | "kick" | "ban" | "add_role");
     if hierarchy {
         let bot_rank = Rank {

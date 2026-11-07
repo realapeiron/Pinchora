@@ -191,3 +191,8 @@ pub use verification::{
     post as post_verification, request_help as verification_help, spawn_ticker as spawn_verification_ticker,
     tick as verification_tick, web_identity as verification_web_identity,
 };
+mod anti_nuke;
+pub use anti_nuke::{
+    authorize_antinuke, authorize_antinuke_module, on_gateway as on_antinuke_gateway, process as on_antinuke_audit,
+    restore_antinuke, restore_antinuke_actor_roles, save_antinuke_config, spawn_ticker as spawn_antinuke_ticker,
+};

@@ -194,3 +194,28 @@ async fn merging_a_snapshot_keeps_the_records_written_since_it_was_taken() {
         .unwrap();
     assert_eq!(cache.map_len(&key).await.unwrap(), 1);
 }
+
+#[tokio::test]
+async fn antinuke_delayed_and_out_of_order_audits_use_event_time() {
+    let Some(cache) = cache().await else { return };
+    let guild = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as u64;
+    let count = |event, now, at| cache.antinuke_window(guild, 1, "ban", event, now, at, 0, 5, 1);
+    assert_eq!(count(1, 10_000, 6_000).await.unwrap(), 1);
+    assert_eq!(count(2, 10_000, 9_000).await.unwrap(), 2);
+    assert_eq!(count(3, 10_000, 7_000).await.unwrap(), 3);
+    assert_eq!(count(3, 10_000, 7_000).await.unwrap(), 3, "replay");
+    assert_eq!(
+        count(4, 10_000, 4_999).await.unwrap(),
+        0,
+        "late batch cannot create a new burst"
+    );
+    assert_eq!(count(5, 10_000, 11_000).await.unwrap(), 0, "future entry");
+    assert_eq!(
+        count(6, 12_001, 12_000).await.unwrap(),
+        2,
+        "expiry is based on action time"
+    );
+}

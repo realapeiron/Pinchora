@@ -135,6 +135,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_automod_ticker(app.clone());
     pinchora_commands::spawn_invite_reward_ticker(app.clone());
     pinchora_commands::spawn_verification_ticker(app.clone());
+    pinchora_commands::spawn_antinuke_ticker(app.clone());
     // Lifts temporary bans whose time is up, on whichever pod claims them first.
     pinchora_commands::spawn_moderation_ticker(app.clone());
     // Retires critter drops and bottles nobody took in time.

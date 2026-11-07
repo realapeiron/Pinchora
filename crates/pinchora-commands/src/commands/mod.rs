@@ -1,3 +1,4 @@
+pub(crate) mod anti_nuke;
 pub(crate) mod automod;
 mod bio;
 pub(crate) mod board;
@@ -183,6 +184,7 @@ commands!(
     verification::Verify,
     verification::Verification,
     verification::Raid,
+    anti_nuke::AntiNuke,
     feeds::FeedsCommand,
     tempvoice::VoiceCommand,
     xp_admin::XpAdmin,

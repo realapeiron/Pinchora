@@ -80,6 +80,11 @@ pub async fn put_module(
         .get("module")
         .and_then(|key| Module::parse(key))
         .ok_or_else(ApiError::not_found)?;
+    if module == Module::AntiNuke {
+        pinchora_commands::authorize_antinuke_module(&state.app, guild, managed.current.session.user_id)
+            .await
+            .map_err(|e| ApiError::blocked(e.to_string()))?;
+    }
     let db = &state.app.db;
     let before = db
         .module_states(guild)
@@ -131,6 +136,13 @@ pub async fn put_module(
     let channels = channels.filter(|(mode, list)| *mode != before.mode || *list != before.channels);
     if enabled.is_none() && channels.is_none() {
         return Ok(Json(module_json(module, &before)));
+    }
+    if module == Module::AntiNuke && enabled == Some(true) && !before.enabled {
+        state
+            .app
+            .cache
+            .antinuke_activation(guild, state.app.now().timestamp_millis(), true)
+            .await?;
     }
     let after = db
         .set_module(

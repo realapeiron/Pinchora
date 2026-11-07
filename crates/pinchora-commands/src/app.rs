@@ -151,6 +151,7 @@ pub struct App {
     xp_rules: Moka<u64, Arc<XpRules>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
     automod_configs: Moka<u64, Arc<AutoModConfig>>,
+    pub(crate) antinuke_enabled: Moka<u64, bool>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
     channel_places: Moka<u64, ChannelPlace>,
     channel_misses: Moka<u64, ()>,
@@ -232,6 +233,10 @@ impl App {
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             module_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            antinuke_enabled: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
@@ -741,6 +746,7 @@ impl App {
     }
 
     pub async fn forget_guild_settings(&self, guild_id: u64) {
+        self.antinuke_enabled.invalidate(&guild_id).await;
         self.forget_automod_config(guild_id).await;
         self.guild_settings.invalidate(&guild_id).await;
         self.log_state.forget_config(guild_id).await;

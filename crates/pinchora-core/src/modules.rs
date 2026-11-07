@@ -129,11 +129,12 @@ pub enum Module {
     Invites,
     Verification,
     AntiRaid,
+    AntiNuke,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 41] = [
+    pub const ALL: [Self; 42] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -175,6 +176,7 @@ impl Module {
         Self::Invites,
         Self::Verification,
         Self::AntiRaid,
+        Self::AntiNuke,
     ];
 
     /// The key stored in the database and used in the API.
@@ -221,6 +223,7 @@ impl Module {
             Self::Invites => "invites",
             Self::Verification => "verification",
             Self::AntiRaid => "anti_raid",
+            Self::AntiNuke => "anti_nuke",
         }
     }
 
@@ -271,6 +274,7 @@ impl Module {
             Self::Invites => "Invites",
             Self::Verification => "Verification",
             Self::AntiRaid => "Raid protection",
+            Self::AntiNuke => "Anti-nuke",
         }
     }
 
@@ -338,6 +342,7 @@ impl Module {
             Self::Info => "Server, member, role, channel, emoji and invite information.",
             Self::Starboard => "/starboard: highlight popular posts and set up vote channels.",
             Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
+            Self::AntiNuke => "Protect server structure, staff and VIP members.",
         }
     }
 
@@ -374,6 +379,7 @@ impl Module {
             Self::Starboard => Group::Community,
             Self::Verification => Group::Safety,
             Self::AntiRaid => Group::Safety,
+            Self::AntiNuke => Group::Safety,
         }
     }
 
@@ -383,6 +389,7 @@ impl Module {
                 Scope::Server
             }
             Self::AutoMod => Scope::Server,
+            Self::AntiNuke => Scope::Server,
             Self::Feeds => Scope::Server,
             Self::TempVoice => Scope::Server,
             Self::Invites => Scope::Server,
@@ -451,6 +458,7 @@ impl Module {
                 _ => return None,
             },
             "automod" => Self::AutoMod,
+            "antinuke" => Self::AntiNuke,
             "voice" => Self::TempVoice,
             "verify" | "verification" => Self::Verification,
             "raid" => Self::AntiRaid,
@@ -487,6 +495,7 @@ impl Module {
             "am" | "ax" => Self::AutoMod,
             "vf" | "cq" => Self::Verification,
             "rd" => Self::AntiRaid,
+            "an" | "vp" => Self::AntiNuke,
             "sn" => Self::Feeds,
             "vc" | "vo" => Self::TempVoice,
             "nf" => Self::Info,

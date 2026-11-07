@@ -29,6 +29,7 @@ pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> A
         "modules": module_list(&state, managed.id).await?,
         "audit": audit,
         "navigation": {
+            "anti-nuke": t!(lang, "module.anti_nuke"),
             "invites": t!(lang, "module.invites"),
             "safety": t!(lang, "verification.ui.title"),
         },

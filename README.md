@@ -761,7 +761,44 @@ Migration **0054** adds `verification`, `verification_pending`, `raid_settings`,
 
 ### Anti-nuke
 
-<!-- F11: the Anti-nuke package replaces this heading's section; keep it one `###` section. -->
+`/antinuke` and **Safety → Anti-nuke** watch destructive actions per actor in rolling Redis windows.
+Protection starts disabled, with alert-only responses. The owner always stays exempt; trusted users
+are exempt too, and only the owner can edit trust or weaken existing protections. Nobody can add themselves.
+Discord system users and owner/trusted-installed integrations are exempt; unknown integration owners fail closed.
+
+| Command | What it does |
+|---|---|
+| `/antinuke status` | Protection, response and trusted/VIP usage |
+| `/antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]` | Enable monitoring and select recovery/response options |
+| `/antinuke disable` | Pause destructive-action monitoring |
+| `/antinuke limits kind count seconds` | Allow 1–100 actions per actor in 5–300 seconds; the next action triggers |
+| `/antinuke trust add\|remove user` | Owner-managed exemptions, up to 50 members |
+| `/antinuke vip add\|remove role` | Protect holders of up to 50 VIP roles |
+| `/antinuke events` | Recent actions and outcomes |
+
+Watches channel/role create and delete bursts, bans, kicks/prunes, webhook creation, dangerous role/member
+permission grants, bot additions, guild/vanity changes and emoji deletion. Gateway audit entries and
+guild-wide REST audit batches over five seconds share durable audit IDs, so replays count once.
+Counts use the action timestamp, not delivery time. Disabled guilds use an invalidated negative cache. Responses:
+alert, strip roles and assign a safe quarantine role, kick, ban, and optional removal of attack bots.
+Pinchora checks its permissions and live role hierarchy; if it cannot act it says why in the alert.
+VIP members cannot be banned, kicked, timed out or role-stripped by Pinchora moderation; AutoMod and
+warn escalations honor the same guard. External VIP bans alert immediately and can optionally be undone.
+
+`an:undo:<event>:<guild>` and `vp:roles:<event>:<guild>` open a private confirmation; `an:confirm` and
+`vp:confirm` recheck owner/trust at execution. The web log also confirms recovery. Recreated roles/channels
+receive new IDs, with role/category ID remapping, overwrites and positions restored from bounded snapshots.
+Every newer ban is preserved, including one by the same moderator; recovery uses the original incident window. Safe VIP roles can return when an unbanned member rejoins.
+Messages, original IDs and integration roles cannot be restored; dangerous role permissions require an
+authorized manual recovery. Incomplete/deidentified channel ACL snapshots are refused, and deleted role permissions
+and positions require deletion-audit evidence. Recreated roles need staff review of channel permissions before
+membership restoration. Uncertain REST outcomes are recorded for review and never blindly retried.
+
+Migration **0055** adds `antinuke`, `antinuke_events`, `antinuke_role_backups`, `antinuke_snapshots` and
+`antinuke_overwrites`; module **anti_nuke**, group **Safety**. Snapshots: at most 750 objects/server,
+64 KiB/object, seven-day retention; member backups: 5,000 snapshots/server. Events retain 30 days.
+Privacy deletion clears actor/target rows, trust, role backups and member-specific snapshot overwrites.
+All feature text is in `locales/{en,tr}/anti_nuke.toml`. The dashboard includes a safe draft preview.
 
 ### Social feeds
 

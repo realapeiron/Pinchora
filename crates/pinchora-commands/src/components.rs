@@ -22,6 +22,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("vf") => crate::verification::on_component(cx, "vf", parts).await,
         Some("cq") => crate::verification::on_component(cx, "cq", parts).await,
         Some("rd") => crate::verification::on_component(cx, "rd", parts).await,
+        Some("an") => crate::commands::anti_nuke::on_component(cx, "an", parts).await,
+        Some("vp") => crate::commands::anti_nuke::on_component(cx, "vp", parts).await,
         Some("am") => crate::commands::automod::on_component(cx, "am", parts, values).await,
         Some("ax") => crate::commands::automod::on_component(cx, "ax", parts, values).await,
         Some("lb") => leaderboard::on_button(cx, parts).await,

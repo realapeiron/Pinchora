@@ -79,6 +79,8 @@ mod cards;
 #[path = "simulate/collection.rs"]
 mod collection;
 // Moderation commands, cases and the mod-log; the detailed server log.
+#[path = "simulate/anti_nuke.rs"]
+mod anti_nuke;
 #[path = "simulate/automod.rs"]
 mod automod;
 #[path = "simulate/moderation.rs"]

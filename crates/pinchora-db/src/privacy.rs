@@ -24,6 +24,10 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("verification_pending", "user_id"),
     ("raid_joins", "user_id"),
+    ("antinuke_events", "actor_id"),
+    ("antinuke_events", "target_user_id"),
+    ("antinuke_role_backups", "user_id"),
+    ("antinuke_overwrites", "user_id"),
     ("automod_hits", "user_id"),
     ("automod_strikes", "user_id"),
     ("placements", "user_id"),
@@ -129,6 +133,7 @@ pub enum ListEdit {
 /// Columns that hold a list of player ids, and what happens to the player's id in them.
 pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
     ("verification", "exempt_users", ListEdit::Remove),
+    ("antinuke", "trusted_users", ListEdit::Remove),
     ("contest_results", "winner_ids", ListEdit::Blank),
     ("giveaways", "winner_ids", ListEdit::Remove),
     // A critter drop's takers run in step with its cards.
@@ -190,6 +195,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "verification",
     "raid_settings",
     "raid_events",
+    "antinuke",
+    "antinuke_snapshots",
     "automod_settings",
     "automod_rules",
     "automod_hit_actions",

@@ -109,6 +109,13 @@ pub(crate) fn autocomplete(lang: Lang, data: &CommandData) -> Vec<CommandOptionC
 /// The module the option named, or the private answer that says there is none.
 async fn named(cx: &Cx, text: &str) -> anyhow::Result<Option<Module>> {
     let found = find(cx.lang(), text);
+    if found == Some(Module::AntiNuke)
+        && let Some(guild) = cx.guild_id()
+        && let Err(why) = crate::anti_nuke::authorize_antinuke_module(&cx.app, guild, cx.author()?.id.get()).await
+    {
+        cx.reply_ephemeral(why.to_string()).await?;
+        return Ok(None);
+    }
     if found.is_none() {
         cx.reply_ephemeral(t!(cx.lang(), "modules.not-a-module")).await?;
     }
@@ -229,6 +236,11 @@ async fn change(
 ) -> anyhow::Result<ModuleRule> {
     let app = &cx.app;
     let before = state_of(app, guild, module).await?;
+    if module == Module::AntiNuke && enabled == Some(true) && !before.enabled {
+        app.cache
+            .antinuke_activation(guild, app.now().timestamp_millis(), true)
+            .await?;
+    }
     let after = app
         .db
         .set_module(
