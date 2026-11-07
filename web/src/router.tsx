@@ -78,6 +78,7 @@ export const router = createBrowserRouter([
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
       { path: "moderation", element: <Moderation /> },
+      { path: "anti-nuke", lazy: async () => ({ Component: (await import("./pages/AntiNuke")).AntiNuke }) },
       { path: "automod", lazy: async () => ({ Component: (await import("./pages/AutoMod")).AutoMod }) },
       { path: "cases", element: <Cases /> },
       { path: "staff-log", element: <StaffLog /> },

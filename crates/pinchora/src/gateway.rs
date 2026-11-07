@@ -29,7 +29,10 @@ fn wanted_events() -> EventTypeFlags {
     // Only events we handle get deserialized. GUILD_CREATE is the costly one (the whole server in one
     // payload, once per guild per identify); it is here for the voice states it carries, which put
     // voice XP right after a restart. Gateway close events always come through.
-    EventTypeFlags::INTERACTION_CREATE
+    EventTypeFlags::WEBHOOKS_UPDATE
+        | EventTypeFlags::GUILD_EMOJIS_UPDATE
+        | EventTypeFlags::CHANNEL_CREATE
+        | EventTypeFlags::INTERACTION_CREATE
         | EventTypeFlags::MESSAGE_CREATE
         | EventTypeFlags::MESSAGE_UPDATE
         | EventTypeFlags::MESSAGE_DELETE
@@ -104,6 +107,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     // Content are, and each has its own switch.
     let mut intents =
         Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
+    intents |= Intents::GUILD_WEBHOOKS | Intents::GUILD_EMOJIS_AND_STICKERS;
     // Reaction roles and the starboard listen to reactions; not privileged either.
     intents |= Intents::GUILD_MESSAGE_REACTIONS;
     intents |= Intents::AUTO_MODERATION_CONFIGURATION | Intents::AUTO_MODERATION_EXECUTION;
@@ -215,6 +219,7 @@ async fn run_shard(
 }
 
 fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
+    pinchora_commands::on_antinuke_gateway(app, &event);
     if let Some(name) = event.kind().name() {
         metrics::counter!("pinchora_gateway_events_total", "event" => name).increment(1);
     }

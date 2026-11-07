@@ -49,6 +49,7 @@ export const NAV: NavGroup[] = [
     pages: [
       { to: "moderation", label: "Moderation" },
       { to: "automod", label: "AutoMod" },
+      { to: "anti-nuke", label: "Anti-nuke" },
       { to: "cases", label: "Cases" },
       { to: "log", label: "Server log" },
       { to: "staff-log", label: "Staff log" },

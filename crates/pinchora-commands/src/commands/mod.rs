@@ -1,3 +1,4 @@
+pub(crate) mod anti_nuke;
 pub(crate) mod automod;
 mod bio;
 pub(crate) mod board;
@@ -176,6 +177,7 @@ commands!(
     tickets::TicketCommand,
     tickets::TicketsCommand,
     automod::AutoMod,
+    anti_nuke::AntiNuke,
     feeds::FeedsCommand,
     tempvoice::VoiceCommand,
     xp_admin::XpAdmin,

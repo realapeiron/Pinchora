@@ -282,6 +282,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         // A temp voice room they own, and the members kept out of it ($1 doubles as the room and the server).
         "INSERT INTO temp_voice_channels (channel_id, guild_id, source_id, owner_id) VALUES ($1, $1, $2, $1)",
         "INSERT INTO temp_voice_bans (channel_id, user_id) VALUES ($1, $1), ($1, $2)",
+        "INSERT INTO antinuke_events (id,guild_id,actor_id,target_user_id,target_id,kind) VALUES ($1,$1,$1,$1,$2,'ban')",
+        "INSERT INTO antinuke_role_backups (guild_id,user_id,role_ids) VALUES ($1,$1,ARRAY[$2::BIGINT])",
+        "INSERT INTO antinuke_snapshots (guild_id,kind,object_id,data) VALUES ($1,'channel',$2,'{\"permission_overwrites\":[]}')",
+        "INSERT INTO antinuke_overwrites (guild_id,channel_id,user_id,allow_bits,deny_bits) VALUES ($1,$2,$1,'1024','0')",
+        "INSERT INTO antinuke (guild_id,trusted_users) VALUES ($1,ARRAY[$1,$2])",
+
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

@@ -337,3 +337,5 @@ impl Cache {
 }
 
 mod automod;
+
+mod anti_nuke;

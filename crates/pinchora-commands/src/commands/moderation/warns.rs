@@ -88,6 +88,9 @@ async fn climb(
         Punishment::Kick => (CaseKind::Kick, "kick"),
         Punishment::Ban => (CaseKind::Ban, "ban"),
     };
+    if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, user.resolved.id.get()).await? {
+        return Ok(t!(lang, "mod.ladder-stopped", count = warns, why = why));
+    }
     if let Some(why) = ranks.bot_may(lang, user, verb) {
         return Ok(t!(lang, "mod.ladder-stopped", count = warns, why = why));
     }

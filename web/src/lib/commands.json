@@ -2591,6 +2591,20 @@
           "usage": "/automod test <text>"
         },
         {
+          "description": "Show protection status and recovery limits",
+          "manager": true,
+          "options": [],
+          "path": "antinuke status",
+          "usage": "/antinuke status"
+        },
+        {
+          "description": "Show recent anti-nuke incidents",
+          "manager": true,
+          "options": [],
+          "path": "antinuke events",
+          "usage": "/antinuke events"
+        },
+        {
           "description": "Ban someone, for good or for a while",
           "manager": true,
           "options": [
@@ -3330,6 +3344,131 @@
     {
       "commands": [
         {
+          "description": "Enable protection; alert-only unless you choose a response",
+          "manager": true,
+          "options": [
+            {
+              "description": "Alert channel (otherwise the moderation log or an owner DM)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "alert, quarantine, kick or ban",
+              "name": "response",
+              "required": false
+            },
+            {
+              "description": "Safe role assigned after stripping the actor's roles",
+              "name": "quarantine",
+              "required": false
+            },
+            {
+              "description": "Automatically restore recoverable damage",
+              "name": "restore",
+              "required": false
+            },
+            {
+              "description": "Automatically unban protected VIP members",
+              "name": "revert_vip",
+              "required": false
+            },
+            {
+              "description": "Remove bots added in an attack",
+              "name": "remove_bots",
+              "required": false
+            },
+            {
+              "description": "Only the owner can change settings (trust always belongs to the owner)",
+              "name": "owner_only",
+              "required": false
+            }
+          ],
+          "path": "antinuke enable",
+          "usage": "/antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
+        },
+        {
+          "description": "Pause anti-nuke detection",
+          "manager": true,
+          "options": [],
+          "path": "antinuke disable",
+          "usage": "/antinuke disable"
+        },
+        {
+          "description": "Set the maximum actions allowed per actor in a time window",
+          "manager": true,
+          "options": [
+            {
+              "description": "Action key, for example channel_delete, ban, permission_grant or bot_add",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Maximum allowed before a response (1 to 100)",
+              "name": "count",
+              "required": true
+            },
+            {
+              "description": "Window in seconds (5 to 300)",
+              "name": "seconds",
+              "required": true
+            }
+          ],
+          "path": "antinuke limits",
+          "usage": "/antinuke limits <kind> <count> <seconds>"
+        },
+        {
+          "description": "Trust another member (owner only)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to trust",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "antinuke trust add",
+          "usage": "/antinuke trust add <user>"
+        },
+        {
+          "description": "Remove trust from a member (owner only)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to remove",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "antinuke trust remove",
+          "usage": "/antinuke trust remove <user>"
+        },
+        {
+          "description": "Protect a VIP role",
+          "manager": true,
+          "options": [
+            {
+              "description": "Role to protect",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "antinuke vip add",
+          "usage": "/antinuke vip add <role>"
+        },
+        {
+          "description": "Remove VIP protection from a role",
+          "manager": true,
+          "options": [
+            {
+              "description": "Protected role",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "antinuke vip remove",
+          "usage": "/antinuke vip remove <role>"
+        },
+        {
           "description": "The server log's channel, or one category's",
           "manager": true,
           "options": [
@@ -4005,5 +4144,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 247
+  "count": 256
 }

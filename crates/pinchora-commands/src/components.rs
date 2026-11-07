@@ -19,6 +19,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("an") => crate::commands::anti_nuke::on_component(cx, "an", parts).await,
+        Some("vp") => crate::commands::anti_nuke::on_component(cx, "vp", parts).await,
         Some("am") => crate::commands::automod::on_component(cx, "am", parts, values).await,
         Some("ax") => crate::commands::automod::on_component(cx, "ax", parts, values).await,
         Some("lb") => leaderboard::on_button(cx, parts).await,

@@ -147,6 +147,8 @@ pub(crate) const AREAS: &[Area] = &[
         key: "moderation",
         covers: &[
             "automod",
+            "antinuke status",
+            "antinuke events",
             "ban",
             "unban",
             "kick",
@@ -184,6 +186,7 @@ pub(crate) const AREAS: &[Area] = &[
     Area {
         key: "logsetup",
         covers: &[
+            "antinuke",
             "config log",
             "config log-events",
             "config log-ignore",

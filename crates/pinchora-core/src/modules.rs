@@ -125,11 +125,12 @@ pub enum Module {
     Feeds,
     TempVoice,
     Info,
+    AntiNuke,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 38] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -167,6 +168,7 @@ impl Module {
         Self::Feeds,
         Self::TempVoice,
         Self::Info,
+        Self::AntiNuke,
     ];
 
     /// The key stored in the database and used in the API.
@@ -209,6 +211,7 @@ impl Module {
             Self::Feeds => "feeds",
             Self::TempVoice => "temp_voice",
             Self::Info => "info",
+            Self::AntiNuke => "anti_nuke",
         }
     }
 
@@ -255,6 +258,7 @@ impl Module {
             Self::Feeds => "Social feeds",
             Self::TempVoice => "Temp voice",
             Self::Info => "Info commands",
+            Self::AntiNuke => "Anti-nuke",
         }
     }
 
@@ -318,6 +322,7 @@ impl Module {
             }
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
+            Self::AntiNuke => "Protect server structure, staff and VIP members.",
         }
     }
 
@@ -351,6 +356,7 @@ impl Module {
             Self::Feeds => Group::Feeds,
             Self::TempVoice => Group::Community,
             Self::Info => Group::Server,
+            Self::AntiNuke => Group::Safety,
         }
     }
 
@@ -360,6 +366,7 @@ impl Module {
                 Scope::Server
             }
             Self::AutoMod => Scope::Server,
+            Self::AntiNuke => Scope::Server,
             Self::Feeds => Scope::Server,
             Self::TempVoice => Scope::Server,
             _ => Scope::Channels,
@@ -423,6 +430,7 @@ impl Module {
                 _ => return None,
             },
             "automod" => Self::AutoMod,
+            "antinuke" => Self::AntiNuke,
             "voice" => Self::TempVoice,
             _ => return None,
         })
@@ -455,6 +463,7 @@ impl Module {
             "sc" => Self::Stats,
             "tk" | "tp" | "tf" | "tr" => Self::Tickets,
             "am" | "ax" => Self::AutoMod,
+            "an" | "vp" => Self::AntiNuke,
             "sn" => Self::Feeds,
             "vc" | "vo" => Self::TempVoice,
             "nf" => Self::Info,

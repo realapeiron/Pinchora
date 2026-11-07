@@ -172,3 +172,9 @@ pub use automod::{
     check_config_roles as check_automod_roles, on_native_execution as on_automod_execution,
     on_native_rule_change as on_automod_rule_change, spawn_ticker as spawn_automod_ticker, sync_guild as sync_automod,
 };
+
+mod anti_nuke;
+pub use anti_nuke::{
+    authorize_antinuke, on_gateway as on_antinuke_gateway, process as on_antinuke_audit, restore_antinuke,
+    restore_antinuke_actor_roles, save_antinuke_config, spawn_ticker as spawn_antinuke_ticker,
+};

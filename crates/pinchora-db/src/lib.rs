@@ -168,3 +168,6 @@ pub(crate) fn sql_id(id: u64) -> i64 {
 
 mod automod;
 pub use automod::*;
+
+mod anti_nuke;
+pub use anti_nuke::*;
