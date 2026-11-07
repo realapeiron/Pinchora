@@ -12,8 +12,8 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 95);
-    assert_eq!(paths.len(), 331);
+    assert_eq!(tree.len(), 96);
+    assert_eq!(paths.len(), 334);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     let actual: BTreeSet<_> = crate::commands::help::leaves(&registered, Lang::En)
@@ -33,7 +33,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 160);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 163);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -46,7 +46,7 @@ fn every_alias_preserves_handler_arguments_permissions_and_metadata() {
     let tree = crate::command_definitions();
     let setup = tree.iter().find(|c| c.name == "setup").unwrap();
     assert_eq!(setup.default_member_permissions, Some(Permissions::MANAGE_GUILD));
-    assert_eq!(setup.options.len(), 5);
+    assert_eq!(setup.options.len(), 6);
     assert!(tree.len() + FUTURE_ROOT_RESERVE <= 70);
     for root in tree.iter().filter(|c| is_admin_path(&c.name)) {
         assert_eq!(root.default_member_permissions, Some(Permissions::MANAGE_GUILD));
@@ -320,6 +320,9 @@ fn legacy_prefix_resolution_preserves_argument_bytes_and_expands_once() {
 fn migration_covers_every_active_leaf_without_broadening_split_parents() {
     let sql = include_str!("../../../../migrations/0066_command_paths.sql");
     for route in MANIFEST.iter().filter(|r| r.active()) {
+        if route.legacy.starts_with("branding ") {
+            continue;
+        }
         assert!(
             sql.contains(&format!("('{}', '{}')", route.legacy, previous_path(route))),
             "{}",

@@ -4,6 +4,7 @@ pub(crate) mod automod;
 mod bio;
 pub(crate) mod birthdays;
 pub(crate) mod board;
+pub(crate) mod branding;
 pub(crate) mod character;
 pub(crate) mod collection;
 pub(crate) mod command_control;
@@ -132,6 +133,7 @@ macro_rules! commands {
 }
 
 commands!(
+    branding::BrandingCommand,
     achievements::AchievementsCommand,
     achievements::AchievementAdmin,
     ping::Ping,

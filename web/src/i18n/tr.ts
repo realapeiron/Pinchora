@@ -1,5 +1,43 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "Server branding": "Sunucu marka kimliği",
+  "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.":
+    "Pinchora'nın bu sunucuda nasıl görüneceğini ayarla. Discord'a uygulamadan önce önizle.",
+  "Branding settings": "Marka ayarları",
+  Profile: "Profil",
+  "Server nickname": "Sunucu takma adı",
+  Bio: "Biyografi",
+  "A little about this bot in your server": "Bu sunucudaki bot hakkında kısa bir bilgi",
+  Banner: "Kapak görseli",
+  "Images use the welcome card upload limits and are converted to PNG.":
+    "Görseller karşılama kartının yükleme sınırlarını kullanır ve PNG'ye dönüştürülür.",
+  "Embed colour": "Gömülü mesaj rengi",
+  "Hex colour": "Onaltılık renk",
+  "This colour is used on Pinchora embeds throughout this server.":
+    "Bu renk sunucudaki tüm Pinchora gömülü mesajlarında kullanılır.",
+  "Discord refused part of the last apply: {detail}":
+    "Discord son uygulamadaki bazı alanları reddetti: {detail}",
+  "Some profile fields are unavailable to this app. The colour and available fields still work.":
+    "Bazı profil alanları bu uygulamaya kapalı. Renk ve kullanılabilir alanlar çalışmaya devam eder.",
+  "Image uploaded. Save changes to keep it.": "Görsel yüklendi. Kalıcı olması için değişiklikleri kaydet.",
+  "Branding could not load.": "Marka ayarları yüklenemedi.",
+  "Changes saved.": "Değişiklikler kaydedildi.",
+  "Branding applied to Discord.": "Marka ayarları Discord'a uygulandı.",
+  "Apply in {minutes} min": "{minutes} dk sonra uygula",
+  "Apply to Discord": "Discord'a uygula",
+  "Reset branding": "Marka ayarlarını sıfırla",
+  "Confirm reset": "Sıfırlamayı onayla",
+  "Clear the saved profile and colour for this server?":
+    "Bu sunucunun kayıtlı profil ve renk ayarları silinsin mi?",
+  "Saved branding reset; Discord refused some profile fields.":
+    "Kayıtlı marka ayarları sıfırlandı; Discord bazı profil alanlarını reddetti.",
+  "Branding reset.": "Marka ayarları sıfırlandı.",
+  "Live preview": "Canlı önizleme",
+  Bot: "Bot",
+  "Welcome to {server}": "{server} sunucusuna hoş geldin",
+  "Your server's colour appears on every Pinchora embed.":
+    "Sunucunun rengi tüm Pinchora gömülü mesajlarında görünür.",
+  Branding: "Marka kimliği",
   "Create your character in Discord before playing.": "Oynamadan önce Discord'da karakterini oluştur.",
   "No free entry tile. View the room or clear a floor tile in Discord.":
     "Giriş için boş karo yok. Odayı görüntüle veya Discord'da bir zemin karosunu boşalt.",

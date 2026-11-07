@@ -197,6 +197,7 @@ async fn open(cx: &Cx, panel: &TicketPanel, topic: Topic, answers: Vec<Answer>) 
     let opener_name = scrub_value(&cx.author_display_name());
     log(
         app,
+        guild,
         log_channel(&settings, Some(panel)),
         log_embed(
             BRAND,
@@ -440,7 +441,7 @@ async fn welcome(
     for role in &roles {
         content.push_str(&format!(" <@&{role}>"));
     }
-    let embeds = [embed];
+    let embeds = [cx.app.brand_embed(ticket.guild_id as u64, embed).await];
     let components = controls(ticket.id, false, lang);
     let mentions = pinging(&[opener], &roles);
     let sent = cx

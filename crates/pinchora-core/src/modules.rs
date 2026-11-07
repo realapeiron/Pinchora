@@ -144,11 +144,12 @@ pub enum Module {
     Utility,
     Events,
     CommandControl,
+    Branding,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 48] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -196,6 +197,7 @@ impl Module {
         Self::Utility,
         Self::Events,
         Self::CommandControl,
+        Self::Branding,
     ];
 
     /// The key stored in the database and used in the API.
@@ -248,6 +250,7 @@ impl Module {
             Self::Utility => "utility",
             Self::Events => "events",
             Self::CommandControl => "command_control",
+            Self::Branding => "branding",
         }
     }
 
@@ -304,6 +307,7 @@ impl Module {
             Self::Utility => "Messages",
             Self::Events => "Events",
             Self::CommandControl => "Command control",
+            Self::Branding => "Branding",
         }
     }
 
@@ -383,6 +387,7 @@ impl Module {
             Self::AntiNuke => "Protect server structure, staff and VIP members.",
             Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",
             Self::Utility => "AFK notices, sticky posts and scheduled messages.",
+            Self::Branding => "Server bot profile and embed colour.",
         }
     }
 
@@ -425,6 +430,7 @@ impl Module {
             Self::Utility => Group::Server,
             Self::Events => Group::Community,
             Self::CommandControl => Group::Server,
+            Self::Branding => Group::Server,
         }
     }
 
@@ -517,6 +523,7 @@ impl Module {
             "birthday" | "birthdays" => Self::Birthdays,
             "achievements" | "achievementadmin" => Self::Achievements,
             "event" => Self::Events,
+            "branding" => Self::Branding,
             _ => return None,
         })
     }
@@ -561,6 +568,7 @@ impl Module {
             "bd" => Self::Birthdays,
             "af" | "sk" | "sm" => Self::Utility,
             "ev" => Self::Events,
+            "wb" => Self::Branding,
             _ => return None,
         })
     }

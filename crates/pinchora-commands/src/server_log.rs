@@ -447,8 +447,9 @@ pub(crate) fn clip(text: &str, max: usize) -> String {
 }
 
 /// Posts an entry. A log channel that is gone or closed to the bot is not worth an error each time.
-pub(crate) async fn post(app: &App, channel: u64, embed: Embed) {
+pub(crate) async fn post(app: &App, guild: u64, channel: u64, embed: Embed) {
     let mentions = AllowedMentions::default();
+    let embed = app.brand_embed(guild, embed).await;
     if let Err(error) = app
         .http
         .create_message(Id::new(channel.max(1)))
@@ -512,13 +513,13 @@ pub(crate) async fn member_joined(app: &App, guild: u64, user: &User, roles: &[u
         ..user_subject(user)
     };
     if let Some((channel, lang)) = route(app, guild, LogEvent::MemberJoin, subject, None).await {
-        post(app, channel, joined_embed(lang, user)).await;
+        post(app, guild, channel, joined_embed(lang, user)).await;
     }
 }
 
 pub(crate) async fn member_left(app: &App, guild: u64, user: &User) {
     if let Some((channel, lang)) = route(app, guild, LogEvent::MemberLeave, user_subject(user), None).await {
-        post(app, channel, left_embed(lang, user)).await;
+        post(app, guild, channel, left_embed(lang, user)).await;
     }
 }
 
@@ -538,7 +539,7 @@ pub(crate) async fn ban_changed(app: &App, guild: u64, user: &User, banned: bool
     if by.as_ref().is_some_and(|b| b.actor == app.application_id.get()) {
         return;
     }
-    post(app, channel, ban_embed(lang, user, banned, by.as_ref())).await;
+    post(app, guild, channel, ban_embed(lang, user, banned, by.as_ref())).await;
 }
 
 /// Whether the log reports anything about names or avatars, so they are worth remembering.
@@ -579,13 +580,13 @@ pub(crate) async fn names_updated(app: &App, guild: u64, user: &User, nick: Opti
             continue;
         }
         if let Some((channel, lang)) = route(app, guild, event, subject, None).await {
-            post(app, channel, names_embed(lang, user, &these)).await;
+            post(app, guild, channel, names_embed(lang, user, &these)).await;
         }
     }
     if before.is_some_and(|b| b.avatar != now.avatar)
         && let Some((channel, lang)) = route(app, guild, LogEvent::Avatar, subject, None).await
     {
-        post(app, channel, avatar_embed(lang, user)).await;
+        post(app, guild, channel, avatar_embed(lang, user)).await;
     }
 }
 
@@ -611,7 +612,7 @@ pub(crate) async fn voice_updated(app: &App, guild: u64, state: &VoiceState) {
             ..Subject::default()
         };
         if let Some((channel, lang)) = route(app, guild, change.event(), subject, Some(change.channel())).await {
-            post(app, channel, voice_embed(lang, user_id, user, &change)).await;
+            post(app, guild, channel, voice_embed(lang, user_id, user, &change)).await;
         }
     }
 }
@@ -749,7 +750,7 @@ pub async fn on_message_update(app: Arc<App>, event: MessageUpdate) -> anyhow::R
                 shown(lang, &message.content),
             ));
         }
-        post(&app, to, embed.build()).await;
+        post(&app, guild, to, embed.build()).await;
     }
     keep_message(&app, guild, &message).await;
     Ok(())
@@ -804,7 +805,7 @@ pub async fn on_message_delete(app: Arc<App>, event: MessageDelete) -> anyhow::R
         )
         .field(EmbedFieldBuilder::new(t!(lang, "log.entry.sent"), sent).inline()),
     };
-    post(&app, to, embed.build()).await;
+    post(&app, guild, to, embed.build()).await;
     Ok(())
 }
 
@@ -850,7 +851,7 @@ pub async fn on_message_delete_bulk(app: Arc<App>, event: MessageDeleteBulk) -> 
     }
     let title = title(lang, LogEvent::MessageBulkDelete);
     let embed = entry(lang, title, DANGER, channel_id, None, text).build();
-    post(&app, to, embed).await;
+    post(&app, guild, to, embed).await;
     Ok(())
 }
 

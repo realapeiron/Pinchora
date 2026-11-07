@@ -429,7 +429,7 @@ pub(crate) async fn alert(app: &App, config: &Config, rule: &Rule, hit: &AutoMod
     }
     app.http
         .create_message(Id::new(channel))
-        .embeds(&[embed])
+        .embeds(&[app.brand_embed(guild, embed).await])
         .components(&components)
         .allowed_mentions(Some(&AllowedMentions::default()))
         .await?;

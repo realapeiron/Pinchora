@@ -1011,7 +1011,7 @@ alters them). A feed's `created_by` becomes 0 when its author deletes their data
 
 ### Branding
 
-<!-- F14: the Branding package replaces this heading's section; keep it one `###` section. -->
+`/setup branding show|apply|reset` manages Pinchora's per-server nickname, avatar, banner, bio and embed colour. The dashboard's **Branding** page previews a server profile and embed on desktop and phone, and reuses the Welcome image upload endpoint. Apply and reset are limited to once every 10 minutes per server. Discord may refuse a profile field for an app; the page reports each field's last result. The embed colour remains available independently.
 
 ### AI characters
 

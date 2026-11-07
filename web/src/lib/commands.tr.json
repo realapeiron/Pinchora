@@ -4243,6 +4243,62 @@
           "usage": "/setup backup restore <id>"
         },
         {
+          "aliases": [
+            "branding apply"
+          ],
+          "description": "Bot profilini ve mesaj rengini uygula",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sunucudaki bot adı (en fazla 32 karakter)",
+              "name": "nickname",
+              "required": false
+            },
+            {
+              "description": "Panelden yüklenen avatarın kimliği",
+              "name": "avatar",
+              "required": false
+            },
+            {
+              "description": "Panelden yüklenen afişin kimliği",
+              "name": "banner",
+              "required": false
+            },
+            {
+              "description": "Profil açıklaması (en fazla 190 karakter)",
+              "name": "bio",
+              "required": false
+            },
+            {
+              "description": "Mesaj rengi (#RRGGBB)",
+              "name": "colour",
+              "required": false
+            }
+          ],
+          "path": "setup branding apply",
+          "usage": "/setup branding apply [nickname] [avatar] [banner] [bio] [colour]"
+        },
+        {
+          "aliases": [
+            "branding reset"
+          ],
+          "description": "Bu sunucunun marka ayarlarını temizle",
+          "manager": true,
+          "options": [],
+          "path": "setup branding reset",
+          "usage": "/setup branding reset"
+        },
+        {
+          "aliases": [
+            "branding show"
+          ],
+          "description": "Bot profilini ve mesaj rengini göster",
+          "manager": true,
+          "options": [],
+          "path": "setup branding show",
+          "usage": "/setup branding show"
+        },
+        {
           "aliases": [],
           "description": "Bu sunucunun katılım doğrulamasını geç",
           "manager": false,
@@ -6218,5 +6274,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 331
+  "count": 334
 }

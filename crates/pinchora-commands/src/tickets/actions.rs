@@ -336,9 +336,18 @@ pub(crate) async fn on_rating(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
 }
 
 /// Posts a notice for everybody in the ticket; one that cannot be posted is only noted.
-async fn notice(app: &App, place: Option<Id<ChannelMarker>>, color: u32, text: String, components: Vec<Component>) {
+async fn notice(
+    app: &App,
+    guild: u64,
+    place: Option<Id<ChannelMarker>>,
+    color: u32,
+    text: String,
+    components: Vec<Component>,
+) {
     let Some(place) = place else { return };
-    let embeds = [EmbedBuilder::new().color(color).description(text).build()];
+    let embeds = [app
+        .brand_embed(guild, EmbedBuilder::new().color(color).description(text).build())
+        .await];
     let sent = app
         .http
         .create_message(place)
@@ -364,6 +373,7 @@ async fn claim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
     let server = guild_lang(&cx.app, ticket.guild_id as u64).await;
     notice(
         &cx.app,
+        ticket.guild_id as u64,
         place_of(ticket),
         SUCCESS,
         t!(server, "tickets.notice.claimed", user = mention(user)),
@@ -377,6 +387,7 @@ async fn claim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
     };
     log(
         &cx.app,
+        ticket.guild_id as u64,
         log_channel(&settings, panel.as_ref()),
         log_embed(
             SUCCESS,
@@ -402,6 +413,7 @@ async fn unclaim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
     let (user, _) = actor(cx)?;
     notice(
         &cx.app,
+        ticket.guild_id as u64,
         place_of(ticket),
         WARN,
         t!(server, "tickets.notice.unclaimed", user = mention(user)),
@@ -470,6 +482,7 @@ async fn lock(cx: &Cx, ticket: &Ticket, locking: bool) -> anyhow::Result<()> {
     };
     notice(
         &cx.app,
+        ticket.guild_id as u64,
         Some(place),
         WARN,
         t!(server, key, user = mention(user)),
@@ -591,6 +604,7 @@ async fn add(cx: &Cx, ticket: &Ticket, user: u64) -> anyhow::Result<()> {
     let (by, _) = actor(cx)?;
     notice(
         &cx.app,
+        ticket.guild_id as u64,
         Some(place),
         SUCCESS,
         t!(server, "tickets.notice.added", user = mention(user), by = mention(by)),
@@ -628,6 +642,7 @@ async fn remove(cx: &Cx, ticket: &Ticket, user: u64) -> anyhow::Result<()> {
     let (by, _) = actor(cx)?;
     notice(
         &cx.app,
+        ticket.guild_id as u64,
         Some(place),
         WARN,
         t!(server, "tickets.notice.removed", user = mention(user), by = mention(by)),
@@ -810,6 +825,7 @@ pub(crate) async fn close(
     }
     notice(
         app,
+        closed.guild_id as u64,
         place_of(&closed),
         DANGER,
         text.clone(),
@@ -848,6 +864,7 @@ pub(crate) async fn close(
     }
     log(
         app,
+        closed.guild_id as u64,
         log_channel(&settings, panel.as_ref()),
         log_embed(
             DANGER,
@@ -1037,6 +1054,7 @@ async fn reopen(cx: &Cx, ticket: &Ticket, panel: Option<&TicketPanel>) -> anyhow
     let (user, _) = actor(cx)?;
     notice(
         app,
+        guild,
         place_of(&opened),
         SUCCESS,
         t!(
@@ -1050,6 +1068,7 @@ async fn reopen(cx: &Cx, ticket: &Ticket, panel: Option<&TicketPanel>) -> anyhow
     .await;
     log(
         app,
+        guild,
         log_channel(&settings, panel),
         log_embed(
             SUCCESS,

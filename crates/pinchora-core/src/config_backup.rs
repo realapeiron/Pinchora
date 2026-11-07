@@ -58,6 +58,12 @@ pub const SECTIONS: &[Section] = &[
     ),
     section!("event_settings", "timezone", "", false),
     section!("card_uploads", "id,png,width,height", "id", false),
+    section!(
+        "guild_branding",
+        "nickname,avatar_upload_id,banner_upload_id,bio,embed_color,active_embed_color",
+        "",
+        false
+    ),
     section!("card_designs", "kind,design,delivery", "kind", false),
     section!("mod_settings", "log_channel_id,dm_members", "", false),
     section!("mod_warn_thresholds", "warns,action,duration_secs", "warns", false),

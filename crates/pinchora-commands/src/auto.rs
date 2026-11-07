@@ -352,12 +352,12 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
                 {
                     // A direct message pings nobody else.
                     let none = AllowedMentions::default();
-                    send(app, channel, &content, &embeds, &none, None, true).await;
+                    send(app, guild, channel, &content, &embeds, &none, None, true).await;
                 }
             }
             (destination, Some(channel)) => {
                 let reply = (destination == Destination::Current).then_some(m.message).flatten();
-                send(app, channel, &content, &embeds, &mentions, reply, false).await;
+                send(app, guild, channel, &content, &embeds, &mentions, reply, false).await;
             }
             (_, None) => {}
         }
@@ -381,8 +381,10 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
 
 /// Sends a message; a refusal (no access, a closed direct message) is the server's or the member's doing,
 /// so it is logged and left.
+#[allow(clippy::too_many_arguments)] // delivery keeps the server id beside the channel for brand colour
 async fn send(
     app: &App,
+    guild: u64,
     channel: Id<ChannelMarker>,
     content: &str,
     embeds: &[twilight_model::channel::message::Embed],
@@ -390,12 +392,14 @@ async fn send(
     reply: Option<Id<MessageMarker>>,
     quiet: bool,
 ) {
+    let mut branded = embeds.to_vec();
+    app.brand_embeds(guild, &mut branded).await;
     let mut request = app.http.create_message(channel).allowed_mentions(Some(mentions));
     if !content.is_empty() {
         request = request.content(content);
     }
-    if !embeds.is_empty() {
-        request = request.embeds(embeds);
+    if !branded.is_empty() {
+        request = request.embeds(&branded);
     }
     if let Some(message) = reply {
         request = request.reply(message).fail_if_not_exists(false);

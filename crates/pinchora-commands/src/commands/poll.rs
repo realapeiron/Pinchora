@@ -203,7 +203,7 @@ impl Poll {
             .app
             .http
             .create_message(channel)
-            .embeds(&[poll_embed(server_lang, &poll)])
+            .embeds(&[cx.app.brand_embed(guild, poll_embed(server_lang, &poll)).await])
             .components(&poll_components(server_lang, &poll))
             .allowed_mentions(quiet().as_ref())
             .await;
@@ -397,7 +397,7 @@ async fn announce(app: &Arc<App>, poll: &PollRow) -> anyhow::Result<()> {
         Err(_) => embed,
     }
     .build();
-    let embeds = [embed];
+    let embeds = [app.brand_embed(poll.guild_id as u64, embed).await];
     let attachments = [Attachment::from_bytes("poll.png".to_owned(), png, 1)];
     let no_pings = quiet();
     let mut post = app

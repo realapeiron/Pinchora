@@ -3,6 +3,7 @@ mod activity;
 mod audit;
 mod birthdays;
 mod board_games;
+mod branding;
 mod card_designs;
 mod character;
 mod collection;
@@ -63,6 +64,7 @@ pub use activity::{Activity, Counter};
 pub use audit::{AuditRow, AuditSource, NewAudit};
 pub use birthdays::*;
 pub use board_games::{PicrossGame, SoloGame, SoloStep};
+pub use branding::GuildBranding;
 pub use card_designs::{CardDesignRow, CardUploadRow};
 pub use character::OutfitRow;
 pub use collection::{

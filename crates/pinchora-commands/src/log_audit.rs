@@ -454,7 +454,7 @@ pub async fn on_audit_log_entry(app: Arc<App>, event: GuildAuditLogEntryCreate) 
         _ => None,
     };
     if let Some((to, lang)) = route(&app, guild, event, subject, place).await {
-        post(&app, to, log_embed(lang, &entry, event)).await;
+        post(&app, guild, to, log_embed(lang, &entry, event)).await;
     }
     Ok(())
 }

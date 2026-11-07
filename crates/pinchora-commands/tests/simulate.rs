@@ -72,6 +72,8 @@ use twilight_model::{
 mod basics;
 #[path = "simulate/board.rs"]
 mod board;
+#[path = "simulate/branding.rs"]
+mod branding;
 #[path = "simulate/quick.rs"]
 mod quick;
 // Welcome and goodbye images from the dashboard's editor.

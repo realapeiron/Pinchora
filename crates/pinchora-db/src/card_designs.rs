@@ -102,7 +102,9 @@ impl Db {
              WHERE guild_id = $1
                AND id NOT IN (SELECT id FROM card_uploads WHERE guild_id = $1 ORDER BY created_at DESC, id LIMIT $2)
                AND id NOT IN (SELECT design #>> '{background,id}' FROM card_designs
-                              WHERE guild_id = $1 AND design #>> '{background,type}' = 'upload')",
+                              WHERE guild_id = $1 AND design #>> '{background,type}' = 'upload')
+               AND id NOT IN (SELECT avatar_upload_id FROM guild_branding WHERE guild_id = $1)
+               AND id NOT IN (SELECT banner_upload_id FROM guild_branding WHERE guild_id = $1)",
         )
         .bind(sql_id(guild))
         .bind(MAX_UPLOADS as i64)

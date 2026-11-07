@@ -4243,6 +4243,62 @@
           "usage": "/setup backup restore <id>"
         },
         {
+          "aliases": [
+            "branding apply"
+          ],
+          "description": "Apply the server profile and embed colour",
+          "manager": true,
+          "options": [
+            {
+              "description": "The server nickname (up to 32 characters)",
+              "name": "nickname",
+              "required": false
+            },
+            {
+              "description": "Avatar upload ID from the dashboard",
+              "name": "avatar",
+              "required": false
+            },
+            {
+              "description": "Banner upload ID from the dashboard",
+              "name": "banner",
+              "required": false
+            },
+            {
+              "description": "Profile bio (up to 190 characters)",
+              "name": "bio",
+              "required": false
+            },
+            {
+              "description": "Embed colour as #RRGGBB",
+              "name": "colour",
+              "required": false
+            }
+          ],
+          "path": "setup branding apply",
+          "usage": "/setup branding apply [nickname] [avatar] [banner] [bio] [colour]"
+        },
+        {
+          "aliases": [
+            "branding reset"
+          ],
+          "description": "Clear this server's branding",
+          "manager": true,
+          "options": [],
+          "path": "setup branding reset",
+          "usage": "/setup branding reset"
+        },
+        {
+          "aliases": [
+            "branding show"
+          ],
+          "description": "Show this server's bot profile and colour",
+          "manager": true,
+          "options": [],
+          "path": "setup branding show",
+          "usage": "/setup branding show"
+        },
+        {
           "aliases": [],
           "description": "Pass this server's join gate",
           "manager": false,
@@ -6218,5 +6274,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 331
+  "count": 334
 }

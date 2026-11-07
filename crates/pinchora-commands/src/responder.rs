@@ -50,6 +50,7 @@ struct TextTarget {
 /// the slash command.
 pub struct Responder {
     app: Arc<App>,
+    guild: Option<u64>,
     id: Id<InteractionMarker>,
     token: String,
     text: Option<TextTarget>,
@@ -83,6 +84,7 @@ impl Responder {
     /// Answers a text command: `message` in `channel` is the member's, `path` the command it ran.
     pub fn text(
         app: Arc<App>,
+        guild: u64,
         channel: Id<ChannelMarker>,
         message: Id<MessageMarker>,
         path: String,
@@ -90,6 +92,7 @@ impl Responder {
     ) -> Self {
         Self {
             app,
+            guild: Some(guild),
             id: message.cast(),
             token: format!("text-{message}"),
             text: Some(TextTarget {
@@ -153,6 +156,7 @@ impl Responder {
     fn new(app: Arc<App>, interaction: &Interaction, tx: Option<oneshot::Sender<InteractionResponse>>) -> Self {
         Self {
             app,
+            guild: interaction.guild_id.map(|id| id.get()),
             id: interaction.id,
             token: interaction.token.clone(),
             text: None,
@@ -247,6 +251,9 @@ impl Responder {
     /// sets no `allowed_mentions` pings nobody, so a name or a role in its text (a member's note, a role the
     /// server configured) never pings by accident; the replies that mean to ping say whom.
     pub async fn respond(&self, mut data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
+        if let (Some(guild), Some(embeds)) = (self.guild, data.embeds.as_mut()) {
+            self.app.brand_embeds(guild, embeds).await;
+        }
         if !update && self.private_default() {
             *data.flags.get_or_insert(MessageFlags::empty()) |= MessageFlags::EPHEMERAL;
         }
@@ -386,6 +393,11 @@ impl Responder {
     /// Edits the first answer, e.g. to reveal something after a delay. Like [`Responder::respond`], it pings
     /// nobody unless `data` says whom.
     pub async fn edit(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
+        let mut branded = data.clone();
+        if let (Some(guild), Some(embeds)) = (self.guild, branded.embeds.as_mut()) {
+            self.app.brand_embeds(guild, embeds).await;
+        }
+        let data = &branded;
         let quiet;
         let data = if data.allowed_mentions.is_some() {
             data

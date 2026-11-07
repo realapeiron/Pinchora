@@ -267,6 +267,7 @@ pub const OTHER_TABLES: &[&str] = &[
     "log_settings",
     "card_designs",
     "card_uploads",
+    "guild_branding",
     // Stats: whole servers, channels and the bot, no player in them.
     "guild_activity_hourly",
     "channel_activity_daily",

@@ -5,6 +5,7 @@ mod anti_nuke;
 mod audit_log;
 mod automod;
 mod birthdays;
+mod branding;
 mod cards;
 mod commands;
 mod community;

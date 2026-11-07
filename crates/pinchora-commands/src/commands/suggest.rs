@@ -214,7 +214,10 @@ impl Suggest {
             .app
             .http
             .create_message(channel)
-            .embeds(&[suggestion_embed(server_lang, &suggestion)])
+            .embeds(&[cx
+                .app
+                .brand_embed(guild, suggestion_embed(server_lang, &suggestion))
+                .await])
             .components(&suggestion_components(&suggestion))
             .allowed_mentions(quiet().as_ref())
             .await;

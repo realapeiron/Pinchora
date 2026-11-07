@@ -117,7 +117,8 @@ pub(crate) async fn announce_in(app: &App, channel: Id<ChannelMarker>, user: u64
             return;
         }
     };
-    let (embeds, files) = unlock_notice(&app.sprites, &badges, lang);
+    let (mut embeds, files) = unlock_notice(&app.sprites, &badges, lang);
+    app.brand_embeds_in_channel(channel.get(), &mut embeds).await;
     let text = t!(lang, "customize.unlock.announce", user = mention(user));
     let quiet = AllowedMentions::default();
     let sent = app

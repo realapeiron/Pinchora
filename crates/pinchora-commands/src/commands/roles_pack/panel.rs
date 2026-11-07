@@ -304,6 +304,7 @@ pub async fn post_panel(app: &App, guild: u64, panel: &PanelRow, channel: u64) -
     }
     let lang = app.guild_lang(guild).await;
     let (embed, components) = panel_message(panel, &entries, lang);
+    let embed = app.brand_embed(guild, embed).await;
     let channel_id = Id::new(channel.max(1));
     let before = panel.channel_id.zip(panel.message_id);
 

@@ -89,6 +89,7 @@ pub async fn publish(app: &App, row: &EventRow) -> anyhow::Result<()> {
     let Some(channel) = row.channel_id else { return Ok(()) };
     let lang = app.guild_lang(row.guild_id as u64).await;
     let (embed, components) = card(row, lang, &[]);
+    let embed = app.brand_embed(row.guild_id as u64, embed).await;
     let message = app
         .http
         .create_message(Id::new(channel as u64))
@@ -111,6 +112,7 @@ pub async fn refresh_card(app: &App, row: &EventRow) {
     let result = async {
         let lang = app.guild_lang(row.guild_id as u64).await;
         let (embed, components) = card(row, lang, &counts(app, row.id).await?);
+        let embed = app.brand_embed(row.guild_id as u64, embed).await;
         app.http
             .update_message(Id::new(channel as u64), Id::new(message as u64))
             .embeds(Some(&[embed]))

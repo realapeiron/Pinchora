@@ -1,0 +1,26 @@
+[branding]
+show = "Nickname: **{nick}** · Colour: **{color}** · Bio: {bio}"
+invalid = "Check the branding values: {reason}"
+applied = "Server branding applied."
+cooldown = "Wait 10 minutes between branding changes."
+partial = "The colour was saved, but Discord refused these profile fields: {fields}. Check the app's profile access and bot permissions."
+reset = "Server branding reset."
+reset-partial = "Branding reset locally. Discord refused one or more profile resets; check the app's profile access."
+
+[branding.error]
+nickname = "Nickname must have 1–32 characters."
+bio = "Bio must have 1–190 characters."
+colour = "Use a six-digit colour such as #FF6B4A."
+upload = "Choose an image uploaded to this server."
+
+[branding.field]
+nickname = "nickname"
+avatar = "avatar"
+banner = "banner"
+bio = "bio"
+
+[module]
+branding = "Branding"
+
+[module-blurb]
+branding = "Server bot profile and embed colour"

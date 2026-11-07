@@ -105,7 +105,7 @@ The rejected payload's item 59 was `/setup`: **25,276** characters. `/mod` was *
 
 | Root | Groups |
 | --- | --- |
-| `/setup` | server, welcome, roles, commands, backup |
+| `/setup` | server, welcome, roles, commands, backup, branding |
 | `/safety` | moderation, automod, verification, antinuke |
 | `/community` | tickets, starboard, events, birthdays, utility (including voice), server (suggestions/plaza) |
 | `/integrations` | feeds, stats, invites |
