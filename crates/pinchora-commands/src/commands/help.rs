@@ -177,6 +177,7 @@ pub(crate) const AREAS: &[Area] = &[
             "community modmail",
             "ticket",
             "tickets",
+            "Open ticket",
             "starboard",
             "invites",
             "inviteadmin",
@@ -351,7 +352,11 @@ pub(crate) fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
         if command.kind == twilight_model::application::command::CommandType::Message {
             out.push(Leaf {
                 path: command.name.clone(),
-                text: pinchora_core::t!(lang, "parity.context-help"),
+                text: if command.name == "Open ticket" {
+                    pinchora_core::t!(lang, "tickets.v2.context-help")
+                } else {
+                    pinchora_core::t!(lang, "parity.context-help")
+                },
                 manager: false,
                 options: Vec::new(),
             });

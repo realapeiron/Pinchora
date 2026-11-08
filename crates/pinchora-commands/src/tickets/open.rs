@@ -3,18 +3,23 @@
 
 use std::{str::Split, time::Duration};
 
+use chrono::{Datelike, Timelike, Utc};
+use chrono_tz::Tz;
+
 use pinchora_core::{
     t,
-    tickets::{ANSWER_MAX, Answer, DEFAULT_NAMING, OPEN_COOLDOWN_SECS, Question, Topic, channel_name, fill_welcome},
+    tickets::{ANSWER_MAX, Answer, DEFAULT_NAMING, Question, Topic, channel_name, fill_welcome},
 };
-use pinchora_db::{NewTicket, Ticket, TicketOpen, TicketPanel, TicketSettings};
+use pinchora_db::{NewTicket, Ticket, TicketOpen, TicketPanel, TicketPanelOperations, TicketSettings};
 use twilight_model::{
     channel::permission_overwrite::{PermissionOverwrite, PermissionOverwriteType},
     channel::{
         ChannelType,
         message::{
             Component, Embed,
-            component::{Label, TextInput, TextInputStyle},
+            component::{
+                ButtonStyle, FileUpload, Label, SelectMenu, SelectMenuOption, SelectMenuType, TextInput, TextInputStyle,
+            },
         },
         thread::AutoArchiveDuration,
     },
@@ -25,11 +30,12 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooter
 
 use super::{
     Need, actions::controls, discord_refusal, guild_lang, log, log_channel, member_allow, missing, number, pinging,
-    server_name, tell,
+    private, server_name, tell,
 };
 use crate::{
     Cx,
     custom::scrub_value,
+    server_events::{button, row},
     util::{BRAND, single_line, strip_mentions},
 };
 
@@ -38,18 +44,127 @@ fn question_id(n: usize) -> String {
     format!("q{n}")
 }
 
+/// The message context command lets the member pick a live panel and topic before the normal
+/// FAQ, eligibility and form flow. The source link is carried through those steps.
+pub(crate) async fn on_message_context(cx: &Cx, guild: u64, channel: u64, message: u64) -> anyhow::Result<()> {
+    if !super::module_on(&cx.app, guild, Some(channel)).await {
+        return tell(cx, t!(cx.lang(), "tickets.v2.context-unavailable")).await;
+    }
+    let options: Vec<SelectMenuOption> = cx
+        .app
+        .db
+        .ticket_panels(guild)
+        .await?
+        .into_iter()
+        .filter(|panel| panel.enabled && !panel.topics.is_empty())
+        .map(|panel| SelectMenuOption {
+            default: false,
+            description: None,
+            emoji: None,
+            label: single_line(&panel.title).chars().take(100).collect(),
+            value: panel.id.to_string(),
+        })
+        .collect();
+    if options.is_empty() {
+        return tell(cx, t!(cx.lang(), "tickets.v2.context-unavailable")).await;
+    }
+    cx.reply(private(
+        t!(cx.lang(), "tickets.v2.context-pick"),
+        vec![row(vec![Component::SelectMenu(SelectMenu {
+            channel_types: None,
+            custom_id: format!("tk:m:{channel}:{message}"),
+            default_values: None,
+            disabled: false,
+            id: None,
+            kind: SelectMenuType::Text,
+            max_values: Some(1),
+            min_values: Some(1),
+            options: Some(options),
+            placeholder: Some(t!(cx.lang(), "tickets.v2.context-pick")),
+            required: Some(true),
+        })])],
+    ))
+    .await
+}
+
+async fn choose_context_topic(cx: &Cx, panel_id: i64, source: Option<(u64, u64)>) -> anyhow::Result<()> {
+    let Some((panel, _)) = usable(cx, panel_id, 0).await? else {
+        return Ok(());
+    };
+    let Some((channel, message)) = source else {
+        return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+    };
+    let options = panel
+        .topics
+        .iter()
+        .enumerate()
+        .map(|(index, topic)| SelectMenuOption {
+            default: false,
+            description: None,
+            emoji: None,
+            label: single_line(&topic.label).chars().take(100).collect(),
+            value: index.to_string(),
+        })
+        .collect();
+    cx.reply(private(
+        t!(cx.lang(), "tickets.v2.context-topic"),
+        vec![row(vec![Component::SelectMenu(SelectMenu {
+            channel_types: None,
+            custom_id: format!("tk:q:{panel_id}:{channel}:{message}"),
+            default_values: None,
+            disabled: false,
+            id: None,
+            kind: SelectMenuType::Text,
+            max_values: Some(1),
+            min_values: Some(1),
+            options: Some(options),
+            placeholder: Some(t!(cx.lang(), "tickets.v2.context-topic")),
+            required: Some(true),
+        })])],
+    ))
+    .await
+}
+
 /// `tk:o:<panel>:<topic>` (a button) or `tk:s:<panel>` with the picked topic (a menu).
 pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
-    let picked = match parts.next() {
-        Some("o") => parts
-            .next()
-            .and_then(|p| p.parse::<i64>().ok())
-            .zip(parts.next().and_then(|t| t.parse::<usize>().ok())),
-        Some("s") => parts
-            .next()
-            .and_then(|p| p.parse::<i64>().ok())
-            .zip(values.first().and_then(|v| v.parse::<usize>().ok())),
-        _ => None,
+    let action = parts.next();
+    if action == Some("m") {
+        let source = parse_source(&mut parts);
+        let panel = values.first().and_then(|value| value.parse::<i64>().ok());
+        return match panel {
+            Some(panel) => choose_context_topic(cx, panel, source).await,
+            None => tell(cx, t!(cx.lang(), "tickets.expired")).await,
+        };
+    }
+    let (picked, source, faq_page) = match action {
+        Some("o" | "c") => (parse_panel_topic(&mut parts), None, 0),
+        Some("s") => (
+            parts
+                .next()
+                .and_then(|p| p.parse::<i64>().ok())
+                .zip(values.first().and_then(|v| v.parse::<usize>().ok())),
+            None,
+            0,
+        ),
+        Some("q") => {
+            let panel = parts.next().and_then(|p| p.parse::<i64>().ok());
+            let source = parse_source(&mut parts);
+            (
+                panel.zip(values.first().and_then(|value| value.parse::<usize>().ok())),
+                source,
+                0,
+            )
+        }
+        Some("v") => {
+            let picked = parse_panel_topic(&mut parts);
+            let page = parts.next().and_then(|part| part.parse::<usize>().ok()).unwrap_or(0);
+            (picked, parse_source(&mut parts), page)
+        }
+        Some("n" | "f") => {
+            let picked = parse_panel_topic(&mut parts);
+            (picked, parse_source(&mut parts), 0)
+        }
+        _ => (None, None, 0),
     };
     let Some((panel, index)) = picked else {
         return tell(cx, t!(cx.lang(), "tickets.expired")).await;
@@ -57,10 +172,105 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>, values: &[Strin
     let Some((panel, topic)) = usable(cx, panel, index).await? else {
         return Ok(());
     };
-    if !panel.questions.is_empty() {
-        return ask(cx, &panel, index, &panel.questions).await;
+    let ops = cx.app.db.ticket_panel_operations(panel.id).await?;
+    if !matches!(action, Some("c" | "f" | "n")) && !ops.faq.is_empty() {
+        let Some(faq) = ops.faq.get(faq_page) else {
+            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+        };
+        let mut text = t!(cx.lang(), "tickets.v2.faq-intro");
+        text.push_str(&format!(
+            "\n\n{}\n**{}**\n{}",
+            t!(
+                cx.lang(),
+                "tickets.v2.faq-position",
+                current = faq_page + 1,
+                total = ops.faq.len()
+            ),
+            scrub_value(&faq.question),
+            scrub_value(&faq.answer)
+        ));
+        let page_id = |page: usize| {
+            source.map_or_else(
+                || format!("tk:v:{}:{index}:{page}", panel.id),
+                |(channel, message)| format!("tk:v:{}:{index}:{page}:{channel}:{message}", panel.id),
+            )
+        };
+        let mut buttons = Vec::new();
+        if faq_page > 0 {
+            buttons.push(button(
+                page_id(faq_page - 1),
+                &t!(cx.lang(), "tickets.v2.faq-previous"),
+                None,
+                ButtonStyle::Secondary,
+                false,
+            ));
+        }
+        if faq_page + 1 < ops.faq.len() {
+            buttons.push(button(
+                page_id(faq_page + 1),
+                &t!(cx.lang(), "tickets.v2.faq-next"),
+                None,
+                ButtonStyle::Secondary,
+                false,
+            ));
+        }
+        buttons.push(button(
+            source.map_or_else(
+                || format!("tk:c:{}:{index}", panel.id),
+                |(channel, message)| format!("tk:n:{}:{index}:{channel}:{message}", panel.id),
+            ),
+            &t!(cx.lang(), "tickets.v2.continue"),
+            None,
+            ButtonStyle::Primary,
+            false,
+        ));
+        return cx.reply(private(text, vec![row(buttons)])).await;
     }
-    open(cx, &panel, topic, Vec::new()).await
+    if let Some(blocked) = eligibility(cx, &ops).await? {
+        return tell(cx, blocked).await;
+    }
+    if action == Some("f") {
+        let Some(guild) = cx.guild_id() else {
+            return Ok(());
+        };
+        let Some((_, step)) = cx
+            .app
+            .db
+            .ticket_form_draft(guild, cx.author()?.id.get(), panel.id, index as i32)
+            .await?
+        else {
+            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+        };
+        return ask(cx, &panel, index, &panel.questions, step as usize, source).await;
+    }
+    if !panel.questions.is_empty() {
+        return ask(cx, &panel, index, &panel.questions, 0, source).await;
+    }
+    open(cx, &panel, topic, with_source(cx, Vec::new(), source)).await
+}
+
+fn parse_panel_topic<'a>(parts: &mut impl Iterator<Item = &'a str>) -> Option<(i64, usize)> {
+    parts
+        .next()
+        .and_then(|p| p.parse::<i64>().ok())
+        .zip(parts.next().and_then(|t| t.parse::<usize>().ok()))
+}
+
+fn parse_source<'a>(parts: &mut impl Iterator<Item = &'a str>) -> Option<(u64, u64)> {
+    parts
+        .next()
+        .and_then(|id| id.parse::<u64>().ok())
+        .zip(parts.next().and_then(|id| id.parse::<u64>().ok()))
+}
+
+fn with_source(cx: &Cx, mut answers: Vec<Answer>, source: Option<(u64, u64)>) -> Vec<Answer> {
+    if let (Some(guild), Some((channel, message))) = (cx.guild_id(), source) {
+        answers.push(Answer {
+            question: t!(cx.lang(), "tickets.v2.source-message"),
+            answer: format!("https://discord.com/channels/{guild}/{channel}/{message}"),
+        });
+    }
+    answers
 }
 
 /// The form a panel asks before a ticket opens, as `tf:<panel>:<topic>`.
@@ -69,15 +279,24 @@ pub(crate) async fn on_form(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Stri
         .next()
         .and_then(|p| p.parse::<i64>().ok())
         .zip(parts.next().and_then(|t| t.parse::<usize>().ok()));
+    let step = parts.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+    let source = parse_source(&mut parts);
     let Some((panel, topic)) = picked else {
         return tell(cx, t!(cx.lang(), "tickets.expired")).await;
     };
     let Some((panel, topic)) = usable(cx, panel, topic).await? else {
         return Ok(());
     };
+    let ops = cx.app.db.ticket_panel_operations(panel.id).await?;
+    if let Some(blocked) = eligibility(cx, &ops).await? {
+        return tell(cx, blocked).await;
+    }
+    let start = step * 5;
     let answers: Vec<Answer> = panel
         .questions
         .iter()
+        .skip(start)
+        .take(5)
         .enumerate()
         .filter_map(|(n, question)| {
             let answer = fields
@@ -90,7 +309,106 @@ pub(crate) async fn on_form(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Stri
             })
         })
         .collect();
-    open(cx, &panel, topic, answers).await
+    let guild = cx
+        .guild_id()
+        .ok_or_else(|| anyhow::anyhow!("ticket form outside guild"))?;
+    let user = cx.author()?.id.get();
+    let mut all = if step == 0 {
+        Vec::new()
+    } else {
+        let Some((saved, expected)) = cx
+            .app
+            .db
+            .ticket_form_draft(
+                guild,
+                user,
+                panel.id,
+                panel.topics.iter().position(|t| t == &topic).unwrap_or_default() as i32,
+            )
+            .await?
+        else {
+            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+        };
+        if expected != step as i32 {
+            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+        }
+        serde_json::from_value::<Vec<Answer>>(saved)?
+    };
+    all.extend(answers);
+    let index = panel.topics.iter().position(|t| t == &topic).unwrap_or_default();
+    if start + 5 < panel.questions.len() {
+        let next = step + 1;
+        cx.app
+            .db
+            .save_ticket_form_draft(
+                guild,
+                user,
+                panel.id,
+                index as i32,
+                &serde_json::to_value(&all)?,
+                next as i32,
+            )
+            .await?;
+        return cx
+            .reply(private(
+                t!(
+                    cx.lang(),
+                    "tickets.v2.next-step",
+                    current = next,
+                    total = panel.questions.len().div_ceil(5)
+                ),
+                vec![row(vec![button(
+                    source.map_or_else(
+                        || format!("tk:f:{}:{index}", panel.id),
+                        |(channel, message)| format!("tk:f:{}:{index}:{channel}:{message}", panel.id),
+                    ),
+                    &t!(cx.lang(), "tickets.v2.continue"),
+                    None,
+                    ButtonStyle::Primary,
+                    false,
+                )])],
+            ))
+            .await;
+    }
+    cx.app
+        .db
+        .delete_ticket_form_draft(guild, user, panel.id, index as i32)
+        .await?;
+    open(cx, &panel, topic, with_source(cx, all, source)).await
+}
+
+async fn eligibility(cx: &Cx, ops: &TicketPanelOperations) -> anyhow::Result<Option<String>> {
+    let Some(member) = cx.interaction.member.as_ref() else {
+        return Ok(None);
+    };
+    if member
+        .roles
+        .iter()
+        .any(|role| ops.bypass_roles.contains(&(role.get() as i64)))
+    {
+        return Ok(None);
+    }
+    let now = cx.app.now();
+    let created = pinchora_core::snowflake::timestamp(cx.author()?.id.get());
+    if (now - created).num_days() < i64::from(ops.minimum_account_age_days) {
+        return Ok(Some(t!(
+            cx.lang(),
+            "tickets.v2.account-age",
+            days = ops.minimum_account_age_days
+        )));
+    }
+    if ops.minimum_membership_days > 0
+        && member
+            .joined_at
+            .is_none_or(|joined| now.timestamp() - joined.as_secs() < i64::from(ops.minimum_membership_days) * 86400)
+    {
+        return Ok(Some(t!(
+            cx.lang(),
+            "tickets.v2.membership-age",
+            days = ops.minimum_membership_days
+        )));
+    }
+    Ok(None)
 }
 
 /// The panel and topic a click names, if both still exist and the panel takes tickets; otherwise the
@@ -118,14 +436,57 @@ async fn usable(cx: &Cx, panel: i64, topic: usize) -> anyhow::Result<Option<(Tic
 }
 
 #[allow(deprecated)] // TextInput::label: the Label around it carries the label now
-async fn ask(cx: &Cx, panel: &TicketPanel, topic: usize, questions: &[Question]) -> anyhow::Result<()> {
+async fn ask(
+    cx: &Cx,
+    panel: &TicketPanel,
+    topic: usize,
+    questions: &[Question],
+    step: usize,
+    source: Option<(u64, u64)>,
+) -> anyhow::Result<()> {
     let fields = questions
         .iter()
-        .take(pinchora_core::tickets::MAX_QUESTIONS)
+        .skip(step * 5)
+        .take(5)
         .enumerate()
         .map(|(n, question)| {
-            Component::Label(Label {
-                component: Box::new(Component::TextInput(TextInput {
+            let input = if question.upload {
+                Component::FileUpload(FileUpload {
+                    custom_id: question_id(n),
+                    id: None,
+                    max_values: Some(1),
+                    min_values: Some(u8::from(question.required)),
+                    required: Some(question.required),
+                    file_types: None,
+                })
+            } else if !question.choices.is_empty() {
+                Component::SelectMenu(SelectMenu {
+                    channel_types: None,
+                    custom_id: question_id(n),
+                    default_values: None,
+                    disabled: false,
+                    id: None,
+                    kind: SelectMenuType::Text,
+                    max_values: Some(1),
+                    min_values: Some(u8::from(question.required)),
+                    options: Some(
+                        question
+                            .choices
+                            .iter()
+                            .map(|choice| SelectMenuOption {
+                                default: false,
+                                description: None,
+                                emoji: None,
+                                label: choice.clone(),
+                                value: choice.clone(),
+                            })
+                            .collect(),
+                    ),
+                    placeholder: Some(question.placeholder.clone()).filter(|s| !s.is_empty()),
+                    required: Some(question.required),
+                })
+            } else {
+                Component::TextInput(TextInput {
                     custom_id: question_id(n),
                     id: None,
                     label: None,
@@ -139,7 +500,10 @@ async fn ask(cx: &Cx, panel: &TicketPanel, topic: usize, questions: &[Question])
                         TextInputStyle::Short
                     },
                     value: None,
-                })),
+                })
+            };
+            Component::Label(Label {
+                component: Box::new(input),
                 description: None,
                 id: None,
                 label: question
@@ -151,7 +515,11 @@ async fn ask(cx: &Cx, panel: &TicketPanel, topic: usize, questions: &[Question])
         })
         .collect();
     let title: String = single_line(&panel.title).chars().take(45).collect();
-    cx.modal(format!("tf:{}:{topic}", panel.id), &title, fields).await
+    let id = source.map_or_else(
+        || format!("tf:{}:{topic}:{step}", panel.id),
+        |(channel, message)| format!("tf:{}:{topic}:{step}:{channel}:{message}", panel.id),
+    );
+    cx.modal(id, &title, fields).await
 }
 
 /// The Redis key of a member's wait between two tickets of one server.
@@ -171,12 +539,16 @@ async fn open(cx: &Cx, panel: &TicketPanel, topic: Topic, answers: Vec<Answer>) 
     let opener = author.id.get();
     let app = &cx.app;
     let settings = app.db.ticket_settings(guild).await?;
+    let ops = app.db.ticket_panel_operations(panel.id).await?;
     let key = cooldown_key(guild, opener);
-    if let Some(left) = app
-        .cache
-        .try_cooldown(&key, Duration::from_secs(OPEN_COOLDOWN_SECS))
-        .await?
-    {
+    let cooldown = if ops.cooldown_seconds > 0 {
+        app.cache
+            .try_cooldown(&key, Duration::from_secs(ops.cooldown_seconds as u64))
+            .await?
+    } else {
+        None
+    };
+    if let Some(left) = cooldown {
         return tell(cx, t!(lang, "tickets.wait", secs = left.as_secs().max(1))).await;
     }
     cx.responder.defer(true).await?;
@@ -214,6 +586,10 @@ async fn open(cx: &Cx, panel: &TicketPanel, topic: Topic, answers: Vec<Answer>) 
         None,
     )
     .await;
+    let board = app.clone();
+    tokio::spawn(async move {
+        let _ = super::refresh_status_board(&board, guild).await;
+    });
     tell(cx, t!(lang, "tickets.opened", place = format!("<#{place}>"))).await
 }
 
@@ -266,7 +642,12 @@ async fn create(
     let ticket = match opened {
         TicketOpen::Opened(ticket) => *ticket,
         TicketOpen::TooMany { open } => {
-            return Ok(Err(t!(lang, "tickets.too-many", count = open)));
+            let ops = app.db.ticket_panel_operations(panel.id).await?;
+            return Ok(Err(if ops.overflow_message.is_empty() {
+                t!(lang, "tickets.too-many", count = open)
+            } else {
+                ops.overflow_message
+            }));
         }
     };
     let user_name = cx.author()?.name.clone();
@@ -428,13 +809,23 @@ async fn welcome(
     } else {
         strip_mentions(&panel.welcome_text)
     };
-    let text = fill_welcome(
+    let mut text = fill_welcome(
         &template,
         &format!("<@{opener}>"),
         &scrub_value(&server),
         ticket.number,
         &scrub_value(&topic.label),
     );
+    if let Ok(ops) = cx.app.db.ticket_operation_settings(ticket.guild_id as u64).await
+        && outside_support_hours(&ops, cx.app.now())
+    {
+        text.push_str("\n\n");
+        text.push_str(&t!(
+            lang,
+            "tickets.v2.out-of-hours",
+            message = scrub_value(&ops.out_of_hours_message)
+        ));
+    }
     let embed = welcome_embed(ticket, &text, answers, lang);
     let roles: Vec<u64> = panel.support_roles.iter().map(|r| *r as u64).collect();
     let mut content = format!("<@{opener}>");
@@ -456,6 +847,37 @@ async fn welcome(
     if let Err(error) = sent {
         tracing::warn!(ticket = ticket.id, %error, "ticket welcome not posted");
     }
+    for (index, batch) in answers.iter().skip(5).collect::<Vec<_>>().chunks(5).enumerate() {
+        let mut embed = EmbedBuilder::new()
+            .color(BRAND)
+            .title(t!(lang, "tickets.v2.more-answers", page = index + 2));
+        for answer in batch {
+            embed = embed.field(EmbedFieldBuilder::new(
+                single_line(&answer.question).chars().take(256).collect::<String>(),
+                scrub_value(&answer.answer).chars().take(900).collect::<String>(),
+            ));
+        }
+        let embeds = [cx.app.brand_embed(ticket.guild_id as u64, embed.build()).await];
+        if let Err(error) = cx.app.http.create_message(Id::new(place)).embeds(&embeds).await {
+            tracing::warn!(ticket = ticket.id, %error, "additional ticket form answers not posted");
+        }
+    }
+}
+
+fn outside_support_hours(settings: &pinchora_db::TicketOperationSettings, now: chrono::DateTime<Utc>) -> bool {
+    if settings.support_hours.is_empty() {
+        return false;
+    }
+    let Ok(tz) = settings.support_timezone.parse::<Tz>() else {
+        return false;
+    };
+    let local = now.with_timezone(&tz);
+    let day = local.weekday().number_from_monday() as u8;
+    let minute = (local.hour() * 60 + local.minute()) as u16;
+    !settings
+        .support_hours
+        .iter()
+        .any(|window| window.day == day && window.start <= minute && minute < window.end)
 }
 
 pub(crate) fn welcome_embed(ticket: &Ticket, text: &str, answers: &[Answer], lang: pinchora_core::i18n::Lang) -> Embed {

@@ -17,8 +17,8 @@ pub const MAX_PANELS: usize = 10;
 pub const MAX_BUTTONS: usize = 5;
 /// Topics a panel with a menu offers (Discord's options per menu).
 pub const MAX_OPTIONS: usize = 25;
-/// Questions one form asks (Discord's text inputs per modal).
-pub const MAX_QUESTIONS: usize = 5;
+/// Questions one form asks across up to four five-input Discord modals.
+pub const MAX_QUESTIONS: usize = 20;
 pub const PANEL_NAME_MAX: usize = 32;
 pub const TITLE_MAX: usize = 100;
 pub const DESCRIPTION_MAX: usize = 2_000;
@@ -128,6 +128,12 @@ pub struct Question {
     pub long: bool,
     #[serde(default = "yes")]
     pub required: bool,
+    /// A modal select replaces the text box when choices are present.
+    #[serde(default)]
+    pub choices: Vec<String>,
+    /// A modal file upload replaces the text box.
+    #[serde(default)]
+    pub upload: bool,
 }
 
 fn yes() -> bool {
@@ -300,6 +306,18 @@ pub fn check_questions(questions: &[Question], lang: Lang) -> Vec<FieldError> {
                     number = number,
                     max = PLACEHOLDER_MAX
                 ),
+            ));
+        }
+        if (question.upload && !question.choices.is_empty())
+            || question.choices.len() > 25
+            || question
+                .choices
+                .iter()
+                .any(|choice| choice.trim().is_empty() || chars(choice) > 100)
+        {
+            problems.push(FieldError::new(
+                "questions",
+                t!(lang, "tickets.check.question-kind", number = number),
             ));
         }
     }
@@ -894,16 +912,20 @@ mod tests {
     }
 
     #[test]
-    fn forms_ask_at_most_five_short_questions() {
+    fn forms_ask_up_to_twenty_questions_across_steps() {
         let q = |label: &str| Question {
             label: label.into(),
             placeholder: String::new(),
             long: false,
             required: true,
+            choices: Vec::new(),
+            upload: false,
         };
         assert!(check_questions(&[q("Your order number")], Lang::En).is_empty());
         let six: Vec<Question> = (0..6).map(|n| q(&format!("Q{n}"))).collect();
-        assert_eq!(check_questions(&six, Lang::En).len(), 1);
+        assert!(check_questions(&six, Lang::En).is_empty());
+        let twenty_one: Vec<Question> = (0..21).map(|n| q(&format!("Q{n}"))).collect();
+        assert_eq!(check_questions(&twenty_one, Lang::En).len(), 1);
         assert_eq!(check_questions(&[q(""), q(&"x".repeat(46))], Lang::En).len(), 2);
         let json: Vec<Question> = serde_json::from_str("[{\"label\":\"Why?\"}]").expect("valid JSON");
         assert!(json[0].required && !json[0].long, "required unless said otherwise");

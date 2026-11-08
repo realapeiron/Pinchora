@@ -27,6 +27,126 @@ fn panel(name: &str) -> Value {
     })
 }
 
+#[tokio::test]
+async fn ticket_v2_management_is_scoped_csrf_checked_and_audited() {
+    let Some(h) = Harness::new("tickets_v2_management").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    let root = format!("{}/v2", t(guild));
+    let config = json!({
+        "support_timezone": "Europe/Istanbul", "support_hours": [{"day": 1, "start": 540, "end": 1020}],
+        "out_of_hours_message": "We return tomorrow.", "status_channel_id": null,
+        "close_timeout_hours": 24,
+    });
+    let csrf = browser.csrf.take();
+    assert_eq!(
+        browser
+            .write(Method::PUT, &format!("{root}/settings"), config.clone())
+            .await
+            .code(),
+        "csrf"
+    );
+    browser.csrf = csrf;
+    let saved = browser.write(Method::PUT, &format!("{root}/settings"), config).await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    assert_eq!(saved.json()["support_timezone"], "Europe/Istanbul");
+    let made = browser
+        .write(Method::POST, &format!("{}/panels", t(guild)), panel("V2 desk"))
+        .await;
+    assert_eq!(made.status, StatusCode::CREATED, "{}", made.text());
+    let panel_id = made.json()["id"].as_str().unwrap().parse::<i64>().unwrap();
+    let panel_ops = json!({"claim_mode":"exclusive","max_open_per_panel":2,
+        "max_open_per_category":0,"cooldown_seconds":60,"minimum_account_age_days":0,
+        "minimum_membership_days":0,"bypass_roles":[FAN.to_string()],"staff_open_limit":1,
+        "overflow_message":"Queue full","faq":[{"question":"Hours?","answer":"Weekdays."}]});
+    let saved = browser
+        .write(Method::PUT, &format!("{root}/panel/{panel_id}"), panel_ops)
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    assert_eq!(saved.json()["bypass_roles"][0], FAN.to_string());
+    let snippet = browser
+        .write(
+            Method::POST,
+            &format!("{root}/snippets"),
+            json!({"name":"Welcome","body":"Hi {user}, ticket {number}"}),
+        )
+        .await;
+    assert_eq!(snippet.status, StatusCode::OK, "{}", snippet.text());
+    assert_eq!(
+        browser.get(&format!("{root}/snippets")).await.json()["items"][0]["name"],
+        "Welcome"
+    );
+    let ticket_id = seed_ticket(
+        &h.state.app.db,
+        guild,
+        Some(panel_id),
+        (owner + 100, "Customer"),
+        owner,
+        "Help",
+        false,
+    )
+    .await;
+    let ticket = format!("{root}/ticket/{ticket_id}");
+    let note = browser
+        .write(
+            Method::POST,
+            &format!("{ticket}/notes"),
+            json!({"text":"Private details"}),
+        )
+        .await;
+    assert_eq!(note.status, StatusCode::OK, "{}", note.text());
+    assert_eq!(
+        browser.get(&format!("{ticket}/notes")).await.json()["items"][0]["body"],
+        "Private details"
+    );
+    let unclaimed_reply = browser
+        .write(Method::POST, &format!("{ticket}/reply"), json!({"text":"Hello"}))
+        .await;
+    assert_eq!(unclaimed_reply.code(), "claim_required");
+    let claimed = browser.write(Method::POST, &format!("{ticket}/claim"), json!({})).await;
+    assert_eq!(claimed.status, StatusCode::OK, "{}", claimed.text());
+    assert_eq!(
+        browser
+            .write(Method::POST, &format!("{ticket}/claim"), json!({}))
+            .await
+            .code(),
+        "ticket_claimed"
+    );
+    let leaderboard = browser.get(&format!("{root}/leaderboard")).await.json();
+    assert_eq!(leaderboard["items"][0]["claimed"], 1);
+    let reply = browser
+        .write(
+            Method::POST,
+            &format!("{ticket}/reply"),
+            json!({"text":"Hello from the bot"}),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.text());
+    let transcript = browser.get(&format!("{}/ticket/{ticket_id}", t(guild))).await.json();
+    assert!(
+        transcript.get("notes").is_none(),
+        "notes never enter opener-visible transcript payloads"
+    );
+    let audit = browser.get(&format!("/api/guilds/{guild}/audit")).await.json();
+    let actions: Vec<&str> = audit["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|row| row["action"].as_str())
+        .collect();
+    for action in [
+        "tickets.v2.settings",
+        "tickets.v2.panel",
+        "tickets.v2.note",
+        "tickets.v2.claim",
+        "tickets.v2.reply",
+    ] {
+        assert!(actions.contains(&action), "missing {action}");
+    }
+    assert!(!audit.to_string().contains("Private details"));
+}
+
 /// A member's ticket opened on `panel`, then (when `close`) answered by `staff` and closed with a transcript
 /// that holds hostile text, as the bot would leave it.
 async fn seed_ticket(

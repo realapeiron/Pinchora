@@ -1,5 +1,10 @@
 [
   {
+    "legacy": "Open ticket",
+    "canonical": "Open ticket",
+    "slice": 0
+  },
+  {
     "legacy": "Report",
     "canonical": "Report",
     "slice": 0
@@ -1950,8 +1955,28 @@
     "slice": 0
   },
   {
+    "legacy": "ticket escalate",
+    "canonical": "ticket escalate",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket force-open",
+    "canonical": "ticket force-open",
+    "slice": 0
+  },
+  {
     "legacy": "ticket move",
     "canonical": "ticket move",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket note",
+    "canonical": "ticket note",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket priority",
+    "canonical": "ticket priority",
     "slice": 0
   },
   {
@@ -1970,8 +1995,23 @@
     "slice": 0
   },
   {
+    "legacy": "ticket request-close",
+    "canonical": "ticket request-close",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket snippet",
+    "canonical": "ticket snippet",
+    "slice": 0
+  },
+  {
     "legacy": "ticket transcript",
     "canonical": "ticket transcript",
+    "slice": 0
+  },
+  {
+    "legacy": "ticket transfer",
+    "canonical": "ticket transfer",
     "slice": 0
   },
   {

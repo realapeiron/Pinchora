@@ -534,7 +534,7 @@ impl Module {
             "surge" => Self::Party,
             "party" => Self::PartyGames,
             "stats" | "counters" => Self::Stats,
-            "ticket" | "tickets" => Self::Tickets,
+            "ticket" | "tickets" | "Open ticket" => Self::Tickets,
             "starboard" => Self::Starboard,
             "invites" | "inviteadmin" => Self::Invites,
             "afk" | "sticky" | "schedule" | "highlight" | "checklist" | "autopost" => Self::Utility,

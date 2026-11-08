@@ -132,7 +132,8 @@ pub use stats::{
 pub use text::on_text_command;
 pub use tickets::{
     PanelPost as TicketPanelPost, close_from_web as close_ticket_from_web, on_place_deleted as on_ticket_place_deleted,
-    post_panel as post_ticket_panel, spawn_ticker as spawn_tickets_ticker, tick as tickets_tick,
+    post_panel as post_ticket_panel, refresh_status_board as refresh_ticket_status_board,
+    spawn_ticker as spawn_tickets_ticker, tick as tickets_tick,
 };
 pub use util::fill;
 pub use voice_xp::{
@@ -217,7 +218,7 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         }
         Some(InteractionData::ModalSubmit(modal)) => {
             let label = modal.custom_id.split(':').next().unwrap_or_default().to_owned();
-            let fields = components::modal_fields(&modal.components);
+            let fields = components::modal_fields(&modal.components, modal.resolved.as_ref());
             (
                 format!("modal:{label}"),
                 Box::pin(components::dispatch_modal(&cx, &modal.custom_id, &fields)).await,

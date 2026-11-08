@@ -4736,6 +4736,97 @@
           "usage": "/ticket move <category>"
         },
         {
+          "aliases": [],
+          "description": "Set this ticket's priority (staff)",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Low",
+                "Normal",
+                "High",
+                "Urgent"
+              ],
+              "description": "Low, normal, high or urgent",
+              "name": "level",
+              "required": true
+            }
+          ],
+          "path": "ticket priority",
+          "usage": "/ticket priority <level>"
+        },
+        {
+          "aliases": [],
+          "description": "Escalate this ticket as urgent (staff)",
+          "manager": false,
+          "options": [],
+          "path": "ticket escalate",
+          "usage": "/ticket escalate"
+        },
+        {
+          "aliases": [],
+          "description": "Assign this ticket to a staff member or support role",
+          "manager": false,
+          "options": [
+            {
+              "description": "The staff member taking over",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "A support role taking over",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "ticket transfer",
+          "usage": "/ticket transfer [user] [role]"
+        },
+        {
+          "aliases": [],
+          "description": "Ask the opener to confirm closing this ticket",
+          "manager": false,
+          "options": [],
+          "path": "ticket request-close",
+          "usage": "/ticket request-close"
+        },
+        {
+          "aliases": [],
+          "description": "Reopen a closed ticket as staff",
+          "manager": false,
+          "options": [],
+          "path": "ticket force-open",
+          "usage": "/ticket force-open"
+        },
+        {
+          "aliases": [],
+          "description": "Save a private staff note, never shown in transcripts",
+          "manager": false,
+          "options": [
+            {
+              "description": "Only staff can see this note in the dashboard",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "ticket note",
+          "usage": "/ticket note <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Send a saved reply with ticket placeholders",
+          "manager": false,
+          "options": [
+            {
+              "description": "Saved reply name",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "ticket snippet",
+          "usage": "/ticket snippet <name>"
+        },
+        {
           "aliases": [
             "tickets panel create"
           ],
@@ -4962,6 +5053,14 @@
           ],
           "path": "community tickets settings",
           "usage": "/community tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
+        },
+        {
+          "aliases": [],
+          "description": "Open a private support ticket from a message.",
+          "manager": false,
+          "options": [],
+          "path": "Open ticket",
+          "usage": "Message menu → Open ticket"
         },
         {
           "aliases": [
@@ -8447,5 +8546,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 443
+  "count": 451
 }

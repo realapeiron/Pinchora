@@ -714,6 +714,8 @@ dashboard's Community group).
 | `/community tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]` | Where ticket channels go and where closed ones move, the log channel, closing tickets nobody wrote in for 1 to 720 hours, the transcript by direct message, 1 to 5 star ratings, channels or private threads (automatic: threads once the server has more than 400 channels), the channel name (`ticket-{number}`, also `{user}` `{topic}`) and how many tickets one member may have open (1 to 10). No options shows them (Manage Server) |
 | `/ticket close [reason]`, `/ticket transcript` | In a ticket: close it, or get its messages as a web page only you see. The member who opened it may do both |
 | `/ticket claim\|unclaim\|add user\|remove user\|rename name\|reopen\|move category` | In a ticket, for staff (a support role, Manage Channels or Manage Server): say you handle it or hand it back, let someone in or take them out, rename the channel, reopen a closed ticket, move the channel to another category |
+| `/ticket priority level\|escalate\|transfer [user] [role]\|request-close\|force-open\|note text\|snippet name` | Staff operations: set priority, escalate, transfer to a staff member or support role, ask the opener to confirm closing (with a timeout), reopen, save a private note, or send a saved reply |
+| Message **Open ticket** | Open a ticket from a message context menu. Pick a panel and topic; the source message link follows the FAQ and form into the ticket. |
 
 - **Opening**: a member presses a topic (or picks it from the menu); a panel with a form asks up to five questions
   first and the answers open the ticket. The bot makes `ticket-0042` in the ticket category, seen only by the
@@ -740,6 +742,11 @@ dashboard's Community group).
 - **Dashboard** (Tickets page): settings, panels with tabs (Buttons, Behaviour, Form, Log), a live preview and a
   **Post** button, the tickets table (open, claimed, closed; by staff, member or words) with each ticket's
   transcript, a Close button in the list and detail, and the last 7 and 30 days: opened, closed, median first reply and ratings.
+- **Operations v2**: support hours and an out-of-hours message, a live status board, saved replies with `{user}`
+  `{server}` `{number}` `{topic}` placeholders, per-panel FAQ before opening, claim modes, age and membership
+  checks, bypass roles, per-panel/category/staff limits, cooldowns and overflow text. Forms take up to 20 questions
+  across four steps, including choice and file-upload inputs. All answers appear in the ticket. Ticket View allows staff to claim, unclaim, reply as
+  the bot and keep private notes; notes never enter the ticket channel or transcripts.
 
 ### Temp voice
 

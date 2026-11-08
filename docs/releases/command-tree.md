@@ -1,5 +1,11 @@
 # Command tree release rehearsal
 
+D12 extends `/ticket` with seven staff leaves (`priority`, `escalate`, `transfer`, `request-close`,
+`force-open`, `note`, `snippet`). The root has 16 children and remains below the 6,800-character
+limit. No slash root is added. Migration **0086** adds ticket operation state, panel and support
+settings, private notes, snippets and form drafts. Dashboard routes remain beneath `/tickets`
+and map to W7's community access area. Claim and close use database compare-and-set updates.
+
 D6 collection depth extends the existing `/dex` panel and `/critterdrop` interactions; it adds no slash root or child. The `/me/collection` and `/me/wishlist` player pages share the same database state. Migration **0084** only. No registration or deployment is performed here.
 
 D10 adds `/highlight`, `/checklist`, `/autopost`, `/anniversary` and `/confess` as feature roots. Existing `/giveaway`, `/poll`, `/suggestion` and `/remind` grow within their budgets. Registration now has **78 slash roots plus Report**. `/community` gains no children and stays under its 6,400-character budget. D10 uses migration 0079 only.
@@ -177,3 +183,10 @@ under `/progression economy tools` with the server-side Manage Server check.
 Migration 0083 only. Apply before restarting the gateway/web processes, which then share
 the 30-second idempotent auction/trade sweeper. Register the regenerated tree only through
 the owner's ordinary release process. No registration or deployment is performed here.
+
+## D12 ticket operations v2
+
+The `/ticket` root has 16 children and remains below the 6,800-character limit. Message
+**Open ticket** adds a context action that carries the source message link through panel
+selection, FAQ and multi-step forms. Registration has 78 slash roots and two message actions.
+Migration 0086 only; web ticket routes use the Community access area.

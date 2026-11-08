@@ -279,14 +279,19 @@ mod route_inventory_tests {
         let body = enclosed(router, '{', '}');
         for call in body.split(".nest(").skip(1) {
             let args = enclosed(&format!("({call}"), '(', ')').to_owned();
-            let (path, module) = args.split_once(',').unwrap();
-            let module = module
+            let (path, child) = args.split_once(',').unwrap();
+            let child = child
                 .split("::router")
                 .next()
                 .unwrap()
                 .trim()
                 .trim_start_matches("super::");
-            registered(module, &format!("{prefix}{}", path.trim().trim_matches('"')), found);
+            let nested = format!("{module}/{child}");
+            let nested_file = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src/routes")
+                .join(format!("{nested}.rs"));
+            let next = if nested_file.exists() { nested.as_str() } else { child };
+            registered(next, &format!("{prefix}{}", path.trim().trim_matches('"')), found);
         }
         for call in body.split(".route(").skip(1) {
             let args = enclosed(&format!("({call}"), '(', ')').to_owned();

@@ -142,6 +142,13 @@ pub(crate) enum TicketAct {
     Transcript,
     Reopen,
     Move(u64),
+    Priority(String),
+    Escalate,
+    Transfer(Option<u64>, Option<u64>),
+    RequestClose,
+    ForceOpen,
+    Note(String),
+    Snippet(String),
 }
 
 impl TicketAct {
@@ -156,6 +163,10 @@ impl TicketAct {
             Self::Transcript => Action::Transcript,
             Self::Reopen => Action::Reopen,
             Self::Move(_) => Action::Move,
+            Self::Priority(_) | Self::Escalate | Self::Transfer(_, _) | Self::Snippet(_) => Action::Rename,
+            Self::RequestClose => Action::Close,
+            Self::ForceOpen => Action::Reopen,
+            Self::Note(_) => Action::Transcript,
         }
     }
 }
@@ -180,6 +191,19 @@ pub(crate) async fn run_action(cx: &Cx, act: TicketAct) -> anyhow::Result<()> {
     let Some((ticket, panel)) = here(cx).await? else {
         return Ok(());
     };
+    if matches!(
+        act,
+        TicketAct::Priority(_)
+            | TicketAct::Escalate
+            | TicketAct::Transfer(_, _)
+            | TicketAct::RequestClose
+            | TicketAct::ForceOpen
+            | TicketAct::Note(_)
+            | TicketAct::Snippet(_)
+    ) && !is_staff(cx, panel.as_ref())
+    {
+        return refuse(cx, Refusal::StaffOnly).await;
+    }
     if !allowed(cx, &ticket, panel.as_ref(), act.action()).await? {
         return Ok(());
     }
@@ -201,6 +225,20 @@ pub(crate) async fn run_action(cx: &Cx, act: TicketAct) -> anyhow::Result<()> {
             reopen(cx, &ticket, panel.as_ref()).await
         }
         TicketAct::Move(category) => move_to(cx, &ticket, category).await,
+        TicketAct::Priority(level) => priority(cx, &ticket, &level, false).await,
+        TicketAct::Escalate => priority(cx, &ticket, "urgent", true).await,
+        TicketAct::Transfer(user, role) => transfer(cx, &ticket, panel.as_ref(), user, role).await,
+        TicketAct::RequestClose => request_close(cx, &ticket).await,
+        TicketAct::ForceOpen => {
+            reopen(cx, &ticket, panel.as_ref()).await?;
+            cx.app
+                .db
+                .mark_ticket_force_opened(ticket.id, cx.author()?.id.get())
+                .await?;
+            tell(cx, t!(cx.lang(), "tickets.v2.force-open")).await
+        }
+        TicketAct::Note(body) => note(cx, &ticket, &body).await,
+        TicketAct::Snippet(name) => snippet(cx, &ticket, &name).await,
     }
 }
 
@@ -239,7 +277,7 @@ pub(crate) async fn on_control(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::R
         None => None,
     };
     let wanted = match action.as_str() {
-        "cl" | "cy" => Action::Close,
+        "cl" | "cy" | "rc" => Action::Close,
         "cm" => {
             if ticket.claimed_by.is_some() {
                 Action::Unclaim
@@ -278,6 +316,28 @@ pub(crate) async fn on_control(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::R
             .await
         }
         "cy" => {
+            cx.update(InteractionResponseData {
+                content: Some(t!(lang, "tickets.closing", number = number(ticket.number))),
+                components: Some(Vec::new()),
+                allowed_mentions: quiet(),
+                ..Default::default()
+            })
+            .await?;
+            close(&cx.app, ticket, panel, Some(actor(cx)?), None, None).await?;
+            Ok(())
+        }
+        "rc" => {
+            if cx.author()?.id.get() != ticket.opener_id as u64
+                || cx
+                    .app
+                    .db
+                    .ticket_operations(ticket.id)
+                    .await?
+                    .close_request_expires_at
+                    .is_none()
+            {
+                return tell(cx, t!(lang, "tickets.expired")).await;
+            }
             cx.update(InteractionResponseData {
                 content: Some(t!(lang, "tickets.closing", number = number(ticket.number))),
                 components: Some(Vec::new()),
@@ -402,11 +462,186 @@ async fn claim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
         None,
     )
     .await;
+    let board = cx.app.clone();
+    let guild = ticket.guild_id as u64;
+    tokio::spawn(async move {
+        let _ = super::refresh_status_board(&board, guild).await;
+    });
     tell(cx, t!(lang, "tickets.claimed-you", number = number(ticket.number))).await
 }
 
+async fn priority(cx: &Cx, ticket: &Ticket, level: &str, escalate: bool) -> anyhow::Result<()> {
+    if !cx.app.db.set_ticket_priority(ticket.id, level, escalate).await? {
+        return refuse(cx, Refusal::AlreadyClosed).await;
+    }
+    let label = match level {
+        "low" => t!(cx.lang(), "tickets.v2.priority-low"),
+        "high" => t!(cx.lang(), "tickets.v2.priority-high"),
+        "urgent" => t!(cx.lang(), "tickets.v2.priority-urgent"),
+        _ => t!(cx.lang(), "tickets.v2.priority-normal"),
+    };
+    tell(cx, t!(cx.lang(), "tickets.v2.priority", priority = label)).await
+}
+
+async fn transfer(
+    cx: &Cx,
+    ticket: &Ticket,
+    panel: Option<&TicketPanel>,
+    user: Option<u64>,
+    role: Option<u64>,
+) -> anyhow::Result<()> {
+    if user.is_some() == role.is_some() {
+        return tell(cx, t!(cx.lang(), "tickets.v2.transfer-pick")).await;
+    }
+    if let Some(role) = role
+        && !panel.is_some_and(|p| p.support_roles.contains(&(role as i64)))
+    {
+        return tell(cx, t!(cx.lang(), "tickets.v2.transfer-role")).await;
+    }
+    if let Some(user) = user {
+        let guild = Id::new(ticket.guild_id as u64);
+        let member = cx.app.http.guild_member(guild, Id::new(user)).await?.model().await?;
+        let roles = cx.app.http.roles(guild).await?.models().await?;
+        let staff = member.roles.iter().any(|held| {
+            roles.iter().any(|role| {
+                role.id == *held
+                    && (panel.is_some_and(|p| p.support_roles.contains(&(held.get() as i64)))
+                        || super::STAFF_PERMISSIONS
+                            .iter()
+                            .any(|needed| role.permissions.contains(*needed)))
+            })
+        });
+        let owner = cx.app.http.guild(guild).await?.model().await?.owner_id.get() == user;
+        if !staff && !owner {
+            return tell(cx, t!(cx.lang(), "tickets.v2.transfer-staff")).await;
+        }
+    }
+    if !cx.app.db.transfer_ticket(ticket.id, user, role).await? {
+        return if cx
+            .app
+            .db
+            .ticket(ticket.id)
+            .await?
+            .is_some_and(|ticket| ticket.is_open())
+        {
+            tell(cx, t!(cx.lang(), "tickets.v2.transfer-staff-limit")).await
+        } else {
+            refuse(cx, Refusal::AlreadyClosed).await
+        };
+    }
+    let target = user.map_or_else(|| format!("<@&{}>", role.unwrap_or_default()), mention);
+    notice(
+        &cx.app,
+        ticket.guild_id as u64,
+        place_of(ticket),
+        SUCCESS,
+        t!(cx.lang(), "tickets.v2.transferred", target = target),
+        Vec::new(),
+    )
+    .await;
+    tell(cx, t!(cx.lang(), "tickets.v2.transferred", target = target)).await
+}
+
+async fn request_close(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
+    let settings = cx.app.db.ticket_operation_settings(ticket.guild_id as u64).await?;
+    if !cx
+        .app
+        .db
+        .request_ticket_close(ticket.id, cx.author()?.id.get(), settings.close_timeout_hours)
+        .await?
+    {
+        return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+    }
+    let confirm = row(vec![button(
+        format!("tp:rc:{}", ticket.id),
+        &t!(cx.lang(), "tickets.v2.close-confirm"),
+        None,
+        ButtonStyle::Danger,
+        false,
+    )]);
+    notice(
+        &cx.app,
+        ticket.guild_id as u64,
+        place_of(ticket),
+        WARN,
+        t!(
+            cx.lang(),
+            "tickets.v2.close-requested",
+            hours = settings.close_timeout_hours
+        ),
+        vec![confirm],
+    )
+    .await;
+    tell(
+        cx,
+        t!(
+            cx.lang(),
+            "tickets.v2.close-requested",
+            hours = settings.close_timeout_hours
+        ),
+    )
+    .await
+}
+
+async fn note(cx: &Cx, ticket: &Ticket, body: &str) -> anyhow::Result<()> {
+    let body: String = body.trim().chars().take(2000).collect();
+    if body.is_empty() {
+        return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+    }
+    cx.app
+        .db
+        .add_ticket_staff_note(ticket.id, cx.author()?.id.get(), &body)
+        .await?;
+    tell(cx, t!(cx.lang(), "tickets.v2.note-saved")).await
+}
+
+async fn snippet(cx: &Cx, ticket: &Ticket, name: &str) -> anyhow::Result<()> {
+    let Some(saved) = cx
+        .app
+        .db
+        .ticket_snippets(ticket.guild_id as u64)
+        .await?
+        .into_iter()
+        .find(|s| s.name.eq_ignore_ascii_case(name.trim()))
+    else {
+        return tell(cx, t!(cx.lang(), "tickets.v2.snippet-missing")).await;
+    };
+    let panel = match ticket.panel_id {
+        Some(id) => cx.app.db.ticket_panel(id).await?,
+        None => None,
+    };
+    let claim_mode = match panel.as_ref() {
+        Some(p) => cx.app.db.ticket_panel_operations(p.id).await?.claim_mode,
+        None => "optional".into(),
+    };
+    if claim_mode != "optional" && ticket.claimed_by.is_none() {
+        return tell(cx, t!(cx.lang(), "tickets.v2.claimed-required")).await;
+    }
+    if claim_mode == "exclusive" && ticket.claimed_by != Some(cx.author()?.id.get() as i64) {
+        return tell(cx, t!(cx.lang(), "tickets.v2.exclusive-claim")).await;
+    }
+    let Some(place) = place_of(ticket) else {
+        return tell(cx, t!(cx.lang(), "tickets.gone")).await;
+    };
+    let body = pinchora_core::tickets::fill_welcome(
+        &crate::util::strip_mentions(&saved.body),
+        &mention(ticket.opener_id as u64),
+        &crate::util::strip_mentions(&server_name(&cx.app, ticket.guild_id as u64).await),
+        ticket.number,
+        &crate::util::strip_mentions(&ticket.topic),
+    );
+    let body: String = body.chars().take(2000).collect();
+    cx.app
+        .http
+        .create_message(place)
+        .content(&body)
+        .allowed_mentions(Some(&quiet().unwrap_or_default()))
+        .await?;
+    tell(cx, t!(cx.lang(), "tickets.v2.snippet-sent")).await
+}
+
 async fn unclaim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
-    if !cx.app.db.unclaim_ticket(ticket.id).await? {
+    if !cx.app.db.unclaim_ticket_by(ticket.id, cx.author()?.id.get()).await? {
         return refuse(cx, Refusal::NotClaimed).await;
     }
     let server = guild_lang(&cx.app, ticket.guild_id as u64).await;
@@ -875,6 +1110,10 @@ pub(crate) async fn close(
     )
     .await;
     tell_opener(app, &closed, &settings, &server, (file, html)).await;
+    let board = app.clone();
+    tokio::spawn(async move {
+        let _ = super::refresh_status_board(&board, guild).await;
+    });
     Ok(Some(closed))
 }
 
@@ -1107,7 +1346,55 @@ async fn delete(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
 /// a newer one makes it busy again. A ticket whose channel is gone closes too. Returns how many closed.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let now = app.now();
+    app.db.purge_expired_ticket_form_drafts().await?;
     let mut closed = 0;
+    for (id, guild, place) in app.db.due_ticket_reminders(now, 25).await? {
+        if !module_on(app, guild as u64, Some(place as u64)).await || !app.db.claim_ticket_reminder(id).await? {
+            continue;
+        }
+        let lang = guild_lang(app, guild as u64).await;
+        notice(
+            app,
+            guild as u64,
+            Some(Id::new(place as u64)),
+            WARN,
+            t!(lang, "tickets.v2.idle-reminder"),
+            Vec::new(),
+        )
+        .await;
+    }
+    for id in app.db.due_ticket_close_requests(now, 25).await? {
+        let Some(ticket) = app.db.ticket(id).await? else {
+            continue;
+        };
+        let guild = ticket.guild_id as u64;
+        if !module_on(app, guild, ticket.place()).await {
+            continue;
+        }
+        let panel = match ticket.panel_id {
+            Some(id) => app.db.ticket_panel(id).await?,
+            None => None,
+        };
+        let lang = guild_lang(app, guild).await;
+        if close(
+            app,
+            ticket,
+            panel,
+            None,
+            Some(t!(lang, "tickets.v2.close-timeout")),
+            None,
+        )
+        .await?
+        .is_some()
+        {
+            closed += 1;
+        }
+    }
+    for (guild, _, _) in app.db.ticket_status_boards().await? {
+        if let Err(error) = super::refresh_status_board(app, guild as u64).await {
+            tracing::warn!(guild, %error, "ticket status board not refreshed");
+        }
+    }
     for idle in app.db.idle_tickets(now, 25).await? {
         let (guild, place) = (idle.guild_id as u64, idle.place as u64);
         // A ticket skipped here goes to the back of the queue, so 25 that can never close (a switched-off

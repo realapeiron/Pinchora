@@ -176,15 +176,31 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
 }
 
 /// Every text input of a submitted modal, wherever its label or row put it.
-pub(crate) fn modal_fields(components: &[ModalInteractionComponent]) -> Vec<(String, String)> {
+pub(crate) fn modal_fields(
+    components: &[ModalInteractionComponent],
+    resolved: Option<&twilight_model::application::interaction::InteractionDataResolved>,
+) -> Vec<(String, String)> {
     let mut fields = Vec::new();
     for component in components {
         match component {
-            ModalInteractionComponent::ActionRow(row) => fields.extend(modal_fields(&row.components)),
+            ModalInteractionComponent::ActionRow(row) => fields.extend(modal_fields(&row.components, resolved)),
             ModalInteractionComponent::Label(label) => {
-                fields.extend(modal_fields(std::slice::from_ref(&label.component)))
+                fields.extend(modal_fields(std::slice::from_ref(&label.component), resolved))
             }
             ModalInteractionComponent::TextInput(input) => fields.push((input.custom_id.clone(), input.value.clone())),
+            ModalInteractionComponent::StringSelect(select) => {
+                fields.push((select.custom_id.clone(), select.values.join(", ")))
+            }
+            ModalInteractionComponent::FileUpload(upload) => {
+                let files = upload
+                    .values
+                    .iter()
+                    .filter_map(|id| resolved?.attachments.get(id))
+                    .map(|file| format!("{}: {}", file.filename, file.url))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                fields.push((upload.custom_id.clone(), files));
+            }
             _ => {}
         }
     }

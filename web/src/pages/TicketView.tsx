@@ -15,6 +15,7 @@ import {
 } from "../lib/tickets";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
+import { TicketOperationsPanel } from "./TicketOperationsPanel";
 
 const STATE_BADGE = { open: "badge-gold", claimed: "badge-mint", closed: "tk-badge-quiet" } as const;
 
@@ -148,6 +149,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
           </dl>
         )}
       </Panel>
+      <TicketOperationsPanel guild={guild} ticket={ticket} />
       <Panel
         title={spaTranslate("TRANSCRIPT")}
         aside={

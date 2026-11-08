@@ -497,6 +497,10 @@ impl Db {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(new.opener)]).await?;
         let guild = sql_id(new.guild_id);
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('ticket-open:' || $1::text, 0))")
+            .bind(guild)
+            .execute(&mut *tx)
+            .await?;
         let (open,): (i64,) =
             sqlx::query_as("SELECT count(*) FROM tickets WHERE guild_id = $1 AND opener_id = $2 AND status = 'open'")
                 .bind(guild)
@@ -505,6 +509,46 @@ impl Db {
                 .await?;
         if open >= i64::from(new.max_open) {
             return Ok(TicketOpen::TooMany { open });
+        }
+        if let Some(panel) = new.panel_id {
+            let limits: Option<(i32, i32, Option<i64>)> = sqlx::query_as(
+                "SELECT COALESCE(o.max_open_per_panel, 0), COALESCE(o.max_open_per_category, 0),
+                    COALESCE(p.open_category_id, s.open_category_id)
+                 FROM ticket_panels p LEFT JOIN ticket_panel_operations o ON o.panel_id=p.id
+                 LEFT JOIN ticket_settings s ON s.guild_id=p.guild_id WHERE p.id=$1",
+            )
+            .bind(panel)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if let Some((panel_max, category_max, category)) = limits {
+                if panel_max > 0 {
+                    let count: i64 =
+                        sqlx::query_scalar("SELECT count(*) FROM tickets WHERE panel_id=$1 AND status='open'")
+                            .bind(panel)
+                            .fetch_one(&mut *tx)
+                            .await?;
+                    if count >= i64::from(panel_max) {
+                        return Ok(TicketOpen::TooMany { open: count });
+                    }
+                }
+                if category_max > 0
+                    && let Some(category) = category
+                {
+                    let count: i64 = sqlx::query_scalar(
+                        "SELECT count(*) FROM tickets t JOIN ticket_panels p ON p.id=t.panel_id
+                         LEFT JOIN ticket_settings s ON s.guild_id=t.guild_id
+                         WHERE t.guild_id=$1 AND t.status='open'
+                         AND COALESCE(p.open_category_id, s.open_category_id)=$2",
+                    )
+                    .bind(guild)
+                    .bind(category)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                    if count >= i64::from(category_max) {
+                        return Ok(TicketOpen::TooMany { open: count });
+                    }
+                }
+            }
         }
         let (number,): (i32,) = sqlx::query_as(
             "INSERT INTO ticket_counters (guild_id, next) VALUES ($1, 2)
@@ -589,12 +633,46 @@ impl Db {
 
     /// `staff` takes an open ticket nobody has claimed; `false` when it is claimed or closed already.
     pub async fn claim_ticket(&self, id: i64, staff: u64) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(staff)]).await?;
+        let limit: Option<(i32,)> = sqlx::query_as(
+            "SELECT o.staff_open_limit FROM tickets t JOIN ticket_panel_operations o ON o.panel_id=t.panel_id
+             WHERE t.id=$1",
+        )
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if let Some((limit,)) = limit
+            && limit > 0
+        {
+            let count: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM tickets WHERE guild_id=(SELECT guild_id FROM tickets WHERE id=$1)
+                 AND claimed_by=$2 AND status='open'",
+            )
+            .bind(id)
+            .bind(sql_id(staff))
+            .fetch_one(&mut *tx)
+            .await?;
+            if count >= i64::from(limit) {
+                return Ok(false);
+            }
+        }
         let done =
             sqlx::query("UPDATE tickets SET claimed_by = $2 WHERE id = $1 AND status = 'open' AND claimed_by IS NULL")
                 .bind(id)
                 .bind(sql_id(staff))
-                .execute(self.pool())
+                .execute(&mut *tx)
                 .await?;
+        tx.commit().await?;
+        Ok(done.rows_affected() == 1)
+    }
+
+    pub async fn unclaim_ticket_by(&self, id: i64, staff: u64) -> anyhow::Result<bool> {
+        let done = sqlx::query(
+            "UPDATE tickets t SET claimed_by=NULL WHERE t.id=$1 AND t.status='open' AND t.claimed_by IS NOT NULL
+             AND (NOT EXISTS(SELECT 1 FROM ticket_panel_operations o WHERE o.panel_id=t.panel_id AND o.claim_mode='exclusive')
+                  OR t.claimed_by=$2)",
+        ).bind(id).bind(sql_id(staff)).execute(self.pool()).await?;
         Ok(done.rows_affected() == 1)
     }
 
@@ -660,6 +738,13 @@ impl Db {
             .fetch_optional(&mut *tx)
             .await?;
         if ticket.is_some() {
+            sqlx::query(
+                "UPDATE ticket_operations SET close_requested_by=NULL,
+                close_requested_at=NULL, close_request_expires_at=NULL WHERE ticket_id=$1",
+            )
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
             let current: Vec<i64> =
                 sqlx::query_scalar("SELECT user_id FROM ticket_transcript_authors WHERE ticket_id = $1")
                     .bind(id)

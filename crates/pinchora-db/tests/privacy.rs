@@ -430,6 +430,13 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         // transcript ($1 doubles as the server).
         "INSERT INTO tickets (guild_id, number, opener_id, status, claimed_by, closed_by)
          VALUES ($1, 1, $1, 'open', NULL, NULL), ($1, 2, $2, 'closed', $1, $1)",
+        "INSERT INTO ticket_panels (guild_id,name,channel_id,title) VALUES ($1,'Privacy',1,'Privacy')",
+        "INSERT INTO ticket_form_drafts (guild_id,user_id,panel_id,topic_index,answers,step,expires_at)
+         SELECT $1,$1,id,0,'[]',1,now()+interval '1 hour' FROM ticket_panels WHERE guild_id=$1 AND name='Privacy'",
+        "INSERT INTO ticket_staff_notes (ticket_id,author_id,body)
+         SELECT id,$1,'private' FROM tickets WHERE guild_id=$1 AND number=2",
+        "INSERT INTO ticket_operations (ticket_id,transferred_to_user,close_requested_by,force_opened_by)
+         SELECT id,$1,$1,$1 FROM tickets WHERE guild_id=$1 AND number=2",
         "INSERT INTO ticket_transcripts (ticket_id, json, messages, with_content)
          SELECT id, '[]', 0, TRUE FROM tickets WHERE guild_id = $1",
         "INSERT INTO ticket_transcript_authors (ticket_id, idx, user_id, name)

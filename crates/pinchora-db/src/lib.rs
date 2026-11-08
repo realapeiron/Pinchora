@@ -54,6 +54,7 @@ mod stats;
 mod suggestions;
 mod tags;
 mod temp_voice;
+mod ticket_ops;
 mod tickets;
 mod trackers;
 mod users;
@@ -140,6 +141,7 @@ pub use suggestions::{
 };
 pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
 pub use temp_voice::{CreatorSave, NewTempRoom, RoomMake, TempRoom, VoiceCreator};
+pub use ticket_ops::*;
 pub use tickets::*;
 pub use trackers::{RiotLink, TrackerSettings};
 pub use users::UserRow;

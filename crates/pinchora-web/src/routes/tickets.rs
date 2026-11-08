@@ -37,6 +37,8 @@ use crate::{
     state::WebState,
 };
 
+mod v2;
+
 /// Tickets one page of the list holds.
 const PAGE: i64 = 50;
 /// Category channels' type number.
@@ -44,6 +46,7 @@ const CATEGORY: u8 = 4;
 
 pub fn router() -> Router<WebState> {
     Router::new()
+        .nest("/v2", v2::router())
         .route("/", get(overview))
         .route("/settings", put(put_settings))
         .route("/panels", post(create_panel))

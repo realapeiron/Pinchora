@@ -1,3 +1,4 @@
+Open ticket
 Report
 achievementadmin add
 achievementadmin edit
@@ -388,11 +389,18 @@ tag
 ticket add
 ticket claim
 ticket close
+ticket escalate
+ticket force-open
 ticket move
+ticket note
+ticket priority
 ticket remove
 ticket rename
 ticket reopen
+ticket request-close
+ticket snippet
 ticket transcript
+ticket transfer
 ticket unclaim
 tickets panel create
 tickets panel delete
