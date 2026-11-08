@@ -1053,6 +1053,7 @@ pub(crate) async fn on_edit(
         },
         _ => Who::own(me),
     };
+    let _editor_guard = cx.app.db.house_editor(who.owner).await?;
     let user_id = who.owner;
     let lang = cx.lang();
     // The partner whose house this is, when it is not the player's own: some lines name them.

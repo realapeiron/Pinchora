@@ -131,3 +131,73 @@ test("14×12 crowded room keeps pointer previews within a frame budget", async (
   // 60 Hz is ~16.7 ms; allow scheduling noise but catch repeatedly dropped frames.
   expect(sorted[Math.floor(sorted.length * 0.95)]).toBeLessThan(25);
 });
+
+test("switching plaza remounts the queue and keyboard placement targets the new owner", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await devLogin(page, HOST, []);
+  const overview = await (await page.request.get("/api/house")).json();
+  const template = await (await page.request.get("/api/house/rooms/0")).json();
+  const guilds = ["770000000000000011", "770000000000000012"];
+  const rooms = new Map(guilds.map((id) => [id, { ...template, placements: [], fingerprint: id, undo: [] }]));
+  await page.route("**/api/me/guilds", (route) =>
+    route.fulfill({
+      json: guilds.map((id, i) => ({
+        id,
+        name: `Plaza ${i + 1}`,
+        icon: null,
+        bot_present: true,
+        owner: true,
+        permissions: "32",
+      })),
+    }),
+  );
+  await page.route("**/api/house**", async (route) => {
+    const url = new URL(route.request().url());
+    const guild = url.searchParams.get("guild");
+    if (!guild || !rooms.has(guild)) return route.continue();
+    const room = rooms.get(guild)!;
+    if (url.pathname.endsWith("/ops")) {
+      const body = route.request().postDataJSON();
+      expect(body.expected).toBe(guild);
+      expect(body.op.type).toBe("place");
+      expect(body.op.x).toBe(1);
+      expect(body.op.flipped).toBe(true);
+      room.placements = [{ ...body.op, id: `${guild}-piece` }];
+      return route.fulfill({ json: room });
+    }
+    if (url.pathname.endsWith("/inventory"))
+      return route.fulfill({
+        json: { items: [{ item_id: "plainwhorl_chair__sand", quantity: 1 }], placed: [] },
+      });
+    if (url.pathname.endsWith("/rooms/0")) return route.fulfill({ json: room });
+    if (url.pathname === "/api/house")
+      return route.fulfill({
+        json: {
+          ...overview,
+          scope: "plaza",
+          whose: guild,
+          owner: { ...overview.owner, id: guild },
+          editable: true,
+        },
+      });
+    return route.continue();
+  });
+  await page.goto(`/me/house?scope=plaza&guild=${guilds[0]}`);
+  await page.getByRole("button", { name: "Decorate house", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  const loaded = page.waitForResponse((r) => r.url().includes(`/rooms/0?scope=plaza&guild=${guilds[1]}`));
+  await page.getByLabel("Server plaza", { exact: true }).selectOption(guilds[1]!);
+  await loaded;
+  await expect(page.locator(".house-stock button").first()).toBeVisible();
+  // Both rooms are now cached: switching back must remount even without a loading gap.
+  await page.getByLabel("Server plaza", { exact: true }).selectOption(guilds[0]!);
+  await page.locator(".house-stock button").first().click();
+  const viewport = page.locator(".room-viewport");
+  await viewport.focus();
+  await viewport.press("ArrowRight");
+  await viewport.press("r");
+  const response = page.waitForResponse((r) => r.url().includes("/ops"));
+  await page.getByRole("button", { name: "Place", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  expect(new URL((await response).url()).searchParams.get("guild")).toBe(guilds[0]);
+});

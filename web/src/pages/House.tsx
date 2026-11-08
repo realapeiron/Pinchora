@@ -12,7 +12,17 @@ import { renderRoom } from "../iso/render";
 import { buildScene } from "../iso/scene";
 import { useGuilds } from "../lib/queries";
 import type { Me } from "../lib/api";
-import { type HouseTarget, loadCharacters, renderUrl, useArt, useHouse, useRoom } from "../lib/house";
+import {
+  housePath,
+  roomLabel,
+  tierLabel,
+  type HouseTarget,
+  loadCharacters,
+  renderUrl,
+  useArt,
+  useHouse,
+  useRoom,
+} from "../lib/house";
 import { t } from "../reef/i18n";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
@@ -122,7 +132,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
               lead={
                 house.data
                   ? `${house.data.house.name} · ${t("{tier} · {rooms} rooms · {likes} likes", {
-                      tier: house.data.house.tier_name,
+                      tier: tierLabel(house.data.house.tier, house.data.house.tier_name),
                       rooms: house.data.rooms.length,
                       likes: house.data.house.likes,
                     })}`
@@ -245,7 +255,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                         )
                       }
                     >
-                      {r.name} <span className="house-tab-count">{r.items}</span>
+                      {roomLabel(r.room_type, r.name)} <span className="house-tab-count">{r.items}</span>
                     </PixelButton>
                   ))}
                 </div>
@@ -291,7 +301,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
               {!playing && art.isError && <Problem error={art.error} />}
               {editing && !playing && room.data && art.data && sprites.isSuccess && (
                 <HouseEditor
-                  key={`${target.kind}:${idx}`}
+                  key={housePath(target, `/rooms/${idx}`)}
                   target={target}
                   initial={room.data}
                   art={art.data}
@@ -305,7 +315,10 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                     rendered={drawn.rendered}
                     hover={hover}
                     onHover={setHover}
-                    label={t("{name}, {count} items", { name: summary.name, count: summary.items })}
+                    label={t("{name}, {count} items", {
+                      name: roomLabel(summary.room_type, summary.name),
+                      count: summary.items,
+                    })}
                     botPicture={compare && bot.url ? bot.url : null}
                   />
                   <div className="house-info" aria-live="polite">

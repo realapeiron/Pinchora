@@ -155,6 +155,8 @@ pub struct History {
     /// Changed since it was loaded, so it needs saving.
     #[serde(skip)]
     dirty: bool,
+    #[serde(skip)]
+    observed: Option<String>,
 }
 
 impl History {
@@ -253,15 +255,20 @@ pub async fn load(app: &App, who: Who, room: i16, placements: &[PlacementRow]) -
             tracing::debug!(%error, "undo history not read");
             None
         });
-    let Some(history) = raw.and_then(|r| serde_json::from_str::<History>(&r).ok()) else {
-        return History::default();
+    let Some(mut history) = raw.as_deref().and_then(|r| serde_json::from_str::<History>(r).ok()) else {
+        return History {
+            observed: raw,
+            ..History::default()
+        };
     };
+    history.observed = raw.clone();
     if history.room == fingerprint(placements) {
         history
     } else {
-        // Saving this empty history deletes the stale one.
+        // A read-only refresh must not race a writer between its DB commit and history save.
+        // The next actual edit replaces the stale history.
         History {
-            dirty: true,
+            observed: raw,
             ..History::default()
         }
     }
@@ -272,16 +279,27 @@ pub async fn save(app: &App, who: Who, room: i16, history: &mut History, placeme
     if !history.dirty {
         return;
     }
-    history.dirty = false;
     history.room = fingerprint(placements);
     let key = key(who.owner, who.stock, who.bond, room);
-    let saved = if history.steps.is_empty() {
-        app.cache.forget(&key).await
-    } else {
-        match serde_json::to_string(history) {
-            Ok(json) => app.cache.put(&key, &json, TTL).await,
-            Err(error) => Err(error.into()),
-        }
+    // Empty histories are tombstones too, so a late save cannot resurrect an undone step.
+    let saved = match serde_json::to_string(history) {
+        Ok(json) => match app
+            .cache
+            .compare_put(&key, history.observed.as_deref(), &json, TTL)
+            .await
+        {
+            Ok(true) => {
+                history.observed = Some(json);
+                history.dirty = false;
+                Ok(())
+            }
+            Ok(false) => {
+                history.dirty = false;
+                Ok(())
+            }
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error.into()),
     };
     if let Err(error) = saved {
         tracing::warn!(%error, "undo history not saved");

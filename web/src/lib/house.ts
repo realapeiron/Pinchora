@@ -2,6 +2,9 @@
 // the browser draws with, and the character sprites only the server can draw.
 
 import { useQuery } from "@tanstack/react-query";
+import roomNames from "../../../content/i18n/tr/rooms.json";
+import terms from "../../../content/i18n/tr/terms.json";
+import { locale } from "../i18n";
 
 import { Art } from "../iso/art";
 import { loadAtlas } from "../iso/atlas";
@@ -112,4 +115,16 @@ export async function loadCharacters(art: Art, codes: string[]): Promise<void> {
         }
       }),
   );
+}
+
+/** Use the same Turkish content names as Discord; user-authored house names stay untouched. */
+export function roomLabel(id: string, fallback: string) {
+  return locale() === "tr"
+    ? ((roomNames as Record<string, { name: string }>)[id]?.name ?? fallback)
+    : fallback;
+}
+export function tierLabel(tier: number, fallback: string) {
+  return locale() === "tr"
+    ? ((terms as Record<string, { name: string }>)[`tier.${tier}`]?.name ?? fallback)
+    : fallback;
 }

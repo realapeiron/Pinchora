@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Art } from "../iso/art";
 import { anchor, bounds, renderRoom } from "../iso/render";
 import { buildScene, type RoomJson, type SceneItem } from "../iso/scene";
 import { canPlace, contains, footprint, surfaceLift } from "../iso/rules";
 import { MARGIN, screenToTile, levelTop } from "../iso/projection";
 import { api } from "../lib/api";
-import { housePath, type HouseOverview, type HouseTarget } from "../lib/house";
-import { RoomQueue, sendOperation, type EditOp, type Piece } from "../lib/houseEdit";
+import { housePath, tierLabel, type HouseOverview, type HouseTarget } from "../lib/house";
+import { RoomCursor, RoomQueue, sendOperation, type EditOp, type Piece } from "../lib/houseEdit";
 import { translate as t, locale } from "../i18n";
 import { PixelButton } from "./PixelButton";
 import { RoomStage } from "./RoomStage";
@@ -42,8 +42,8 @@ export function HouseEditor({
   const [hand, setHand] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
-  const [cursor, setCursor] = useState<[number, number]>([0, 0]);
-  const cursorRef = useRef(cursor);
+  const cursorStore = useMemo(() => new RoomCursor(), []);
+  useEffect(() => () => cursorStore.dispose(), [cursorStore]);
   const [wall, setWall] = useState<"floor" | "right" | "left">("floor");
   const [hover, setHover] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -53,8 +53,7 @@ export function HouseEditor({
   const gesture = useRef<{ item: Piece | null; start: [number, number] } | null>(null);
   const [redo, setRedo] = useState<{ op: EditOp; piece?: Piece }[]>([]);
   const applied = useRef<{ op: EditOp; piece?: Piece }[]>([]);
-  const overlay = useRef<HTMLCanvasElement>(null);
-  const frame = useRef(0);
+
   const [confirm, setConfirm] = useState<{ label: string; op: EditOp } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const base = housePath(target);
@@ -140,6 +139,7 @@ export function HouseEditor({
         op,
         piece: "id" in op ? room.placements.find((p) => p.id === op.id) : undefined,
       });
+      applied.current = applied.current.slice(-10);
       if (!replay) setRedo([]);
     }
     void queries.cancelQueries({ queryKey: [housePath(target, `/rooms/${initial.idx}`)] });
@@ -207,12 +207,18 @@ export function HouseEditor({
   const ox = MARGIN - box[0],
     oy = MARGIN - box[1];
   const held = moving?.item_id ?? hand;
-  const fp = held ? footprint(art.content, held, cursor[0], cursor[1], flipped) : null;
-  const others = room.placements.filter((p) => !liftedIds.has(p.id));
-  const reason = held
-    ? canPlace(art.content, room.width, room.depth, others, held, cursor[0], cursor[1], flipped)
-    : null;
-  const activeWall = fp?.layer === "wall" ? (flipped ? "left" : "right") : held ? "floor" : wall;
+  const others = useMemo(
+    () => room.placements.filter((p) => !liftedIds.has(p.id)),
+    [room.placements, liftedIds],
+  );
+  const activeWall =
+    held && art.content.item(held)?.base.layer === "wall"
+      ? flipped
+        ? "left"
+        : "right"
+      : held
+        ? "floor"
+        : wall;
   const point = (px: number, py: number) => {
     const x = px - ox,
       y = py - oy;
@@ -221,81 +227,12 @@ export function HouseEditor({
         ? screenToTile(x, y, room.width, room.depth)
         : [Math.floor((activeWall === "right" ? x : -1 - x) / 32), Math.floor((y - levelTop(x)) / 32)];
     const next: [number, number] = tile ?? [-1, -1];
-    cursorRef.current = next;
-    cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => setCursor(next));
+    cursorStore.move(next[0], next[1]);
   };
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
-  const ghostSprite = useMemo(() => {
-    const sprite = held ? art.item(held) : null;
-    if (!sprite) return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = sprite.width;
-    canvas.height = sprite.height;
-    canvas.getContext("2d")?.putImageData(new ImageData(sprite.data, sprite.width, sprite.height), 0, 0);
-    return { sprite, canvas };
-  }, [art, held]);
-  useEffect(() => {
-    const ctx = overlay.current?.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, drawn.image.width, drawn.image.height);
-    const [x, y] = cursor;
-    const w = fp?.rect.w ?? 1,
-      d = fp?.rect.d ?? 1;
-    const points =
-      activeWall === "floor"
-        ? [
-            [32 * (x - y), 16 * (x + y)],
-            [32 * (x + w - y), 16 * (x + w + y)],
-            [32 * (x + w - y - d), 16 * (x + w + y + d)],
-            [32 * (x - y - d), 16 * (x + y + d)],
-          ]
-        : (() => {
-            const left = activeWall === "left";
-            const a = (left ? -1 : 1) * 32 * x,
-              b = (left ? -1 : 1) * 32 * (x + w);
-            return [
-              [a, levelTop(a) + 32 * y],
-              [b, levelTop(b) + 32 * y],
-              [b, levelTop(b) + 32 * (y + d)],
-              [a, levelTop(a) + 32 * (y + d)],
-            ];
-          })();
-    ctx.beginPath();
-    points.forEach(([px, py], i) => (i ? ctx.lineTo(px! + ox, py! + oy) : ctx.moveTo(px! + ox, py! + oy)));
-    ctx.closePath();
-    ctx.fillStyle = reason ? "#ff4d6d55" : "#06d6a055";
-    ctx.fill();
-    ctx.strokeStyle = reason ? "#ff4d6d" : "#06d6a0";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    if (ghostSprite && fp) {
-      const { sprite, canvas: tmp } = ghostSprite;
-      const item = { x, y, w, d, layer: fp.layer, lift: surfaceLift(art.content, others, x, y) } as SceneItem;
-      const [sx, sy] = anchor(item, sprite);
-      ctx.globalAlpha = 0.55;
-      ctx.imageSmoothingEnabled = false;
-      if (fp.layer === "wall") {
-        ctx.save();
-        const sign = flipped ? -1 : 1;
-        ctx.transform(sign, 0.5, 0, 1, ox + sign * x * 32, oy + levelTop(sign * x * 32) + y * 32);
-        ctx.drawImage(tmp, 0, 0, w * 32, d * 32);
-        ctx.restore();
-      } else {
-        ctx.save();
-        if (flipped) {
-          ctx.translate(sx + ox + sprite.width, sy + oy);
-          ctx.scale(-1, 1);
-          ctx.drawImage(tmp, 0, 0);
-        } else ctx.drawImage(tmp, sx + ox, sy + oy);
-        ctx.restore();
-      }
-      ctx.globalAlpha = 1;
-    }
-  }, [cursor, flipped, held, fp, reason, activeWall, art, drawn, ox, oy, others, ghostSprite]);
+
   const place = () => {
     if (!held) return;
-    const [x, y] = cursorRef.current;
+    const [x, y] = cursorStore.get();
     const why = canPlace(art.content, room.width, room.depth, others, held, x, y, flipped);
     if (why) {
       setMessage(why);
@@ -365,13 +302,12 @@ export function HouseEditor({
           setWall(wall === "floor" ? "right" : wall === "right" ? "left" : "floor");
         else if (e.key.startsWith("Arrow")) {
           e.preventDefault();
-          const [x, y] = cursorRef.current;
+          const [x, y] = cursorStore.get();
           const next: [number, number] = [
             Math.max(0, x + (e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0)),
             Math.max(0, y + (e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0)),
           ];
-          cursorRef.current = next;
-          setCursor(next);
+          cursorStore.move(next[0], next[1]);
         }
       }}
     >
@@ -438,9 +374,15 @@ export function HouseEditor({
       </aside>
       <div className="house-workbench">
         <div className="house-options" role="toolbar" aria-label={t("Editor tools")}>
-          <PixelButton onClick={place} disabled={!held || !!reason}>
-            {t("Place")}
-          </PixelButton>
+          <PlaceButton
+            cursorStore={cursorStore}
+            art={art}
+            room={room}
+            others={others}
+            held={held}
+            flipped={flipped}
+            onPlace={place}
+          />
           <PixelButton onClick={turn} disabled={!held && (!selected || pending)}>
             {t("Turn / flip")}
           </PixelButton>
@@ -475,34 +417,43 @@ export function HouseEditor({
           label={t("Editable room")}
           editor={{
             overlay: (
-              <canvas
-                ref={overlay}
-                className="room-canvas room-ghost"
-                width={drawn.image.width}
-                height={drawn.image.height}
-                aria-hidden="true"
+              <CursorPreview
+                cursorStore={cursorStore}
+                art={art}
+                room={room}
+                others={others}
+                held={held}
+                flipped={flipped}
+                activeWall={activeWall}
+                drawn={drawn}
+                ox={ox}
+                oy={oy}
               />
             ),
             point,
             down: (index) => {
               const id = index === null ? null : scene.items[index]?.info.placement;
               const item = room.placements.find((p) => p.id === id) ?? null;
-              gesture.current = { item, start: cursorRef.current };
+              gesture.current = { item, start: cursorStore.get() };
               if (!hand && item) {
                 setSelected(item.id);
                 setFlipped(item.flipped);
-                setMoving(item);
+                if (target.kind !== "partner") setMoving(item);
               }
             },
             up: () => {
+              if (target.kind === "partner" && !hand) {
+                gesture.current = null;
+                return;
+              }
               const g = gesture.current;
               gesture.current = null;
               if (held) {
                 if (
                   g?.item &&
                   !hand &&
-                  g.start[0] === cursorRef.current[0] &&
-                  g.start[1] === cursorRef.current[1]
+                  g.start[0] === cursorStore.get()[0] &&
+                  g.start[1] === cursorStore.get()[1]
                 ) {
                   setMoving(null);
                   return;
@@ -512,12 +463,12 @@ export function HouseEditor({
               }
               if (g?.item) {
                 setSelected(g.item.id);
-                if (g.start[0] !== cursorRef.current[0] || g.start[1] !== cursorRef.current[1]) {
+                if (g.start[0] !== cursorStore.get()[0] || g.start[1] !== cursorStore.get()[1]) {
                   send({
                     type: "move",
                     id: g.item.id,
-                    x: cursorRef.current[0],
-                    y: cursorRef.current[1],
+                    x: cursorStore.get()[0],
+                    y: cursorStore.get()[1],
                     flipped: g.item.flipped,
                   });
                   setMoving(null);
@@ -530,10 +481,15 @@ export function HouseEditor({
             },
           }}
         />
-        <div className="house-info" role="status" aria-live="polite">
-          {t((reason ?? message) || "Choose furniture, then click a tile. Alt + drag pans the room.")} ·{" "}
-          {cursor[0] + 1},{cursor[1] + 1}
-        </div>
+        <CursorStatus
+          cursorStore={cursorStore}
+          art={art}
+          room={room}
+          others={others}
+          held={held}
+          flipped={flipped}
+          message={message}
+        />
         <div className="house-options">
           <label>
             {t("Cursor plane")}
@@ -559,9 +515,11 @@ export function HouseEditor({
               key={label}
               variant="secondary"
               onClick={() => {
-                const p: [number, number] = [Math.max(0, cursor[0] + dx), Math.max(0, cursor[1] + dy)];
-                cursorRef.current = p;
-                setCursor(p);
+                const p: [number, number] = [
+                  Math.max(0, cursorStore.get()[0] + dx),
+                  Math.max(0, cursorStore.get()[1] + dy),
+                ];
+                cursorStore.move(p[0], p[1]);
               }}
             >
               {t(label)}
@@ -586,7 +544,7 @@ export function HouseEditor({
             ))}
           </select>
         </label>
-        {selected && (
+        {selected && target.kind !== "partner" && (
           <PixelButton
             disabled={pending}
             variant="secondary"
@@ -651,10 +609,10 @@ export function HouseEditor({
                 disabled={pending}
                 onClick={() =>
                   setConfirm({
-                    label: t(
-                      "Upgrade to {name}: {width}×{depth}, {rooms} rooms for {price} shells?",
-                      house.next!,
-                    ),
+                    label: t("Upgrade to {name}: {width}×{depth}, {rooms} rooms for {price} shells?", {
+                      ...house.next!,
+                      name: tierLabel(house.house.tier + 1, house.next!.name),
+                    }),
                     op: { type: "upgrade", from_tier: house.house.tier },
                   })
                 }
@@ -710,4 +668,126 @@ function ItemThumb({ art, id }: { art: Art; id: string }) {
         ?.putImageData(new ImageData(sprite.data, sprite.width, sprite.height), 0, 0);
   }, [sprite]);
   return sprite ? <canvas ref={ref} width={sprite.width} height={sprite.height} aria-hidden="true" /> : null;
+}
+
+type CursorProps = {
+  cursorStore: RoomCursor;
+  art: Art;
+  room: RoomJson;
+  others: Piece[];
+  held: string | null;
+  flipped: boolean;
+};
+function useCursorPreview({ cursorStore, art, room, others, held, flipped }: CursorProps) {
+  const cursor = useSyncExternalStore(cursorStore.subscribe, cursorStore.getSnapshot);
+  const fp = held ? footprint(art.content, held, cursor[0], cursor[1], flipped) : null;
+  const reason = held
+    ? canPlace(art.content, room.width, room.depth, others, held, cursor[0], cursor[1], flipped)
+    : null;
+  return { cursor, fp, reason };
+}
+function PlaceButton(props: CursorProps & { onPlace: () => void }) {
+  const { reason } = useCursorPreview(props);
+  return (
+    <PixelButton onClick={props.onPlace} disabled={!props.held || !!reason}>
+      {t("Place")}
+    </PixelButton>
+  );
+}
+function CursorStatus(props: CursorProps & { message: string }) {
+  const { cursor, reason } = useCursorPreview(props);
+  return (
+    <div className="house-info" role="status" aria-live="polite">
+      {t((reason ?? props.message) || "Choose furniture, then click a tile. Alt + drag pans the room.")} ·{" "}
+      {cursor[0] + 1},{cursor[1] + 1}
+    </div>
+  );
+}
+function CursorPreview(
+  props: CursorProps & {
+    activeWall: "floor" | "left" | "right";
+    drawn: ReturnType<typeof renderRoom>;
+    ox: number;
+    oy: number;
+  },
+) {
+  const { art, others, held, flipped, activeWall, drawn, ox, oy } = props;
+  const { cursor, fp, reason } = useCursorPreview(props);
+  const overlay = useRef<HTMLCanvasElement>(null);
+  const ghostSprite = useMemo(() => {
+    const sprite = held ? art.item(held) : null;
+    if (!sprite) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = sprite.width;
+    canvas.height = sprite.height;
+    canvas.getContext("2d")?.putImageData(new ImageData(sprite.data, sprite.width, sprite.height), 0, 0);
+    return { sprite, canvas };
+  }, [art, held]);
+  useEffect(() => {
+    const ctx = overlay.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, drawn.image.width, drawn.image.height);
+    const [x, y] = cursor;
+    const w = fp?.rect.w ?? 1,
+      d = fp?.rect.d ?? 1;
+    const points =
+      activeWall === "floor"
+        ? [
+            [32 * (x - y), 16 * (x + y)],
+            [32 * (x + w - y), 16 * (x + w + y)],
+            [32 * (x + w - y - d), 16 * (x + w + y + d)],
+            [32 * (x - y - d), 16 * (x + y + d)],
+          ]
+        : (() => {
+            const left = activeWall === "left";
+            const a = (left ? -1 : 1) * 32 * x,
+              b = (left ? -1 : 1) * 32 * (x + w);
+            return [
+              [a, levelTop(a) + 32 * y],
+              [b, levelTop(b) + 32 * y],
+              [b, levelTop(b) + 32 * (y + d)],
+              [a, levelTop(a) + 32 * (y + d)],
+            ];
+          })();
+    ctx.beginPath();
+    points.forEach(([px, py], i) => (i ? ctx.lineTo(px! + ox, py! + oy) : ctx.moveTo(px! + ox, py! + oy)));
+    ctx.closePath();
+    ctx.fillStyle = reason ? "#ff4d6d55" : "#06d6a055";
+    ctx.fill();
+    ctx.strokeStyle = reason ? "#ff4d6d" : "#06d6a0";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    if (ghostSprite && fp) {
+      const { sprite, canvas: tmp } = ghostSprite;
+      const item = { x, y, w, d, layer: fp.layer, lift: surfaceLift(art.content, others, x, y) } as SceneItem;
+      const [sx, sy] = anchor(item, sprite);
+      ctx.globalAlpha = 0.55;
+      ctx.imageSmoothingEnabled = false;
+      if (fp.layer === "wall") {
+        ctx.save();
+        const sign = flipped ? -1 : 1;
+        ctx.transform(sign, 0.5, 0, 1, ox + sign * x * 32, oy + levelTop(sign * x * 32) + y * 32);
+        ctx.drawImage(tmp, 0, 0, w * 32, d * 32);
+        ctx.restore();
+      } else {
+        ctx.save();
+        if (flipped) {
+          ctx.translate(sx + ox + sprite.width, sy + oy);
+          ctx.scale(-1, 1);
+          ctx.drawImage(tmp, 0, 0);
+        } else ctx.drawImage(tmp, sx + ox, sy + oy);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }, [cursor, flipped, held, fp, reason, activeWall, art, drawn, ox, oy, others, ghostSprite]);
+  return (
+    <canvas
+      ref={overlay}
+      className="room-canvas room-ghost"
+      width={drawn.image.width}
+      height={drawn.image.height}
+      aria-hidden="true"
+    />
+  );
 }

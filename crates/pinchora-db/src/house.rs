@@ -94,7 +94,32 @@ pub enum UpgradeOutcome {
     WrongTier { tier: i16 },
 }
 
+/// Holds an editor's cross-pod serialization lock until its Redis history has been saved.
+/// A separate connection is reserved; the semaphore leaves capacity for the actual transactions.
+pub struct HouseEditorGuard {
+    _transaction: sqlx::Transaction<'static, sqlx::Postgres>,
+    _slot: tokio::sync::OwnedSemaphorePermit,
+}
+
 impl Db {
+    pub async fn house_editor(&self, owner: u64) -> anyhow::Result<HouseEditorGuard> {
+        anyhow::ensure!(
+            self.pool().options().get_max_connections() >= 2,
+            "house editing requires two database connections"
+        );
+        let slot = self.editor_slots.clone().acquire_owned().await?;
+        let mut tx = self.pool().begin().await?;
+        // This lock never holds player rows. All mutation transactions still take lock_users first.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('house-editor:' || $1::text, 0))")
+            .bind(owner.to_string())
+            .execute(&mut *tx)
+            .await?;
+        Ok(HouseEditorGuard {
+            _transaction: tx,
+            _slot: slot,
+        })
+    }
+
     /// The player's house, created with `starter` as its first room when missing.
     pub async fn house(&self, user_id: u64, starter: &NewRoom) -> anyhow::Result<(HouseRow, Vec<RoomRow>, bool)> {
         retry("house", || self.house_once(user_id, starter)).await

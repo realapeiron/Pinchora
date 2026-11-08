@@ -213,6 +213,22 @@ impl Cache {
         Ok(set.is_some())
     }
 
+    /// Replaces exactly the value a caller observed; a late writer cannot erase newer history.
+    pub async fn compare_put(
+        &self,
+        key: &str,
+        observed: Option<&str>,
+        value: &str,
+        ttl: Duration,
+    ) -> anyhow::Result<bool> {
+        let changed: i64 = redis::Script::new(
+            "local old=redis.call('GET',KEYS[1]); if (ARGV[1]=='0' and old) or (ARGV[1]=='1' and old~=ARGV[2]) then return 0 end; redis.call('SET',KEYS[1],ARGV[3],'EX',ARGV[4]); return 1"
+        ).key(format!("{PREFIX}:kv:{key}"))
+            .arg(if observed.is_some() { "1" } else { "0" }).arg(observed.unwrap_or_default())
+            .arg(value).arg(ttl.as_secs().max(1)).invoke_async(&mut self.conn()).await?;
+        Ok(changed == 1)
+    }
+
     /// Reads and deletes a value stored with [`Cache::put`].
     pub async fn take(&self, key: &str) -> anyhow::Result<Option<String>> {
         Ok(self.conn().get_del(format!("{PREFIX}:kv:{key}")).await?)

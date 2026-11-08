@@ -1,7 +1,7 @@
 //! Browser operations use the Discord editor's rules, atomic restore and Redis history.
 use pinchora_db::{PlacementRow, Refusal, RestoreOutcome, RoomChange};
 use pinchora_game::{Content, Layer};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     undo::{self, Kind, Piece, Step},
 };
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
     Place {
@@ -69,6 +69,7 @@ pub async fn apply(
     expected: &str,
     op: Operation,
 ) -> anyhow::Result<Outcome> {
+    let _guard = app.db.house_editor(who.owner).await?;
     let content = Content::get();
     if matches!(&op, Operation::Place { x, y, .. } | Operation::Move { x, y, .. } if *x < 0 || *y < 0) {
         return Ok(Outcome::Refused {
@@ -108,6 +109,13 @@ pub async fn apply(
             )
         }
         Operation::Move { id, x, y, flipped } => {
+            // Discord also forbids moving the owner's pieces while decorating as a guest.
+            if who.owner != who.stock {
+                return Ok(Outcome::Refused {
+                    code: "owner_only",
+                    message: "Only the owner can move this piece.".into(),
+                });
+            }
             let Some(p) = find(&id) else {
                 return Ok(refused("that piece is no longer here"));
             };

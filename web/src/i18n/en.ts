@@ -1,4 +1,5 @@
 export const en = {
+  "Only the owner can move this piece.": "Only the owner can move this piece.",
   "Could not load inventory. Try again.": "Could not load inventory. Try again.",
 
   "House editor": "House editor",
@@ -3722,5 +3723,4 @@ export const en = {
   "Release channel": "Release channel",
   "Tracker settings saved.": "Tracker settings saved.",
   "Confirm this purchase.": "Confirm this purchase.",
-  "This item is sold out.": "This item is sold out.",
 } as const;

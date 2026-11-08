@@ -152,3 +152,93 @@ it("reconciles moved placement ids across queued edits and selection callbacks",
   expect(send).toHaveBeenNthCalledWith(2, "second", { type: "flip", id: "new" });
   expect(changed.mock.calls.some((call) => call[3]?.old === "new")).toBe(true);
 });
+
+it("stops unsent operations when leaving a room or switching plaza", async () => {
+  let finish!: (value: Snapshot) => void;
+  const send = vi.fn(
+    () =>
+      new Promise<Snapshot>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const changed = vi.fn();
+  const q = new RoomQueue(room, send, async () => room, changed);
+  q.enqueue(place);
+  q.enqueue({ type: "clear" });
+  q.dispose();
+  const calls = changed.mock.calls.length;
+  q.enqueue(place);
+  finish({ fingerprint: "second", placements: [{ ...place, id: "123" }], undo: [] });
+  await tick();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(changed).toHaveBeenCalledTimes(calls);
+  expect(q.pending).toBe(false);
+});
+
+it("shares no queue identity between two plaza rooms", async () => {
+  const { housePath } = await import("./house");
+  expect(housePath({ kind: "plaza", guild: "123" }, "/rooms/0")).not.toBe(
+    housePath({ kind: "plaza", guild: "456" }, "/rooms/0"),
+  );
+});
+
+it("cursor motion only notifies preview subscribers when crossing a tile", async () => {
+  const { RoomCursor } = await import("./houseEdit");
+  const cursor = new RoomCursor();
+  const listener = vi.fn();
+  const unsubscribe = cursor.subscribe(listener);
+  const initial = cursor.get();
+  for (let i = 0; i < 120; i++) cursor.move(0, 0);
+  expect(cursor.get()).toBe(initial);
+  expect(listener).not.toHaveBeenCalled();
+  cursor.move(3, 2);
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(cursor.get()).toEqual([3, 2]);
+  unsubscribe();
+  cursor.move(4, 2);
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
+it("coalesces pointer previews to one frame while placement reads the latest tile", async () => {
+  const { RoomCursor } = await import("./houseEdit");
+  let frame!: () => void;
+  const request = vi.fn((callback: () => void) => {
+    frame = callback;
+    return 1;
+  });
+  vi.stubGlobal("requestAnimationFrame", request);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  try {
+    const cursor = new RoomCursor();
+    const listener = vi.fn();
+    cursor.subscribe(listener);
+    cursor.move(1, 2);
+    cursor.move(3, 4);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(cursor.get()).toEqual([3, 4]);
+    expect(listener).not.toHaveBeenCalled();
+    frame();
+    expect(cursor.getSnapshot()).toEqual([3, 4]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    cursor.move(5, 6);
+    cursor.dispose();
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("uses Discord's Turkish names in room tabs and house upgrade offers", async () => {
+  const { roomLabel, tierLabel } = await import("./house");
+  const { setLocale } = await import("../i18n");
+  await setLocale("tr");
+  try {
+    expect(roomLabel("bedroom", "Drowsyfold Bedroom")).toBe("Drowsyfold Yatak Odası");
+    expect(tierLabel(2, "Beach Cottage")).toBe("Kumsal Kulübesi");
+    expect(tierLabel(6, "Sunken Palace")).toBe("Batık Saray");
+    expect(roomLabel("future-room", "Custom room")).toBe("Custom room");
+  } finally {
+    await setLocale("en");
+  }
+  expect(tierLabel(2, "Beach Cottage")).toBe("Beach Cottage");
+});

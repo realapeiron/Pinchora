@@ -1,5 +1,6 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "Only the owner can move this piece.": "Bu eşyayı yalnızca evin sahibi taşıyabilir.",
   "Could not load inventory. Try again.": "Envanter yüklenemedi. Yeniden dene.",
   "House editor": "Ev düzenleyici",
   "Search inventory": "Envanterde ara",
@@ -3753,5 +3754,4 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Release channel": "Sürüm kanalı",
   "Tracker settings saved.": "Takip ayarları kaydedildi.",
   "Confirm this purchase.": "Bu satın alma işlemini onayla.",
-  "This item is sold out.": "Bu eşya tükendi.",
 };

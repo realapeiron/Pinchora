@@ -65,6 +65,7 @@ export class RoomQueue {
   }
   dispose() {
     this.disposed = true;
+    this.queue = [];
   }
   receive(room: RoomJson) {
     if (!this.running) {
@@ -73,6 +74,7 @@ export class RoomQueue {
     }
   }
   enqueue(op: EditOp) {
+    if (this.disposed) return;
     this.queue.push({ op, temporary: `pending-${++this.serial}` });
     this.paint();
     if (!this.running) void this.drain();
@@ -88,6 +90,7 @@ export class RoomQueue {
       const first = this.queue[0]!;
       try {
         const result = await this.send(this.room.fingerprint ?? "", first.op);
+        if (this.disposed) break;
         const created = result.placements.find((p) => !this.room.placements.some((old) => old.id === p.id));
         this.room = { ...optimistic(this.room, first.op, first.temporary), ...result };
         this.queue.shift();
@@ -100,6 +103,7 @@ export class RoomQueue {
         }
         this.paint(undefined, ids);
       } catch (error) {
+        if (this.disposed) break;
         this.queue = [];
         try {
           this.room = await this.reload();
@@ -120,4 +124,36 @@ export class RoomQueue {
 }
 export function sendOperation(target: HouseTarget, room: number, expected: string, op: EditOp) {
   return api<Snapshot>(housePath(target, `/rooms/${room}/ops`), "POST", { expected, op });
+}
+
+/** Only preview subscribers redraw when the cursor crosses a tile; inventory and room pixels stay cached. */
+export class RoomCursor {
+  private position: [number, number] = [0, 0];
+  private snapshot = this.position;
+  private frame: number | null = null;
+  private listeners = new Set<() => void>();
+  get = () => this.position;
+  getSnapshot = () => this.snapshot;
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+  private publish = () => {
+    this.frame = null;
+    this.snapshot = this.position;
+    for (const listener of this.listeners) listener();
+  };
+  move(x: number, y: number) {
+    if (this.position[0] === x && this.position[1] === y) return;
+    this.position = [x, y];
+    if (typeof requestAnimationFrame === "undefined") this.publish();
+    else if (this.frame === null) this.frame = requestAnimationFrame(this.publish);
+  }
+  dispose() {
+    if (this.frame !== null) cancelAnimationFrame(this.frame);
+    this.frame = null;
+    this.listeners.clear();
+  }
 }
