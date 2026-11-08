@@ -24,13 +24,9 @@ pub(crate) fn today() -> i64 {
 /// Pays `shells` for a win unless the player was already paid for `game` wins today (the cap);
 /// returns what was paid, 0 when capped.
 pub(crate) async fn pay_win(app: &App, user: u64, game: Game, shells: i64, reason: &str) -> anyhow::Result<i64> {
-    let key = format!("gamewin:{}:{}:{user}", game.key(), today());
-    let wins = app.cache.incr(&key, Duration::from_secs(2 * 86_400)).await?;
-    if wins > game.daily_cap() {
-        return Ok(0);
-    }
-    app.db.earn_shells(user, shells, reason).await?;
-    Ok(shells)
+    app.db
+        .capped_game_win(user, game.key(), shells, game.daily_cap(), reason)
+        .await
 }
 
 /// Counts a finished game for a player. A failure is logged and swallowed: stats never break a game.

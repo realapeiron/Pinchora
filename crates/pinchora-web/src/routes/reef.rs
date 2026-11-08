@@ -9,6 +9,7 @@ pub fn router() -> Router<WebState> {
     Router::new()
         .merge(reef::safety::router())
         .merge(reef::spaces::router())
+        .merge(reef::games::router())
         .route("/bootstrap", get(bootstrap))
         .route("/socket-ticket", post(reef::ticket))
         .route("/ws", get(reef::upgrade))

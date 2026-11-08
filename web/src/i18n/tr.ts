@@ -1,5 +1,6 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "Room activities": "Oda etkinlikleri",
   Accepted: "Kabul edildi",
   "Invalid revision.": "Geçersiz düzenleme sürümü.",
   "Request id and revision are required together.": "İstek kimliği ve düzenleme sürümü birlikte gereklidir.",

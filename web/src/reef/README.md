@@ -1,4 +1,4 @@
-# Reef client engine and social spaces (R02–R37)
+# Reef client engine, social spaces and games (R02–R49)
 
 Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. The room picker in Controls preserves the flag.
 
@@ -40,7 +40,7 @@ The camera fits the room with 24 CSS pixels of padding at the largest integer **
 
 ## Measurements and limits
 
-`reef:budget` follows the production build manifest to sum entry/Play/worker JS, every static dependency and CSS, the complete manifest, the largest initial texture pages and four-direction look, pixel fonts, a full 650-item catalogue allowance, and 300 KB for API bodies/appearance PNGs/headers. It fails over 2,000,000 bytes. Flagged Play uses system body text to avoid downloading the two ~600 KB Noto TTFs; other routes retain their fonts. Dashboard routes and the optional Decorate/Social sheets load on demand. This is a conservative static envelope, not a measured HTTP capture.
+`reef:budget` follows the production build manifest to sum entry/Play/worker JS, every static dependency and CSS, the complete manifest, the largest initial texture pages and four-direction look, pixel fonts, a full 650-item catalogue allowance, and 300 KB for API bodies/appearance PNGs/headers. It fails over 1,985,000 bytes. Flagged Play uses system body text to avoid downloading the two ~600 KB Noto TTFs; other routes retain their fonts. Dashboard routes, game panels and optional Decorate/Social sheets load on demand; chat stays on the initial path. This is a conservative static envelope, not a measured HTTP capture.
 
 `tests/reef/play.spec.ts` uses the production build and mocked authenticated API data with the complete furniture catalogue and real original art/fonts. `tests/reef/perf.spec.ts` exercises a 14×12 scene, 60 furnishings, and 16/32 animated actors at 4× Chromium CPU throttling, reporting draw CPU p95 and observed rAF FPS. `perf.test.ts` measures only ordering/anchor CPU cost and must not be reported as browser FPS.
 
@@ -220,3 +220,70 @@ Lead browser acceptance (real backend and mock Discord, no intercepted room APIs
 Postgres/Redis environment. Four journeys cover two browsers, desktop/phone placement, shared undo,
 doorbell admission, notes/likes, blocking, plaza entry and scheduled RSVP. Screenshots go to
 `web/test-results/screens/reef7-*`. Chromium execution and final seat silhouette review remain lead gates.
+
+## Room games and shared economy (R38–R49)
+
+Wave 8 uses migration **0085**, adds no slash roots and adds no dependencies.
+`Room activities` is available in house rooms and guild plazas. Usable game furniture opens the
+same lobby with a placement binding; the accessible activity menu needs no furniture. The lobby,
+Checkers, Chess, Picross, Trivia, game translations and game styles load on demand. The art manifest
+omits redundant null seat contacts while preserving all pixels, pose anchors and seated contacts.
+
+- `pinchora-game/src/play/room.rs` adapts the existing Checkers and Chess engines. It owns the
+  transport-independent projection; it does not implement alternative movement rules. Checkers
+  preserves forced captures and chains; Chess preserves castling, en passant, all promotions,
+  repetition, check and draw outcomes. Move clocks are 180/300 seconds, as on Discord.
+- `reef_games` holds an explicit `house:…`/`plaza:…` context, persisted deadline and revision.
+  `reef_game_players` holds seats, single-use answers and paid amounts. `reef_game_actions` binds
+  each account/request ID to its exact payload. Replaying a committed action returns current state;
+  reusing that ID for another payload conflicts. Numeric database/user IDs are JSON strings.
+- The database session row serializes both transports. It takes player locks first, checks current
+  state, writes statistics, spends the shared daily allowance, writes the shell ledger and commits
+  the final state/receipt together. WebSocket actions additionally verify the room owner's fence
+  inside that transaction. HTTP and WebSocket use the same service and server rules. A one-second
+  sweeper settles persisted deadlines without connected browsers; competing pods cannot pay twice.
+- Multiplayer **house games never pay shells**, regardless of the number of accounts, host, game
+  length or result. Self-join cannot occupy a second seat. Guild-plaza games use the existing reward
+  amounts, minimum moves and paid-win caps. This is a private-room farming rule, not a claim to
+  identify every alternate account in a public guild. No web wagers or passive income exist.
+- `game_reward_daily` replaces the Redis-only `pay_win` allowance for bot and web. Migration seeds
+  historical paid wins from the ledger; today's counters survive privacy deletion. A missing counter
+  after a same-day deletion stays closed until tomorrow, covering legacy deleted ledgers at cutover. Restart bot and
+  web together at cutover so older binaries cannot keep spending the old Redis-only allowance.
+- Bot board conclusions now commit rewards and stats with `settle_game`'s state/wager effects.
+  Bot Trivia also commits answers' statistics and capped payments with its completed state.
+  Picross commits its solved state, stats, daily/streak or capped practice reward in the mark
+  transaction. Both clients use `picross_games`; daily tombstones, checks and reduced rewards remain.
+  Browser edits carry a monotonic revision as well as the grid, including across practice resets.
+  Both clients retire practice pictures that approach the next daily puzzles.
+- Trivia reuses EN/TR question content and option permutation. Question IDs, shuffle seeds/order,
+  other people's chosen answers, and the correct-slot field are absent before reveal. The server
+  allows one answer per participant before the persisted deadline; everyone answering or the
+  deadline triggers reveal. Reconnect returns whether your answer was accepted. Room bubbles show
+  status only. A room viewer remains a spectator until joining a waiting session.
+- Snapshots and actions recheck room access, sanctions, plaza membership/module gating and participant
+  blocks. Requests have a 4 KiB ceiling, strict unknown-field parsing and fail-closed Redis budgets:
+  creation 12/minute, actions 120/minute, reads 240/minute, Picross marks 180/minute. Existing socket
+  frame, sequence, controller, origin and ticket limits remain. Browser POSTs retain CSRF/audit.
+- Finished sessions and their action/player children expire after seven days. Reward counters expire
+  after the current-day protection window. The privacy registry covers every new personal-data table.
+  Removing bound furniture releases the binding on the next action, preserving play in the activity menu.
+- Completion invalidates existing `player`, `economy`, `/api/me`, house, inventory and pet caches;
+  there is no separate browser wallet or inventory.
+
+Endpoints: `GET/POST /api/reef/rooms/{room}/games`, `GET /api/reef/games/{id}`,
+`POST /api/reef/games/{id}/actions`, `POST /api/reef/rooms/{room}/picross`, and
+`POST /api/reef/rooms/{room}/picross/marks`. Socket `game_action` carries `game_id` and `payload`
+(the same HTTP action body). `game_changed` acknowledges the sender and notifies other viewers by session ID.
+The browser's two-second lobby poll also recovers missed events and HTTP changes.
+
+Verification: `crates/pinchora-db/tests/reef_games.rs` injects PostgreSQL failures at the stats and
+ledger and final receipt stages, verifies full rollback, retries after a lost committed response, checks shared bot/web
+caps and deletion tombstones. `crates/pinchora-web/tests/reef/wave8.rs` exercises real sessions, CSRF,
+HTTP/socket parity, stale actions, spectator authorization, Trivia concealment/deadlines and Picross
+cross-transport resume. The existing EN/TR bot simulator journeys exercise the changed settlement paths.
+`web/tests/e2e/reef-games.spec.ts` contains four real-server two-browser complete-game journeys, including
+phone/desktop captures, spectator and reconnect checks, and Picross solved from public clues.
+The lead runs Chromium; `npx playwright test tests/e2e/reef-games.spec.ts --list` checks discovery here.
+`node web/scripts/measure-reef.mjs` now enforces **1,985,000 bytes** and verifies every game facade stays
+outside the cold dependency graph. Its conservative response-body envelope is not a device FPS claim.

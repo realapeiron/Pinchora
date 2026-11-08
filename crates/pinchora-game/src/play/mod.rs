@@ -367,3 +367,5 @@ mod tests {
         );
     }
 }
+
+pub mod room;

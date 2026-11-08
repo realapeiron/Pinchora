@@ -379,6 +379,16 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          SELECT id, $1, 1 FROM collection_drops WHERE host_id = $1",
         "INSERT INTO collection_votes (drop_id, user_id, slot)
          SELECT id, $1, 0 FROM collection_drops WHERE guild_id = $1 AND host_id = $1",
+        // Wave 8 room ownership, hosting, participation and exact request receipts.
+        "INSERT INTO reef_games(room_key,owner_id,host_id,kind,request_id,state,finished,deadline)
+         VALUES ('house:'||$1::bigint||':0',$1,$2,'chess','privacy-owner','{}',true,now()),
+                ('house:'||$2::bigint||':0',$2,$1,'chess','privacy-host','{}',true,now())",
+        "INSERT INTO reef_game_players(game_id,user_id,side)
+         SELECT id,$1,0 FROM reef_games WHERE owner_id=$1 OR host_id=$1",
+        "INSERT INTO reef_game_actions(game_id,user_id,request_id,payload)
+         SELECT id,$1,'privacy','{}' FROM reef_games WHERE owner_id=$1 OR host_id=$1",
+        "INSERT INTO game_reward_daily(user_id,day,game,wins)
+         VALUES ($1,floor(extract(epoch FROM now())/86400)::int,'chess',2),($1,1,'chess',1)",
         // The day's limits, and an older day's.
         "INSERT INTO collection_daily (user_id, day, game, plays)
          VALUES ($1, floor(extract(epoch FROM now()) / 86400)::int, 'beachcomb', 3), ($1, 1, 'beachcomb', 1)",

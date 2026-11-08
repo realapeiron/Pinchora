@@ -262,6 +262,8 @@ async fn trivia_answers_count_once_per_player() {
     let [host, a, b] = ids();
     let round = db
         .create_game(NewGame {
+            kind: "trivia",
+            status: ACTIVE,
             guest: None,
             ..duel(host, 0, 0)
         })

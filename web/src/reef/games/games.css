@@ -1,0 +1,109 @@
+.reef-activities {
+  width: min(34rem, calc(100% - 24px));
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.reef-activity-actions,
+.reef-trivia-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+.reef-activities button,
+.reef-activities select {
+  min-height: 44px;
+}
+.reef-trivia-options button {
+  flex: 1 1 45%;
+  text-align: left;
+}
+.reef-board-scroll {
+  max-width: 100%;
+  overflow: auto;
+  margin-block: 1rem;
+}
+.reef-game-board {
+  display: grid;
+  grid-template-columns: repeat(8, 44px);
+  width: 352px;
+  border: 2px solid #263c45;
+}
+.reef-game-square {
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: #eedbb4 !important;
+  border: 0 !important;
+  color: #172d37 !important;
+  font:
+    32px Georgia,
+    serif !important;
+  line-height: 1 !important;
+}
+.reef-game-square.dark {
+  background: #91b8aa !important;
+}
+.reef-game-square:disabled {
+  opacity: 1;
+}
+.reef-game-square[aria-pressed="true"] {
+  outline: 3px solid #a43d25;
+  outline-offset: -4px;
+}
+.reef-game-square[data-destination="true"] {
+  box-shadow: inset 0 0 0 3px #295d45;
+}
+.reef-activities :focus-visible {
+  outline: 3px solid #bd4f30;
+  outline-offset: -3px;
+}
+.reef-picross {
+  border-collapse: collapse;
+  min-width: 510px;
+}
+.reef-picross th {
+  min-width: 44px;
+  padding: 4px;
+  font-size: 0.8rem;
+  color: #fff1e8;
+}
+.reef-picross td {
+  padding: 0;
+}
+.reef-picross button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 0;
+}
+.reef-picross button[aria-pressed="true"] {
+  background: #295d45;
+  color: #fff7df;
+}
+.reef-activities select {
+  max-width: 100%;
+}
+.reef-activities p {
+  max-width: 65ch;
+}
+@media (max-width: 767px) {
+  .reef-activities {
+    padding: 0.75rem;
+  }
+}
+.reef-activity-bubble {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  transform: translateX(-50%);
+  z-index: 6;
+  max-width: 16rem;
+  padding: 0.6rem 0.9rem;
+  background: #fff1e8;
+  color: #172e36;
+  border: 2px solid #78b8ae;
+  pointer-events: none;
+}

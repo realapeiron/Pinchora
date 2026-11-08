@@ -1,5 +1,7 @@
 //! Fenced, multi-pod authoritative rooms. No economy writes or persisted presence.
+pub(crate) mod games;
 mod navigation;
+mod picross;
 mod room;
 mod routing;
 pub(crate) mod safety;
@@ -42,6 +44,7 @@ impl Envelope {
             Command::Chat { .. } => &["text"],
             Command::MoveTo { .. } => &["tile"],
             Command::Use { .. } => &["placement_id", "revision"],
+            Command::GameAction { .. } => &["game_id", "payload"],
             _ => &[],
         };
         raw.as_object()?
@@ -63,6 +66,7 @@ pub enum Command {
     MoveTo { tile: navigation::Tile },
     Stop,
     Use { placement_id: String, revision: String },
+    GameAction { game_id: String, payload: games::Action },
     Stand,
     Ping,
     Chat { text: String },
@@ -360,7 +364,7 @@ impl Limits {
                     true
                 }
             }
-            Command::Stand => self.furniture.take(now),
+            Command::Stand | Command::GameAction { .. } => self.furniture.take(now),
             _ => true,
         }
     }

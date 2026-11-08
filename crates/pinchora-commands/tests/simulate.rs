@@ -2277,16 +2277,12 @@ async fn connect_four_rewards_stop_at_the_daily_limit() {
     };
     let (a, b) = (unique(), unique());
     // The cap counts paid wins per player per day; five are already on the counter.
-    for _ in 0..5 {
-        sim.app
-            .cache
-            .incr(
-                &format!("gamewin:connect4:{}:{a}", today()),
-                std::time::Duration::from_secs(3600),
-            )
-            .await
-            .expect("counter");
-    }
+    sqlx::query("INSERT INTO game_reward_daily(user_id,day,game,wins) VALUES($1,$2,'connect4',5)")
+        .bind(a as i64)
+        .bind(today() as i32)
+        .execute(sim.app.db.pool())
+        .await
+        .expect("durable counter");
     let challenge = duel(&mut sim, a, b, "connect4", vec![]).await;
     let mut board = sim.click(b, &challenge, "Accept").await;
     for (player, label) in [(a, "4"), (b, "5"), (a, "4"), (b, "5"), (a, "4"), (b, "5"), (a, "4")] {

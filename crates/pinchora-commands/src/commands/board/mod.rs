@@ -3,7 +3,7 @@
 //! (`/play picross`, `/play 2048`).
 
 use pinchora_core::{i18n::Lang, t};
-use pinchora_db::{GameSession, Payout};
+use pinchora_db::GameSession;
 use pinchora_game::play::Game;
 use twilight_model::{
     channel::message::{
@@ -14,7 +14,7 @@ use twilight_model::{
     id::Id,
 };
 
-use super::games::{button, pay_win, record};
+use super::games::button;
 use crate::{App, Cx, util::thousands_in};
 
 pub(crate) mod checkers;
@@ -65,23 +65,27 @@ pub(crate) async fn conclude(
     winner: Option<u64>,
     moves: usize,
 ) -> anyhow::Result<Option<String>> {
-    let payout = winner.map_or(Payout::Refund, Payout::Winner);
-    if app
+    let Some(paid) = app
         .db
-        .settle_game(session.id, Some(&session.state), final_state, payout, false)
+        .settle_board_game(
+            session,
+            final_state,
+            winner,
+            if moves >= game.min_moves() {
+                game.win_reward()
+            } else {
+                0
+            },
+            game.daily_cap(),
+        )
         .await?
-        .is_none()
-    {
+    else {
         return Ok(None);
-    }
-    for player in players(session) {
-        record(app, game, player, winner == Some(player)).await;
-    }
+    };
     let note = match winner {
         Some(_) if session.bet > 0 => t!(lang, "duel.pot-won", pot = thousands_in(lang, session.bet * 2)),
         Some(_) if moves < game.min_moves() => t!(lang, "board.too-short"),
-        Some(w) => {
-            let paid = pay_win(app, w, game, game.win_reward(), &format!("{}_win", game.key())).await?;
+        Some(_) => {
             if paid > 0 {
                 t!(lang, "duel.paid", paid = paid)
             } else {

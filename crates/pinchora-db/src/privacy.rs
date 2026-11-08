@@ -22,6 +22,10 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("reef_game_actions", "user_id"),
+    ("reef_game_players", "user_id"),
+    ("reef_games", "host_id"),
+    ("reef_games", "owner_id"),
     ("reef_edit_receipts", "actor_id"),
     ("reef_edit_receipts", "owner_id"),
     ("reef_space_preferences", "user_id"),
@@ -254,6 +258,7 @@ pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
 /// than a tombstone does: the id and how much of the day is used); older ones go, and today's go with
 /// the games' own sweep of old days.
 pub const DAILY_LIMITS: &[(&str, &str, &str)] = &[
+    ("game_reward_daily", "user_id", "day"),
     ("reef_loop_daily", "user_id", "day"),
     ("economy_limits", "user_id", "day"),
     ("collection_daily", "user_id", "day"),

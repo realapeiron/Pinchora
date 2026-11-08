@@ -1,4 +1,5 @@
 export const en = {
+  "Room activities": "Room activities",
   Accepted: "Accepted",
   "Invalid revision.": "Invalid revision.",
   "Request id and revision are required together.": "Request id and revision are required together.",

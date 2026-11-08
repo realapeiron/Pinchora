@@ -7,10 +7,9 @@ use std::{str::Split, time::Duration};
 
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::PicrossGame;
-use pinchora_game::play::{
-    Game,
-    picross::{self, CELLS, Clues, Grid, Ink, Puzzle, SIZE, Shade, parse_marks},
-};
+#[cfg(test)]
+use pinchora_game::play::Game;
+use pinchora_game::play::picross::{self, CELLS, Clues, Grid, Ink, Puzzle, SIZE, Shade, parse_marks};
 use pinchora_render::{PicrossCard, Reveal, Theme};
 use twilight_model::{
     channel::message::{
@@ -24,7 +23,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use super::{option, select_row};
 use crate::{
     App, Cx,
-    commands::games::{button, pay_win, quiet, record},
+    commands::games::{button, quiet},
     util::{BRAND, SUCCESS, mention},
 };
 
@@ -33,8 +32,10 @@ const PRACTICE: &str = "practice";
 /// How many times a puzzle can be checked.
 pub(crate) const MAX_CHECKS: i16 = 3;
 /// What the daily puzzle pays once it was checked, whatever the streak.
+#[cfg(test)]
 pub(crate) const CHECKED_DAILY_REWARD: i64 = 15;
 /// What a practice puzzle pays once it was checked (an unchecked one pays the game's win reward).
+#[cfg(test)]
 pub(crate) const CHECKED_PRACTICE_REWARD: i64 = 5;
 /// Custom id of the text input in the "Mark cells" form.
 pub(crate) const CELLS_FIELD: &str = "cells";
@@ -64,6 +65,7 @@ pub(crate) fn streak(solved: &[i32], today: i64) -> i64 {
 
 /// Shells for the daily puzzle: 35, and 5 more for every day of the streak up to a week. A puzzle that was
 /// checked pays a flat 15 and no streak bonus (the day still counts towards the streak).
+#[cfg(test)]
 pub(crate) fn daily_reward(streak: i64, checks: i16) -> i64 {
     if checks > 0 {
         return CHECKED_DAILY_REWARD;
@@ -492,7 +494,6 @@ async fn mark(
 
 /// Counts a solved puzzle and pays for it; returns what to tell the player.
 async fn finish(app: &App, lang: Lang, me: u64, game: &PicrossGame) -> anyhow::Result<String> {
-    record(app, Game::Picross, me, true).await;
     if game.mode == DAILY {
         // A daily solved before the player deleted their data was paid then.
         if app.db.daily_picross_solved_before_deleting(me, game.day).await? {
@@ -500,20 +501,14 @@ async fn finish(app: &App, lang: Lang, me: u64, game: &PicrossGame) -> anyhow::R
         }
         let days = app.db.picross_days_solved(me, 40).await?;
         let streak = streak(&days, today(app));
-        let shells = daily_reward(streak, game.checks);
-        app.db.earn_shells(me, shells, "picross_daily").await?;
+        let shells = game.paid;
         return Ok(if game.checks > 0 {
             t!(lang, "picross.paid-daily-checked", shells = shells, count = streak)
         } else {
             t!(lang, "picross.paid-daily", shells = shells, count = streak)
         });
     }
-    let reward = if game.checks > 0 {
-        CHECKED_PRACTICE_REWARD
-    } else {
-        Game::Picross.win_reward()
-    };
-    let paid = pay_win(app, me, Game::Picross, reward, "picross_win").await?;
+    let paid = game.paid;
     Ok(if paid > 0 {
         t!(lang, "picross.paid", paid = paid)
     } else {
