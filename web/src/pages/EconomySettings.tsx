@@ -77,7 +77,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            save.mutate();
+            if (dirty && !save.isPending) save.mutate();
           }}
         >
           <div className="economy-form">

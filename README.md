@@ -1693,7 +1693,7 @@ privacy, artwork and retention details are in [GAME_DESIGN.md](docs/GAME_DESIGN.
 
 ### W7 Web server tools
 
-`/g/:guildId/access` grants up to 25 Discord roles chosen dashboard areas: configuration, roles,
+`/g/:guildId/access` grants up to 25 Discord roles chosen dashboard areas: configuration, economy, roles,
 safety, community, feeds, stats and audit. Held-role grants combine. `ManagedGuild` reads current
 membership and stored grants on every request; full Discord permissions are refreshed too. The guild
 router enforces this before every handler; unlisted routes fail closed. Owners,
@@ -1750,7 +1750,7 @@ Completed games feed `/play stats`. Eligible winners receive 15 shells through t
 | `/stall trade user [give] [receive] [item] [request_item]`, `/stall trade-review id` | Fixed offers, exact review, both confirmations, atomic items + shells swap, cancel/expiry refunds |
 | `/progression economy tools` | Manage Server: store conditions and donation goal; preview then scale/reset server points |
 | `/me/wallet` | Jobs, provisions, earned treasure, auctions, trades, donation pools, season and prestige alongside the existing wallet/ledger |
-| `/g/:guildId/economy` | Economy settings; configuration-area delegates use the same ManagedGuild boundary as the store |
+| `/g/:guildId/economy` | Economy settings; Manage Server or the economy access-role area, with atomic admin audit |
 
 D8 adds no registered slash roots. Migration 0083 is the only schema change. Global shells
 are never minted or reset by server administrators. See [reward budgets and trade rules](docs/GAME_DESIGN.md#d8-player-economy-v2).

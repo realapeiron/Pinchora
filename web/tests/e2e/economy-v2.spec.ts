@@ -24,7 +24,17 @@ test("economy settings save only changed writable fields", async ({ page }) => {
   await page.goto(`/g/${guild}/economy`);
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.getByLabel("Donation goal", { exact: true }).fill("15000");
+  await page.getByLabel("Donation goal", { exact: true }).fill("10000");
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  await page.getByLabel("Donation goal", { exact: true }).fill("15000");
+  const saved = page.waitForRequest(
+    (request) => request.method() === "PUT" && request.url().endsWith(`/api/guilds/${guild}/economy`),
+  );
   await page.getByRole("button", { name: "Save changes" }).click();
+  expect((await saved).postDataJSON()).toEqual({
+    revision: 0,
+    settings: { pool_goal: 15000, shop_min_level: 0, shop_min_days: 0, shop_enabled: true },
+  });
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.screenshot({ path: "test-results/economy-settings-desktop.png", fullPage: true });
   await page.getByRole("button", { name: "Preview affected balances" }).click();

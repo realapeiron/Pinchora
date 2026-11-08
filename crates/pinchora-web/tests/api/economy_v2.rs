@@ -79,6 +79,11 @@ async fn economy_admin_area_validation_audit_and_point_reset() {
     let r = browser.write(Method::PUT, &root, body.clone()).await;
     assert_eq!(r.status, StatusCode::OK, "{}", r.text());
     assert_eq!(r.json()["revision"], 1);
+    let mut same = body.clone();
+    same["revision"] = json!(1);
+    let noop = browser.write(Method::PUT, &root, same).await;
+    assert_eq!(noop.status, StatusCode::OK);
+    assert_eq!(noop.json()["revision"], 1);
     assert_eq!(
         browser.write(Method::PUT, &root, body).await.status,
         StatusCode::UNPROCESSABLE_ENTITY
@@ -103,4 +108,96 @@ async fn economy_admin_area_validation_audit_and_point_reset() {
     assert_eq!(r.status, StatusCode::OK, "{}", r.text());
     assert_eq!(r.json()["total"], "0");
     assert_eq!(h.state.app.db.user(user).await.unwrap().credits, 500);
+}
+
+#[tokio::test]
+async fn economy_delegation_is_specific_revocable_and_csrf_protected_on_every_route() {
+    let Some(h) = Harness::new("economy_grants").await else {
+        return;
+    };
+    let (guild, owner, _) = h.managed_server().await;
+    let user = unique();
+    h.mock.member_roles.lock().unwrap().insert(user, vec![FAN]);
+    let mut browser = h.browser();
+    browser
+        .login(&h, user, vec![guild_entry(guild, "Reef", false, 0)])
+        .await;
+    sqlx::query("INSERT INTO members(guild_id,user_id,points) VALUES($1,$2,100)")
+        .bind(guild as i64)
+        .bind(user as i64)
+        .execute(h.state.app.db.pool())
+        .await
+        .unwrap();
+    let root = format!("/api/guilds/{guild}/economy");
+    for area in ["configuration", "economy"] {
+        h.state
+            .app
+            .db
+            .replace_dashboard_managers(
+                guild,
+                owner,
+                "Owner",
+                &[pinchora_db::DashboardManager {
+                    role_id: FAN as i64,
+                    areas: vec![area.into()],
+                }],
+            )
+            .await
+            .unwrap();
+        for path in [&root, &format!("{root}/points")] {
+            assert_eq!(
+                browser.get(path).await.status,
+                if area == "economy" {
+                    StatusCode::OK
+                } else {
+                    StatusCode::FORBIDDEN
+                }
+            );
+        }
+        let preview = browser.get(&format!("{root}/points")).await.json();
+        for (method, path, body) in [
+            (
+                Method::PUT,
+                root.clone(),
+                json!({"revision":0,"settings":{"pool_goal":20000,"shop_min_level":0,"shop_min_days":0,"shop_enabled":true}}),
+            ),
+            (
+                Method::POST,
+                format!("{root}/points"),
+                json!({"percent":0,"version":preview["version"]}),
+            ),
+        ] {
+            let csrf = browser.csrf.take();
+            assert_eq!(
+                browser.write(method.clone(), &path, body.clone()).await.status,
+                StatusCode::FORBIDDEN
+            );
+            browser.csrf = csrf;
+            let r = browser.write(method, &path, body).await;
+            assert_eq!(
+                r.status,
+                if area == "economy" {
+                    StatusCode::OK
+                } else {
+                    StatusCode::FORBIDDEN
+                },
+                "{}",
+                r.text()
+            );
+        }
+    }
+    let count:i64=sqlx::query_scalar("SELECT count(*) FROM dashboard_audit WHERE guild_id=$1 AND action IN ('economy.settings','economy.points_scale')").bind(guild as i64).fetch_one(h.state.app.db.pool()).await.unwrap();
+    assert_eq!(count, 2);
+    h.mock.member_roles.lock().unwrap().insert(user, vec![]);
+    for (method, path) in [
+        (Method::GET, root.clone()),
+        (Method::PUT, root.clone()),
+        (Method::GET, format!("{root}/points")),
+        (Method::POST, format!("{root}/points")),
+    ] {
+        assert_eq!(
+            browser.write(method, &path, json!({})).await.status,
+            StatusCode::FORBIDDEN
+        );
+    }
 }

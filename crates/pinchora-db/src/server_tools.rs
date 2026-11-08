@@ -6,6 +6,7 @@ use crate::{AuditRow, AuditSource, Db, NewAudit, audit, sql_id};
 
 pub const DASHBOARD_AREAS: &[&str] = &[
     "configuration",
+    "economy",
     "roles",
     "safety",
     "community",

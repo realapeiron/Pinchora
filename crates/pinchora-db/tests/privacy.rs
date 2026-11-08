@@ -349,6 +349,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO timed_roles (guild_id, user_id, role_id, remove_at) VALUES ($1, $1, 5, now() + interval '1 day')",
         "INSERT INTO delayed_roles (guild_id, user_id, role_id, grant_at) VALUES ($1, $1, 6, now() + interval '1 day')",
         // D8: closed counterpart records exercise every privacy column without live escrow.
+        "WITH m AS MATERIALIZED (SELECT nextval('economy_movement_ids') AS id)
+         INSERT INTO economy_ledger(movement,user_id,account,asset,delta,reason)
+         SELECT id,$1,'wallet','shells',1,'fixture' FROM m UNION ALL SELECT id,$1,'source','shells',-1,'fixture' FROM m",
         "INSERT INTO economy_players(user_id) VALUES($1)",
         "INSERT INTO economy_requests(user_id,request_id,result) VALUES($1,'privacy-fixture','{}')",
         "INSERT INTO economy_auctions(seller_id,bidder_id,item_id,start_price,bid,ends_at,hard_end,status)

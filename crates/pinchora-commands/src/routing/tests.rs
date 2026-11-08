@@ -473,6 +473,7 @@ fn registered_command_sizes_keep_growth_headroom() {
     for (size, name) in sizes.iter().take(10) {
         eprintln!("/{name}: {size} characters");
     }
+    assert!(sizes[0].0 <= 6_650, "largest root must retain D8 headroom");
     for (size, name) in sizes {
         if name == "community" {
             assert!(size <= COMMUNITY_SIZE_BUDGET);

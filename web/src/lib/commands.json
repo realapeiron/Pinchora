@@ -7624,16 +7624,16 @@
           "aliases": [
             "config level-roles add"
           ],
-          "description": "Give a role to everyone who reaches a level",
+          "description": "Assign a level role",
           "manager": true,
           "options": [
             {
-              "description": "Level that earns the role",
+              "description": "Required level",
               "name": "level",
               "required": true
             },
             {
-              "description": "The role to give (adding it again moves it to the new level)",
+              "description": "Role to grant; re-adding moves its level",
               "name": "role",
               "required": true
             }
@@ -7655,7 +7655,7 @@
           "aliases": [
             "config level-roles mode"
           ],
-          "description": "Keep every level role, or only the highest one",
+          "description": "Keep all roles or the highest",
           "manager": true,
           "options": [
             {
@@ -7675,11 +7675,11 @@
           "aliases": [
             "config level-roles remove"
           ],
-          "description": "Stop giving a role at a level",
+          "description": "Remove a level role",
           "manager": true,
           "options": [
             {
-              "description": "The role to stop giving",
+              "description": "Role to remove",
               "name": "role",
               "required": true
             }
@@ -7691,7 +7691,7 @@
           "aliases": [
             "config level-roles sync"
           ],
-          "description": "Give members who are already past a level the roles they earned",
+          "description": "Sync members’ earned roles",
           "manager": true,
           "options": [],
           "path": "progression leveling roles-sync",

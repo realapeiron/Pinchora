@@ -2,7 +2,6 @@
 use crate::{
     Db,
     economy::ledger,
-    house::add_inventory,
     locks::{lock_users, retry, try_lock_users},
 };
 use chrono::{DateTime, Datelike, Duration, Utc};
@@ -10,6 +9,39 @@ use pinchora_core::economy_v2::{self as rules, EconomySettings, Offer};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::{Postgres, Transaction};
+
+/// Audit identity for an admin mutation; the change and audit row share one commit.
+pub struct EconomyAudit<'a> {
+    pub actor: u64,
+    pub name: &'a str,
+    pub source: crate::AuditSource,
+}
+async fn admin_audit(
+    tx: &mut Tx<'_>,
+    guild: u64,
+    actor: Option<&EconomyAudit<'_>>,
+    action: &str,
+    before: Value,
+    after: Value,
+) -> anyhow::Result<()> {
+    if let Some(actor) = actor {
+        crate::audit::insert_in(
+            tx,
+            &crate::NewAudit {
+                guild,
+                actor: actor.actor,
+                actor_name: actor.name,
+                source: actor.source,
+                action,
+                target: None,
+                before: Some(&before.to_string()),
+                after: Some(&after.to_string()),
+            },
+        )
+        .await?;
+    }
+    Ok(())
+}
 
 type Tx<'a> = Transaction<'a, Postgres>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,11 +131,29 @@ async fn ensure_player(tx: &mut Tx<'_>, user: i64) -> anyhow::Result<()> {
         .await?;
     Ok(())
 }
-/// Numeric comparison prevents SQL overflow before evaluating the guarded addition.
-async fn money(tx: &mut Tx<'_>, user: i64, delta: i64, reason: &str) -> anyhow::Result<()> {
+/// The two sides are inserted together; every balance/inventory write and its pair commit together.
+async fn movement(tx: &mut Tx<'_>, user: i64, asset: &str, delta: i64, reason: &str) -> anyhow::Result<()> {
     if delta == 0 {
         return Ok(());
     }
+    let account = match reason {
+        "job_shift" | "provisions" | "earned_chest" | "season_pass" => "source",
+        "donation_pool" | "prestige" | "auction_fee" => "sink",
+        _ => "escrow",
+    };
+    sqlx::query("WITH m AS MATERIALIZED (SELECT nextval('economy_movement_ids') AS id) INSERT INTO economy_ledger(movement,user_id,account,asset,delta,reason) SELECT id,$1,'wallet',$2,$3,$4 FROM m UNION ALL SELECT id,$1,$5,$2,-$3,$4 FROM m")
+        .bind(user).bind(asset).bind(delta).bind(reason).bind(account).execute(&mut **tx).await?;
+    Ok(())
+}
+async fn money_record(tx: &mut Tx<'_>, user: i64, delta: i64, reason: &str) -> anyhow::Result<()> {
+    if delta == 0 {
+        return Ok(());
+    }
+    ledger(tx, user, delta, reason).await?;
+    movement(tx, user, "shells", delta, reason).await
+}
+/// Numeric comparison prevents SQL overflow before evaluating the guarded addition.
+async fn balance(tx: &mut Tx<'_>, user: i64, delta: i64) -> anyhow::Result<()> {
     let n = sqlx::query(
         "UPDATE users SET credits=credits+$2 WHERE id=$1 AND credits::numeric+$2 BETWEEN 0 AND 9223372036854775807",
     )
@@ -112,8 +162,20 @@ async fn money(tx: &mut Tx<'_>, user: i64, delta: i64, reason: &str) -> anyhow::
     .execute(&mut **tx)
     .await?
     .rows_affected();
-    require(n == 1, "balance")?;
-    ledger(tx, user, delta, reason).await
+    require(n == 1, "balance")
+}
+async fn money(tx: &mut Tx<'_>, user: i64, delta: i64, reason: &str) -> anyhow::Result<()> {
+    if delta == 0 {
+        return Ok(());
+    }
+    balance(tx, user, delta).await?;
+    money_record(tx, user, delta, reason).await
+}
+async fn inventory_credit(tx: &mut Tx<'_>, user: i64, item: &str, quantity: i32, reason: &str) -> anyhow::Result<()> {
+    let n = sqlx::query("INSERT INTO inventory(user_id,item_id,quantity) VALUES($1,$2,$3) ON CONFLICT(user_id,item_id) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity,acquired_at=now() WHERE inventory.quantity::bigint+EXCLUDED.quantity<=2147483647")
+        .bind(user).bind(item).bind(quantity).execute(&mut **tx).await?.rows_affected();
+    require(n == 1, "inventory")?;
+    movement(tx, user, &format!("item:{item}"), i64::from(quantity), reason).await
 }
 async fn take_offer(tx: &mut Tx<'_>, user: i64, offer: &Offer, reason: &str) -> anyhow::Result<()> {
     require(offer.valid(), "invalid")?;
@@ -128,13 +190,14 @@ async fn take_offer(tx: &mut Tx<'_>, user: i64, offer: &Offer, reason: &str) -> 
                 .await?
                 .rows_affected();
         require(n == 1, "inventory")?;
+        movement(tx, user, &format!("item:{}", i.item_id), -i64::from(i.quantity), reason).await?;
     }
     Ok(())
 }
 async fn give_offer(tx: &mut Tx<'_>, user: i64, offer: &Offer, reason: &str) -> anyhow::Result<()> {
     money(tx, user, offer.shells, reason).await?;
     for i in &offer.items {
-        add_inventory(tx, user, &i.item_id, i.quantity).await?;
+        inventory_credit(tx, user, &i.item_id, i.quantity, reason).await?;
     }
     Ok(())
 }
@@ -161,7 +224,11 @@ impl Db {
         now: DateTime<Utc>,
     ) -> anyhow::Result<Value> {
         require(
-            user > 0 && user <= i64::MAX as u64 && !request.is_empty() && request.len() <= 100,
+            user > 0
+                && user <= i64::MAX as u64
+                && !request.is_empty()
+                && request.len() <= 100
+                && !request.starts_with("worker:"),
             "invalid",
         )?;
         retry("economy_v2", || {
@@ -470,11 +537,12 @@ impl Db {
                 };
                 if let Some(b) = a.bidder_id {
                     // Gross proceeds and the fee are separate entries so the sink is inspectable.
-                    money(&mut tx, a.seller_id, a.bid, "auction_sale").await?;
-                    money(&mut tx, a.seller_id, -rules::fee(a.bid), "auction_fee").await?;
-                    add_inventory(&mut tx, b, &a.item_id, 1).await?;
+                    balance(&mut tx, a.seller_id, a.bid - rules::fee(a.bid)).await?;
+                    money_record(&mut tx, a.seller_id, a.bid, "auction_sale").await?;
+                    money_record(&mut tx, a.seller_id, -rules::fee(a.bid), "auction_fee").await?;
+                    inventory_credit(&mut tx, b, &a.item_id, 1, "auction_delivery").await?;
                 } else {
-                    add_inventory(&mut tx, a.seller_id, &a.item_id, 1).await?;
+                    inventory_credit(&mut tx, a.seller_id, &a.item_id, 1, "auction_return").await?;
                 }
                 sqlx::query("UPDATE economy_auctions SET status=$2 WHERE id=$1")
                     .bind(id)
@@ -577,7 +645,7 @@ impl Db {
         .bind(user as i64)
         .fetch_all(self.pool())
         .await?;
-        let auctions:Vec<Auction>=sqlx::query_as("SELECT * FROM economy_auctions WHERE status='open' OR seller_id=$1 OR bidder_id=$1 ORDER BY (seller_id=$1 OR bidder_id=$1) DESC NULLS LAST,(status='open') DESC,id DESC LIMIT 100").bind(user as i64).fetch_all(self.pool()).await?;
+        let auctions:Vec<Auction>=sqlx::query_as("SELECT * FROM economy_auctions WHERE status='open' OR seller_id=$1 OR bidder_id=$1 ORDER BY (status='open') DESC,(seller_id=$1 OR bidder_id=$1) DESC NULLS LAST,id DESC LIMIT 100").bind(user as i64).fetch_all(self.pool()).await?;
         let inventory: Vec<(String, i32)> = sqlx::query_as(
             "SELECT item_id,quantity FROM inventory WHERE user_id=$1 AND quantity>0 ORDER BY item_id LIMIT 2000",
         )
@@ -653,18 +721,50 @@ impl Db {
         guild: u64,
         settings: &EconomySettings,
         expected: i64,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<bool> {
+        self.save_economy_settings_audited(guild, settings, expected, None)
+            .await
+    }
+    pub async fn save_economy_settings_audited(
+        &self,
+        guild: u64,
+        settings: &EconomySettings,
+        expected: i64,
+        actor: Option<&EconomyAudit<'_>>,
+    ) -> anyhow::Result<bool> {
         require(settings.valid(), "invalid")?;
         let mut tx = self.pool().begin().await?;
+        if let Some(actor) = actor {
+            lock_users(&mut tx, &[actor.actor as i64]).await?;
+        }
         sqlx::query("INSERT INTO economy_settings(guild_id) VALUES($1) ON CONFLICT DO NOTHING")
             .bind(guild as i64)
             .execute(&mut *tx)
             .await?;
+        let current: Value =
+            sqlx::query_scalar("SELECT to_jsonb(s) FROM economy_settings s WHERE guild_id=$1 FOR UPDATE")
+                .bind(guild as i64)
+                .fetch_one(&mut *tx)
+                .await?;
+        require(current["revision"].as_i64() == Some(expected), "changed")?;
+        let unchanged = current["pool_goal"] == settings.pool_goal
+            && current["shop_min_level"] == settings.shop_min_level
+            && current["shop_min_days"] == settings.shop_min_days
+            && current["shop_enabled"] == settings.shop_enabled;
+        if unchanged {
+            tx.commit().await?;
+            return Ok(false);
+        }
         let n=sqlx::query("UPDATE economy_settings SET pool_goal=$2,shop_min_level=$3,shop_min_days=$4,shop_enabled=$5,revision=revision+1 WHERE guild_id=$1 AND revision=$6")
    .bind(guild as i64).bind(settings.pool_goal).bind(settings.shop_min_level).bind(settings.shop_min_days).bind(settings.shop_enabled).bind(expected).execute(&mut *tx).await?.rows_affected();
         require(n == 1, "changed")?;
+        let after: Value = sqlx::query_scalar("SELECT to_jsonb(s) FROM economy_settings s WHERE guild_id=$1")
+            .bind(guild as i64)
+            .fetch_one(&mut *tx)
+            .await?;
+        admin_audit(&mut tx, guild, actor, "economy.settings", current, after).await?;
         tx.commit().await?;
-        Ok(())
+        Ok(true)
     }
     /// Bounded work per tick; every settlement uses the same idempotent transaction as member actions.
     /// Privacy tombstones expire after 35 days; future month-end claim guards stay.
@@ -673,6 +773,15 @@ impl Db {
             .bind((now.timestamp()/86400) as i32 - 35).execute(self.pool()).await?.rows_affected())
     }
     pub async fn sweep_economy(&self, now: DateTime<Utc>) -> anyhow::Result<()> {
+        // Transaction-scoped leadership releases on cancellation, crash or connection loss.
+        let mut leader = self.pool().begin().await?;
+        let acquired: bool =
+            sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('economy:sweep',0))")
+                .fetch_one(&mut *leader)
+                .await?;
+        if !acquired {
+            return Ok(());
+        }
         let auctions: Vec<(i64, i64)> = sqlx::query_as(
             "SELECT id,seller_id FROM economy_auctions WHERE status='open' AND ends_at<=$1 ORDER BY ends_at LIMIT 100",
         )
@@ -680,9 +789,11 @@ impl Db {
         .fetch_all(self.pool())
         .await?;
         for (a, u) in auctions {
-            if let Err(e) = self
-                .economy_action(u as u64, &format!("settle:{a}"), &Action::SettleAuction { id: a }, now)
-                .await
+            if let Err(e) = retry("economy_settle", || async move {
+                self.economy_action_once(u, &format!("worker:settle:{a}"), &Action::SettleAuction { id: a }, now)
+                    .await
+            })
+            .await
                 && e.downcast_ref::<Rejected>().is_none()
             {
                 return Err(e);
@@ -695,14 +806,17 @@ impl Db {
         .fetch_all(self.pool())
         .await?;
         for (t, u) in trades {
-            if let Err(e) = self
-                .economy_action(u as u64, &format!("expire:{t}"), &Action::CancelTrade { id: t }, now)
-                .await
+            if let Err(e) = retry("economy_expire", || async move {
+                self.economy_action_once(u, &format!("worker:expire:{t}"), &Action::CancelTrade { id: t }, now)
+                    .await
+            })
+            .await
                 && e.downcast_ref::<Rejected>().is_none()
             {
                 return Err(e);
             }
         }
+        leader.commit().await?;
         Ok(())
     }
 }
@@ -723,7 +837,7 @@ pub(crate) async fn privacy_refund(tx: &mut Tx<'_>, user: i64, now: DateTime<Utc
             money(tx, b, a.bid, "auction_refund").await?;
         }
         if a.seller_id != user {
-            add_inventory(tx, a.seller_id, &a.item_id, 1).await?;
+            inventory_credit(tx, a.seller_id, &a.item_id, 1, "auction_return").await?;
         }
     }
     let rows: Vec<Trade> = sqlx::query_as(
@@ -745,22 +859,38 @@ pub(crate) async fn privacy_refund(tx: &mut Tx<'_>, user: i64, now: DateTime<Utc
 impl Db {
     /// Preview is a revision-bound confirmation: concurrent members or point changes invalidate it.
     pub async fn economy_points_preview(&self, guild: u64) -> anyhow::Result<Value> {
-        let (count,total,version):(i64,String,String)=sqlx::query_as("SELECT count(*),COALESCE(sum(points),0)::text,md5(COALESCE(string_agg(user_id::text||':'||points::text,',' ORDER BY user_id),'')) FROM members WHERE guild_id=$1").bind(guild as i64).fetch_one(self.pool()).await?;
+        let (count,total,version):(i64,String,String)=sqlx::query_as("SELECT count(*),COALESCE(sum(points),0)::text,md5($1::bigint::text||':'||COALESCE(string_agg(user_id::text||':'||points::text,',' ORDER BY user_id),'')) FROM members WHERE guild_id=$1").bind(guild as i64).fetch_one(self.pool()).await?;
         Ok(json!({"count":count,"total":total,"version":version}))
     }
     pub async fn economy_scale_points(&self, guild: u64, percent: i32, version: &str) -> anyhow::Result<u64> {
+        self.economy_scale_points_audited(guild, percent, version, None).await
+    }
+    pub async fn economy_scale_points_audited(
+        &self,
+        guild: u64,
+        percent: i32,
+        version: &str,
+        actor: Option<&EconomyAudit<'_>>,
+    ) -> anyhow::Result<u64> {
         require((0..=100).contains(&percent), "invalid")?;
         retry("economy_scale_points",||async {
    let mut tx=self.pool().begin().await?;
    let users:Vec<i64>=sqlx::query_scalar("SELECT user_id FROM members WHERE guild_id=$1 ORDER BY user_id").bind(guild as i64).fetch_all(&mut *tx).await?;
    require(users.len()<=10000,"cap")?;
-   lock_users(&mut tx,&users).await?;
+   let mut locked = users.clone();
+   if let Some(actor) = actor { locked.push(actor.actor as i64); }
+   lock_users(&mut tx,&locked).await?;
    // A late member must not be waited on out of order.
    let late:Vec<i64>=sqlx::query_scalar("SELECT user_id FROM members WHERE guild_id=$1 AND NOT(user_id=ANY($2))").bind(guild as i64).bind(&users).fetch_all(&mut *tx).await?;
    require(late.is_empty(),"changed")?;
-   let current:String=sqlx::query_scalar("SELECT md5(COALESCE(string_agg(user_id::text||':'||points::text,',' ORDER BY user_id),'')) FROM members WHERE guild_id=$1").bind(guild as i64).fetch_one(&mut *tx).await?;
+   let current:String=sqlx::query_scalar("SELECT md5($1::bigint::text||':'||COALESCE(string_agg(user_id::text||':'||points::text,',' ORDER BY user_id),'')) FROM members WHERE guild_id=$1").bind(guild as i64).fetch_one(&mut *tx).await?;
    require(current==version,"changed")?;
-   let n=sqlx::query("UPDATE members SET points=floor(points::numeric*$2/100)::bigint WHERE guild_id=$1 AND user_id=ANY($3)").bind(guild as i64).bind(percent).bind(users).execute(&mut *tx).await?.rows_affected();
+   let before: String=sqlx::query_scalar("SELECT COALESCE(sum(points),0)::text FROM members WHERE guild_id=$1 AND user_id=ANY($2)").bind(guild as i64).bind(&users).fetch_one(&mut *tx).await?;
+   let n=sqlx::query("UPDATE members SET points=floor(points::numeric*$2/100)::bigint WHERE guild_id=$1 AND user_id=ANY($3)").bind(guild as i64).bind(percent).bind(&users).execute(&mut *tx).await?.rows_affected();
+   let after: String=sqlx::query_scalar("SELECT COALESCE(sum(points),0)::text FROM members WHERE guild_id=$1 AND user_id=ANY($2)").bind(guild as i64).bind(&users).fetch_one(&mut *tx).await?;
+   if before != after {
+       admin_audit(&mut tx,guild,actor,"economy.points_scale",json!({"count":users.len(),"total":before,"version":version}),json!({"count":n,"total":after,"percent":percent})).await?;
+   }
    tx.commit().await?;Ok(n)
   }).await
     }

@@ -4,7 +4,7 @@ use pinchora_core::{
     economy_v2::{EconomySettings, Offer, TradeItem},
     t,
 };
-use pinchora_db::economy_v2::{Action, Rejected};
+use pinchora_db::economy_v2::{Action, EconomyAudit, Rejected};
 use serde_json::Value;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
@@ -564,7 +564,17 @@ async fn admin(cx: &Cx, c: Tools) -> anyhow::Result<()> {
     let Some(g) = cx.guild_id().filter(|_| cx.can_manage_guild()) else {
         return cx.reply_ephemeral(t!(l, "eco.error_forbidden")).await;
     };
-    let before = cx.app.db.economy_settings(g).await?;
+    let before = if c.action.as_deref() == Some("scale") {
+        cx.app.db.economy_points_preview(g).await?
+    } else {
+        cx.app.db.economy_settings(g).await?
+    };
+    let actor_name = cx.author_display_name();
+    let actor = EconomyAudit {
+        actor: cx.author()?.id.get(),
+        name: &actor_name,
+        source: pinchora_db::AuditSource::Discord,
+    };
     let outcome: anyhow::Result<Value> = async {
         match c.action.as_deref().unwrap_or("show") {
             "save" => {
@@ -588,14 +598,17 @@ async fn admin(cx: &Cx, c: Tools) -> anyhow::Result<()> {
                 }
                 cx.app
                     .db
-                    .save_economy_settings(g, &settings, before["revision"].as_i64().unwrap_or(0))
+                    .save_economy_settings_audited(g, &settings, before["revision"].as_i64().unwrap_or(0), Some(&actor))
                     .await?;
                 cx.app.db.economy_settings(g).await
             }
             "scale" => {
                 let percent = c.percent.ok_or(Rejected("invalid"))?;
                 let version = c.version.ok_or(Rejected("invalid"))?;
-                cx.app.db.economy_scale_points(g, percent as i32, &version).await?;
+                cx.app
+                    .db
+                    .economy_scale_points_audited(g, percent as i32, &version, Some(&actor))
+                    .await?;
                 cx.app.db.economy_points_preview(g).await
             }
             "preview" => cx.app.db.economy_points_preview(g).await,
@@ -606,21 +619,6 @@ async fn admin(cx: &Cx, c: Tools) -> anyhow::Result<()> {
     .await;
     match outcome {
         Ok(after) => {
-            if matches!(c.action.as_deref(), Some("save" | "scale")) {
-                cx.app
-                    .db
-                    .audit(&pinchora_db::NewAudit {
-                        guild: g,
-                        actor: cx.author()?.id.get(),
-                        actor_name: &cx.author_display_name(),
-                        source: pinchora_db::AuditSource::Discord,
-                        action: "economy.tools",
-                        target: None,
-                        before: Some(&before.to_string()),
-                        after: Some(&after.to_string()),
-                    })
-                    .await?;
-            }
             let text = if let Some(version) = after["version"].as_str() {
                 t!(
                     l,

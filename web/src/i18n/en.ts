@@ -94,6 +94,7 @@ export const en = {
     "I checked both player IDs, item quantities and shell amounts.",
   "Confirm this exact trade": "Confirm this exact trade",
   "Cancel and refund": "Cancel and refund",
+  Economy: "Economy",
   "Economy settings": "Economy settings",
   "Set store conditions and a community goal. Reset and inflation tools affect server points only; global shells stay with players.":
     "Set store conditions and a community goal. Reset and inflation tools affect server points only; global shells stay with players.",

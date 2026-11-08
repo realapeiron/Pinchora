@@ -39,19 +39,19 @@ pub enum ConfigLevelRoles {
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "add", desc = "Give a role to everyone who reaches a level")]
+#[command(name = "add", desc = "Assign a level role")]
 pub struct LevelRolesAdd {
-    /// Level that earns the role
+    /// Required level
     #[command(min_value = 1, max_value = 1_000)]
     level: i64,
-    /// The role to give (adding it again moves it to the new level)
+    /// Role to grant; re-adding moves its level
     role: Role,
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "remove", desc = "Stop giving a role at a level")]
+#[command(name = "remove", desc = "Remove a level role")]
 pub struct LevelRolesRemove {
-    /// The role to stop giving
+    /// Role to remove
     role: Id<RoleMarker>,
 }
 
@@ -68,17 +68,14 @@ pub enum RoleMode {
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "mode", desc = "Keep every level role, or only the highest one")]
+#[command(name = "mode", desc = "Keep all roles or the highest")]
 pub struct LevelRolesMode {
     /// How roles pile up
     mode: RoleMode,
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(
-    name = "sync",
-    desc = "Give members who are already past a level the roles they earned"
-)]
+#[command(name = "sync", desc = "Sync members’ earned roles")]
 pub struct LevelRolesSync;
 
 impl ConfigLevelRoles {

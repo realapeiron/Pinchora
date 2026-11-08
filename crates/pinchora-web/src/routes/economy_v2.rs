@@ -1,6 +1,5 @@
 //! D8 API: global player actions via Session, server controls via ManagedGuild.
 use crate::{
-    audit::{self, Change},
     error::{ApiError, ApiJson, ApiResult},
     extract::{CurrentSession, ManagedGuild},
     state::WebState,
@@ -11,7 +10,10 @@ use axum::{
     routing::{get, post},
 };
 use pinchora_core::{economy_v2::EconomySettings, i18n::Lang, t};
-use pinchora_db::economy_v2::{Action, Rejected};
+use pinchora_db::{
+    AuditSource,
+    economy_v2::{Action, EconomyAudit, Rejected},
+};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -115,28 +117,22 @@ struct SaveBody {
     revision: i64,
 }
 async fn save(State(s): State<WebState>, m: ManagedGuild, ApiJson(body): ApiJson<SaveBody>) -> ApiResult<Json<Value>> {
-    let before = s.app.db.economy_settings(m.id).await?;
     let l = super::web_player::lang(&s, &m.current.session).await;
     s.app
         .db
-        .save_economy_settings(m.id, &body.settings, body.revision)
+        .save_economy_settings_audited(
+            m.id,
+            &body.settings,
+            body.revision,
+            Some(&EconomyAudit {
+                actor: m.current.session.user_id,
+                name: m.current.session.display_name(),
+                source: AuditSource::Web,
+            }),
+        )
         .await
         .map_err(|e| error(e, l))?;
-    let after = s.app.db.economy_settings(m.id).await?;
-    audit::finish(
-        &s,
-        &m.current.session,
-        Change {
-            guild: m.id,
-            action: "economy.settings",
-            target: None,
-            before,
-            after: after.clone(),
-        },
-        None,
-    )
-    .await;
-    Ok(Json(after))
+    Ok(Json(s.app.db.economy_settings(m.id).await?))
 }
 async fn preview(State(s): State<WebState>, m: ManagedGuild) -> ApiResult<Json<Value>> {
     Ok(Json(s.app.db.economy_points_preview(m.id).await?))
@@ -153,28 +149,21 @@ async fn scale(
     ApiJson(body): ApiJson<ScaleBody>,
 ) -> ApiResult<Json<Value>> {
     let l = super::web_player::lang(&s, &m.current.session).await;
-    let before = s.app.db.economy_points_preview(m.id).await?;
-    let count = s
-        .app
+    s.app
         .db
-        .economy_scale_points(m.id, body.percent, &body.version)
+        .economy_scale_points_audited(
+            m.id,
+            body.percent,
+            &body.version,
+            Some(&EconomyAudit {
+                actor: m.current.session.user_id,
+                name: m.current.session.display_name(),
+                source: AuditSource::Web,
+            }),
+        )
         .await
         .map_err(|e| error(e, l))?;
-    let after = s.app.db.economy_points_preview(m.id).await?;
-    audit::finish(
-        &s,
-        &m.current.session,
-        Change {
-            guild: m.id,
-            action: "economy.points_scale",
-            target: None,
-            before,
-            after: json!({"percent":body.percent,"count":count,"result":after}),
-        },
-        None,
-    )
-    .await;
-    Ok(Json(after))
+    Ok(Json(s.app.db.economy_points_preview(m.id).await?))
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

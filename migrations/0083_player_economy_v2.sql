@@ -53,3 +53,25 @@ CREATE TABLE economy_settings (
 );
 -- First seen locally is a trustworthy minimum-membership timestamp; no backfilled tenure.
 ALTER TABLE members ADD COLUMN economy_joined_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Each movement has a wallet entry and an equal, opposite escrow/source/sink entry.
+-- Both entries carry only the owner ID, so privacy deletion removes the complete pair.
+CREATE SEQUENCE economy_movement_ids;
+CREATE TABLE economy_ledger (
+ movement BIGINT NOT NULL,
+ user_id BIGINT NOT NULL,
+ account TEXT NOT NULL CHECK(account IN ('wallet','escrow','source','sink')),
+ asset TEXT NOT NULL,
+ delta BIGINT NOT NULL CHECK(delta <> 0),
+ reason TEXT NOT NULL,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ PRIMARY KEY(movement, account)
+);
+CREATE INDEX economy_ledger_user ON economy_ledger(user_id);
+
+-- Expand the existing access-area constraint; existing grants remain valid.
+ALTER TABLE dashboard_managers DROP CONSTRAINT dashboard_managers_areas_check;
+ALTER TABLE dashboard_managers ADD CONSTRAINT dashboard_managers_areas_check CHECK (
+ cardinality(areas) BETWEEN 1 AND 8 AND array_position(areas, NULL) IS NULL AND
+ areas <@ ARRAY['configuration','economy','roles','safety','community','feeds','stats','audit']::TEXT[]
+);

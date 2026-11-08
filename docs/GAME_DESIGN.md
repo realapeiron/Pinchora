@@ -372,7 +372,9 @@ Server administrators control **server points only**, never global shell supply 
   minutes from the bid, capped at 30 extra minutes beyond the original deadline. Sellers
   cannot bid on themselves or cancel after a bid. Unbid cancellations/expiries return the
   item. Settlement credits the seller and deducts a **5% fee, rounded up** (minimum one).
-  Every gateway sweeps due auctions every 30 seconds; conditional state changes pay once.
+  Gateways attempt a sweep every 30 seconds; a transaction-scoped Postgres lock admits
+  one runner, releases on restart, and conditional state changes pay once. Worker receipt
+  IDs are reserved from player requests.
 - **Swap table:** immutable offers of shells plus up to eight distinct furniture types per
   side, 1–10 of each. The creator reserves their own offer; the partner reserves theirs
   only on confirming. **Both explicitly confirm** the same offer, showing both player IDs,
@@ -413,7 +415,12 @@ escrow, refunds and fees, produce ledger entries. Transfers/refunds do not count
 earned activity. Guarded numeric arithmetic rejects overflow without partial effects.
 
 Migration **0083 only**: `economy_players`, `economy_limits`, `economy_requests`,
-`economy_auctions`, `economy_trades`, `economy_settings`, and `members.economy_joined_at`.
+`economy_auctions`, `economy_trades`, `economy_settings`, `economy_ledger`, and
+`members.economy_joined_at`. Every shell/item movement writes a balanced wallet and
+escrow/source/sink ledger pair in the same transaction; privacy removes both entries.
+The existing dashboard access constraint gains the `economy` area for the new admin routes.
+Admin settings and point changes commit with their audit records; unchanged settings do
+not advance the revision or create audit noise. Reset preview hashes include the guild.
 The existing privacy registry deletes normal records and retains daily/month-end claim
 limits through their period to prevent delete/recreate claims. Request receipts bind the
 request ID to the exact submitted action. The `sl:eco:*` namespace extends the existing

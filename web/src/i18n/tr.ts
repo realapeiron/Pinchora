@@ -95,6 +95,7 @@ export const tr: { [K in keyof typeof en]: string } = {
     "İki oyuncunun kimliğini, eşya adetlerini ve kabuk tutarlarını kontrol ettim.",
   "Confirm this exact trade": "Bu takası onayla",
   "Cancel and refund": "İptal et ve iade al",
+  Economy: "Ekonomi",
   "Economy settings": "Ekonomi ayarları",
   "Set store conditions and a community goal. Reset and inflation tools affect server points only; global shells stay with players.":
     "Mağaza koşulları ve topluluk hedefi belirle. Sıfırlama ve enflasyon araçları yalnızca sunucu puanlarını etkiler; global kabuklar oyuncularda kalır.",

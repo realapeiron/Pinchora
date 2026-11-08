@@ -95,3 +95,9 @@ describe("audit filters and nested diffs", () => {
     expect(auditDiff(null, { enabled: true })).toEqual([{ path: "enabled", before: undefined, after: true }]);
   });
 });
+it("requires the economy grant for the economy dashboard", () => {
+  const grant = (area: string) => ({ access: { full: false, areas: [area] } }) as AccessOverview;
+  expect(canOpenPage(grant("economy"), "economy")).toBe(true);
+  expect(canOpenPage(grant("configuration"), "economy")).toBe(false);
+  expect(canOpenPage(grant("economy"), "economy-extra")).toBe(false);
+});

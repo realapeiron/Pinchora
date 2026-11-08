@@ -7624,16 +7624,16 @@
           "aliases": [
             "config level-roles add"
           ],
-          "description": "Bir seviyeye ulaşan herkese bir rol ver",
+          "description": "Seviye rolü ata",
           "manager": true,
           "options": [
             {
-              "description": "Rolü kazandıran seviye",
+              "description": "Gereken seviye",
               "name": "level",
               "required": true
             },
             {
-              "description": "Verilecek rol (yeniden eklemek onu yeni seviyeye taşır)",
+              "description": "Rol; yeniden eklemek seviyesini değiştirir",
               "name": "role",
               "required": true
             }
@@ -7655,7 +7655,7 @@
           "aliases": [
             "config level-roles mode"
           ],
-          "description": "Tüm seviye rolleri kalsın mı, yalnızca en yükseği mi",
+          "description": "Tüm roller veya en yüksek rol",
           "manager": true,
           "options": [
             {
@@ -7675,11 +7675,11 @@
           "aliases": [
             "config level-roles remove"
           ],
-          "description": "Bir seviyede rol vermeyi bırak",
+          "description": "Seviye rolünü kaldır",
           "manager": true,
           "options": [
             {
-              "description": "Artık verilmeyecek rol",
+              "description": "Kaldırılacak rol",
               "name": "role",
               "required": true
             }
@@ -7691,7 +7691,7 @@
           "aliases": [
             "config level-roles sync"
           ],
-          "description": "Bir seviyeyi çoktan geçmiş üyelere hak ettikleri rolleri ver",
+          "description": "Kazanılan rolleri mevcut üyelere ver",
           "manager": true,
           "options": [],
           "path": "progression leveling roles-sync",
@@ -8000,7 +8000,7 @@
           "manager": true,
           "options": [
             {
-              "description": "Artık verilmeyecek rol",
+              "description": "Kaldırılacak rol",
               "name": "role",
               "required": true
             }

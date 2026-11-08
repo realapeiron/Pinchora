@@ -22,6 +22,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("economy_ledger", "user_id"),
     ("economy_requests", "user_id"),
     ("economy_players", "user_id"),
     ("economy_auctions", "seller_id"),

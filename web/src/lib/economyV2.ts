@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import { useLocale } from "../i18n";
@@ -83,14 +84,33 @@ export function useEconomy() {
     refetchInterval: 15000,
   });
 }
+/** Keep uncertain requests retryable and coalesce clicks before React renders pending state. */
+export function createEconomyActionSender() {
+  const requests = new Map<string, { id: string; pending?: Promise<Record<string, unknown>> }>();
+  return (command: Record<string, unknown>) => {
+    const fingerprint = JSON.stringify(command);
+    const request = requests.get(fingerprint) ?? { id: crypto.randomUUID() };
+    requests.set(fingerprint, request);
+    if (request.pending) return request.pending;
+    request.pending = api<Record<string, unknown>>("/api/me/economy/action", "POST", {
+      request_id: request.id,
+      command,
+    })
+      .then((result) => {
+        requests.delete(fingerprint);
+        return result;
+      })
+      .finally(() => {
+        request.pending = undefined;
+      });
+    return request.pending;
+  };
+}
 export function useEconomyAction() {
   const client = useQueryClient();
+  const [send] = useState(createEconomyActionSender);
   return useMutation({
-    mutationFn: (command: Record<string, unknown>) =>
-      api<Record<string, unknown>>("/api/me/economy/action", "POST", {
-        request_id: crypto.randomUUID(),
-        command,
-      }),
+    mutationFn: send,
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ["economy"] }),
