@@ -4,7 +4,7 @@ import { Panel } from "../../components/Panel";
 import { PixelButton } from "../../components/PixelButton";
 import { t, number, dateTime } from "../../i18n";
 import { api } from "../../lib/api";
-import { usePlayer } from "../../lib/webPlayer";
+import { usePlayer, petRename } from "../../lib/webPlayer";
 import { PageHead } from "../PageHead";
 import { Loading, Problem } from "../States";
 
@@ -40,7 +40,7 @@ type Quest = {
   claimed: boolean;
 };
 type Note = { id: string; author_id: string; author_name: string; body: string; created_at: string };
-type Friend = { id: string; name: string; since: string; xp: number; likes: number; locked: boolean };
+type Friend = { id: string; name: string; since: string };
 
 function useAction(path: string) {
   const cache = useQueryClient();
@@ -331,9 +331,13 @@ export function Pets() {
                   />
                 </label>
                 <PixelButton
-                  disabled={action.isPending || !names[p.id]?.trim() || names[p.id]?.trim() === p.name}
+                  disabled={action.isPending || !petRename(p.name, names[p.id])}
                   onClick={() =>
-                    action.mutate({ suffix: `/${p.id}`, method: "PATCH", body: { name: names[p.id] } })
+                    action.mutate({
+                      suffix: `/${p.id}`,
+                      method: "PATCH",
+                      body: petRename(p.name, names[p.id]),
+                    })
                   }
                 >
                   {t("Rename")}
@@ -521,7 +525,7 @@ export function Quests() {
         <div className="player-depth-grid">
           {q.data.items.map((v) => (
             <Panel key={v.kind} title={v.text}>
-              <progress value={v.progress} max={v.target} />
+              <progress aria-label={v.text} value={v.progress} max={v.target} />
               <p>
                 {number(v.progress)} / {number(v.target)} · {number(v.reward)} {t("Shells")}
               </p>
@@ -578,16 +582,24 @@ export function Guestbook() {
         </div>
       </Panel>
       <Panel title={t("Blocked signers")}>
-        <ul className="player-depth-list">
-          {q.data?.blocks.map((b) => (
-            <li key={b.id}>
-              {b.name}
-              <PixelButton onClick={() => action.mutate({ suffix: `/blocks/${b.id}`, method: "DELETE" })}>
-                {t("Unblock")}
-              </PixelButton>
-            </li>
-          ))}
-        </ul>
+        {q.isPending ? (
+          <Loading />
+        ) : q.isError ? (
+          <Problem error={q.error} />
+        ) : q.data.blocks.length ? (
+          <ul className="player-depth-list">
+            {q.data.blocks.map((b) => (
+              <li key={b.id}>
+                {b.name}
+                <PixelButton onClick={() => action.mutate({ suffix: `/blocks/${b.id}`, method: "DELETE" })}>
+                  {t("Unblock")}
+                </PixelButton>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty />
+        )}
       </Panel>
       <Feedback action={action} />
     </>
@@ -601,7 +613,11 @@ export function Friends() {
     <>
       <PageHead title={t("Friends")} lead={t("Your friends and partner from Discord.")} />
       <Panel title={t("Partner")}>
-        {partner.data?.partner ? (
+        {partner.isPending ? (
+          <Loading />
+        ) : partner.isError ? (
+          <Problem error={partner.error} />
+        ) : partner.data.partner ? (
           <p>
             {partner.data.partner.name} · {dateTime(partner.data.partner.since)}
           </p>
@@ -609,7 +625,7 @@ export function Friends() {
           <Empty />
         )}
       </Panel>
-      <Panel title={t("Friends")}>
+      <Panel>
         {q.isPending ? (
           <Loading />
         ) : q.isError ? (

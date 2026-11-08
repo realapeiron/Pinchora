@@ -494,39 +494,40 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             ))
             .await;
     }
-    if action == Care::Feed && cx.app.db.spend_shells(user, FOOD_PRICE, "pet_food").await?.is_none() {
-        return cx
-            .reply_ephemeral(t!(lang, "pet.care.food-price", price = FOOD_PRICE))
-            .await;
-    }
     let needs = current_needs(&pet, now);
     let Some(after) = action.apply(needs) else {
+        cx.app.cache.release_cooldown(&key).await?;
         return cx
             .reply_ephemeral(t!(lang, "pet.care.too-tired", name = pet.name))
             .await;
     };
     let progress = pets::add_xp(pet.level, pet.xp, action.xp());
+    let found = if action == Care::Walk {
+        pets::walk_shells(pet.level, rand::random::<f64>())
+    } else {
+        0
+    };
     let saved = cx
         .app
         .db
-        .save_pet(
+        .care_pet(
             user,
             &pet,
             [after.hunger, after.fun, after.energy, after.hygiene],
             progress.level,
             progress.xp,
             now,
+            if action == Care::Feed { -FOOD_PRICE } else { found },
         )
         .await?;
-    if !saved {
-        // The pet changed between the read and the write (a trip started, a claim paid, another
-        // click got in first); nothing was cared for, so the food is refunded and the action's
-        // cooldown, started above, does not count either.
-        if action == Care::Feed {
-            cx.app.db.earn_shells(user, FOOD_PRICE, "pet_food_refund").await?;
-        }
+    if saved != pinchora_db::PetCare::Saved {
         if let Err(error) = cx.app.cache.release_cooldown(&key).await {
             tracing::debug!(%error, pet = pet_id, "care cooldown not given back");
+        }
+        if saved == pinchora_db::PetCare::Poor {
+            return cx
+                .reply_ephemeral(t!(lang, "pet.care.food-price", price = FOOD_PRICE))
+                .await;
         }
         let left = cx
             .app
@@ -557,8 +558,6 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     };
     // Walks turn up a few shells on the beach; a higher level finds more.
     if action == Care::Walk {
-        let found = pets::walk_shells(pet.level, rand::random::<f64>());
-        cx.app.db.earn_shells(user, found, "pet_walk").await?;
         note.push_str(&t!(lang, "pet.care.found", found = found));
     }
     if progress.gained > 0 {

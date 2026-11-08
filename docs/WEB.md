@@ -29,11 +29,11 @@ The web process also needs the shared Discord application ID and bot token, Post
 - `/api/house`: own and visited homes. `/api/guilds/{g}`: server dashboard, guarded by `ManagedGuild`. `/api/public`: limited public data.
 - `/me/*`: player SPA pages. `/g/:guildId/*`: managed server pages. Static asset and SPA fallback routes are last.
 
-Inventory gifts use `Db::gift_item`; stall listing and withdrawal use `Db::list_item` and `Db::unlist_item`. Pet care uses the same `Care`, cooldown key, `Db::save_pet`, shell ledger functions, quest and stat counters as Discord. Trips, claims and wake use the corresponding Db methods and game functions. Do not duplicate economy transactions in a route.
+Inventory gifts use `Db::gift_item`; stall listing and withdrawal use `Db::list_item` and `Db::unlist_item`. Pet care uses the same `Care`, cooldown key, `Db::care_pet` transaction (needs, XP and shell payment commit together), quest and stat counters as Discord. Trips, claims and wake use the corresponding Db methods and game functions. Do not duplicate economy transactions in a route. Stall purchases, guestbook signing and friend requests remain Discord-only; the web exposes stall listing/withdrawal, guestbook moderation and read-only friends. Friend responses contain only identity and friendship dates, never profile or house statistics.
 
 ## Security
 
-Redis sessions have a seven day idle TTL and a thirty day absolute lifetime. Every write requires a JSON content type, a session CSRF header, same-origin Fetch Metadata and an allowed Origin. The server sends an enforcing CSP, `nosniff`, frame denial and no-store on dynamic routes. OAuth and refresh tokens stay server-side. Session checks precede all personal routes; management checks precede server writes. Use the shared API client in the SPA so CSRF and error handling stay consistent.
+Redis sessions have a seven day idle TTL and a thirty day absolute lifetime. A creation timestamp up to five minutes ahead is tolerated for clock skew between replicas; older sessions still expire exactly at thirty days. Every write requires a session CSRF header. JSON payloads require a JSON content type; Fetch Metadata and Origin, when sent, must identify the same origin. The CSP explicitly permits only the configured site’s WebSocket origin for Reef, plus same-origin workers and blob/data images. The server sends an enforcing CSP, `nosniff`, frame denial and no-store on dynamic routes. OAuth and refresh tokens stay server-side. Session checks precede all personal routes; management checks precede server writes. Use the shared API client in the SPA so CSRF and error handling stay consistent.
 
 ## Add a settings page
 

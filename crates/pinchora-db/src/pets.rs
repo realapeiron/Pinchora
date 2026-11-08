@@ -76,6 +76,14 @@ pub enum Wake {
     Poor { balance: i64 },
 }
 
+/// Result of committing care and its shell payment together.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PetCare {
+    Saved,
+    Stale,
+    Poor,
+}
+
 impl Db {
     pub async fn pets(&self, owner: u64) -> anyhow::Result<Vec<PetRow>> {
         Ok(sqlx::query_as::<_, PetRow>(concat!(
@@ -183,31 +191,50 @@ impl Db {
         xp: i32,
         at: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
-        let n = sqlx::query(
-            "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = $9
-             WHERE id = $1 AND owner_id = $2
-               AND needs_at = $10 AND level = $11 AND xp = $12
-               AND trip_dest IS NOT DISTINCT FROM $13 AND trip_ends_at IS NOT DISTINCT FROM $14
-               AND (trip_ends_at IS NULL OR trip_ends_at <= $9)",
-        )
-        .bind(seen.id)
-        .bind(sql_id(owner))
-        .bind(needs[0])
-        .bind(needs[1])
-        .bind(needs[2])
-        .bind(needs[3])
-        .bind(level)
-        .bind(xp)
-        .bind(at)
-        .bind(seen.needs_at)
-        .bind(seen.level)
-        .bind(seen.xp)
-        .bind(seen.trip_dest.as_deref())
-        .bind(seen.trip_ends_at)
-        .execute(self.pool())
-        .await?
-        .rows_affected();
-        Ok(n == 1)
+        let mut connection = self.pool().acquire().await?;
+        save_pet_on(&mut connection, owner, seen, needs, level, xp, at).await
+    }
+
+    /// Care and its food charge / walk reward commit together, or neither does. Both clients
+    /// pass the same game-derived needs, XP and shell delta. Player locks precede pet locks.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn care_pet(
+        &self,
+        owner: u64,
+        seen: &PetRow,
+        needs: [i16; 4],
+        level: i32,
+        xp: i32,
+        at: DateTime<Utc>,
+        shells: i64,
+    ) -> anyhow::Result<PetCare> {
+        retry("care_pet", || async {
+            let mut tx = self.pool().begin().await?;
+            let id = sql_id(owner);
+            lock_users(&mut tx, &[id]).await?;
+            if !save_pet_on(&mut tx, owner, seen, needs, level, xp, at).await? {
+                return Ok(PetCare::Stale);
+            }
+            if shells != 0 {
+                sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await?;
+                let paid = sqlx::query("UPDATE users SET credits = credits + $2 WHERE id = $1 AND credits + $2 >= 0")
+                    .bind(id)
+                    .bind(shells)
+                    .execute(&mut *tx)
+                    .await?
+                    .rows_affected();
+                if paid == 0 {
+                    return Ok(PetCare::Poor);
+                }
+                crate::economy::ledger(&mut tx, id, shells, if shells < 0 { "pet_food" } else { "pet_walk" }).await?;
+            }
+            tx.commit().await?;
+            Ok(PetCare::Saved)
+        })
+        .await
     }
 
     pub async fn rename_pet(&self, owner: u64, pet_id: i64, name: &str) -> anyhow::Result<bool> {
@@ -540,4 +567,41 @@ impl Db {
         .await?;
         Ok(balance)
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn save_pet_on(
+    connection: &mut sqlx::PgConnection,
+    owner: u64,
+    seen: &PetRow,
+    needs: [i16; 4],
+    level: i32,
+    xp: i32,
+    at: DateTime<Utc>,
+) -> anyhow::Result<bool> {
+    let n = sqlx::query(
+        "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = $9
+             WHERE id = $1 AND owner_id = $2
+               AND needs_at = $10 AND level = $11 AND xp = $12
+               AND trip_dest IS NOT DISTINCT FROM $13 AND trip_ends_at IS NOT DISTINCT FROM $14
+               AND (trip_ends_at IS NULL OR trip_ends_at <= $9)",
+    )
+    .bind(seen.id)
+    .bind(sql_id(owner))
+    .bind(needs[0])
+    .bind(needs[1])
+    .bind(needs[2])
+    .bind(needs[3])
+    .bind(level)
+    .bind(xp)
+    .bind(at)
+    .bind(seen.needs_at)
+    .bind(seen.level)
+    .bind(seen.xp)
+    .bind(seen.trip_dest.as_deref())
+    .bind(seen.trip_ends_at)
+    .execute(connection)
+    .await?
+    .rows_affected();
+    Ok(n == 1)
 }

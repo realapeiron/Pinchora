@@ -1,7 +1,7 @@
 //! Player collections and social pages. Writes use the same Db transactions as Discord.
 use super::*;
 use chrono::{Duration as ChronoDuration, Utc};
-use pinchora_db::{TripClaim, TripPayout, Wake};
+use pinchora_db::{PetCare, TripClaim, TripPayout, Wake};
 use pinchora_game::{
     pets::{self, Care, FOOD_PRICE, WAKE_FEE, WAKE_NEEDS},
     quests,
@@ -233,39 +233,34 @@ async fn care(
         st.app.cache.release_cooldown(&key).await?;
         return Err(ApiError::blocked(t!(l, "pet.care.too-tired", name = pet.name)));
     };
-    if action == Care::Feed && st.app.db.spend_shells(user, FOOD_PRICE, "pet_food").await?.is_none() {
-        st.app.cache.release_cooldown(&key).await?;
-        return Err(ApiError::blocked(t!(l, "pet.care.food-price", price = FOOD_PRICE)));
-    }
     let progress = pets::add_xp(pet.level, pet.xp, action.xp());
+    let found = if action == Care::Walk {
+        pets::walk_shells(pet.level, rand::random::<f64>())
+    } else {
+        0
+    };
     let saved = st
         .app
         .db
-        .save_pet(
+        .care_pet(
             user,
             &pet,
             [after.hunger, after.fun, after.energy, after.hygiene],
             progress.level,
             progress.xp,
             now,
+            if action == Care::Feed { -FOOD_PRICE } else { found },
         )
         .await?;
-    if !saved {
-        if action == Care::Feed {
-            st.app.db.earn_shells(user, FOOD_PRICE, "pet_food_refund").await?;
-        }
+    if saved != PetCare::Saved {
         st.app.cache.release_cooldown(&key).await?;
+        if saved == PetCare::Poor {
+            return Err(ApiError::blocked(t!(l, "pet.care.food-price", price = FOOD_PRICE)));
+        }
         return Err(ApiError::blocked(t!(l, "pet.care.changed", name = pet.name)));
     }
     st.app.quest(user, quests::QuestKind::Care).await;
     st.app.count(user, pinchora_db::Counter::PetCare, 1).await;
-    let found = if action == Care::Walk {
-        let amount = pets::walk_shells(pet.level, rand::random::<f64>());
-        st.app.db.earn_shells(user, amount, "pet_walk").await?;
-        amount
-    } else {
-        0
-    };
     finish(
         &st,
         &c.session,
@@ -567,7 +562,7 @@ async fn unblock(State(st): State<WebState>, c: CurrentSession, Path(id): Path<u
 async fn friends(State(st): State<WebState>, c: CurrentSession, Query(q): Query<Page>) -> ApiResult<Json<Value>> {
     let (rows, total) = st.app.db.friends(c.session.user_id, offset(q.page), 24).await?;
     Ok(Json(
-        json!({"items":rows.iter().map(|r|json!({"id":r.friend_id.to_string(),"name":r.name,"since":r.since,"xp":r.xp,"likes":r.likes,"locked":r.locked})).collect::<Vec<_>>(),"total":total}),
+        json!({"items":rows.iter().map(|r|json!({"id":r.friend_id.to_string(),"name":r.name,"since":r.since})).collect::<Vec<_>>(),"total":total}),
     ))
 }
 async fn partner(State(st): State<WebState>, c: CurrentSession) -> ApiResult<Json<Value>> {

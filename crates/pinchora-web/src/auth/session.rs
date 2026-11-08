@@ -20,6 +20,8 @@ const IDLE: Duration = Duration::from_secs(7 * 86_400);
 pub const LIFETIME_SECS: i64 = 30 * 86_400;
 /// The idle clock is pushed back at most this often.
 const TOUCH_EVERY: Duration = Duration::from_secs(300);
+/// A small clock correction or skew between web replicas must not destroy a fresh login.
+const CLOCK_SKEW_SECS: i64 = 300;
 
 /// A logged-in user. Lives only in Redis; the tokens never print.
 #[derive(Clone, Serialize, Deserialize)]
@@ -104,7 +106,7 @@ pub async fn load(cache: &Cache, sid: &str, now: i64) -> anyhow::Result<Option<S
 }
 
 fn expired(created_at: i64, now: i64) -> bool {
-    created_at > now || now.saturating_sub(created_at) >= LIFETIME_SECS
+    created_at > now.saturating_add(CLOCK_SKEW_SECS) || now.saturating_sub(created_at) >= LIFETIME_SECS
 }
 
 /// The session behind `sid` as stored, without touching it. A session that no longer parses is
@@ -195,6 +197,14 @@ mod tests {
     fn absolute_lifetime_has_an_exact_boundary() {
         assert!(!expired(100, 100 + LIFETIME_SECS - 1));
         assert!(expired(100, 100 + LIFETIME_SECS));
-        assert!(expired(101, 100));
+        assert!(!expired(101, 100));
+    }
+
+    #[test]
+    fn bounded_clock_skew_does_not_log_out_a_live_session() {
+        assert!(!expired(100 + CLOCK_SKEW_SECS, 100));
+        assert!(expired(101 + CLOCK_SKEW_SECS, 100));
+        assert!(expired(i64::MAX, 100));
+        assert!(expired(i64::MIN, 100));
     }
 }

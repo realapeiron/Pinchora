@@ -41,6 +41,7 @@ left = "💔 Sen ve {partner} artık partner değilsiniz."
 not-partners = "Artık onunla partner değilsin."
 
 [friends]
+blocked = "Bu arkadaşlık isteği kullanılamıyor."
 not-self = "Arkadaşın başka biri olmalı. Sunucudan birini dene!"
 already = "Sen ve {user} zaten arkadaşsınız."
 you-full = "{max} arkadaşın var, bu olabilecek en yüksek sayı. `/friends remove` ile yer aç."

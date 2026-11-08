@@ -203,3 +203,9 @@ export function wearAccessory(
   if (id) next.push(id + (tint ? `*${tint}` : ""));
   return [base, ...next].join("+");
 }
+
+/** Match the pet-name normalization used by both player transports. */
+export function petRename(saved: string, draft: string | undefined): { name: string } | null {
+  const name = (draft ?? saved).trim().replace(/\s+/gu, " ");
+  return name && [...name].length <= 20 && name !== saved ? { name } : null;
+}

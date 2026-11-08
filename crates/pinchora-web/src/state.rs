@@ -10,6 +10,7 @@ pub struct WebState {
     pub app: Arc<App>,
     pub(crate) reef: Arc<crate::reef::Runtime>,
     pub settings: Arc<WebSettings>,
+    pub(crate) csp: axum::http::HeaderValue,
     pub(crate) discord: Arc<DiscordApi>,
 }
 
@@ -28,6 +29,7 @@ impl WebState {
         Self {
             app,
             reef: Arc::default(),
+            csp: crate::routes::content_security_policy(&settings.origin),
             settings: Arc::new(settings),
             discord,
         }
