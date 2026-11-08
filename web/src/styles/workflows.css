@@ -1,0 +1,146 @@
+.wf-page {
+  min-width: 0;
+}
+.wf-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 1rem;
+  align-items: start;
+}
+.wf-columns > *,
+.wf-fields,
+.wf-step {
+  min-width: 0;
+}
+.wf-page label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.wf-page input:not([type="checkbox"]),
+.wf-page select,
+.wf-page textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.wf-page textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.wf-fields,
+.wf-steps {
+  display: grid;
+  gap: 0.85rem;
+}
+.wf-step {
+  padding: 0.75rem;
+  margin: 0;
+  border: 1px solid var(--panel-edge);
+}
+.wf-step legend {
+  padding: 0.25rem;
+}
+.wf-controls,
+.wf-toolbar,
+.wf-fake {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+.wf-toolbar {
+  margin: 1rem 0 1.5rem;
+}
+.wf-fake > label {
+  flex: 1 1 160px;
+}
+.wf-list {
+  list-style: none;
+  padding: 0;
+}
+.wf-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--panel-edge);
+}
+.wf-playback {
+  margin-top: 1rem;
+}
+.wf-playback ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+.wf-playback button[aria-current="step"] {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.wf-playback pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+  padding: 1rem;
+  background: var(--bg-bottom);
+}
+.wf-page code,
+.wf-page dd {
+  overflow-wrap: anywhere;
+}
+.wf-page details {
+  margin: 1rem 0;
+}
+.wf-page summary {
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+@media (max-width: 1100px) {
+  .wf-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .wf-toolbar > label {
+    flex-basis: 100%;
+  }
+  .wf-controls > button {
+    flex: 1 1 auto;
+  }
+}
+
+.wf-edit {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.wf-list button,
+.wf-playback button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--panel-edge);
+  padding: 0.6rem;
+  cursor: pointer;
+}
+.wf-list button:hover,
+.wf-playback button:hover {
+  border-color: var(--gold);
+}
+.wf-page button:focus-visible,
+.wf-page summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.wf-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}

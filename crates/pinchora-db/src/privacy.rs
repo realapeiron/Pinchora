@@ -22,6 +22,8 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("workflow_vars", "subject_id"),
+    ("workflow_runs", "user_id"),
     ("reef_edit_receipts", "actor_id"),
     ("reef_edit_receipts", "owner_id"),
     ("reef_space_preferences", "user_id"),
@@ -279,6 +281,7 @@ pub const DELETED_NAME: &str = "Deleted user";
 /// the player: the record stays (a server's custom commands outlive the manager who wrote them) and
 /// the id becomes 0.
 pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
+    ("workflows", "created_by"),
     ("reef_sanctions", "actor_id"),
     ("custom_commands", "created_by"),
     ("custom_responders", "created_by"),
@@ -287,6 +290,7 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "workflow_schedules",
     // No user IDs; both foreign keys cascade with their registered personal-data parents.
     "reef_guestbook_evidence",
     "economy_settings",

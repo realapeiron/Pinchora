@@ -662,6 +662,14 @@ pub async fn evaluate(app: &App, guild: u64, user: u64) -> anyhow::Result<()> {
 }
 
 async fn deliver(app: &App, guild: u64, user: u64, rule: &AchievementRow) {
+    crate::workflows::observe(
+        app,
+        guild,
+        user,
+        "achievement",
+        rule.announce_channel_id.map(|c| c as u64),
+    )
+    .await;
     if let Some(role_id) = rule.reward_role_id.map(|id| id as u64)
         && let Err(error) = grant_role(app, guild, user, role_id).await
     {

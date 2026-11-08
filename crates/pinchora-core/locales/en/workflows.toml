@@ -1,0 +1,18 @@
+[workflows]
+on = "Enabled"
+off = "Disabled"
+empty = "No workflows or runs yet."
+unavailable = "This workflow or its trigger is unavailable. Check its module and Message Content intent in the dashboard."
+completed = "Workflow completed."
+filtered = "The event did not pass the conditions."
+failed = "The workflow could not finish. Check its run history and budgets in the dashboard."
+running = "Running"
+invalid = "Check the workflow fields and limits."
+save_failed = "Could not save: check the name, 25-workflow limit and whether the workflow still exists."
+content = "Message Content is off. Ask the bot operator to enable it before enabling keyword workflows."
+
+[module]
+workflows = "Workflows"
+
+[module-blurb]
+workflows = "Triggers, conditions and bounded actions."

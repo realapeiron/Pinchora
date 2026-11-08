@@ -191,6 +191,7 @@ async fn open(cx: &Cx, panel: &TicketPanel, topic: Topic, answers: Vec<Answer>) 
             return Err(error);
         }
     };
+    crate::workflows::triggers::simple(app, guild, opener, "ticket_opened", opened.place());
     let place = opened.place().unwrap_or_default();
     let server_lang = guild_lang(app, guild).await;
     welcome(cx, &opened, panel, &topic, &answers, server_lang).await;

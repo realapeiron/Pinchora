@@ -185,6 +185,15 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
         {
             Ok(_) => {
                 app.db.finish_birthday_batch(&guard.ids).await?;
+                for (row, _, _) in &batch {
+                    crate::workflows::triggers::simple(
+                        app,
+                        guild as u64,
+                        row.birthday.user_id as u64,
+                        "birthday",
+                        Some(channel as u64),
+                    );
+                }
                 posted += 1;
             }
             Err(error) => tracing::warn!(guild,channel,%error,"birthday batch will be retried"),

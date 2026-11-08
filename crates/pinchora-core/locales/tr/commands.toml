@@ -1317,3 +1317,10 @@
 "confess ban" = "İtiraf yazarının gönderim iznini kimliğini açıklamadan değiştir"
 "confess ban id" = "İtiraf numarası"
 "confess ban banned" = "Bu yazarın itiraf göndermesini engelle"
+
+"setup workflows" = "Sunucu iş akışları"
+"setup workflows list" = "İş akışlarını listele"
+"setup workflows toggle" = "Bir iş akışını aç veya kapat"
+"setup workflows toggle name" = "İş akışının adı"
+"setup workflows runs" = "Son çalıştırmaları göster"
+"setup workflows runs name" = "İş akışının adı"

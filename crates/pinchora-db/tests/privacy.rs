@@ -408,6 +408,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         // F1's player-owned history and counters are forgotten with the player.
         "INSERT INTO automod_hits (guild_id,user_id,channel_id,action) VALUES ($1,$1,1,'log_only')",
         "INSERT INTO automod_strikes (guild_id,user_id,window_start,count) VALUES ($1,$1,now(),1)",
+        "INSERT INTO workflows (guild_id,name,enabled,trigger,conditions,actions,created_by) VALUES ($1,'privacy',true,'{\"kind\":\"button\"}','[]','[{\"kind\":\"log\",\"text\":\"ok\"}]',$1)",
+        "INSERT INTO workflow_vars(guild_id,scope,subject_id,key,value) VALUES($1,'member',$1,'example','private')",
+        "INSERT INTO workflow_runs(guild_id,workflow_id,trigger_summary,user_id,outcome) SELECT $1,id,'button',$1,'completed' FROM workflows WHERE guild_id=$1 AND name='privacy'",
         // A custom command and an auto-responder they wrote ($1 doubles as the server).
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)

@@ -32,6 +32,7 @@ pub enum Deferral {
 /// a command whose success is public stays out. A unit test checks that every entry names a real
 /// command, and the simulator that nothing listed here ever answers publicly.
 const PRIVATE: &[&str] = &[
+    "workflow",
     "fish dock",
     "fish contest",
     "fish season",
@@ -221,6 +222,8 @@ impl Deferral {
             return Self::Never;
         }
         match &interaction.data {
+            Some(InteractionData::ApplicationCommand(command)) if command.name == "tag" && command.options.iter().any(|o| o.name == "name" && matches!(&o.value, twilight_model::application::interaction::application_command::CommandOptionValue::String(s) if s.starts_with("wf:"))) => Self::Private,
+            Some(InteractionData::MessageComponent(component)) if component.custom_id.starts_with("wf:") => Self::Private,
             Some(InteractionData::ApplicationCommand(command)) => Self::for_path(&command_path(command)),
             Some(InteractionData::MessageComponent(component)) if covers(OPENS_MODAL, &component.custom_id, ':') => {
                 Self::Never

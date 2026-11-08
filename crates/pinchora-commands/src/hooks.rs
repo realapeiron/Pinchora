@@ -67,6 +67,7 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     crate::utility::after_message(app, msg).await;
     crate::community_pack::on_guild_message(app, msg).await;
     crate::commands::community_v2::on_message(app, msg).await;
+    crate::workflows::triggers::message(app, msg);
     // F15 AI characters answer mentions.
     Verdict::Continue
 }
@@ -105,6 +106,7 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
     }
     // F2 auto roles (they honour Held).
     crate::commands::roles_pack::on_member_join(app, event).await;
+    crate::workflows::triggers::joined(app, event).await;
     JoinVerdict::Continue
 }
 
@@ -124,6 +126,7 @@ pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.
     crate::commands::invites::on_member_leave(app, event).await;
+    crate::workflows::triggers::left(app, event);
     // F9 stats counts the leave.
     crate::stats::count_member(app, event.guild_id.get(), false).await;
 }
@@ -135,7 +138,7 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
     crate::commands::roles_pack::on_reaction(app, event).await;
     // F5 starboard counts stars.
     crate::starboard::on_reaction(app, event).await;
-    // F13 workflows' reaction trigger.
+    crate::workflows::triggers::reaction(app, event);
 }
 
 /// A message sent to the bot in a direct message (from a human; DM text needs no privileged intent).
@@ -147,12 +150,13 @@ pub(crate) async fn on_dm(_app: &Arc<App>, _msg: &Message) {
 pub(crate) async fn on_level_up(_app: &Arc<App>, _guild: u64, _user: u64, _level: u32, _role: Option<u64>) {
     // F8 achievements (the level kind).
     crate::commands::achievements::on_level_up(_app, _guild, _user).await;
-    // F13 workflows' level-up trigger.
+    crate::workflows::triggers::simple(_app, _guild, _user, "level_up", None);
 }
 
 /// A member's roles or name changed, before the server log hears of it. Not one of the first six: sticky roles
 /// need to see every change to a member's roles, because Discord's leave event does not say what they held.
 pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
+    crate::workflows::triggers::roles(app, event).await;
     let card_app = app.clone();
     let card_event = event.clone();
     app.spawn(async move { crate::card_images::on_member_update(&card_app, &card_event).await });
@@ -160,4 +164,8 @@ pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
     crate::verification::on_member_update(app, event).await;
     // F2 sticky roles keep what the member holds now.
     crate::commands::roles_pack::on_member_update(app, event).await;
+}
+
+pub(crate) async fn on_workflow_voice(app: &Arc<App>, state: &twilight_model::voice::VoiceState) {
+    crate::workflows::triggers::voice(app, state).await;
 }

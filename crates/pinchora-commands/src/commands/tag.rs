@@ -34,7 +34,7 @@ const MAX_SUGGESTIONS: usize = 25;
 #[command(name = "tag", desc = "Run one of this server's custom commands", contexts = "guild")]
 pub struct Tag {
     /// The command to run (start typing its name)
-    #[command(autocomplete = true, max_length = 32)]
+    #[command(autocomplete = true, max_length = 43)]
     name: String,
     /// Words for the command to use, as {args}, {1}, {2}...
     #[command(max_length = 200)]
@@ -46,6 +46,9 @@ impl Tag {
         let Some(guild) = cx.guild_id() else {
             return cx.reply_ephemeral(t!(cx.lang(), "customcommand.guild-only")).await;
         };
+        if crate::workflows::triggers::command(cx, &self.name).await? {
+            return Ok(());
+        }
         let set = cx.app.tag_set(guild).await?;
         let name = tidy_name(&self.name);
         let Some(row) = set.commands.iter().find(|c| c.def.name == name) else {
@@ -183,14 +186,40 @@ pub(crate) async fn autocomplete(cx: &Cx, data: &CommandData) -> Vec<CommandOpti
         return Vec::new();
     };
     let channel = cx.interaction.channel.as_ref().map(|c| c.id.get());
-    if !cx.app.module_allowed(guild, channel, Module::CustomCommands).await {
+    if !cx.app.module_allowed(guild, channel, Module::CustomCommands).await
+        && (data.name != "tag" || !cx.app.module_allowed(guild, channel, Module::Workflows).await)
+    {
         return Vec::new();
     }
     let Ok(set) = cx.app.tag_set(guild).await else {
         return Vec::new();
     };
     // `/tag` only offers what can be run; managing offers everything.
-    suggestions(cx.lang(), &set.commands, &typed, data.name == "customcommand")
+    let mut found = if cx.app.module_allowed(guild, channel, Module::CustomCommands).await {
+        suggestions(cx.lang(), &set.commands, &typed, data.name == "customcommand")
+    } else {
+        Vec::new()
+    };
+    if data.name == "tag"
+        && cx.app.module_allowed(guild, channel, Module::Workflows).await
+        && let Ok(rows) = cx.app.db.workflows(guild).await
+    {
+        for row in rows.into_iter().filter(|r| {
+            r.enabled
+                && r.definition()
+                    .is_ok_and(|d| d.trigger == pinchora_core::workflows::Trigger::Command)
+        }) {
+            let name = format!("wf:{}", row.name);
+            if name.contains(&typed) && found.len() < MAX_SUGGESTIONS {
+                found.push(CommandOptionChoice {
+                    name: name.clone(),
+                    name_localizations: None,
+                    value: CommandOptionChoiceValue::String(name),
+                });
+            }
+        }
+    }
+    found
 }
 
 fn suggestions(lang: Lang, commands: &[CommandRow], typed: &str, with_disabled: bool) -> Vec<CommandOptionChoice> {

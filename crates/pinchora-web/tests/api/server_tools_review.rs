@@ -48,13 +48,13 @@ async fn clear_limit(h: &Harness, user: u64) {
 }
 
 #[tokio::test]
-async fn all_234_guild_routes_require_sessions_csrf_and_their_management_areas() {
+async fn all_243_guild_routes_require_sessions_csrf_and_their_management_areas() {
     let Some(h) = Harness::new("w7_matrix").await else {
         return;
     };
     let (guild, owner_id, mut owner) = h.managed_server().await;
     let routes = inventory();
-    assert_eq!(routes.len(), 234);
+    assert_eq!(routes.len(), 243);
     for (method, path, _) in &routes {
         let path = api_path(guild, path);
         let result = h.browser().write(method.parse().unwrap(), &path, json!({})).await;

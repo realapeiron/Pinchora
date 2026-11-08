@@ -233,3 +233,12 @@ GET	/reef/guilds/{guild}/plazas	community
 GET	/reef/guilds/{guild}/gatherings	community
 POST	/reef/guilds/{guild}/gatherings	community
 POST	/reef/guilds/{guild}/gatherings/{event}/rsvp	community
+GET	/workflows	configuration
+POST	/workflows	configuration
+PUT	/workflows/{id}	configuration
+DELETE	/workflows/{id}	configuration
+POST	/workflows/test	configuration
+GET	/workflows/{id}/runs	configuration
+GET	/workflows/variables	configuration
+PUT	/workflows/variables	configuration
+POST	/workflows/{id}/post	configuration

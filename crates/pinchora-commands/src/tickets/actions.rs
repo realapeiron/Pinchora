@@ -788,6 +788,7 @@ pub(crate) async fn close(
     else {
         return Ok(None);
     };
+    crate::workflows::triggers::simple(app, guild, closed.opener_id as u64, "ticket_closed", closed.place());
     let lang = guild_lang(app, guild).await;
     let settings = app.db.ticket_settings(guild).await?;
     let captured = match transcript::capture(app, &closed).await {

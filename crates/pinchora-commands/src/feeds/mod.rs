@@ -523,6 +523,14 @@ async fn deliver(app: &App, guilds: Option<&[u64]>) -> anyhow::Result<usize> {
             }
         };
         if outcome == PostOutcome::Sent {
+            crate::workflows::observe(
+                app,
+                post.feed.guild_id as u64,
+                0,
+                "feed_item",
+                Some(post.feed.channel_id as u64),
+            )
+            .await;
             sent += 1;
         }
         app.db.finish_feed_post(&post, &outcome).await?;

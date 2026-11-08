@@ -4030,3 +4030,6 @@ mod web_player;
 mod economy_v2;
 #[path = "api/reef_spaces.rs"]
 mod reef_spaces;
+
+#[path = "api/workflows.rs"]
+mod workflows;

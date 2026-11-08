@@ -470,6 +470,14 @@ async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Opti
         match sent {
             Ok(response) => {
                 let copy = response.model().await?.id.get();
+                crate::workflows::observe(
+                    app,
+                    board.guild_id as u64,
+                    post.author_id as u64,
+                    "starboard_post",
+                    Some(board.channel_id as u64),
+                )
+                .await;
                 if !app
                     .db
                     .finish_star_post(board.id, post.message_id as u64, token, Some(copy))

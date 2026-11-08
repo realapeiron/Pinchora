@@ -22,7 +22,14 @@ fn subcommand(data: &CommandData) -> Option<&str> {
 /// Whether the command's module is off here; if so, the invoker has been told and the command must
 /// not run.
 pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
-    let module = if data.name == "economyv2" && subcommand(data) == Some("tools") {
+    let module = if data.name == "tag"
+        && data
+            .options
+            .iter()
+            .any(|o| o.name == "name" && matches!(&o.value, CommandOptionValue::String(s) if s.starts_with("wf:")))
+    {
+        Some(Module::Workflows)
+    } else if data.name == "economyv2" && subcommand(data) == Some("tools") {
         None
     } else {
         Module::of_command(&data.name, subcommand(data))

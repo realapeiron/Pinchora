@@ -12775,6 +12775,15 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("workflow list", json!([sub("list", vec![])])),
+        (
+            "workflow toggle",
+            json!([sub("toggle", vec![text_option("name", "example")])]),
+        ),
+        (
+            "workflow runs",
+            json!([sub("runs", vec![text_option("name", "example")])]),
+        ),
         (
             "economyv2 tools",
             json!([sub(
@@ -15456,3 +15465,6 @@ async fn blocked_partner_cannot_use_an_already_open_discord_editor() {
 }
 #[path = "simulate/economy_v2.rs"]
 mod economy_v2;
+
+#[path = "simulate/workflows.rs"]
+mod workflows;

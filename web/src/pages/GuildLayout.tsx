@@ -51,6 +51,7 @@ export const NAV: NavGroup[] = [
     group: "TOOLS",
     pages: [
       { to: "commands", label: "Custom commands" },
+      { to: "workflows", label: "Workflows" },
       { to: "responders", label: "Auto-responders" },
       { to: "community", label: "Community" },
     ],
