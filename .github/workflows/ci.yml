@@ -66,6 +66,13 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # The Reef outage test kills/restarts its own loopback Redis. The service
+      # container does not put redis-server on the runner's PATH.
+      - name: Install private Redis test dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server
+
       - name: Test
         run: cargo test --workspace --no-fail-fast
 

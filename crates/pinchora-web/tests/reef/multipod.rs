@@ -21,6 +21,27 @@ async fn assert_no_layout(player: &mut Player) {
     .await;
 }
 
+async fn wait_for_expired_room_lease(site: &Site, owner: u64) {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let active: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=0 AND expires_at>clock_timestamp())",
+            )
+            .bind(site.app.cache.namespace())
+            .bind(owner as i64)
+            .fetch_one(&site.pool)
+            .await
+            .unwrap();
+            if !active {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("old room lease expires or is released");
+}
+
 #[tokio::test]
 async fn two_pods_presence_movement_chat_and_transactional_outbox() {
     let Some(a) = Site::new().await else {
@@ -208,6 +229,7 @@ async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
         .await
         .unwrap();
     assert_eq!(q.close_reason().await, "ownership_lost");
+    wait_for_expired_room_lease(&b, host).await;
     let mut recovered = guest.connect().await;
     let snapshot = recovered.join(host).await;
     assert!(recovered.epoch.parse::<i64>().unwrap() > epoch);
@@ -298,30 +320,65 @@ impl RedisProcess {
                 "no",
             ])
             .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
+            .stderr(std::process::Stdio::inherit())
             .spawn()
             .expect("redis-server installed for outage test");
-        let process = Self { child, port };
-        for _ in 0..100 {
-            if TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
-                return process;
+        let mut process = Self { child, port };
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                assert!(
+                    process.child.try_wait().unwrap().is_none(),
+                    "private Redis exited at startup"
+                );
+                // An accepted TCP connection alone does not prove Redis is ready.
+                if let Ok(cache) = Cache::connect_scoped(&process.url(), "outage_probe").await
+                    && cache.ping().await.is_ok()
+                {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
             }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-        panic!("private Redis did not start");
+        })
+        .await
+        .expect("private Redis did not start");
+        process
     }
     fn stop(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
     fn url(&self) -> String {
-        format!("redis://127.0.0.1:{}/10", self.port)
+        // Like CI's disposable service, this private process can safely use db 0.
+        format!("redis://127.0.0.1:{}", self.port)
     }
 }
 impl Drop for RedisProcess {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+#[tokio::test]
+async fn private_redis_restart_loses_keys_in_default_database() {
+    if std::env::var("PINCHORA_TEST_DATABASE_URL").is_err() {
+        return;
+    }
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let redis = RedisProcess::start(port).await;
+    let cache = Cache::connect_scoped(&redis.url(), "outage_probe").await.unwrap();
+    assert_eq!(cache.namespace(), "pinchora:outage_probe:db0");
+    cache
+        .put("restart_probe", "before", Duration::from_secs(60))
+        .await
+        .unwrap();
+    assert_eq!(cache.get("restart_probe").await.unwrap().as_deref(), Some("before"));
+    drop(cache);
+    drop(redis);
+    let restarted = RedisProcess::start(port).await;
+    let cache = Cache::connect_scoped(&restarted.url(), "outage_probe").await.unwrap();
+    assert_eq!(cache.get("restart_probe").await.unwrap(), None);
 }
 
 #[tokio::test]
@@ -353,7 +410,17 @@ async fn redis_restart_fails_closed_then_snapshot_recovers_on_two_pods() {
             "{reason}"
         );
     }
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            if a.app.cache.ping().await.is_ok() && b.app.cache.ping().await.is_ok() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("both pods reconnect to Redis");
+    wait_for_expired_room_lease(&a, host).await;
     let mut p = eligible(&a, host).await.connect().await;
     let mut q = eligible(&b, unique()).await.connect().await;
     p.join(host).await;
@@ -532,7 +599,7 @@ async fn expired_fences_cannot_be_renewed_or_write_after_waiting_for_a_row_lock(
     let db = site.app.db.clone();
     let old = fence.clone();
     let renewal = tokio::spawn(async move { db.reef_renew(&old).await.unwrap() });
-    tokio::time::sleep(Duration::from_millis(3300)).await;
+    wait_for_expired_room_lease(&site, host).await;
     blocker.commit().await.unwrap();
     assert!(
         !renewal.await.unwrap(),
@@ -558,7 +625,7 @@ async fn expired_fences_cannot_be_renewed_or_write_after_waiting_for_a_row_lock(
             .await
             .unwrap()
     });
-    tokio::time::sleep(Duration::from_millis(3300)).await;
+    wait_for_expired_room_lease(&site, host).await;
     blocker.commit().await.unwrap();
     assert!(matches!(write.await.unwrap(), Err("ownership_lost")));
 }

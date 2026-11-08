@@ -1,9 +1,13 @@
 //! Durable delivery intent, fencing, backlog coalescing and privacy on the real database.
 use chrono::{Duration as Span, Utc};
 use pinchora_core::utility::{Schedule, next_run};
-use pinchora_db::{Db, ScheduledRow, UtilityStickyRow};
+use pinchora_db::{Db, ScheduledRow, UtilityStickyRow, timestamp};
 use serde_json::json;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+// claim_schedules is a global worker scan: it can lease another test's due rows.
+// Keep schedule fixtures exclusive, while each test still races its own callers.
+static SCHEDULE_FIXTURES: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
@@ -54,6 +58,7 @@ fn sticky(guild: u64) -> UtilityStickyRow {
 
 #[tokio::test]
 async fn delivery_intent_survives_crashes_and_fences_stale_workers() {
+    let _fixtures = SCHEDULE_FIXTURES.lock().await;
     let Some(db) = db().await else { return };
     let guild = unique();
     let id = db.add_schedule(&schedule(guild)).await.unwrap().unwrap();
@@ -104,6 +109,7 @@ async fn delivery_intent_survives_crashes_and_fences_stale_workers() {
 
 #[tokio::test]
 async fn overdue_recurrence_coalesces_and_guild_limit_is_atomic() {
+    let _fixtures = SCHEDULE_FIXTURES.lock().await;
     let Some(db) = db().await else { return };
     let guild = unique();
     for _ in 0..19 {
@@ -116,7 +122,7 @@ async fn overdue_recurrence_coalesces_and_guild_limit_is_atomic() {
     assert_eq!(rows.len(), 20);
     let row = db.claim_schedule_now(guild, rows[0].id).await.unwrap().unwrap();
     assert!(db.begin_schedule(&row).await.unwrap());
-    let now = Utc::now();
+    let now = timestamp(Utc::now());
     db.finish_schedule(&row, next_run(&Schedule::Interval { seconds: 60 }, &row.tz, now))
         .await
         .unwrap();
@@ -126,6 +132,28 @@ async fn overdue_recurrence_coalesces_and_guild_limit_is_atomic() {
     for row in rows {
         db.remove_schedule(guild, row.id).await.unwrap();
     }
+}
+
+#[tokio::test]
+async fn recurrence_with_nanoseconds_round_trips_at_postgres_precision() {
+    let _fixtures = SCHEDULE_FIXTURES.lock().await;
+    let Some(db) = db().await else { return };
+    let guild = unique();
+    let id = db.add_schedule(&schedule(guild)).await.unwrap().unwrap();
+    let row = db.claim_schedule_now(guild, id).await.unwrap().unwrap();
+    assert!(db.begin_schedule(&row).await.unwrap());
+    // Explicit nanoseconds reproduce a Linux clock on macOS as well.
+    let now = chrono::DateTime::from_timestamp(1_800_000_000, 308_657_117).unwrap();
+    let next = next_run(&Schedule::Interval { seconds: 60 }, &row.tz, now).unwrap();
+    assert_eq!(next, now + Span::minutes(1));
+    db.finish_schedule(&row, Some(next)).await.unwrap();
+    let saved = db.schedule(guild, id).await.unwrap().unwrap();
+    assert_eq!(saved.next_run_at, timestamp(now) + Span::minutes(1));
+    assert_eq!(next - saved.next_run_at, Span::nanoseconds(117));
+    assert_eq!(saved.runs, 1);
+    assert!(saved.enabled);
+    assert_eq!(saved.lease_until, None);
+    db.remove_schedule(guild, id).await.unwrap();
 }
 
 #[tokio::test]
@@ -162,6 +190,7 @@ async fn sticky_cleanup_is_atomic_and_delivery_is_fenced() {
 
 #[tokio::test]
 async fn privacy_removes_afk_and_anonymises_creators_and_nickname_repeated_set() {
+    let _fixtures = SCHEDULE_FIXTURES.lock().await;
     let Some(db) = db().await else { return };
     let user = unique();
     db.set_afk(user, user, "lunch", true).await.unwrap();
