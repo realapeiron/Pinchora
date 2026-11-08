@@ -262,6 +262,9 @@
   flex-wrap: wrap;
   gap: 16px;
 }
+.tk-question-choices {
+  grid-column: 1 / -1;
+}
 
 .tk-check {
   display: inline-flex;
@@ -670,4 +673,83 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.tk-operations-form {
+  display: grid;
+  gap: 12px;
+  margin-block: 18px;
+  min-width: 0;
+}
+.tk-operations-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.tk-operations-form textarea,
+.tk-operations-form input,
+.tk-operations-form select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.tk-operations-form .pixel-button {
+  justify-self: start;
+}
+.tk-operations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.tk-operations-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: center;
+}
+.tk-operations-faq {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--panel-edge);
+  min-width: 0;
+}
+.tk-operations-hours {
+  display: grid;
+  gap: 8px;
+}
+.tk-operations-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tk-operations-actions {
+  display: flex;
+  gap: 8px;
+  margin-block: 12px;
+}
+.tk-operations-notes {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+.tk-operations-notes li {
+  border-bottom: 1px solid var(--panel-edge);
+  padding-block: 8px;
+}
+.tk-operations-notes p {
+  white-space: pre-wrap;
+}
+@media (max-width: 600px) {
+  .tk-operations-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tk-operations-window {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tk-operations-window select {
+    grid-column: 1 / -1;
+  }
 }

@@ -27,6 +27,144 @@ fn panel(name: &str) -> Value {
     })
 }
 
+async fn configure_ticket_operations(browser: &mut Browser, guild: u64) -> (String, i64) {
+    let root = format!("{}/operations", t(guild));
+    let config = json!({
+        "support_timezone": "Europe/Istanbul", "support_hours": [{"day": 1, "start": 540, "end": 1020}],
+        "out_of_hours_message": "We return tomorrow.", "status_channel_id": null,
+        "close_timeout_hours": 24,
+    });
+    let csrf = browser.csrf.take();
+    assert_eq!(
+        browser
+            .write(Method::PUT, &format!("{root}/settings"), config.clone())
+            .await
+            .code(),
+        "csrf"
+    );
+    browser.csrf = csrf;
+    let saved = browser.write(Method::PUT, &format!("{root}/settings"), config).await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    assert_eq!(saved.json()["support_timezone"], "Europe/Istanbul");
+    let made = browser
+        .write(Method::POST, &format!("{}/panels", t(guild)), panel("V2 desk"))
+        .await;
+    assert_eq!(made.status, StatusCode::CREATED, "{}", made.text());
+    let panel_id = made.json()["id"].as_str().unwrap().parse::<i64>().unwrap();
+    let panel_ops = json!({"claim_mode":"exclusive","max_open_per_panel":2,
+        "max_open_per_category":0,"cooldown_seconds":60,"minimum_account_age_days":0,
+        "minimum_membership_days":0,"bypass_roles":[FAN.to_string()],"staff_open_limit":1,
+        "overflow_message":"Queue full","faq":[{"question":"Hours?","answer":"Weekdays."}]});
+    let saved = browser
+        .write(Method::PUT, &format!("{root}/panel/{panel_id}"), panel_ops)
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    assert_eq!(saved.json()["bypass_roles"][0], FAN.to_string());
+    let snippet = browser
+        .write(
+            Method::POST,
+            &format!("{root}/snippets"),
+            json!({"name":"Welcome","body":"Hi {user}, ticket {number}"}),
+        )
+        .await;
+    assert_eq!(snippet.status, StatusCode::OK, "{}", snippet.text());
+    assert_eq!(
+        browser.get(&format!("{root}/snippets")).await.json()["items"][0]["name"],
+        "Welcome"
+    );
+    (root, panel_id)
+}
+
+#[tokio::test]
+async fn ticket_operations_management_is_scoped_csrf_checked_and_audited() {
+    let Some(h) = Harness::new("ticket_operations_management").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    h.mock.guild_owners.lock().unwrap().insert(guild, owner);
+    let (root, panel_id) = configure_ticket_operations(&mut browser, guild).await;
+    let ticket_id = seed_ticket(
+        &h.state.app.db,
+        guild,
+        Some(panel_id),
+        (owner + 100, "Customer"),
+        owner,
+        "Help",
+        false,
+    )
+    .await;
+    let ticket = format!("{root}/ticket/{ticket_id}");
+    let note = browser
+        .write(
+            Method::POST,
+            &format!("{ticket}/notes"),
+            json!({"text":"Private details"}),
+        )
+        .await;
+    assert_eq!(note.status, StatusCode::OK, "{}", note.text());
+    assert_eq!(
+        browser.get(&format!("{ticket}/notes")).await.json()["items"][0]["body"],
+        "Private details"
+    );
+    let unclaimed_reply = browser
+        .write(Method::POST, &format!("{ticket}/reply"), json!({"text":"Hello"}))
+        .await;
+    assert_eq!(unclaimed_reply.code(), "claim_required");
+    let claimed = browser.write(Method::POST, &format!("{ticket}/claim"), json!({})).await;
+    assert_eq!(claimed.status, StatusCode::OK, "{}", claimed.text());
+    assert_eq!(
+        browser
+            .write(Method::POST, &format!("{ticket}/claim"), json!({}))
+            .await
+            .code(),
+        "ticket_claimed"
+    );
+    let leaderboard = browser.get(&format!("{root}/leaderboard")).await.json();
+    assert_eq!(leaderboard["items"][0]["claimed"], 1);
+    let reply = browser
+        .write(
+            Method::POST,
+            &format!("{ticket}/reply"),
+            json!({"text":"Hello from the bot"}),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.text());
+    assert!(h.mock.posts.lock().unwrap().iter().any(|(_, body)| {
+        let wire: Value = serde_json::from_str(body).unwrap();
+        wire["content"] == "Hello from the bot" && wire["allowed_mentions"]["parse"] == json!([])
+    }));
+    let rejected = browser
+        .write(
+            Method::POST,
+            &format!("{ticket}/reply"),
+            json!({"text":"x".repeat(2001)}),
+        )
+        .await;
+    assert_eq!(rejected.status, StatusCode::BAD_REQUEST);
+    let transcript = browser.get(&format!("{}/ticket/{ticket_id}", t(guild))).await.json();
+    assert!(
+        transcript.get("notes").is_none(),
+        "notes never enter opener-visible transcript payloads"
+    );
+    let audit = browser.get(&format!("/api/guilds/{guild}/audit")).await.json();
+    let actions: Vec<&str> = audit["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|row| row["action"].as_str())
+        .collect();
+    for action in [
+        "tickets.v2.settings",
+        "tickets.v2.panel",
+        "tickets.v2.note",
+        "tickets.v2.claim",
+        "tickets.v2.reply",
+    ] {
+        assert!(actions.contains(&action), "missing {action}");
+    }
+    assert!(!audit.to_string().contains("Private details"));
+}
+
 /// A member's ticket opened on `panel`, then (when `close`) answered by `staff` and closed with a transcript
 /// that holds hostile text, as the bot would leave it.
 async fn seed_ticket(
@@ -368,4 +506,102 @@ async fn seed_demo_tickets() {
     let claimed = seed_ticket(&db, guild, Some(panel.id), (leo, "Leo"), kai, "Billing", false).await;
     db.claim_ticket(claimed, kai).await.expect("claim");
     seed_ticket(&db, guild, Some(panel.id), (sam, "Sam"), kai, "Support", false).await;
+}
+
+#[tokio::test]
+async fn community_delegates_cannot_read_notes_or_operate_without_ticket_staff_roles() {
+    let Some(h) = Harness::new("ticket_staff_privacy").await else {
+        return;
+    };
+    let (guild, owner, mut manager) = h.managed_server().await;
+    h.mock.guild_owners.lock().unwrap().insert(guild, owner);
+    let made = manager
+        .write(Method::POST, &format!("{}/panels", t(guild)), panel("Staff boundary"))
+        .await;
+    let panel = made.json()["id"].as_str().unwrap().parse::<i64>().unwrap();
+    let user = unique();
+    let ticket = seed_ticket(
+        &h.state.app.db,
+        guild,
+        Some(panel),
+        (user, "Customer"),
+        owner,
+        "Support",
+        true,
+    )
+    .await;
+    h.state
+        .app
+        .db
+        .add_ticket_staff_note(ticket, owner, "STAFF_ONLY_SENTINEL")
+        .await
+        .unwrap();
+    h.mock.member_roles.lock().unwrap().insert(user, vec![REGULAR]);
+    h.state
+        .app
+        .db
+        .replace_dashboard_managers(
+            guild,
+            owner,
+            "Owner",
+            &[pinchora_db::DashboardManager {
+                role_id: REGULAR as i64,
+                areas: vec!["community".into(), "audit".into()],
+            }],
+        )
+        .await
+        .unwrap();
+    let mut delegate = h.browser();
+    delegate
+        .login(&h, user, vec![guild_entry(guild, "Support", false, 0)])
+        .await;
+    let base = format!("{}/operations/ticket/{ticket}", t(guild));
+    for action in ["notes", "operations"] {
+        assert_eq!(
+            delegate.get(&format!("{base}/{action}")).await.status,
+            StatusCode::FORBIDDEN
+        );
+    }
+    for action in ["notes", "reply", "claim", "unclaim"] {
+        assert_eq!(
+            delegate
+                .write(Method::POST, &format!("{base}/{action}"), json!({"text":"no"}))
+                .await
+                .status,
+            StatusCode::FORBIDDEN,
+            "{action}"
+        );
+    }
+    for path in [
+        format!("{}/ticket/{ticket}", t(guild)),
+        format!("{}/ticket/{ticket}/transcript.html", t(guild)),
+        format!("/api/guilds/{guild}/audit"),
+    ] {
+        let response = delegate.get(&path).await;
+        assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+        assert!(!response.text().contains("STAFF_ONLY_SENTINEL"));
+    }
+    // Even an opener who is also staff cannot retrieve internal notes on their own ticket.
+    h.mock.member_roles.lock().unwrap().insert(user, vec![REGULAR, FAN]);
+    assert_eq!(
+        delegate.get(&format!("{base}/notes")).await.status,
+        StatusCode::FORBIDDEN
+    );
+    let staff = unique();
+    h.mock.member_roles.lock().unwrap().insert(staff, vec![REGULAR, FAN]);
+    delegate
+        .login(&h, staff, vec![guild_entry(guild, "Support", false, 0)])
+        .await;
+    assert!(
+        delegate
+            .get(&format!("{base}/notes"))
+            .await
+            .text()
+            .contains("STAFF_ONLY_SENTINEL")
+    );
+    h.mock.member_roles.lock().unwrap().insert(staff, vec![REGULAR]);
+    assert_eq!(
+        delegate.get(&format!("{base}/notes")).await.status,
+        StatusCode::FORBIDDEN
+    );
 }

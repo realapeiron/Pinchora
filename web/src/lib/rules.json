@@ -1112,6 +1112,8 @@
       "ends_with"
     ],
     "reserved": [
+      "Open",
+      "Open ticket",
       "Report",
       "achievementadmin",
       "achievements",

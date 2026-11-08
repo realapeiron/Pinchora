@@ -17,6 +17,7 @@ use pinchora_core::{i18n::Lang, modules::Module, t, tickets::Refusal};
 use pinchora_db::{Ticket, TicketPanel, TicketSettings};
 use twilight_http::request::channel::message::CreateMessage;
 use twilight_model::{
+    channel::Message,
     channel::message::{AllowedMentions, Component, Embed, MessageFlags},
     guild::Permissions,
     http::{attachment::Attachment, interaction::InteractionResponseData},
@@ -26,9 +27,100 @@ use twilight_model::{
     },
 };
 
+/// Enforce required and exclusive claim modes for direct Discord replies by staff.
+pub(crate) async fn on_guild_message(app: &Arc<App>, msg: &Message) -> crate::hooks::Verdict {
+    let Some(guild) = msg.guild_id.map(Id::get) else {
+        return crate::hooks::Verdict::Continue;
+    };
+    if !module_on(app, guild, Some(msg.channel_id.get())).await {
+        return crate::hooks::Verdict::Continue;
+    }
+    let Some(ticket) = (match app.db.ticket_at(guild, msg.channel_id.get()).await {
+        Ok(ticket) => ticket,
+        Err(error) => {
+            tracing::warn!(guild, %error, "ticket claim mode not checked");
+            return crate::hooks::Verdict::Continue;
+        }
+    })
+    .filter(Ticket::is_open) else {
+        return crate::hooks::Verdict::Continue;
+    };
+    if ticket.opener_id as u64 == msg.author.id.get() {
+        return crate::hooks::Verdict::Continue;
+    }
+    let Some(panel) = (match ticket.panel_id {
+        Some(id) => app.db.ticket_panel(id).await.ok().flatten(),
+        None => None,
+    }) else {
+        return crate::hooks::Verdict::Continue;
+    };
+    let Ok(config) = app.db.ticket_panel_operations(panel.id).await else {
+        return crate::hooks::Verdict::Continue;
+    };
+    if config.claim_mode == "optional" {
+        return crate::hooks::Verdict::Continue;
+    }
+    let held = msg.member.as_ref().map(|member| member.roles.as_slice()).unwrap_or(&[]);
+    let support = held
+        .iter()
+        .any(|role| panel.support_roles.contains(&(role.get() as i64)));
+    let manager = msg
+        .member
+        .as_ref()
+        .and_then(|member| member.permissions)
+        .is_some_and(|permissions| STAFF_PERMISSIONS.iter().any(|needed| permissions.contains(*needed)))
+        || match app.http.roles(Id::new(guild)).await {
+            Ok(response) => response.models().await.is_ok_and(|roles| {
+                roles.iter().any(|role| {
+                    held.contains(&role.id)
+                        && STAFF_PERMISSIONS
+                            .iter()
+                            .any(|needed| role.permissions.contains(*needed))
+                })
+            }),
+            Err(_) => false,
+        }
+        || match app.http.guild(Id::new(guild)).await {
+            Ok(response) => response
+                .model()
+                .await
+                .is_ok_and(|guild| guild.owner_id == msg.author.id),
+            Err(_) => false,
+        };
+    if !support && !manager {
+        return crate::hooks::Verdict::Continue;
+    }
+    let blocked = ticket.claimed_by.is_none()
+        || config.claim_mode == "exclusive" && ticket.claimed_by != Some(msg.author.id.get() as i64);
+    if !blocked {
+        return crate::hooks::Verdict::Continue;
+    }
+    if let Err(error) = app.http.delete_message(msg.channel_id, msg.id).await {
+        tracing::warn!(ticket = ticket.id, %error, "unclaimed staff reply not removed");
+        return crate::hooks::Verdict::Continue;
+    }
+    let lang = guild_lang(app, guild).await;
+    let text = t!(
+        lang,
+        if ticket.claimed_by.is_none() {
+            "tickets.v2.claimed-required"
+        } else {
+            "tickets.v2.exclusive-claim"
+        }
+    );
+    let mentions = AllowedMentions::default();
+    let _ = app
+        .http
+        .create_message(msg.channel_id)
+        .content(&text)
+        .allowed_mentions(Some(&mentions))
+        .await;
+    crate::hooks::Verdict::Blocked
+}
+
 pub(crate) use actions::{TicketAct, on_control, on_rating, run_action};
 pub use actions::{spawn_ticker, tick};
-pub(crate) use open::{on_form, on_open};
+pub(crate) use open::{on_form, on_message_context, on_open};
 pub use panel::{PanelPost, post_panel};
 
 /// A deleted ticket place is closed through the regular close path, once across gateway pods.
@@ -60,6 +152,71 @@ pub async fn close_from_web(app: &Arc<App>, ticket: Ticket, by: u64, name: Strin
         None => None,
     };
     actions::close(app, ticket, panel, Some((by, name)), None, None).await
+}
+
+/// Create or edit the configured status message. The ticker also calls this after missed events.
+pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
+    let mut lock = app.db.pool().begin().await?;
+    let acquired: bool =
+        sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('ticket-status:' || $1::text, 0))")
+            .bind(guild as i64)
+            .fetch_one(&mut *lock)
+            .await?;
+    if !acquired {
+        return Ok(());
+    }
+    let settings = app.db.ticket_operation_settings(guild).await?;
+    let Some(channel) = settings.status_channel_id.map(|id| id as u64) else {
+        return Ok(());
+    };
+    if app
+        .cache
+        .try_cooldown(&format!("ticket-status:{guild}"), Duration::from_secs(30))
+        .await?
+        .is_some()
+    {
+        return Ok(());
+    }
+    let (open, claimed, closed_today) = app.db.ticket_status_counts(guild).await?;
+    let lang = app.guild_lang(guild).await;
+    let embed = twilight_util::builder::embed::EmbedBuilder::new()
+        .title(t!(lang, "tickets.v2.board-title"))
+        .description(t!(
+            lang,
+            "tickets.v2.board-body",
+            open = open,
+            claimed = claimed,
+            closed = closed_today
+        ))
+        .build();
+    let embeds = [app.brand_embed(guild, embed).await];
+    let mentions = AllowedMentions::default();
+    if let Some(message) = settings.status_message_id {
+        let edited = app
+            .http
+            .update_message(Id::new(channel), Id::new(message as u64))
+            .embeds(Some(&embeds))
+            .allowed_mentions(Some(&mentions))
+            .await;
+        match edited {
+            Ok(_) => return Ok(()),
+            Err(error) if crate::roles::error_code(&error) == Some(10008) => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    let sent = app
+        .http
+        .create_message(Id::new(channel))
+        .embeds(&embeds)
+        .allowed_mentions(Some(&mentions))
+        .await?
+        .model()
+        .await?;
+    if !app.db.set_ticket_status_message(guild, channel, sent.id.get()).await? {
+        app.http.delete_message(Id::new(channel), sent.id).await?;
+    }
+    lock.commit().await?;
+    Ok(())
 }
 
 use crate::{App, Cx, commands::games::quiet};

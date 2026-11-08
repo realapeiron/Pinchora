@@ -783,7 +783,33 @@ function PanelEditor({
                           />{" "}
                           {spaTranslate("Required")}{" "}
                         </label>
+                        <label className="tk-check">
+                          <input
+                            type="checkbox"
+                            checked={q.upload ?? false}
+                            onChange={(e) =>
+                              updateQuestion(n, { upload: e.target.checked, choices: [], long: false })
+                            }
+                          />{" "}
+                          {spaTranslate("File upload")}{" "}
+                        </label>
                       </div>
+                      {!q.upload && (
+                        <input
+                          className="pixel-input tk-question-choices"
+                          aria-label={spaTranslate("Choices for question {arg1}", { arg1: n + 1 })}
+                          placeholder={spaTranslate("Choices separated by commas (optional)")}
+                          value={(q.choices ?? []).join(", ")}
+                          onChange={(e) =>
+                            updateQuestion(n, {
+                              choices: e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                        />
+                      )}
                     </li>
                   ))}
                 </ol>

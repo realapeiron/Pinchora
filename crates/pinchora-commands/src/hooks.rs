@@ -57,6 +57,9 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     if crate::automod::after_message(app, msg, _settings).await == Verdict::Blocked {
         return Verdict::Blocked;
     }
+    if crate::tickets::on_guild_message(app, msg).await == Verdict::Blocked {
+        return Verdict::Blocked;
+    }
     // F5 vote channels react only after moderation accepts the message.
     crate::starboard::on_message(app, msg).await;
     // F9 stats counts the message.

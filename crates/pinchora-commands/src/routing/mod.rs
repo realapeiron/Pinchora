@@ -13,7 +13,7 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 20;
-pub const PROJECTED_ROOTS: usize = 79;
+pub const PROJECTED_ROOTS: usize = 80;
 pub const FUTURE_ROOT_RESERVE: usize = 3;
 
 pub(crate) const COMMUNITY_ADMIN_PATHS: &[&str] = &[

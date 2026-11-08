@@ -78,6 +78,7 @@ pub(crate) mod surge;
 pub(crate) mod tag;
 pub(crate) mod tempvoice;
 pub(crate) mod tickets;
+pub(crate) mod tickets_context;
 pub(crate) mod trackers;
 pub(crate) mod trivia;
 use crate::undo;
@@ -101,6 +102,7 @@ macro_rules! commands {
             static COMMANDS: std::sync::LazyLock<Vec<Command>> = std::sync::LazyLock::new(|| {
                 let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
                 commands.push(moderation::report_context::definition());
+                commands.push(tickets_context::definition());
                 crate::lang::localize(&mut commands);
                 commands
             });
@@ -129,6 +131,7 @@ macro_rules! commands {
                 return Ok(());
             }
             if data.name == "Report" { return moderation::report_context::run(cx, data).await; }
+            if data.name == "Open ticket" { return tickets_context::run(cx, data).await; }
             let name = data.name.clone();
             $(
                 if name == <$ty as CreateCommand>::NAME {

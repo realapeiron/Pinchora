@@ -40,6 +40,7 @@ struct World {
     /// Refuse to make channels, as Discord does for a bot without Manage Channels.
     refuse_channels: Arc<AtomicBool>,
     refuse_uploads: Arc<AtomicBool>,
+    refuse_message_edits: Arc<AtomicBool>,
     pages: Arc<Mutex<Vec<Page>>>,
 }
 
@@ -102,6 +103,9 @@ async fn ticket_discord(
     }
     let json: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
     match (&method, parts.as_slice()) {
+        (&Method::PATCH, [.., "channels", _, "messages", _]) if world.refuse_message_edits.load(Ordering::SeqCst) => {
+            return missing_permissions();
+        }
         (&Method::POST, [.., "guilds", guild, "channels"]) => {
             if world.refuse_channels.load(Ordering::SeqCst) {
                 return missing_permissions();
@@ -337,6 +341,9 @@ async fn posted_panel(sim: &mut Sim, admin: u64, panel: &str, channel: u64) -> R
     posted_reply(post)
 }
 
+// Both tests expose a board to the guild-wide ticker; keep their Discord worlds isolated.
+static TICKET_TICK_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 // /Tests
 
 #[tokio::test]
@@ -355,6 +362,8 @@ async fn deleted_ticket_is_recovered_on_next_open() {
         .release_cooldown(&format!("tk:{}:{member}", sim.guild))
         .await
         .unwrap();
+    // Expire the persistent cooldown too; deleting a cache key must not bypass it.
+    sim.app.shift_clock(chrono::Duration::seconds(61));
     let again = sim.click(member, &panel, "Support").await;
     assert!(
         again
@@ -772,7 +781,7 @@ async fn ticket_numbers_never_collide_and_one_member_gets_one_open_ticket() {
     let (first, second) = tokio::join!(open(a), open(b));
     let number = |o: &TicketOpen| match o {
         TicketOpen::Opened(t) => t.number,
-        TicketOpen::TooMany { .. } => panic!("both may open one"),
+        TicketOpen::TooMany { .. } | TicketOpen::Cooldown { .. } => panic!("both may open one"),
     };
     let mut numbers = [number(&first), number(&second)];
     numbers.sort_unstable();
@@ -808,12 +817,16 @@ async fn a_form_asks_first_and_big_servers_get_private_threads() {
             placeholder: "#1234".into(),
             long: false,
             required: true,
+            choices: Vec::new(),
+            upload: false,
         },
         Question {
             label: "What happened?".into(),
             placeholder: String::new(),
             long: true,
             required: false,
+            choices: Vec::new(),
+            upload: false,
         },
     ];
     save_panel(
@@ -960,6 +973,7 @@ fn snowflake_at(at: chrono::DateTime<chrono::Utc>) -> u64 {
 /// stays open.
 #[tokio::test]
 async fn idle_tickets_close_themselves() {
+    let _ticker = TICKET_TICK_LOCK.lock().await;
     let Some((mut sim, world)) = ticket_sim("idle_tickets_close_themselves").await else {
         return;
     };
@@ -1108,4 +1122,460 @@ async fn tickets_speak_turkish() {
     sim.channel = place;
     let refused = sim.click(member, &welcome, "Üstlen").await;
     assert_eq!(refused.content(), "Bunu yalnızca talebin yetkilileri yapabilir.");
+}
+
+#[tokio::test]
+async fn ticket_message_context_keeps_the_source_link() {
+    let Some((mut sim, world)) = ticket_sim("ticket_message_context_keeps_the_source_link").await else {
+        return;
+    };
+    let member = unique();
+    let channel = unique();
+    let source = unique();
+    let panel = save_panel(&sim, "Context", channel, &[Topic::new("Help")], &[], &[]).await;
+    sim.channel = channel;
+    let mut message = message_json(channel, source);
+    message["content"] = json!("");
+    let data = json!({
+        "id": unique().to_string(), "name": "Open ticket", "type": 3,
+        "target_id": source.to_string(),
+        "resolved": { "messages": { source.to_string(): message } },
+        "options": []
+    });
+    let panel_menu = sim.run("message Open ticket".into(), member, 2, data, None).await;
+    assert!(panel_menu.ephemeral);
+    let topic_menu = sim.pick(member, &panel_menu, "tk:m", &panel.to_string()).await;
+    let opened = sim.pick(member, &topic_menu, "tk:q", "0").await;
+    assert!(
+        opened
+            .followups
+            .last()
+            .map_or(opened.content(), Reply::content)
+            .contains("Your ticket is open")
+    );
+    let place = world.made.lock().unwrap()[0].0;
+    let ticket = sim.app.db.ticket_at(sim.guild, place).await.unwrap().unwrap();
+    assert_eq!(
+        ticket.answers()[0].answer,
+        format!("https://discord.com/channels/{}/{channel}/{source}", sim.guild)
+    );
+}
+
+async fn open_multistep_fixture(sim: &mut Sim, world: &World, admin: u64, member: u64) -> u64 {
+    let panel_channel = unique();
+    let questions: Vec<Question> = (1..=6)
+        .map(|n| Question {
+            label: format!("Question {n}"),
+            placeholder: String::new(),
+            long: n == 6,
+            required: true,
+            choices: Vec::new(),
+            upload: false,
+        })
+        .collect();
+    let panel_id = save_panel(sim, "V2", panel_channel, &[Topic::new("Help")], &questions, &[]).await;
+    let mut ops = sim.app.db.ticket_panel_operations(panel_id).await.unwrap();
+    ops.faq.push(pinchora_db::TicketFaq {
+        question: "Where are the hours?".into(),
+        answer: "On the site.".into(),
+    });
+    ops.faq.push(pinchora_db::TicketFaq {
+        question: "Where are updates?".into(),
+        answer: "*".repeat(1000),
+    });
+    sim.app.db.save_ticket_panel_operations(panel_id, &ops).await.unwrap();
+    let panel = posted_panel(sim, admin, "V2", panel_channel).await;
+    let faq = sim.click(member, &panel, "Help").await;
+    assert!(faq.ephemeral && faq.content().contains("Where are the hours?"));
+    assert!(world.made.lock().unwrap().is_empty(), "FAQ deflects before opening");
+    let next_faq = sim.click(member, &faq, "Next answer").await;
+    assert!(next_faq.content().contains("Where are updates?"));
+    assert!(next_faq.content().chars().count() <= 2000);
+    let first = sim.click(member, &next_faq, "Continue").await;
+    assert_eq!(first.modal_inputs.len(), 5);
+    let invalid = sim
+        .submit_fields(member, &first, &[("q0", "missing required fields")])
+        .await;
+    assert!(invalid.ephemeral && world.made.lock().unwrap().is_empty());
+    let next = sim
+        .submit_fields(
+            member,
+            &first,
+            &[("q0", "A1"), ("q1", "A2"), ("q2", "A3"), ("q3", "A4"), ("q4", "A5")],
+        )
+        .await;
+    assert!(next.content().contains("next step"));
+    let second = sim.click(member, &next, "Continue").await;
+    assert_eq!(second.modal_inputs.len(), 1);
+    let stolen = sim.submit_fields(unique(), &second, &[("q0", "stolen")]).await;
+    assert!(stolen.ephemeral && world.made.lock().unwrap().is_empty());
+    let oversized = sim.submit_fields(member, &second, &[("q0", &"x".repeat(1001))]).await;
+    assert!(oversized.ephemeral && world.made.lock().unwrap().is_empty());
+    let opened = sim.submit_fields(member, &second, &[("q0", "A6")]).await;
+    let replay = sim.submit_fields(member, &second, &[("q0", "replayed")]).await;
+    assert!(replay.ephemeral);
+    assert_eq!(world.made.lock().unwrap().len(), 1);
+    assert!(
+        opened
+            .followups
+            .last()
+            .map_or(opened.content(), Reply::content)
+            .contains("Your ticket is open")
+    );
+    world.made.lock().unwrap()[0].0
+}
+
+#[tokio::test]
+async fn ticket_operations_faq_multistep_private_note_and_close_request() {
+    let Some((mut sim, world)) = ticket_sim("ticket_operations_faq_multistep_private_note_and_close_request").await
+    else {
+        return;
+    };
+    let (admin, member, staff) = (unique(), unique(), unique());
+    let place = open_multistep_fixture(&mut sim, &world, admin, member).await;
+    let ticket = sim.app.db.ticket_at(sim.guild, place).await.unwrap().unwrap();
+    assert_eq!(ticket.answers().len(), 6);
+    assert!(
+        take_posts(&sim)
+            .iter()
+            .any(|post| post.channel == place && post.body.to_string().contains("A6")),
+        "staff see answers from later form steps"
+    );
+    sim.channel = place;
+    sim.permissions = MANAGE_GUILD;
+    let saved = sim
+        .command(
+            staff,
+            "ticket",
+            json!([sub("note", vec![text_option("text", "internal only")])]),
+        )
+        .await;
+    assert!(saved.ephemeral && saved.content().contains("Private staff note saved"));
+    assert!(
+        take_posts(&sim)
+            .iter()
+            .all(|post| !post.body.to_string().contains("internal only"))
+    );
+    assert_eq!(
+        sim.app.db.ticket_staff_notes(ticket.id).await.unwrap()[0].body,
+        "internal only"
+    );
+    sim.app
+        .db
+        .save_ticket_snippet(
+            sim.guild,
+            "Welcome",
+            "Hello {user} in ticket {number} @everyone <@&1234>",
+        )
+        .await
+        .unwrap();
+    let sent = sim
+        .command(
+            staff,
+            "ticket",
+            json!([sub("snippet", vec![text_option("name", "Welcome")])]),
+        )
+        .await;
+    assert!(sent.content().contains("Saved reply sent"));
+    assert!(take_posts(&sim).iter().any(|post| {
+        post.channel == place
+            && post.body["allowed_mentions"]["parse"] == json!([])
+            && post.body.to_string().contains("ticket 1")
+            && post.body.to_string().contains(&format!("<@{member}>"))
+    }));
+    let requested = sim
+        .command(staff, "ticket", json!([sub("request-close", vec![])]))
+        .await;
+    assert!(requested.content().contains("Staff asked to close"));
+    let posted = take_posts(&sim);
+    let request = posted
+        .iter()
+        .find(|post| post.channel == place && post.body.to_string().contains("Confirm close"))
+        .expect("close confirmation posted");
+    sim.permissions = 0;
+    let confirmed = sim.click(member, &posted_reply(request), "Confirm close").await;
+    assert!(confirmed.content().contains("Closing"));
+    assert!(!sim.app.db.ticket(ticket.id).await.unwrap().unwrap().is_open());
+    let transcript = sim.app.db.transcript(ticket.id).await.unwrap().unwrap();
+    assert!(
+        !serde_json::to_string(&transcript.lines)
+            .unwrap()
+            .contains("internal only")
+    );
+}
+
+#[tokio::test]
+async fn ticket_operations_faq_and_support_hours_speak_turkish() {
+    let Some((mut sim, world)) = ticket_sim("ticket_operations_faq_and_support_hours_speak_turkish").await else {
+        return;
+    };
+    let (admin, member, panel_channel) = (unique(), unique(), unique());
+    sim.app
+        .set_guild_lang(sim.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .await
+        .unwrap();
+    sim.locale = "tr";
+    let id = save_panel(&sim, "Yardım", panel_channel, &[Topic::new("Destek")], &[], &[]).await;
+    let mut ops = sim.app.db.ticket_panel_operations(id).await.unwrap();
+    ops.faq.push(pinchora_db::TicketFaq {
+        question: "Saatler?".into(),
+        answer: "Hafta içi.".into(),
+    });
+    sim.app.db.save_ticket_panel_operations(id, &ops).await.unwrap();
+    let mut settings = sim.app.db.ticket_operation_settings(sim.guild).await.unwrap();
+    settings.support_hours.push(pinchora_db::SupportWindow {
+        day: 1,
+        start: 1,
+        end: 2,
+    });
+    settings.out_of_hours_message = "Yarın döneceğiz.".into();
+    sim.app
+        .db
+        .save_ticket_operation_settings(sim.guild, &settings)
+        .await
+        .unwrap();
+    let panel = posted_panel(&mut sim, admin, "Yardım", panel_channel).await;
+    let faq = sim.click(member, &panel, "Destek").await;
+    assert!(faq.content().contains("Talep açmadan önce"));
+    assert!(world.made.lock().unwrap().is_empty());
+    let opened = sim.click(member, &faq, "Devam et").await;
+    assert!(
+        opened
+            .followups
+            .last()
+            .map_or(opened.content(), Reply::content)
+            .contains("Talebin açıldı")
+    );
+    assert!(
+        take_posts(&sim)
+            .iter()
+            .any(|post| post.body.to_string().contains("Yarın döneceğiz"))
+    );
+}
+
+#[tokio::test]
+async fn status_board_parallel_refreshes_are_throttled_without_pool_starvation() {
+    let _ticker = TICKET_TICK_LOCK.lock().await;
+    let Some((sim, world)) = ticket_sim("ticket_status_throttle").await else {
+        return;
+    };
+    let channel = unique();
+    sim.app
+        .db
+        .save_ticket_operation_settings(
+            sim.guild,
+            &pinchora_db::TicketOperationSettings {
+                status_channel_id: Some(channel as i64),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let refreshes = (0..12).map(|_| pinchora_commands::refresh_ticket_status_board(&sim.app, sim.guild));
+    let results = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        futures_util::future::join_all(refreshes),
+    )
+    .await
+    .expect("parallel board refresh must not exhaust the connection pool");
+    for result in results {
+        result.unwrap();
+    }
+    let posts = take_posts(&sim);
+    assert_eq!(posts.iter().filter(|p| p.channel == channel).count(), 1);
+    pinchora_commands::refresh_ticket_status_board(&sim.app, sim.guild)
+        .await
+        .unwrap();
+    assert!(take_posts(&sim).is_empty(), "edits also share the throttle");
+    sim.app
+        .cache
+        .release_cooldown(&format!("ticket-status:{}", sim.guild))
+        .await
+        .unwrap();
+    world.refuse_message_edits.store(true, Ordering::SeqCst);
+    assert!(
+        pinchora_commands::refresh_ticket_status_board(&sim.app, sim.guild)
+            .await
+            .is_err()
+    );
+    assert!(
+        take_posts(&sim).is_empty(),
+        "a failed edit must not create a duplicate board"
+    );
+    sim.app
+        .db
+        .save_ticket_operation_settings(sim.guild, &Default::default())
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn ticket_staff_operations_deny_members_and_force_open_records_only_success() {
+    let Some((mut sim, world)) = ticket_sim("ticket_staff_operations_guards").await else {
+        return;
+    };
+    let (owner, member, staff, channel) = (unique(), unique(), unique(), unique());
+    save_panel(&sim, "Guards", channel, &[Topic::new("Help")], &[], &[]).await;
+    let panel = posted_panel(&mut sim, owner, "Guards", channel).await;
+    sim.click(member, &panel, "Help").await;
+    sim.channel = world.made.lock().unwrap()[0].0;
+    let ticket = sim.app.db.ticket_at(sim.guild, sim.channel).await.unwrap().unwrap();
+    for (action, options) in [
+        ("priority", vec![text_option("level", "high")]),
+        ("escalate", vec![]),
+        ("request-close", vec![]),
+        ("force-open", vec![]),
+        ("note", vec![text_option("text", "private")]),
+        ("transfer", vec![]),
+        ("snippet", vec![text_option("name", "hello")]),
+    ] {
+        let result = sim.command(member, "ticket", json!([sub(action, options)])).await;
+        assert!(
+            result.ephemeral && result.content().contains("staff"),
+            "{action}: {}",
+            result.content()
+        );
+    }
+    assert!(sim.app.db.ticket_staff_notes(ticket.id).await.unwrap().is_empty());
+    sim.permissions = MANAGE_GUILD;
+    sim.command(staff, "ticket", json!([sub("close", vec![])])).await;
+    let reopened = sim.command(staff, "ticket", json!([sub("force-open", vec![])])).await;
+    assert!(reopened.content().contains("reopened"), "{}", reopened.content());
+    let operations = sim.app.db.ticket_operations(ticket.id).await.unwrap();
+    assert_eq!(operations.force_opened_by, Some(staff as i64));
+    sim.command(owner, "ticket", json!([sub("force-open", vec![])])).await;
+    assert_eq!(
+        sim.app.db.ticket_operations(ticket.id).await.unwrap().force_opened_by,
+        Some(staff as i64)
+    );
+}
+
+#[tokio::test]
+async fn transfer_rejects_nonstaff_users_and_deleted_support_roles() {
+    let Some((mut sim, _)) = ticket_sim("ticket_transfer_validation").await else {
+        return;
+    };
+    let (staff, opener, deleted_role) = (unique(), unique(), unique());
+    let panel = save_panel(
+        &sim,
+        "Transfer",
+        sim.channel,
+        &[Topic::new("Help")],
+        &[],
+        &[deleted_role],
+    )
+    .await;
+    let TicketOpen::Opened(ticket) = sim
+        .app
+        .db
+        .open_ticket(&NewTicket {
+            guild_id: sim.guild,
+            panel_id: Some(panel),
+            opener,
+            topic: "Help",
+            answers: &[],
+            max_open: 1,
+            at: sim.app.now(),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("opens")
+    };
+    sim.app.db.set_ticket_place(ticket.id, sim.channel, None).await.unwrap();
+    sim.permissions = MANAGE_GUILD;
+    let role = role_json(deleted_role, "Deleted support", 1, false);
+    let response = sim
+        .command_resolved(
+            staff,
+            "ticket",
+            json!([sub("transfer", vec![role_option("role", &role)])]),
+            json!({"roles": {deleted_role.to_string():role}}),
+        )
+        .await;
+    assert!(response.ephemeral);
+    assert!(
+        sim.app
+            .db
+            .ticket_operations(ticket.id)
+            .await
+            .unwrap()
+            .transferred_to_role
+            .is_none()
+    );
+    sim.command(
+        staff,
+        "ticket",
+        json!([sub("transfer", vec![user_option("user", opener)])]),
+    )
+    .await;
+    assert!(
+        sim.app
+            .db
+            .ticket(ticket.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .claimed_by
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn ticket_claim_mode_message_guard_respects_the_module_switch() {
+    let Some((sim, _)) = ticket_sim("ticket_claim_mode_module").await else {
+        return;
+    };
+    let (staff, support) = (unique(), unique());
+    let panel = save_panel(&sim, "Claim mode", sim.channel, &[Topic::new("Help")], &[], &[support]).await;
+    sim.app
+        .db
+        .save_ticket_panel_operations(
+            panel,
+            &pinchora_db::TicketPanelOperations {
+                claim_mode: "required".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let TicketOpen::Opened(ticket) = sim
+        .app
+        .db
+        .open_ticket(&NewTicket {
+            guild_id: sim.guild,
+            panel_id: Some(panel),
+            opener: unique(),
+            topic: "Help",
+            answers: &[],
+            max_open: 1,
+            at: sim.app.now(),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("opens")
+    };
+    sim.app.db.set_ticket_place(ticket.id, sim.channel, None).await.unwrap();
+    for enabled in [false, true] {
+        sim.app
+            .db
+            .set_module(sim.guild, pinchora_core::modules::Module::Tickets, Some(enabled), None)
+            .await
+            .unwrap();
+        sim.app.forget_guild_settings(sim.guild).await;
+        let mut message = sim.chat(staff, &[support]);
+        message.channel_id = Id::new(sim.channel);
+        let id = message.id.get();
+        on_message(sim.app.clone(), message).await.unwrap();
+        assert_eq!(
+            sim.mock
+                .deleted_messages
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|(_, deleted)| *deleted == id),
+            enabled
+        );
+    }
 }

@@ -189,6 +189,8 @@ const OPENS_MODAL: &[&str] = &[
     "wx:g",
     "tk:o",
     "tk:s",
+    "tk:c",
+    "tk:f",
     "vc:lm",
     "vc:rn",
     "cq:a",

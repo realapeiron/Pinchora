@@ -2,6 +2,9 @@
 //! ticker that closes the ones nobody wrote in: claim, lock, add and remove people, rename, move, close,
 //! reopen, delete, the transcript, and the rating its opener gives afterwards (`tr:`).
 
+mod operations;
+use operations::{note, priority, request_close, snippet, transfer};
+
 use std::{str::Split, sync::Arc};
 
 use pinchora_core::{
@@ -142,6 +145,13 @@ pub(crate) enum TicketAct {
     Transcript,
     Reopen,
     Move(u64),
+    Priority(String),
+    Escalate,
+    Transfer(Option<u64>, Option<u64>),
+    RequestClose,
+    ForceOpen,
+    Note(String),
+    Snippet(String),
 }
 
 impl TicketAct {
@@ -156,6 +166,10 @@ impl TicketAct {
             Self::Transcript => Action::Transcript,
             Self::Reopen => Action::Reopen,
             Self::Move(_) => Action::Move,
+            Self::Priority(_) | Self::Escalate | Self::Transfer(_, _) | Self::Snippet(_) => Action::Rename,
+            Self::RequestClose => Action::Close,
+            Self::ForceOpen => Action::Reopen,
+            Self::Note(_) => Action::Transcript,
         }
     }
 }
@@ -180,6 +194,19 @@ pub(crate) async fn run_action(cx: &Cx, act: TicketAct) -> anyhow::Result<()> {
     let Some((ticket, panel)) = here(cx).await? else {
         return Ok(());
     };
+    if matches!(
+        act,
+        TicketAct::Priority(_)
+            | TicketAct::Escalate
+            | TicketAct::Transfer(_, _)
+            | TicketAct::RequestClose
+            | TicketAct::ForceOpen
+            | TicketAct::Note(_)
+            | TicketAct::Snippet(_)
+    ) && !is_staff(cx, panel.as_ref())
+    {
+        return refuse(cx, Refusal::StaffOnly).await;
+    }
     if !allowed(cx, &ticket, panel.as_ref(), act.action()).await? {
         return Ok(());
     }
@@ -198,9 +225,21 @@ pub(crate) async fn run_action(cx: &Cx, act: TicketAct) -> anyhow::Result<()> {
         TicketAct::Transcript => send_transcript(cx, &ticket).await,
         TicketAct::Reopen => {
             tell(cx, t!(cx.lang(), "tickets.reopening", number = number(ticket.number))).await?;
-            reopen(cx, &ticket, panel.as_ref()).await
+            reopen(cx, &ticket, panel.as_ref(), false).await.map(|_| ())
         }
         TicketAct::Move(category) => move_to(cx, &ticket, category).await,
+        TicketAct::Priority(level) => priority(cx, &ticket, &level, false).await,
+        TicketAct::Escalate => priority(cx, &ticket, "urgent", true).await,
+        TicketAct::Transfer(user, role) => transfer(cx, &ticket, panel.as_ref(), user, role).await,
+        TicketAct::RequestClose => request_close(cx, &ticket).await,
+        TicketAct::ForceOpen => {
+            if !reopen(cx, &ticket, panel.as_ref(), true).await? {
+                return Ok(());
+            }
+            tell(cx, t!(cx.lang(), "tickets.v2.force-open")).await
+        }
+        TicketAct::Note(body) => note(cx, &ticket, &body).await,
+        TicketAct::Snippet(name) => snippet(cx, &ticket, &name).await,
     }
 }
 
@@ -239,7 +278,7 @@ pub(crate) async fn on_control(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::R
         None => None,
     };
     let wanted = match action.as_str() {
-        "cl" | "cy" => Action::Close,
+        "cl" | "cy" | "rc" => Action::Close,
         "cm" => {
             if ticket.claimed_by.is_some() {
                 Action::Unclaim
@@ -288,12 +327,34 @@ pub(crate) async fn on_control(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::R
             close(&cx.app, ticket, panel, Some(actor(cx)?), None, None).await?;
             Ok(())
         }
+        "rc" => {
+            if cx.author()?.id.get() != ticket.opener_id as u64
+                || cx
+                    .app
+                    .db
+                    .ticket_operations(ticket.id)
+                    .await?
+                    .close_request_expires_at
+                    .is_none()
+            {
+                return tell(cx, t!(lang, "tickets.expired")).await;
+            }
+            cx.update(InteractionResponseData {
+                content: Some(t!(lang, "tickets.closing", number = number(ticket.number))),
+                components: Some(Vec::new()),
+                allowed_mentions: quiet(),
+                ..Default::default()
+            })
+            .await?;
+            close(&cx.app, ticket, panel, Some(actor(cx)?), None, None).await?;
+            Ok(())
+        }
         "cm" if wanted == Action::Unclaim => unclaim(cx, &ticket).await,
         "cm" => claim(cx, &ticket).await,
         "tr" => send_transcript(cx, &ticket).await,
         "ro" => {
             cx.responder.defer(true).await?;
-            reopen(cx, &ticket, panel.as_ref()).await?;
+            reopen(cx, &ticket, panel.as_ref(), false).await?;
             tell(cx, t!(lang, "tickets.reopened-you", number = number(ticket.number))).await
         }
         "lk" => lock(cx, &ticket, wanted == Action::Lock).await,
@@ -402,11 +463,16 @@ async fn claim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
         None,
     )
     .await;
+    let board = cx.app.clone();
+    let guild = ticket.guild_id as u64;
+    tokio::spawn(async move {
+        let _ = super::refresh_status_board(&board, guild).await;
+    });
     tell(cx, t!(lang, "tickets.claimed-you", number = number(ticket.number))).await
 }
 
 async fn unclaim(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
-    if !cx.app.db.unclaim_ticket(ticket.id).await? {
+    if !cx.app.db.unclaim_ticket_by(ticket.id, cx.author()?.id.get()).await? {
         return refuse(cx, Refusal::NotClaimed).await;
     }
     let server = guild_lang(&cx.app, ticket.guild_id as u64).await;
@@ -774,7 +840,6 @@ pub(crate) async fn close(
     reason: Option<String>,
     idle_before: Option<chrono::DateTime<chrono::Utc>>,
 ) -> anyhow::Result<Option<Ticket>> {
-    let guild = ticket.guild_id as u64;
     let Some(closed) = app
         .db
         .close_ticket(
@@ -788,6 +853,17 @@ pub(crate) async fn close(
     else {
         return Ok(None);
     };
+    finish_close(app, closed, panel, by, reason).await
+}
+
+async fn finish_close(
+    app: &Arc<App>,
+    closed: Ticket,
+    panel: Option<TicketPanel>,
+    by: Option<(u64, String)>,
+    reason: Option<String>,
+) -> anyhow::Result<Option<Ticket>> {
+    let guild = closed.guild_id as u64;
     let lang = guild_lang(app, guild).await;
     let settings = app.db.ticket_settings(guild).await?;
     let captured = match transcript::capture(app, &closed).await {
@@ -875,6 +951,10 @@ pub(crate) async fn close(
     )
     .await;
     tell_opener(app, &closed, &settings, &server, (file, html)).await;
+    let board = app.clone();
+    tokio::spawn(async move {
+        let _ = super::refresh_status_board(&board, guild).await;
+    });
     Ok(Some(closed))
 }
 
@@ -1013,10 +1093,18 @@ async fn tell_opener(app: &App, ticket: &Ticket, settings: &TicketSettings, serv
 
 /// Opens a closed ticket again: the opener sees it again (the thread is unarchived), it moves back to the
 /// open category, and the ticket says so with its controls.
-async fn reopen(cx: &Cx, ticket: &Ticket, panel: Option<&TicketPanel>) -> anyhow::Result<()> {
+async fn reopen(cx: &Cx, ticket: &Ticket, panel: Option<&TicketPanel>, force: bool) -> anyhow::Result<bool> {
     let app = &cx.app;
-    let Some(opened) = app.db.reopen_ticket(ticket.id, app.now()).await? else {
-        return refuse(cx, Refusal::NotClosed).await;
+    let reopened = if force {
+        app.db
+            .force_reopen_ticket(ticket.id, app.now(), cx.author()?.id.get())
+            .await?
+    } else {
+        app.db.reopen_ticket(ticket.id, app.now()).await?
+    };
+    let Some(opened) = reopened else {
+        refuse(cx, Refusal::NotClosed).await?;
+        return Ok(false);
     };
     let guild = ticket.guild_id as u64;
     let settings = app.db.ticket_settings(guild).await?;
@@ -1078,7 +1166,7 @@ async fn reopen(cx: &Cx, ticket: &Ticket, panel: Option<&TicketPanel>) -> anyhow
         None,
     )
     .await;
-    Ok(())
+    Ok(true)
 }
 
 /// Deletes a closed ticket's channel or thread for good; the ticket and its transcript stay.
@@ -1102,12 +1190,57 @@ async fn delete(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn tick_operations(app: &Arc<App>, now: chrono::DateTime<chrono::Utc>) -> anyhow::Result<usize> {
+    app.db.purge_expired_ticket_form_drafts().await?;
+    let mut closed = 0;
+    for (id, guild, place) in app.db.due_ticket_reminders(now, 25).await? {
+        if !module_on(app, guild as u64, Some(place as u64)).await || !app.db.claim_ticket_reminder(id).await? {
+            continue;
+        }
+        let lang = guild_lang(app, guild as u64).await;
+        notice(
+            app,
+            guild as u64,
+            Some(Id::new(place as u64)),
+            WARN,
+            t!(lang, "tickets.v2.idle-reminder"),
+            Vec::new(),
+        )
+        .await;
+    }
+    for id in app.db.due_ticket_close_requests(now, 25).await? {
+        let Some(ticket) = app.db.ticket(id).await? else {
+            continue;
+        };
+        let guild = ticket.guild_id as u64;
+        if !module_on(app, guild, ticket.place()).await {
+            continue;
+        }
+        let panel = match ticket.panel_id {
+            Some(id) => app.db.ticket_panel(id).await?,
+            None => None,
+        };
+        let lang = guild_lang(app, guild).await;
+        let reason = t!(lang, "tickets.v2.close-timeout");
+        if let Some(closed_ticket) = app.db.close_requested_ticket(ticket.id, &reason, now).await? {
+            finish_close(app, closed_ticket, panel, None, Some(reason)).await?;
+            closed += 1;
+        }
+    }
+    for (guild, _, _) in app.db.ticket_status_boards().await? {
+        if let Err(error) = super::refresh_status_board(app, guild as u64).await {
+            tracing::warn!(guild, %error, "ticket status board not refreshed");
+        }
+    }
+    Ok(closed)
+}
+
 /// One step of the ticker: closes the open tickets nobody wrote in for longer than their server allows.
 /// Discord is asked for each one's last message first, since the bot does not count messages itself:
 /// a newer one makes it busy again. A ticket whose channel is gone closes too. Returns how many closed.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let now = app.now();
-    let mut closed = 0;
+    let mut closed = tick_operations(app, now).await?;
     for idle in app.db.idle_tickets(now, 25).await? {
         let (guild, place) = (idle.guild_id as u64, idle.place as u64);
         // A ticket skipped here goes to the back of the queue, so 25 that can never close (a switched-off

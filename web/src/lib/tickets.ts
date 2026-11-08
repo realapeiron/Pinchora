@@ -23,6 +23,8 @@ export interface Question {
   placeholder: string;
   long: boolean;
   required: boolean;
+  choices?: string[];
+  upload?: boolean;
 }
 
 export interface TicketSettings {
@@ -411,6 +413,15 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
           arg1: n + 1,
           arg2: limits.question,
         }),
+      });
+    if (
+      (q.upload && (q.choices?.length ?? 0) > 0) ||
+      (q.choices?.length ?? 0) > 25 ||
+      q.choices?.some((choice) => !choice.trim() || chars(choice) > 100)
+    )
+      errors.push({
+        field: "questions",
+        message: spaTranslate("Choices need 1–100 characters (at most 25)."),
       });
   });
   return errors;

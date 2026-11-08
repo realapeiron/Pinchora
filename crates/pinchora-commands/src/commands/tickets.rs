@@ -55,6 +55,87 @@ pub enum TicketCommand {
     Reopen(TicketReopen),
     #[command(name = "move")]
     Move(TicketMove),
+    #[command(name = "priority")]
+    Priority(TicketPriority),
+    #[command(name = "escalate")]
+    Escalate(TicketEscalate),
+    #[command(name = "transfer")]
+    Transfer(TicketTransfer),
+    #[command(name = "request-close")]
+    RequestClose(TicketRequestClose),
+    #[command(name = "force-open")]
+    ForceOpen(TicketForceOpen),
+    #[command(name = "note")]
+    Note(TicketNote),
+    #[command(name = "snippet")]
+    Snippet(TicketSnippet),
+}
+
+#[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TicketPriorityLevel {
+    #[option(name = "Low", value = "low")]
+    Low,
+    #[option(name = "Normal", value = "normal")]
+    Normal,
+    #[option(name = "High", value = "high")]
+    High,
+    #[option(name = "Urgent", value = "urgent")]
+    Urgent,
+}
+
+impl TicketPriorityLevel {
+    fn key(self) -> &'static str {
+        match self {
+            Self::Low => "low",
+            Self::Normal => "normal",
+            Self::High => "high",
+            Self::Urgent => "urgent",
+        }
+    }
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "priority", desc = "Set this ticket's priority (staff)")]
+pub struct TicketPriority {
+    /// Low, normal, high or urgent
+    level: TicketPriorityLevel,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "escalate", desc = "Escalate this ticket as urgent (staff)")]
+pub struct TicketEscalate;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "transfer", desc = "Assign this ticket to a staff member or support role")]
+pub struct TicketTransfer {
+    /// The staff member taking over
+    user: Option<Id<UserMarker>>,
+    /// A support role taking over
+    role: Option<Role>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "request-close", desc = "Ask the opener to confirm closing this ticket")]
+pub struct TicketRequestClose;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "force-open", desc = "Reopen a closed ticket as staff")]
+pub struct TicketForceOpen;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "note", desc = "Save a private staff note, never shown in transcripts")]
+pub struct TicketNote {
+    /// Only staff can see this note in the dashboard
+    #[command(min_length = 1, max_length = 2000)]
+    text: String,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "snippet", desc = "Send a saved reply with ticket placeholders")]
+pub struct TicketSnippet {
+    /// Saved reply name
+    #[command(min_length = 1, max_length = 50)]
+    name: String,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -126,6 +207,13 @@ impl TicketCommand {
             Self::Transcript(_) => TicketAct::Transcript,
             Self::Reopen(_) => TicketAct::Reopen,
             Self::Move(c) => TicketAct::Move(c.category.id.get()),
+            Self::Priority(c) => TicketAct::Priority(c.level.key().to_owned()),
+            Self::Escalate(_) => TicketAct::Escalate,
+            Self::Transfer(c) => TicketAct::Transfer(c.user.map(Id::get), c.role.map(|r| r.id.get())),
+            Self::RequestClose(_) => TicketAct::RequestClose,
+            Self::ForceOpen(_) => TicketAct::ForceOpen,
+            Self::Note(c) => TicketAct::Note(c.text),
+            Self::Snippet(c) => TicketAct::Snippet(c.name),
         };
         run_action(cx, act).await
     }

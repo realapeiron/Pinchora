@@ -26,6 +26,8 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("reef_game_players", "user_id"),
     ("reef_games", "host_id"),
     ("reef_games", "owner_id"),
+    ("ticket_form_drafts", "user_id"),
+    ("ticket_staff_notes", "author_id"),
     ("reef_edit_receipts", "actor_id"),
     ("reef_edit_receipts", "owner_id"),
     ("reef_space_preferences", "user_id"),
@@ -233,6 +235,9 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
 pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("ticket_operations", "transferred_to_user"),
+    ("ticket_operations", "close_requested_by"),
+    ("ticket_operations", "force_opened_by"),
     ("form_submissions", "decided_by"),
     ("modmail_threads", "closed_by"),
     ("counting_channels", "last_user_id"),
@@ -292,6 +297,11 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "ticket_operation_settings",
+    "ticket_panel_operations",
+    // Its ticket parent cascades on deletion; player references are cleared above.
+    "ticket_operations",
+    "ticket_snippets",
     // No user IDs; both foreign keys cascade with their registered personal-data parents.
     "reef_guestbook_evidence",
     "economy_settings",

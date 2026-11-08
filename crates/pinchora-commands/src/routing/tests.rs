@@ -12,8 +12,8 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 113);
-    assert_eq!(paths.len(), 443);
+    assert_eq!(tree.len(), 114);
+    assert_eq!(paths.len(), 451);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     assert_eq!(
@@ -27,6 +27,13 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         registered
             .iter()
             .filter(|c| c.kind == twilight_model::application::command::CommandType::Message && c.name == "Report")
+            .count(),
+        1
+    );
+    assert_eq!(
+        registered
+            .iter()
+            .filter(|c| c.kind == twilight_model::application::command::CommandType::Message && c.name == "Open ticket")
             .count(),
         1
     );

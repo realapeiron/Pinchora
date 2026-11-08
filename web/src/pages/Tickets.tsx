@@ -35,6 +35,7 @@ import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import { CategoryPicker, TicketPanels } from "./TicketPanels";
 import { TicketView } from "./TicketView";
+import { TicketAdministration } from "./TicketAdministration";
 
 /** Tickets: the numbers, the settings, the panels and the tickets; `/tickets/:ticketId` is one ticket. */
 export function Tickets() {
@@ -93,6 +94,7 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
             info={discord.data}
             onToast={setToast}
           />
+          <TicketAdministration guild={guild} panels={query.data.panels} info={discord.data} />
           <TicketList guild={guild} />
         </>
       )}
