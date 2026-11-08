@@ -95,12 +95,12 @@ pub(crate) async fn view(
     let list = collection.list(kind);
     let pages = list.len().div_ceil(DexCard::PER_PAGE).max(1);
     let page = page.min(pages - 1);
-    let caught: HashMap<String, i32> = app
+    let caught: HashMap<String, pinchora_db::DexRow> = app
         .db
         .dex(owner)
         .await?
         .into_iter()
-        .map(|row| (row.entry_id, row.caught))
+        .map(|row| (row.entry_id.clone(), row))
         .collect();
     let found = |k: Kind| collection.list(k).iter().filter(|e| caught.contains_key(&e.id)).count();
     let (found_here, found_all) = (found(kind), found(Kind::Critter) + found(Kind::Find));
@@ -112,10 +112,18 @@ pub(crate) async fn view(
         .map(|(i, entry)| DexCell {
             number: i + 1,
             name: entry.name_in(lang),
-            art: super::picture(app, entry, DexCard::ART_BOX),
-            frame: entry.rarity.color(),
+            art: if caught.get(&entry.id).is_some_and(|row| row.glimmer > 0) {
+                super::glimmer_picture(app, entry, DexCard::ART_BOX)
+            } else {
+                super::picture(app, entry, DexCard::ART_BOX)
+            },
+            frame: if caught.get(&entry.id).is_some_and(|row| row.glimmer > 0) {
+                0x9af5ec
+            } else {
+                entry.rarity.color()
+            },
             owned: caught.contains_key(&entry.id),
-            caught: caught.get(&entry.id).copied().unwrap_or(0),
+            caught: caught.get(&entry.id).map_or(0, |row| row.caught),
         })
         .collect();
     let mine = owner == viewer;
@@ -164,13 +172,43 @@ pub(crate) async fn view(
         tab(Kind::Find.label_in(lang), Kind::Find),
     ])];
     if mine {
-        rows.push(row(vec![button(
-            format!("bc:x:{owner}"),
-            &t!(lang, "dex.spend"),
-            Some("🧩"),
-            ButtonStyle::Success,
-            false,
-        )]));
+        rows.push(row(vec![
+            button(
+                format!("bc:x:{owner}"),
+                &t!(lang, "dex.spend"),
+                Some("🧩"),
+                ButtonStyle::Success,
+                false,
+            ),
+            button(
+                format!("bc:w:{owner}:0"),
+                &t!(lang, "collection-depth.wishlist"),
+                None,
+                ButtonStyle::Secondary,
+                false,
+            ),
+            button(
+                format!("bc:r:{owner}:0"),
+                &t!(lang, "collection-depth.recycle"),
+                None,
+                ButtonStyle::Secondary,
+                false,
+            ),
+            button(
+                format!("bc:c:{owner}"),
+                &t!(lang, "collection-depth.craft"),
+                None,
+                ButtonStyle::Secondary,
+                false,
+            ),
+            button(
+                format!("bc:rl:{owner}"),
+                &t!(lang, "collection-depth.roll"),
+                None,
+                ButtonStyle::Primary,
+                false,
+            ),
+        ]));
     }
     let embed = EmbedBuilder::new().color(BRAND).description(t!(
         lang,
@@ -335,6 +373,9 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
                 ),
             ]);
             cx.update(Cx::card(embed, "piece.png", png, vec![back], false)).await
+        }
+        "w" | "wp" | "wq" | "wr" | "r" | "rs" | "c" | "rl" | "cl" => {
+            super::depth::on_component(cx, action, owner, parts, value).await
         }
         _ => cx.reply_ephemeral(t!(lang, "collect.button-expired")).await,
     }

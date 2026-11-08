@@ -352,6 +352,8 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO user_accessories (user_id, accessory_id) VALUES ($1, 'cap')",
         "INSERT INTO character_outfits (user_id, slot, name, code) VALUES ($1, 1, 'Beach', 'x')",
         "INSERT INTO dex_entries (user_id, entry_id) VALUES ($1, 'shrimp')",
+        "INSERT INTO collection_wishlist (user_id, entry_id, ping_on_spawn) VALUES ($1, 'shrimp', true)",
+        "INSERT INTO collection_rolls (user_id, entry_id, rolled_at) VALUES ($1, 'shrimp', now())",
         "INSERT INTO collection_players (user_id, fragments, comb_ready_at)
          VALUES ($1, 5, now() + interval '10 minutes')",
         "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid, status)
@@ -362,6 +364,8 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         // A critter drop they called and took a card from ($1 doubles as the server).
         "INSERT INTO collection_drops (kind, guild_id, channel_id, host_id, cards, takers, expires_at)
          VALUES ('critters', $1, 1, $1, ARRAY['a', 'b', 'c'], ARRAY[$1, $2, 0], now() + interval '1 minute')",
+        "INSERT INTO collection_votes (drop_id, user_id, slot)
+         SELECT id, $1, 0 FROM collection_drops WHERE guild_id = $1 AND host_id = $1",
         // The day's limits, and an older day's.
         "INSERT INTO collection_daily (user_id, day, game, plays)
          VALUES ($1, floor(extract(epoch FROM now()) / 86400)::int, 'beachcomb', 3), ($1, 1, 'beachcomb', 1)",

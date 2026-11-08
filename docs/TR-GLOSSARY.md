@@ -16,6 +16,8 @@ Oyuncuya görünen metinlerde aşağıdaki karşılıkları tutarlı kullanın. 
 | fish book | balık defteri | Yakalanan türlerin kaydı. |
 | Tidepool Dex | Gelgit Havuzu Defteri | Yaratık ve buluntu koleksiyonu. |
 | fragment | parçacık | Tekrarların dönüştüğü takas birimi. |
+| Glimmer | Işıltılı | Yaratığın nadir renk varyantı; kartta kıvılcım çerçevesiyle gösterilir. |
+| shard | kıvılcım parçası | Fazla kartı elle dönüştürünce kazanılır; kişisel ganimet üretiminde kullanılır. |
 | Moonpearl Isles | Ay İncisi Adaları | Evcil hayvan gezisi. |
 | Shell Match / Sea Mines | Kabuk Eşleştirme / Deniz Mayınları | Kısa piksel bulmacaları. |
 | Pearl Flip | İnci Çevirme | Othello oyununun Pinchora adı. |

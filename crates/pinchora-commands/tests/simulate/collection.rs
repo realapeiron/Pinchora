@@ -15,6 +15,79 @@ use super::*;
 /// ones that move the clock on take turns.
 pub(super) static COLLECTION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+#[tokio::test]
+async fn collection_depth_dex_panels_work_in_english_and_turkish() {
+    let Some(mut sim) = Sim::new("collection_depth_dex_panels_work_in_english_and_turkish").await else {
+        return;
+    };
+    for (language, wish_label, roll_label, claim_label) in [
+        (pinchora_core::i18n::Lang::En, "Wishlist", "Hourly roll", "Claim card"),
+        (
+            pinchora_core::i18n::Lang::Tr,
+            "Dilek listesi",
+            "Saatlik atış",
+            "Kartı al",
+        ),
+    ] {
+        let user = unique();
+        sim.app.set_user_lang(user, Some(language)).await.unwrap();
+        let dex = sim.command(user, "dex", json!([])).await;
+        assert!(dex.ephemeral && dex.files.iter().any(|f| f.0 == "dex.png"));
+        let wishes = sim.click(user, &dex, wish_label).await;
+        let entry = &Collection::get().critters[0].id;
+        sim.pick(user, &wishes, "bc:wp:", entry).await;
+        assert!(
+            sim.app
+                .db
+                .wishlist(user)
+                .await
+                .unwrap()
+                .iter()
+                .any(|w| w.entry_id == *entry && w.ping_on_spawn)
+        );
+        let rolled = sim.click(user, &dex, roll_label).await;
+        assert!(rolled.description().len() > 10, "{rolled}");
+        let claimed = sim.click(user, &rolled, claim_label).await;
+        assert!(claimed.description().len() > 5, "{claimed}");
+        assert_eq!(sim.app.db.dex(user).await.unwrap().len(), 1);
+    }
+}
+
+#[tokio::test]
+async fn word_drop_needs_the_typed_word_even_if_a_claim_id_is_forged() {
+    let Some(mut sim) = Sim::new("word_drop_needs_the_typed_word_even_if_a_claim_id_is_forged").await else {
+        return;
+    };
+    let _turn = COLLECTION.lock().await;
+    sim.channel = unique();
+    assert!(post_critter_drop(&sim.app, sim.guild, sim.channel).await.unwrap());
+    let posts = sim.posts();
+    let post = only(&posts, sim.channel, Method::POST);
+    let shown = reply_of(post);
+    let (id,): (i64,) =
+        sqlx::query_as("SELECT id FROM collection_drops WHERE channel_id = $1 ORDER BY id DESC LIMIT 1")
+            .bind(sim.channel as i64)
+            .fetch_one(sim.app.db.pool())
+            .await
+            .unwrap();
+    sim.app.db.set_drop_mode(id, "word", Some("coral")).await.unwrap();
+    let user = unique();
+    let refused = sim.component(user, &format!("cd:g:{id}:0"), &[], &shown).await;
+    assert!(refused.content().contains("does not match"), "{refused}");
+    let form = sim.component(user, &format!("cd:w:{id}:0"), &[], &shown).await;
+    assert!(form.modal.is_some(), "{form}");
+    let data = json!({
+        "custom_id": form.modal.as_ref().unwrap().0,
+        "components": [{"type":18,"id":1,"component":{"type":4,"id":2,"custom_id":"answer","value":"coral"}}]
+    });
+    let claimed = sim.run("submit critter word".into(), user, 5, data, Some(&shown)).await;
+    assert!(
+        claimed.description().contains("taken by") || claimed.content().contains("taken"),
+        "{claimed}"
+    );
+    assert_eq!(sim.app.db.dex(user).await.unwrap().len(), 1);
+}
+
 /// Turns chat drops on for the sim's server, here or in `channel`.
 async fn enable_drops(sim: &Sim, channel: Option<u64>) {
     sim.app

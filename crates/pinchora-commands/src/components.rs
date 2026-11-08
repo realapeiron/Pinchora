@@ -140,6 +140,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("cd") => collection::drops::on_word(cx, parts, fields).await,
         Some("cq") => crate::verification::on_modal(cx, parts, fields).await,
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
         Some("cs") => customize::on_style_modal(cx, parts, fields).await,

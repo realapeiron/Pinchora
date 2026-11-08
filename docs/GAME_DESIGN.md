@@ -353,3 +353,40 @@ retains daily counters for 35 days, requests for two days and results for 366 da
 pearls are original procedural pixel motifs in `pinchora-render/src/cards/reef_loop.rs`;
 no external art, new atlas sheets or owner-supplied placeholder assets are required. Both
 EN/TR cards include translated instructions, costs, results and deadlines in the embed.
+
+## Collection depth
+
+Critter cards retain the original rarity draw: common **60%**, uncommon **25%**, rare
+**10%**, epic **4%**, legendary **1%**, before time/season filtering. Each card independently
+has a **2% Glimmer** chance. A Glimmer uses a generated palette shift of its existing sprite
+and a bright pixel sparkle frame; the book records it separately from the species discovery.
+No hand-drawn assets or new atlas sheets are used.
+
+Chat spawns still need 25 counted messages from two people, with a 12-minute server cooldown.
+Thirty percent are bottles; the other 70% are three-card Critter Drops. Critter Drops are
+**55% standard, 15% hidden, 15% word challenge, 15% vote** for chat-driven drops;
+hand-called `/critterdrop` stays standard. Hidden cards reveal their
+identity after a claim or expiry. A word challenge asks a player to type its shown short
+word before claiming. A vote accepts one choice per player, up to 100 voters, for 30 seconds;
+the top card (lowest slot on a tie) then opens to the first claimant. All drops expire after
+90 seconds. Each slot is assigned once under a row lock. Claims have a hard limit of
+**10 per player per UTC day**; vote and word inputs have short retry cooldowns. The original first **20** Critter
+Drop claims per day payout ceiling is therefore constrained by the new 10-claim cap.
+
+The hourly roll gives one private random critter per player per hour, up to **six rolls per
+UTC day**. The player must claim within ten minutes; the claim and reward share a database
+transaction. An unclaimed roll pays nothing. The `/dex` panel and `/me/collection` use the
+same roll state. Wishlist holds ten entries per player. Pings are explicit opt-in and apply
+only to critters. At most one matching opted-in collector is pinged per drop; their matched
+card is reserved for **15 seconds**. Other cards stay open, and the reserved card becomes
+public after the window. No general user or role mentions are allowed.
+
+Newly awarded copies stay in the collection book; pre-0084 discoveries start with one held copy.
+A player may manually recycle a spare while keeping
+one original and all Glimmer copies. Recycle yields **2/4/9/20/45 shards** by rarity, in
+addition to the existing duplicate shells and fragments. Shards cannot be traded or converted
+to shells. A shard craft rolls one common, soulbound reward decor item and costs **12 shards**;
+each completed habitat set (shore, tide pool, kelp, reef, deep) cuts the cost by one, to a
+minimum of **7**. The five sets require every critter of that habitat; each discount is a
+permanent book bonus. The craft is atomic with the shard debit and inventory grant. This
+loop turns repeated cards into personal decor and has no resale path.

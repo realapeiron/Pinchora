@@ -4,6 +4,7 @@
 
 pub(crate) mod beachcomb;
 pub(crate) mod crabpot;
+pub(crate) mod depth;
 pub(crate) mod dex;
 pub(crate) mod drops;
 pub(crate) mod settings;
@@ -145,6 +146,21 @@ pub(crate) fn picture(app: &App, entry: &Entry, boxed: (u32, u32)) -> EntryPictu
     done
 }
 
+/// A deterministic palette shift of the original atlas/drawn sprite, with no new art file.
+pub(crate) fn glimmer_picture(app: &App, entry: &Entry, boxed: (u32, u32)) -> EntryPicture {
+    let mut art = picture(app, entry, boxed);
+    if let Ok(mut bitmap) = image::load_from_memory(&art.png).map(|image| image.to_rgba8()) {
+        for pixel in bitmap.pixels_mut() {
+            if pixel.0[3] != 0 {
+                let [r, g, b, a] = pixel.0;
+                pixel.0 = [b.saturating_add(38), r.saturating_add(22), g.saturating_add(30), a];
+            }
+        }
+        art.png = encode_png(&bitmap).unwrap_or(art.png);
+    }
+    art
+}
+
 /// What a play paid, as a short phrase: `+14 shells +2 frag`; empty when nothing was.
 pub(crate) fn money(lang: Lang, granted: &Granted) -> String {
     let mut parts = Vec::new();
@@ -188,6 +204,9 @@ pub(crate) fn haul_tile(
 /// Ends the drops whose time is up: each is closed in the database exactly once, and the pod that
 /// closed it tells the channel. Returns how many it closed.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
+    for row in app.db.reveal_due_votes(app.now(), 50).await? {
+        drops::reveal_vote(app, &row).await;
+    }
     let due = app.db.close_due_drops(app.now(), 50).await?;
     let mut closed = 0;
     for row in due {

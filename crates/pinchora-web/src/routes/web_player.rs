@@ -27,6 +27,8 @@ use twilight_model::user::User;
 
 #[path = "web_player_character.rs"]
 mod character;
+#[path = "web_player_collection.rs"]
+mod collection;
 #[path = "web_player_depth.rs"]
 mod depth;
 
@@ -54,6 +56,7 @@ pub fn router() -> Router<WebState> {
         .route("/{kind}/{id}/buy", post(buy))
         .nest("/character", character::router())
         .merge(depth::router())
+        .nest("/collection", collection::router())
         .layer(DefaultBodyLimit::max(16 * 1024))
         .layer(middleware::from_fn(bounded_query))
 }

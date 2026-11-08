@@ -64,7 +64,7 @@ pub(crate) async fn on_chat(app: &Arc<App>, guild: u64, user: u64, channel: u64)
     let posted = if rand::random::<f64>() < BOTTLE_SHARE {
         drops::post_bottle(app, guild, channel).await
     } else {
-        drops::post_critter_drop(app, guild, channel).await
+        drops::post_variety_drop(app, guild, channel).await
     };
     metrics::counter!("pinchora_collection_spawns_total", "posted" => if matches!(posted, Ok(true)) { "yes" } else { "no" })
         .increment(1);

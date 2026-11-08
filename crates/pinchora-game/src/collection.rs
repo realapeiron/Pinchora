@@ -16,6 +16,60 @@ use crate::{Availability, Content, Currency, Furniture, Rarity, fishing};
 pub const DROP_CARDS: usize = 3;
 /// How long a critter drop stays, in seconds.
 pub const DROP_SECS: i64 = 90;
+/// Independent chance for each Critter Drop card to be a Glimmer variant.
+pub const GLIMMER_SHARE: f64 = 0.02;
+pub const SHARD_CRAFT_BASE: i64 = 12;
+
+pub fn recycle_shards(rarity: Rarity) -> i64 {
+    match rarity {
+        Rarity::Common => 2,
+        Rarity::Uncommon => 4,
+        Rarity::Rare => 9,
+        Rarity::Epic => 20,
+        Rarity::Legendary => 45,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HabitatSetProgress {
+    pub habitat: Habitat,
+    pub found: usize,
+    pub total: usize,
+}
+
+impl HabitatSetProgress {
+    pub fn complete(self) -> bool {
+        self.total > 0 && self.found == self.total
+    }
+}
+
+pub fn habitat_sets(owned: &std::collections::HashSet<String>) -> Vec<HabitatSetProgress> {
+    [
+        Habitat::Shore,
+        Habitat::Tidepool,
+        Habitat::Kelp,
+        Habitat::Reef,
+        Habitat::Deep,
+    ]
+    .into_iter()
+    .map(|habitat| {
+        let entries: Vec<_> = Collection::get()
+            .critters
+            .iter()
+            .filter(|entry| entry.habitat == Some(habitat))
+            .collect();
+        HabitatSetProgress {
+            habitat,
+            found: entries.iter().filter(|entry| owned.contains(&entry.id)).count(),
+            total: entries.len(),
+        }
+    })
+    .collect()
+}
+
+pub fn shard_craft_cost(owned: &std::collections::HashSet<String>) -> i64 {
+    (SHARD_CRAFT_BASE - habitat_sets(owned).iter().filter(|set| set.complete()).count() as i64).max(7)
+}
 /// How long a bottle floats, in seconds.
 pub const BOTTLE_SECS: i64 = 600;
 /// Messages (from at least [`SPAWN_CHATTERS`] people) a server counts before something washes up.
@@ -563,6 +617,29 @@ mod tests {
 
     use super::*;
     use crate::play::Game;
+
+    #[test]
+    fn habitat_sets_discount_crafting_only_when_complete() {
+        let mut owned = HashSet::new();
+        assert_eq!(shard_craft_cost(&owned), 12);
+        for entry in Collection::get()
+            .critters
+            .iter()
+            .filter(|entry| entry.habitat == Some(Habitat::Kelp))
+        {
+            owned.insert(entry.id.clone());
+        }
+        let kelp = habitat_sets(&owned)
+            .into_iter()
+            .find(|set| set.habitat == Habitat::Kelp)
+            .unwrap();
+        assert!(kelp.complete());
+        assert_eq!(shard_craft_cost(&owned), 11);
+        for entry in &Collection::get().critters {
+            owned.insert(entry.id.clone());
+        }
+        assert_eq!(shard_craft_cost(&owned), 7);
+    }
 
     /// A fixed list of dice, repeated.
     fn dice(rolls: &'static [f64]) -> impl FnMut() -> f64 {

@@ -8,7 +8,7 @@ use std::{str::Split, sync::Arc, time::Duration};
 
 use chrono::{Datelike, Duration as Span, Timelike};
 use pinchora_core::{i18n::Lang, t};
-use pinchora_db::{BottleOpen, BottlePrize, DROP_BOTTLE, DROP_CRITTERS, DropRow, Grab, NewDrop};
+use pinchora_db::{BottleOpen, BottlePrize, DROP_BOTTLE, DROP_CRITTERS, DropRow, Grab, NewDrop, VoteCard};
 use pinchora_game::{
     Rarity,
     collection::{
@@ -20,7 +20,10 @@ use pinchora_game::{
 use pinchora_render::{BottleCard, DropCard, DropCritter, HaulCard, Theme};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
-    channel::message::{Component, Embed, component::ButtonStyle},
+    channel::message::{
+        AllowedMentions, Component, Embed,
+        component::{ButtonStyle, Label, TextInput, TextInputStyle},
+    },
     http::{attachment::Attachment, interaction::InteractionResponseData},
     id::Id,
 };
@@ -84,20 +87,31 @@ impl CritterDrop {
                 .reply_ephemeral(t!(lang, "drop.user-cooldown", minutes = left.as_secs() / 60 + 1))
                 .await;
         }
-        let row = create_critter_drop(app, guild, channel, Some(user)).await?;
+        let row = create_critter_drop(app, guild, channel, Some(user), false).await?;
         // The drop is the channel's, so it speaks the server's language from its first post to its close.
         let (embed, png, buttons) = critter_message(app, app.guild_lang(guild).await, &row).await?;
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             attachments: Some(vec![Attachment::from_bytes("drop.png".to_owned(), png, 1)]),
             components: Some(buttons),
-            allowed_mentions: quiet(),
+            content: row.protected_user_id.map(mention),
+            allowed_mentions: ping_wish(&row),
             ..Default::default()
         })
         .await?;
         track_message(cx, row.id);
         Ok(())
     }
+}
+
+fn ping_wish(row: &DropRow) -> Option<AllowedMentions> {
+    Some(AllowedMentions {
+        users: row
+            .protected_user_id
+            .map(|id| vec![Id::new(id as u64)])
+            .unwrap_or_default(),
+        ..Default::default()
+    })
 }
 
 /// Learns which message the command just posted and keeps it on the drop, so the ticker can edit it when
@@ -126,17 +140,33 @@ fn track_message(cx: &Cx, drop: i64) {
 
 /// The critters of a drop in slot order.
 fn cards(row: &DropRow) -> Vec<&'static Entry> {
-    row.cards.iter().filter_map(|id| Collection::get().entry(id)).collect()
+    row.cards
+        .iter()
+        .filter_map(|id| Collection::get().entry(id.strip_prefix("g:").unwrap_or(id)))
+        .collect()
 }
 
 /// Opens a critter drop in the database: three different critters, open for [`DROP_SECS`].
-async fn create_critter_drop(app: &App, guild: u64, channel: u64, host: Option<u64>) -> anyhow::Result<DropRow> {
+async fn create_critter_drop(
+    app: &App,
+    guild: u64,
+    channel: u64,
+    host: Option<u64>,
+    variety: bool,
+) -> anyhow::Result<DropRow> {
     let now = app.now();
     let ids: Vec<String> = collection::drop_cards(now.hour(), now.month(), &mut dice())
         .iter()
-        .map(|e| e.id.clone())
+        .map(|e| {
+            if rand::random::<f64>() < collection::GLIMMER_SHARE {
+                format!("g:{}", e.id)
+            } else {
+                e.id.clone()
+            }
+        })
         .collect();
-    app.db
+    let row = app
+        .db
         .create_drop(NewDrop {
             kind: DROP_CRITTERS,
             guild_id: guild,
@@ -145,7 +175,25 @@ async fn create_critter_drop(app: &App, guild: u64, channel: u64, host: Option<u
             cards: &ids,
             expires_at: app.now() + Span::seconds(DROP_SECS),
         })
-        .await
+        .await?;
+    let roll = rand::random::<f64>();
+    let (mode, word) = if !variety {
+        ("standard", None)
+    } else if roll < 0.15 {
+        ("hidden", None)
+    } else if roll < 0.30 {
+        let words = if app.guild_lang(guild).await == Lang::Tr {
+            ["mercan", "inci", "gelgit", "kabuk"]
+        } else {
+            ["coral", "pearl", "tide", "shell"]
+        };
+        ("word", Some(words[(rand::random::<u8>() as usize) % 4]))
+    } else if roll < 0.45 {
+        ("vote", None)
+    } else {
+        ("standard", None)
+    };
+    app.db.set_drop_mode(row.id, mode, word).await
 }
 
 fn sparkles(rarity: Rarity) -> u8 {
@@ -164,13 +212,50 @@ async fn critter_message(app: &App, lang: Lang, row: &DropRow) -> anyhow::Result
         subtitle: t!(lang, "drop.card.subtitle"),
         cards: cards(row)
             .into_iter()
-            .map(|e| DropCritter {
-                art: picture(app, e, DropCard::ART_BOX),
-                name: e.name_in(lang),
-                rarity: e.rarity.label_in(lang).to_owned(),
-                frame: e.rarity.color(),
-                habitat: e.place_in(lang).to_owned(),
-                sparkles: sparkles(e.rarity),
+            .enumerate()
+            .map(|(i, e)| DropCritter {
+                art: if row.mode == "hidden" {
+                    pinchora_render::EntryPicture {
+                        png: pinchora_render::encode_png(&image::RgbaImage::new(1, 1)).unwrap_or_default(),
+                        w: 1,
+                        h: 1,
+                    }
+                } else if row.cards[i].starts_with("g:") {
+                    super::glimmer_picture(app, e, DropCard::ART_BOX)
+                } else {
+                    picture(app, e, DropCard::ART_BOX)
+                },
+                name: if row.mode == "hidden" {
+                    "???".to_owned()
+                } else if row.cards[i].starts_with("g:") {
+                    format!("✦ {}", e.name_in(lang))
+                } else {
+                    e.name_in(lang)
+                },
+                rarity: if row.mode == "hidden" {
+                    "?".to_owned()
+                } else {
+                    e.rarity.label_in(lang).to_owned()
+                },
+                frame: if row.mode == "hidden" {
+                    0x71829c
+                } else if row.cards[i].starts_with("g:") {
+                    0x9af5ec
+                } else {
+                    e.rarity.color()
+                },
+                habitat: if row.mode == "hidden" {
+                    "???".to_owned()
+                } else {
+                    e.place_in(lang).to_owned()
+                },
+                sparkles: if row.mode == "hidden" {
+                    0
+                } else if row.cards[i].starts_with("g:") {
+                    4
+                } else {
+                    sparkles(e.rarity)
+                },
             })
             .collect(),
         footer: t!(lang, "drop.card.footer", secs = DROP_SECS),
@@ -188,6 +273,9 @@ fn critter_embed(row: &DropRow, over: bool, lang: Lang) -> Embed {
         .enumerate()
         .map(|(i, (entry, taker))| {
             let who = match (*taker, over) {
+                (0, false) if row.mode == "vote" && row.vote_winner.is_some_and(|winner| winner != i as i16) => {
+                    t!(lang, "collection-depth.vote-lost")
+                }
                 (0, false) => t!(lang, "drop.free"),
                 (0, true) => t!(lang, "drop.drifted"),
                 (taker, _) => t!(lang, "drop.taken-by", user = mention(taker)),
@@ -196,13 +284,29 @@ fn critter_embed(row: &DropRow, over: bool, lang: Lang) -> Embed {
                 lang,
                 "drop.line",
                 number = i + 1,
-                name = entry.name_in(lang),
-                rarity = letters::lower(lang, entry.rarity.label_in(lang)),
+                name = if row.mode == "hidden" && !over && *taker == 0 {
+                    "???".to_owned()
+                } else if row.cards[i].starts_with("g:") {
+                    format!("✦ {}", entry.name_in(lang))
+                } else {
+                    entry.name_in(lang)
+                },
+                rarity = if row.mode == "hidden" && !over && *taker == 0 {
+                    "?".to_owned()
+                } else {
+                    letters::lower(lang, entry.rarity.label_in(lang))
+                },
                 who = who
             )
         })
         .collect();
-    let all_gone = row.takers.iter().all(|t| *t != 0);
+    let all_gone = if row.mode == "vote" {
+        row.vote_winner
+            .and_then(|slot| row.takers.get(slot as usize))
+            .is_some_and(|t| *t != 0)
+    } else {
+        row.takers.iter().all(|t| *t != 0)
+    };
     let (title, intro, color) = if over && all_gone {
         (t!(lang, "drop.title-over"), t!(lang, "drop.all-home-over"), SUCCESS)
     } else if over {
@@ -223,10 +327,28 @@ fn critter_embed(row: &DropRow, over: bool, lang: Lang) -> Embed {
     let called = row.host_id.map_or(String::new(), |host| {
         format!("\n{}", t!(lang, "drop.called-by", user = mention(host)))
     });
+    let instruction = row
+        .challenge_word
+        .as_deref()
+        .filter(|_| row.mode == "word" && !over)
+        .map(|word| format!("\n\n{}", t!(lang, "collection-depth.type-word", word = word)))
+        .unwrap_or_default();
+    let instruction = if row.mode == "vote" && !over {
+        format!(
+            "\n\n{}",
+            if let Some(winner) = row.vote_winner {
+                t!(lang, "collection-depth.vote-winner", number = winner + 1)
+            } else {
+                t!(lang, "collection-depth.vote-open")
+            }
+        )
+    } else {
+        instruction
+    };
     let mut embed = EmbedBuilder::new()
         .color(color)
         .title(title)
-        .description(format!("{intro}{called}\n\n{}", lines.join("\n")));
+        .description(format!("{intro}{called}{instruction}\n\n{}", lines.join("\n")));
     if let Ok(source) = ImageSource::attachment("drop.png") {
         embed = embed.image(source);
     }
@@ -239,9 +361,21 @@ fn critter_buttons(row: &DropRow, over: bool) -> Vec<Component> {
         .iter()
         .enumerate()
         .map(|(slot, taker)| {
-            let free = *taker == 0 && !over;
+            let free = *taker == 0
+                && !over
+                && (row.mode != "vote" || row.vote_winner.is_none() || row.vote_winner == Some(slot as i16));
             button(
-                format!("cd:g:{}:{slot}", row.id),
+                format!(
+                    "cd:{}:{}:{slot}",
+                    if row.mode == "word" {
+                        "w"
+                    } else if row.mode == "vote" && row.vote_winner.is_none() {
+                        "v"
+                    } else {
+                        "g"
+                    },
+                    row.id
+                ),
                 &(slot + 1).to_string(),
                 None,
                 if free {
@@ -259,8 +393,16 @@ fn critter_buttons(row: &DropRow, over: bool) -> Vec<Component> {
 /// Posts a chat-driven critter drop in `channel`. False when Discord would not take it (the bot cannot
 /// post there), which is no reason to try again at once.
 pub async fn post_critter_drop(app: &Arc<App>, guild: u64, channel: u64) -> anyhow::Result<bool> {
+    post_critter_drop_mode(app, guild, channel, false).await
+}
+
+pub(crate) async fn post_variety_drop(app: &Arc<App>, guild: u64, channel: u64) -> anyhow::Result<bool> {
+    post_critter_drop_mode(app, guild, channel, true).await
+}
+
+async fn post_critter_drop_mode(app: &Arc<App>, guild: u64, channel: u64, variety: bool) -> anyhow::Result<bool> {
     let lang = app.guild_lang(guild).await;
-    let row = create_critter_drop(app, guild, channel, None).await?;
+    let row = create_critter_drop(app, guild, channel, None, variety).await?;
     let (embed, png, buttons) = match critter_message(app, lang, &row).await {
         Ok(message) => message,
         Err(error) => {
@@ -284,14 +426,20 @@ async fn post(
     let channel = row.channel_id as u64;
     let embeds = [app.brand_embed(row.guild_id as u64, embed).await];
     let attachments = [Attachment::from_bytes(filename.to_owned(), png, 1)];
-    let no_pings = quiet();
+    let allowed = if row.kind == DROP_CRITTERS {
+        ping_wish(row)
+    } else {
+        quiet()
+    };
+    let ping = row.protected_user_id.map(mention).unwrap_or_default();
     let posted = app
         .http
         .create_message(Id::new(channel.max(1)))
+        .content(&ping)
         .embeds(&embeds)
         .attachments(&attachments)
         .components(&buttons)
-        .allowed_mentions(no_pings.as_ref())
+        .allowed_mentions(allowed.as_ref())
         .await;
     match posted {
         Ok(response) => {
@@ -313,24 +461,143 @@ async fn post(
 
 /// `cd:g:<drop>:<slot>`: a click on a numbered card.
 pub(crate) async fn on_grab(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Result<()> {
-    let (Some("g"), Some(id), Some(slot)) = (
+    let (Some(action @ ("g" | "w" | "v")), Some(id), Some(slot)) = (
         parts.next(),
         parts.next().and_then(|v| v.parse::<i64>().ok()),
         parts.next().and_then(|v| v.parse::<usize>().ok()),
     ) else {
         return cx.reply_ephemeral(t!(cx.lang(), "collect.button-expired")).await;
     };
+    if action == "v" {
+        if cx
+            .app
+            .cache
+            .try_cooldown(
+                &format!("crittervote:{}", cx.author()?.id.get()),
+                Duration::from_secs(2),
+            )
+            .await?
+            .is_some()
+        {
+            return cx.reply_ephemeral(t!(cx.lang(), "collection-depth.claim-slow")).await;
+        }
+        return match cx
+            .app
+            .db
+            .vote_card(id, slot, cx.author()?.id.get(), cx.app.now())
+            .await?
+        {
+            VoteCard::Cast => {
+                cx.reply_ephemeral(t!(cx.lang(), "collection-depth.vote-cast", number = slot + 1))
+                    .await
+            }
+            VoteCard::Gone => cx.reply_ephemeral(t!(cx.lang(), "collection-depth.vote-closed")).await,
+            VoteCard::Full => cx.reply_ephemeral(t!(cx.lang(), "collection-depth.vote-full")).await,
+        };
+    }
+    if action == "w" {
+        let row = cx.app.db.drop_row(id).await?;
+        if row
+            .as_ref()
+            .is_none_or(|r| !r.is_open() || r.expires_at <= cx.app.now())
+        {
+            return cx.reply_ephemeral(t!(cx.lang(), "drop.gone")).await;
+        }
+        #[allow(deprecated)]
+        let field = Component::Label(Label {
+            component: Box::new(Component::TextInput(TextInput {
+                custom_id: "answer".to_owned(),
+                id: None,
+                label: None,
+                max_length: Some(20),
+                min_length: Some(1),
+                placeholder: None,
+                required: Some(true),
+                style: TextInputStyle::Short,
+                value: None,
+            })),
+            description: None,
+            id: None,
+            label: t!(cx.lang(), "collection-depth.word-label"),
+        });
+        return cx
+            .modal(
+                format!("cd:m:{id}:{slot}"),
+                &t!(cx.lang(), "collection-depth.word-title"),
+                vec![field],
+            )
+            .await;
+    }
+    claim(cx, id, slot, None).await
+}
+
+pub(crate) async fn on_word(cx: &Cx, mut parts: Split<'_, char>, fields: &[(String, String)]) -> anyhow::Result<()> {
+    let (Some("m"), Some(id), Some(slot)) = (
+        parts.next(),
+        parts.next().and_then(|v| v.parse::<i64>().ok()),
+        parts.next().and_then(|v| v.parse::<usize>().ok()),
+    ) else {
+        return cx.reply_ephemeral(t!(cx.lang(), "collect.button-expired")).await;
+    };
+    let Some(row) = cx.app.db.drop_row(id).await?.filter(|r| r.mode == "word") else {
+        return cx.reply_ephemeral(t!(cx.lang(), "drop.gone")).await;
+    };
+    if cx
+        .app
+        .cache
+        .try_cooldown(
+            &format!("critterword:{}", cx.author()?.id.get()),
+            Duration::from_secs(3),
+        )
+        .await?
+        .is_some()
+    {
+        return cx.reply_ephemeral(t!(cx.lang(), "collection-depth.claim-slow")).await;
+    }
+    let answer = fields
+        .iter()
+        .find(|(key, _)| key == "answer")
+        .map(|(_, value)| value.trim())
+        .unwrap_or("");
+    if !row
+        .challenge_word
+        .as_deref()
+        .is_some_and(|word| word.eq_ignore_ascii_case(answer))
+    {
+        return cx.reply_ephemeral(t!(cx.lang(), "collection-depth.wrong-word")).await;
+    }
+    claim(cx, id, slot, Some(answer)).await
+}
+
+async fn claim(cx: &Cx, id: i64, slot: usize, answer: Option<&str>) -> anyhow::Result<()> {
     let (app, user, lang) = (&cx.app, cx.author()?.id.get(), cx.lang());
     let Some(row) = app.db.drop_row(id).await?.filter(|r| r.kind == DROP_CRITTERS) else {
         return cx.reply_ephemeral(t!(lang, "drop.gone")).await;
     };
-    let Some(entry) = row.cards.get(slot).and_then(|c| Collection::get().entry(c)) else {
+    let Some(entry) = row
+        .cards
+        .get(slot)
+        .and_then(|c| Collection::get().entry(c.strip_prefix("g:").unwrap_or(c)))
+    else {
         return cx.reply_ephemeral(t!(lang, "drop.gone")).await;
     };
-    let outcome = app
-        .db
-        .grab_card(id, slot, user, app.now(), award(entry), daily(app, Game::CritterDrop))
-        .await?;
+    let outcome = if let Some(answer) = answer {
+        app.db
+            .grab_word_card(
+                id,
+                slot,
+                user,
+                app.now(),
+                award(entry),
+                daily(app, Game::CritterDrop),
+                answer,
+            )
+            .await?
+    } else {
+        app.db
+            .grab_card(id, slot, user, app.now(), award(entry), daily(app, Game::CritterDrop))
+            .await?
+    };
     let (granted, drop, paid) = match outcome {
         Grab::Gone => return cx.reply_ephemeral(t!(lang, "drop.gone")).await,
         Grab::Have { slot } => {
@@ -346,6 +613,10 @@ pub(crate) async fn on_grab(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
                 ))
                 .await;
         }
+        Grab::Protected => return cx.reply_ephemeral(t!(lang, "collection-depth.protected")).await,
+        Grab::Limit => return cx.reply_ephemeral(t!(lang, "collection-depth.claim-limit")).await,
+        Grab::Voting => return cx.reply_ephemeral(t!(lang, "collection-depth.vote-closed")).await,
+        Grab::Challenge => return cx.reply_ephemeral(t!(lang, "collection-depth.wrong-word")).await,
         Grab::Taken { granted, drop, paid } => (granted, drop, paid),
     };
     record(app, Game::CritterDrop, user, true).await;
@@ -364,10 +635,16 @@ pub(crate) async fn on_grab(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
         (true, true) => t!(lang, "drop.footer-new"),
         (true, false) => t!(lang, "drop.footer-spare"),
     };
+    let mut tile = haul_tile(app, lang, entry, Some(&granted), HaulCard::SINGLE_ART_BOX);
+    if row.cards[slot].starts_with("g:") {
+        tile.art = super::glimmer_picture(app, entry, HaulCard::SINGLE_ART_BOX);
+        tile.frame = 0x9af5ec;
+        tile.tag = t!(lang, "collection-depth.glimmer");
+    }
     let card = HaulCard {
         title: Game::CritterDrop.name(lang),
         subtitle: t!(lang, "drop.card-number", number = slot + 1),
-        tiles: vec![haul_tile(app, lang, entry, Some(&granted), HaulCard::SINGLE_ART_BOX)],
+        tiles: vec![tile],
         footer,
         theme: Theme::reef(),
     };
@@ -583,6 +860,20 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
 }
 
 // /Closing
+
+pub(crate) async fn reveal_vote(app: &Arc<App>, row: &DropRow) {
+    let Some(message) = row.message_id else { return };
+    let lang = app.guild_lang(row.guild_id as u64).await;
+    edit_message(
+        app,
+        row.channel_id as u64,
+        message as u64,
+        None,
+        Some(&[critter_embed(row, false, lang)]),
+        Some(&critter_buttons(row, false)),
+    )
+    .await;
+}
 
 /// Tells the channel a drop is over: retires its buttons and says what happened to the cards.
 pub(crate) async fn close(app: &Arc<App>, row: &DropRow) {

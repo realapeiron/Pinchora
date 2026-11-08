@@ -32,6 +32,40 @@ pub struct CollectionSettings {
 pub struct DexRow {
     pub entry_id: String,
     pub caught: i32,
+    pub kept: i32,
+    pub glimmer: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct WishlistRow {
+    pub entry_id: String,
+    pub ping_on_spawn: bool,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct CollectionRoll {
+    pub entry_id: String,
+    pub glimmer: bool,
+    pub rolled_at: DateTime<Utc>,
+    pub claimed_at: Option<DateTime<Utc>>,
+}
+
+pub enum RollStart {
+    Started(CollectionRoll),
+    Wait(CollectionRoll),
+    Limit,
+}
+
+pub enum RollClaim {
+    Claimed(Granted),
+    Gone,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VoteCard {
+    Cast,
+    Gone,
+    Full,
 }
 
 /// What an entry pays when a player gets it, worked out by the game rules.
@@ -71,6 +105,8 @@ pub struct Daily<'a> {
 
 pub const CRITTERS: &str = "critters";
 pub const BOTTLE: &str = "bottle";
+pub const CLAIMS_PER_DAY: i32 = 10;
+pub const PROTECTION_SECS: i64 = 15;
 
 /// A critter drop or a bottle on its message.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -86,6 +122,13 @@ pub struct DropRow {
     pub takers: Vec<i64>,
     pub status: String,
     pub expires_at: DateTime<Utc>,
+    pub mode: String,
+    pub challenge_word: Option<String>,
+    pub vote_winner: Option<i16>,
+    pub created_at: DateTime<Utc>,
+    pub protected_user_id: Option<i64>,
+    pub protected_slot: Option<i16>,
+    pub protected_until: Option<DateTime<Utc>>,
 }
 
 impl DropRow {
@@ -121,9 +164,17 @@ pub enum Grab {
     /// The drop is over, or the slot is not what the message showed.
     Gone,
     /// They already took a card from this drop.
-    Have { slot: usize },
+    Have {
+        slot: usize,
+    },
     /// Somebody else got there first.
-    Lost { by: u64 },
+    Lost {
+        by: u64,
+    },
+    Protected,
+    Limit,
+    Voting,
+    Challenge,
 }
 
 /// What is in a bottle besides its message.
@@ -203,7 +254,7 @@ pub enum PotUpgrade {
 
 macro_rules! drop_columns {
     () => {
-        "id, kind, guild_id, channel_id, message_id, host_id, cards, takers, status, expires_at"
+        "id, kind, guild_id, channel_id, message_id, host_id, cards, takers, status, expires_at, mode, challenge_word, vote_winner, created_at, protected_user_id, protected_slot, protected_until"
     };
 }
 
@@ -251,7 +302,7 @@ impl Db {
     /// Every entry the player has, in the order they first got them.
     pub async fn dex(&self, user: u64) -> anyhow::Result<Vec<DexRow>> {
         Ok(sqlx::query_as::<_, DexRow>(
-            "SELECT entry_id, caught FROM dex_entries WHERE user_id = $1 ORDER BY first_at, entry_id",
+            "SELECT entry_id, caught, kept, glimmer FROM dex_entries WHERE user_id = $1 ORDER BY first_at, entry_id",
         )
         .bind(sql_id(user))
         .fetch_all(self.pool())
@@ -264,6 +315,184 @@ impl Db {
             .fetch_optional(self.pool())
             .await?;
         Ok(row.map_or(0, |(n,)| n))
+    }
+
+    pub async fn shards(&self, user: u64) -> anyhow::Result<i64> {
+        let row: Option<(i64,)> = sqlx::query_as("SELECT shards FROM collection_players WHERE user_id = $1")
+            .bind(sql_id(user))
+            .fetch_optional(self.pool())
+            .await?;
+        Ok(row.map_or(0, |(n,)| n))
+    }
+
+    pub async fn collection_roll(&self, user: u64) -> anyhow::Result<Option<CollectionRoll>> {
+        Ok(
+            sqlx::query_as("SELECT entry_id, glimmer, rolled_at, claimed_at FROM collection_rolls WHERE user_id = $1")
+                .bind(sql_id(user))
+                .fetch_optional(self.pool())
+                .await?,
+        )
+    }
+
+    pub async fn start_collection_roll(
+        &self,
+        user: u64,
+        entry: &str,
+        glimmer: bool,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<RollStart> {
+        retry("start_collection_roll", || async {
+            let mut tx = self.pool().begin().await?;
+            lock_users(&mut tx, &[sql_id(user)]).await?;
+            let previous: Option<CollectionRoll> = sqlx::query_as("SELECT entry_id, glimmer, rolled_at, claimed_at FROM collection_rolls WHERE user_id = $1 FOR UPDATE")
+                .bind(sql_id(user)).fetch_optional(&mut *tx).await?;
+            if let Some(old) = previous.filter(|r| r.rolled_at + Duration::hours(1) > now) {
+                return Ok(RollStart::Wait(old));
+            }
+            let day = now.timestamp().div_euclid(86_400) as i32;
+            let (plays,): (i32,) = sqlx::query_as("INSERT INTO collection_daily (user_id, day, game, plays) VALUES ($1, $2, 'critter_roll_start', 1)
+                ON CONFLICT (user_id, day, game) DO UPDATE SET plays = collection_daily.plays + 1 RETURNING plays")
+                .bind(sql_id(user)).bind(day).fetch_one(&mut *tx).await?;
+            if plays > 6 { return Ok(RollStart::Limit); }
+            let row: CollectionRoll = sqlx::query_as("INSERT INTO collection_rolls (user_id, entry_id, glimmer, rolled_at, claimed_at) VALUES ($1, $2, $3, $4, NULL)
+                ON CONFLICT (user_id) DO UPDATE SET entry_id = EXCLUDED.entry_id, glimmer = EXCLUDED.glimmer, rolled_at = EXCLUDED.rolled_at, claimed_at = NULL
+                RETURNING entry_id, glimmer, rolled_at, claimed_at")
+                .bind(sql_id(user)).bind(entry).bind(glimmer).bind(now).fetch_one(&mut *tx).await?;
+            tx.commit().await?;
+            Ok(RollStart::Started(row))
+        }).await
+    }
+
+    pub async fn claim_collection_roll(
+        &self,
+        user: u64,
+        now: DateTime<Utc>,
+        award: Award<'_>,
+    ) -> anyhow::Result<RollClaim> {
+        retry("claim_collection_roll", || async {
+            let mut tx = self.pool().begin().await?;
+            lock_users(&mut tx, &[sql_id(user)]).await?;
+            let roll: Option<CollectionRoll> = sqlx::query_as(
+                "SELECT entry_id, glimmer, rolled_at, claimed_at FROM collection_rolls WHERE user_id = $1 FOR UPDATE",
+            )
+            .bind(sql_id(user))
+            .fetch_optional(&mut *tx)
+            .await?;
+            let Some(roll) = roll.filter(|r| {
+                r.entry_id == award.entry && r.claimed_at.is_none() && r.rolled_at + Duration::minutes(10) > now
+            }) else {
+                return Ok(RollClaim::Gone);
+            };
+            sqlx::query("UPDATE collection_rolls SET claimed_at = $2 WHERE user_id = $1")
+                .bind(sql_id(user))
+                .bind(now)
+                .execute(&mut *tx)
+                .await?;
+            let granted = grant(&mut tx, user, award, true, "critter_roll").await?;
+            if roll.glimmer {
+                sqlx::query("UPDATE dex_entries SET glimmer = glimmer + 1 WHERE user_id = $1 AND entry_id = $2")
+                    .bind(sql_id(user))
+                    .bind(award.entry)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            tx.commit().await?;
+            Ok(RollClaim::Claimed(granted))
+        })
+        .await
+    }
+
+    pub async fn wishlist(&self, user: u64) -> anyhow::Result<Vec<WishlistRow>> {
+        Ok(sqlx::query_as(
+            "SELECT entry_id, ping_on_spawn FROM collection_wishlist WHERE user_id = $1 ORDER BY created_at, entry_id",
+        )
+        .bind(sql_id(user))
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// At most ten wishes; a ping is explicit opt-in and may be switched off without removing the wish.
+    pub async fn set_wish(&self, user: u64, entry: &str, ping: bool) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        let (count,): (i64,) = sqlx::query_as("SELECT count(*) FROM collection_wishlist WHERE user_id = $1")
+            .bind(sql_id(user))
+            .fetch_one(&mut *tx)
+            .await?;
+        let exists: Option<(i64,)> =
+            sqlx::query_as("SELECT 1 FROM collection_wishlist WHERE user_id = $1 AND entry_id = $2")
+                .bind(sql_id(user))
+                .bind(entry)
+                .fetch_optional(&mut *tx)
+                .await?;
+        if count >= 10 && exists.is_none() {
+            return Ok(false);
+        }
+        sqlx::query(
+            "INSERT INTO collection_wishlist (user_id, entry_id, ping_on_spawn) VALUES ($1, $2, $3)
+                     ON CONFLICT (user_id, entry_id) DO UPDATE SET ping_on_spawn = EXCLUDED.ping_on_spawn",
+        )
+        .bind(sql_id(user))
+        .bind(entry)
+        .bind(ping)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(true)
+    }
+
+    pub async fn remove_wish(&self, user: u64, entry: &str) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        let removed = sqlx::query("DELETE FROM collection_wishlist WHERE user_id = $1 AND entry_id = $2")
+            .bind(sql_id(user))
+            .bind(entry)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected()
+            != 0;
+        tx.commit().await?;
+        Ok(removed)
+    }
+
+    /// Recycle one held duplicate, keeping the first copy in the book. Returns the shard balance.
+    pub async fn recycle_critter(&self, user: u64, entry: &str, shards: i64) -> anyhow::Result<Option<i64>> {
+        retry("recycle_critter", || async {
+            let mut tx = self.pool().begin().await?;
+            lock_users(&mut tx, &[sql_id(user)]).await?;
+            let kept: Option<(i32,)> = sqlx::query_as("UPDATE dex_entries SET kept = kept - 1
+                WHERE user_id = $1 AND entry_id = $2 AND kept > GREATEST(glimmer, 1) RETURNING kept")
+                .bind(sql_id(user)).bind(entry).fetch_optional(&mut *tx).await?;
+            if kept.is_none() { return Ok(None); }
+            let (left,): (i64,) = sqlx::query_as("INSERT INTO collection_players (user_id, shards) VALUES ($1, $2)
+                ON CONFLICT (user_id) DO UPDATE SET shards = collection_players.shards + EXCLUDED.shards RETURNING shards")
+                .bind(sql_id(user)).bind(shards).fetch_one(&mut *tx).await?;
+            tx.commit().await?;
+            Ok(Some(left))
+        }).await
+    }
+
+    /// Spend shards on one bound loot item. The caller chooses only from the collection recipe pool.
+    pub async fn craft_shard_loot(&self, user: u64, cost: i64, item: &str) -> anyhow::Result<Option<i64>> {
+        retry("craft_shard_loot", || async {
+            let mut tx = self.pool().begin().await?;
+            lock_users(&mut tx, &[sql_id(user)]).await?;
+            let left: Option<(i64,)> = sqlx::query_as(
+                "UPDATE collection_players SET shards = shards - $2
+                WHERE user_id = $1 AND shards >= $2 RETURNING shards",
+            )
+            .bind(sql_id(user))
+            .bind(cost)
+            .fetch_optional(&mut *tx)
+            .await?;
+            let Some((left,)) = left else {
+                return Ok(None);
+            };
+            add_inventory(&mut tx, sql_id(user), &soulbound(item), 1).await?;
+            tx.commit().await?;
+            Ok(Some(left))
+        })
+        .await
     }
 
     /// Spends `cost` fragments on the decor piece `item` (an item id) and puts it in the inventory as a
@@ -298,7 +527,8 @@ impl Db {
     // /Drops and bottles
 
     pub async fn create_drop(&self, new: NewDrop<'_>) -> anyhow::Result<DropRow> {
-        Ok(sqlx::query_as::<_, DropRow>(concat!(
+        let mut tx = self.pool().begin().await?;
+        let mut row = sqlx::query_as::<_, DropRow>(concat!(
             "INSERT INTO collection_drops (kind, guild_id, channel_id, host_id, cards, takers, expires_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ",
             drop_columns!()
@@ -310,8 +540,34 @@ impl Db {
         .bind(new.cards.to_vec())
         .bind(vec![0_i64; new.cards.len()])
         .bind(new.expires_at)
-        .fetch_one(self.pool())
-        .await?)
+        .fetch_one(&mut *tx)
+        .await?;
+        if new.kind == CRITTERS {
+            let ids: Vec<&str> = new.cards.iter().map(|id| id.strip_prefix("g:").unwrap_or(id)).collect();
+            let wanted: Option<(i64, String)> = sqlx::query_as(
+                "SELECT w.user_id, w.entry_id FROM collection_wishlist w
+                 JOIN members m ON m.user_id = w.user_id AND m.guild_id = $2
+                 WHERE w.ping_on_spawn AND w.entry_id = ANY($1)
+                 ORDER BY random() LIMIT 1",
+            )
+            .bind(&ids)
+            .bind(sql_id(new.guild_id))
+            .fetch_optional(&mut *tx)
+            .await?;
+            if let Some((user, entry)) = wanted
+                && let Some(slot) = ids.iter().position(|id| *id == entry)
+            {
+                let until = Utc::now() + Duration::seconds(PROTECTION_SECS);
+                sqlx::query("UPDATE collection_drops SET protected_user_id = $2, protected_slot = $3, protected_until = $4 WHERE id = $1")
+                    .bind(row.id).bind(user).bind(slot as i16).bind(until)
+                    .execute(&mut *tx).await?;
+                row.protected_user_id = Some(user);
+                row.protected_slot = Some(slot as i16);
+                row.protected_until = Some(until);
+            }
+        }
+        tx.commit().await?;
+        Ok(row)
     }
 
     /// Remembers which message shows the drop, so it can be edited when it ends.
@@ -323,6 +579,95 @@ impl Db {
             .execute(self.pool())
             .await?;
         Ok(())
+    }
+
+    pub async fn set_drop_mode(&self, id: i64, mode: &str, word: Option<&str>) -> anyhow::Result<DropRow> {
+        Ok(sqlx::query_as::<_, DropRow>(concat!(
+            "UPDATE collection_drops SET mode = $2, challenge_word = $3 WHERE id = $1 RETURNING ",
+            drop_columns!()
+        ))
+        .bind(id)
+        .bind(mode)
+        .bind(word)
+        .fetch_one(self.pool())
+        .await?)
+    }
+
+    pub async fn vote_card(
+        &self,
+        drop_id: i64,
+        slot: usize,
+        user: u64,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<VoteCard> {
+        if slot >= 3 {
+            return Ok(VoteCard::Gone);
+        }
+        retry("vote_card", || async {
+            let mut tx = self.pool().begin().await?;
+            lock_users(&mut tx, &[sql_id(user)]).await?;
+            let row: Option<DropRow> = sqlx::query_as::<_, DropRow>(concat!(
+                "SELECT ",
+                drop_columns!(),
+                " FROM collection_drops WHERE id = $1 FOR UPDATE"
+            ))
+            .bind(drop_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+            let Some(_row) = row.filter(|r| {
+                r.kind == CRITTERS
+                    && r.mode == "vote"
+                    && r.is_open()
+                    && r.vote_winner.is_none()
+                    && r.expires_at - Duration::seconds(60) > now
+            }) else {
+                return Ok(VoteCard::Gone);
+            };
+            let (count,): (i64,) = sqlx::query_as("SELECT count(*) FROM collection_votes WHERE drop_id = $1")
+                .bind(drop_id)
+                .fetch_one(&mut *tx)
+                .await?;
+            let previous: Option<(i16,)> =
+                sqlx::query_as("SELECT slot FROM collection_votes WHERE drop_id = $1 AND user_id = $2")
+                    .bind(drop_id)
+                    .bind(sql_id(user))
+                    .fetch_optional(&mut *tx)
+                    .await?;
+            if count >= 100 && previous.is_none() {
+                return Ok(VoteCard::Full);
+            }
+            sqlx::query(
+                "INSERT INTO collection_votes (drop_id, user_id, slot) VALUES ($1, $2, $3)
+                ON CONFLICT (drop_id, user_id) DO UPDATE SET slot = EXCLUDED.slot",
+            )
+            .bind(drop_id)
+            .bind(sql_id(user))
+            .bind(slot as i16)
+            .execute(&mut *tx)
+            .await?;
+            tx.commit().await?;
+            Ok(VoteCard::Cast)
+        })
+        .await
+    }
+
+    /// Reveal one winning card after the thirty-second vote. A tie chooses the lowest slot.
+    pub async fn reveal_due_votes(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<DropRow>> {
+        Ok(sqlx::query_as::<_, DropRow>(concat!(
+            "WITH due AS MATERIALIZED (
+                SELECT id FROM collection_drops WHERE mode = 'vote' AND status = 'open' AND vote_winner IS NULL
+                    AND expires_at - interval '60 seconds' <= $1
+                ORDER BY created_at LIMIT $2 FOR UPDATE SKIP LOCKED)
+             UPDATE collection_drops d SET vote_winner = COALESCE((
+                SELECT v.slot FROM collection_votes v WHERE v.drop_id = d.id
+                GROUP BY v.slot ORDER BY count(*) DESC, v.slot LIMIT 1), 0)
+             WHERE d.id IN (SELECT id FROM due) RETURNING ",
+            drop_columns!()
+        ))
+        .bind(now)
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
     }
 
     /// Takes a drop back that never made it to its channel.
@@ -371,12 +716,30 @@ impl Db {
         daily: Daily<'_>,
     ) -> anyhow::Result<Grab> {
         retry("grab_card", || {
-            self.grab_card_once(drop_id, slot, user, now, award, daily)
+            self.grab_card_once(drop_id, slot, user, now, award, daily, None)
+        })
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)] // Mirrors grab_card with the challenge answer checked under the row lock.
+    pub async fn grab_word_card(
+        &self,
+        drop_id: i64,
+        slot: usize,
+        user: u64,
+        now: DateTime<Utc>,
+        award: Award<'_>,
+        daily: Daily<'_>,
+        answer: &str,
+    ) -> anyhow::Result<Grab> {
+        retry("grab_word_card", || {
+            self.grab_card_once(drop_id, slot, user, now, award, daily, Some(answer))
         })
         .await
     }
 
     /// One attempt of [`Db::grab_card`]: the grabber's lock, then the drop's row.
+    #[allow(clippy::too_many_arguments)] // Award, limit and challenge all belong to one atomic claim.
     async fn grab_card_once(
         &self,
         drop_id: i64,
@@ -385,6 +748,7 @@ impl Db {
         now: DateTime<Utc>,
         award: Award<'_>,
         daily: Daily<'_>,
+        answer: Option<&str>,
     ) -> anyhow::Result<Grab> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
@@ -399,7 +763,11 @@ impl Db {
         let Some(mut drop) = drop.filter(|d| d.kind == CRITTERS && d.is_open() && d.expires_at > now) else {
             return Ok(Grab::Gone);
         };
-        if drop.cards.get(slot).map(String::as_str) != Some(award.entry) {
+        let Some(card) = drop.cards.get(slot) else {
+            return Ok(Grab::Gone);
+        };
+        let glimmer = card.starts_with("g:");
+        if card.strip_prefix("g:").unwrap_or(card) != award.entry {
             return Ok(Grab::Gone);
         }
         if let Some(have) = drop.takers.iter().position(|t| *t == sql_id(user)) {
@@ -410,6 +778,36 @@ impl Db {
                 by: drop.takers[slot] as u64,
             });
         }
+        if drop.mode == "word"
+            && !drop
+                .challenge_word
+                .as_deref()
+                .is_some_and(|word| answer.is_some_and(|typed| word.eq_ignore_ascii_case(typed)))
+        {
+            return Ok(Grab::Challenge);
+        }
+        if drop.mode == "vote" && drop.vote_winner != Some(slot as i16) {
+            return Ok(Grab::Voting);
+        }
+        if drop.protected_user_id.is_some()
+            && drop.protected_slot == Some(slot as i16)
+            && drop.protected_user_id != Some(sql_id(user))
+            && drop.protected_until.is_some_and(|until| until > now)
+        {
+            return Ok(Grab::Protected);
+        }
+        let (claims,): (i32,) = sqlx::query_as(
+            "INSERT INTO collection_daily (user_id, day, game, plays) VALUES ($1, $2, 'critter_claim', 1)
+             ON CONFLICT (user_id, day, game) DO UPDATE SET plays = collection_daily.plays + 1
+             RETURNING plays",
+        )
+        .bind(sql_id(user))
+        .bind(daily.day)
+        .fetch_one(&mut *tx)
+        .await?;
+        if claims > CLAIMS_PER_DAY {
+            return Ok(Grab::Limit);
+        }
         drop.takers[slot] = sql_id(user);
         sqlx::query("UPDATE collection_drops SET takers = $2 WHERE id = $1")
             .bind(drop_id)
@@ -418,6 +816,13 @@ impl Db {
             .await?;
         let paid = paid_play(&mut tx, user, daily).await?;
         let granted = grant(&mut tx, user, award, paid, "critter_drop").await?;
+        if glimmer {
+            sqlx::query("UPDATE dex_entries SET glimmer = glimmer + 1 WHERE user_id = $1 AND entry_id = $2")
+                .bind(sql_id(user))
+                .bind(award.entry)
+                .execute(&mut *tx)
+                .await?;
+        }
         tx.commit().await?;
         Ok(Grab::Taken {
             granted,
@@ -768,7 +1173,7 @@ async fn paid_play(tx: &mut Tx<'_>, user: u64, daily: Daily<'_>) -> anyhow::Resu
 async fn grant(tx: &mut Tx<'_>, user: u64, award: Award<'_>, paid: bool, reason: &str) -> anyhow::Result<Granted> {
     let (caught,): (i32,) = sqlx::query_as(
         "INSERT INTO dex_entries (user_id, entry_id) VALUES ($1, $2)
-         ON CONFLICT (user_id, entry_id) DO UPDATE SET caught = dex_entries.caught + 1
+         ON CONFLICT (user_id, entry_id) DO UPDATE SET caught = dex_entries.caught + 1, kept = dex_entries.kept + 1
          RETURNING caught",
     )
     .bind(sql_id(user))

@@ -3,7 +3,167 @@
 use chrono::{Duration, Utc};
 use pinchora_db::{
     Award, BottleOpen, BottlePrize, Comb, DROP_BOTTLE, DROP_CRITTERS, Daily, Db, Grab, NewDrop, PotHaul, PotUpgrade,
+    RollClaim, RollStart, VoteCard,
 };
+
+#[tokio::test]
+async fn wishlist_reserves_one_slot_then_releases_it() {
+    let Some(db) = db().await else { return };
+    let [guild, wisher, other] = ids();
+    assert!(db.set_wish(wisher, "x_one", true).await.unwrap());
+    sqlx::query("INSERT INTO members (guild_id, user_id) VALUES ($1, $2)")
+        .bind(guild as i64)
+        .bind(wisher as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
+    assert_eq!(drop.protected_user_id, Some(wisher as i64));
+    assert_eq!(drop.protected_slot, Some(0));
+    let now = Utc::now();
+    assert!(matches!(
+        db.grab_card(drop.id, 0, other, now, award("x_one"), daily("critterdrop", 20))
+            .await
+            .unwrap(),
+        Grab::Protected
+    ));
+    assert!(matches!(
+        db.grab_card(drop.id, 1, other, now, award("x_two"), daily("critterdrop", 20))
+            .await
+            .unwrap(),
+        Grab::Taken { .. }
+    ));
+    assert!(matches!(
+        db.grab_card(drop.id, 0, wisher, now, award("x_one"), daily("critterdrop", 20))
+            .await
+            .unwrap(),
+        Grab::Taken { .. }
+    ));
+    assert!(db.remove_wish(wisher, "x_one").await.unwrap());
+}
+
+#[tokio::test]
+async fn glimmer_duplicate_recycles_and_crafts_bound_loot() {
+    let Some(db) = db().await else { return };
+    let [guild, user] = ids();
+    let now = Utc::now();
+    let first = critter_drop(&db, guild, &["g:x_one", "x_two", "x_three"], Duration::seconds(90)).await;
+    assert!(matches!(
+        db.grab_card(first.id, 0, user, now, award("x_one"), daily("critterdrop", 20))
+            .await
+            .unwrap(),
+        Grab::Taken { .. }
+    ));
+    let second = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
+    assert!(matches!(
+        db.grab_card(second.id, 0, user, now, award("x_one"), daily("critterdrop", 20))
+            .await
+            .unwrap(),
+        Grab::Taken { .. }
+    ));
+    let dex = db.dex(user).await.unwrap();
+    assert_eq!((dex[0].caught, dex[0].kept, dex[0].glimmer), (2, 2, 1));
+    assert_eq!(db.recycle_critter(user, "x_one", 12).await.unwrap(), Some(12));
+    assert_eq!(db.recycle_critter(user, "x_one", 12).await.unwrap(), None);
+    assert_eq!(
+        db.craft_shard_loot(user, 12, "sprigstep_planter_box__mint")
+            .await
+            .unwrap(),
+        Some(0)
+    );
+    assert_eq!(db.shards(user).await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn vote_reveals_one_card_and_only_that_card_can_be_claimed() {
+    let Some(db) = db().await else { return };
+    let [guild, a, b] = ids();
+    let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
+    db.set_drop_mode(drop.id, "vote", None).await.unwrap();
+    let now = Utc::now();
+    assert_eq!(db.vote_card(drop.id, 1, a, now).await.unwrap(), VoteCard::Cast);
+    assert_eq!(db.vote_card(drop.id, 1, b, now).await.unwrap(), VoteCard::Cast);
+    let revealed = db.reveal_due_votes(now + Duration::seconds(31), 20).await.unwrap();
+    assert!(
+        revealed
+            .iter()
+            .any(|row| row.id == drop.id && row.vote_winner == Some(1))
+    );
+    assert!(matches!(
+        db.grab_card(
+            drop.id,
+            0,
+            a,
+            now + Duration::seconds(31),
+            award("x_one"),
+            daily("critterdrop", 20)
+        )
+        .await
+        .unwrap(),
+        Grab::Voting
+    ));
+    assert!(matches!(
+        db.grab_card(
+            drop.id,
+            1,
+            a,
+            now + Duration::seconds(31),
+            award("x_two"),
+            daily("critterdrop", 20)
+        )
+        .await
+        .unwrap(),
+        Grab::Taken { .. }
+    ));
+}
+
+#[tokio::test]
+async fn hourly_roll_claims_exactly_once_and_waits_an_hour() {
+    let Some(db) = db().await else { return };
+    let [user] = ids();
+    let now = Utc::now();
+    assert!(matches!(
+        db.start_collection_roll(user, "x_one", true, now).await.unwrap(),
+        RollStart::Started(_)
+    ));
+    assert!(matches!(
+        db.start_collection_roll(user, "x_two", false, now).await.unwrap(),
+        RollStart::Wait(_)
+    ));
+    let (a, b) = tokio::join!(
+        db.claim_collection_roll(user, now, award("x_one")),
+        db.claim_collection_roll(user, now, award("x_one"))
+    );
+    assert_eq!(
+        [a.unwrap(), b.unwrap()]
+            .iter()
+            .filter(|r| matches!(r, RollClaim::Claimed(_)))
+            .count(),
+        1
+    );
+    assert_eq!(db.dex(user).await.unwrap()[0].glimmer, 1);
+    assert_eq!(shells(&db, user).await, 15);
+}
+
+#[tokio::test]
+async fn eleventh_daily_drop_claim_is_refused_without_taking_a_slot() {
+    let Some(db) = db().await else { return };
+    let [guild, user] = ids();
+    let now = Utc::now();
+    for n in 0..11 {
+        let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
+        let result = db
+            .grab_card(drop.id, 0, user, now, award("x_one"), daily("critterdrop", 20))
+            .await
+            .unwrap();
+        if n < 10 {
+            assert!(matches!(result, Grab::Taken { .. }));
+        } else {
+            assert!(matches!(result, Grab::Limit));
+            assert_eq!(db.drop_row(drop.id).await.unwrap().unwrap().takers[0], 0);
+        }
+    }
+}
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;

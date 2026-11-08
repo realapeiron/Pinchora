@@ -4019,6 +4019,8 @@ async fn public_bot_status_has_safe_cached_numbers() {
 #[path = "api/mod_parity.rs"]
 mod mod_parity;
 
+#[path = "api/collection_depth.rs"]
+mod collection_depth;
 #[path = "api/player_depth.rs"]
 mod player_depth;
 #[path = "api/web_player.rs"]
