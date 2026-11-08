@@ -6,7 +6,7 @@ use crate::{
 };
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     routing::{get, post, put},
 };
@@ -120,6 +120,7 @@ async fn report(
     current: CurrentSession,
     Json(body): Json<Report>,
 ) -> ApiResult<Json<Value>> {
+    super::spaces::limit(&state, current.session.user_id, "report", 10).await?;
     let receipt = state
         .app
         .db
@@ -155,10 +156,27 @@ async fn appeal(
     }
     Ok(StatusCode::NO_CONTENT)
 }
-async fn queue(State(state): State<WebState>, current: CurrentSession) -> ApiResult<Json<Value>> {
-    Ok(Json(
-        json!({"items":state.app.db.reef_queue(current.session.user_id,operator(&state,current.session.user_id)).await?}),
-    ))
+#[derive(Deserialize)]
+struct QueueScope {
+    guild: Option<String>,
+}
+async fn queue(
+    State(state): State<WebState>,
+    mut current: CurrentSession,
+    Query(scope): Query<QueueScope>,
+) -> ApiResult<Json<Value>> {
+    let items = if let Some(raw) = scope.guild {
+        let guild = id(&raw)?;
+        super::spaces::manager(&state, &mut current, guild, "plazas/moderation").await?;
+        state.app.db.reef_queue_guild(current.session.user_id, guild).await?
+    } else {
+        state
+            .app
+            .db
+            .reef_queue(current.session.user_id, operator(&state, current.session.user_id))
+            .await?
+    };
+    Ok(Json(json!({"items":items})))
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -172,7 +190,7 @@ struct Moderate {
 }
 async fn moderate(
     State(state): State<WebState>,
-    current: CurrentSession,
+    mut current: CurrentSession,
     Json(body): Json<Moderate>,
 ) -> ApiResult<StatusCode> {
     let action = ReefModeration {
@@ -186,7 +204,17 @@ async fn moderate(
         report: body.report.as_deref().map(id).transpose()?.map(|n| n as i64),
     };
     let _guard = state.reef.safety.lock().await;
-    if !state.app.db.reef_moderate(&action).await? {
+    let allowed = if let Some(guild) = action.owner.filter(|_| !action.operator) {
+        if state.app.db.is_guild(guild).await? {
+            super::spaces::manager(&state, &mut current, guild, "plazas/moderation").await?;
+            state.app.db.reef_moderate_guild(&action, guild).await?
+        } else {
+            state.app.db.reef_moderate(&action).await?
+        }
+    } else {
+        state.app.db.reef_moderate(&action).await?
+    };
+    if !allowed {
         return Err(denied());
     }
     if action.owner.is_none() && ["ban", "kick"].contains(&action.kind.as_str()) {

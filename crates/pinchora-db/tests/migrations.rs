@@ -228,3 +228,73 @@ async fn community_0079_preserves_existing_live_rows() {
         .unwrap();
     tx.rollback().await.unwrap();
 }
+
+#[tokio::test]
+async fn reef_wave7_upgrades_populated_tables_without_rewrites_or_live_index_builds() {
+    let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let mut conn = PgConnection::connect(&url).await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    sqlx::query("CREATE SCHEMA reef_wave7_upgrade_regression")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("SET LOCAL search_path TO reef_wave7_upgrade_regression")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let all = sqlx::migrate!("../../migrations");
+    let before = Migrator::with_migrations(all.iter().filter(|m| m.version < 82).cloned().collect());
+    before.run(&mut *tx).await.unwrap();
+    sqlx::query("INSERT INTO users(id) SELECT generate_series(1,1000)")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO houses(user_id) SELECT generate_series(1,1000)")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text) SELECT 1,0,n,'Hello' FROM generate_series(1,1000) n").execute(&mut *tx).await.unwrap();
+    let files: Vec<(String,i64)> = sqlx::query_as("SELECT relname::text,relfilenode::bigint FROM pg_class WHERE oid IN ('houses'::regclass,'reef_chat_evidence'::regclass) ORDER BY relname")
+        .fetch_all(&mut *tx).await.unwrap();
+    all.run(&mut *tx).await.unwrap();
+    let after: Vec<(String,i64)> = sqlx::query_as("SELECT relname::text,relfilenode::bigint FROM pg_class WHERE oid IN ('houses'::regclass,'reef_chat_evidence'::regclass) ORDER BY relname")
+        .fetch_all(&mut *tx).await.unwrap();
+    assert_eq!(files, after, "no rewrite of live tables");
+    let (count, revision): (i64, i64) = sqlx::query_as("SELECT count(*),sum(edit_revision)::bigint FROM houses")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!((count, revision), (1000, 0));
+    let indexes: Vec<String> = sqlx::query_scalar(
+        "SELECT indexname::text FROM pg_indexes WHERE schemaname=current_schema() AND tablename='reef_doorbells'",
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .unwrap();
+    for expected in [
+        "reef_doorbells_pair",
+        "reef_doorbells_guest_created",
+        "reef_doorbells_host_pending",
+        "reef_doorbells_retention",
+    ] {
+        assert!(indexes.iter().any(|i| i == expected), "{expected}");
+    }
+    let lock_timeout: String = sqlx::query_scalar("SHOW lock_timeout")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    let statement_timeout: String = sqlx::query_scalar("SHOW statement_timeout")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(lock_timeout, "2s");
+    assert_eq!(statement_timeout, "15s");
+    let evidence: i64 = sqlx::query_scalar("SELECT count(*) FROM reef_chat_evidence")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(evidence, 1000);
+    tx.rollback().await.unwrap();
+}

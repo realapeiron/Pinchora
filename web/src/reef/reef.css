@@ -113,6 +113,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.reef-room-name .page-head {
+  margin: 0;
+  min-width: 0;
+}
+.reef-room-name .page-head h1 {
+  margin: 0;
+  font: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reef-room-name .page-head p {
+  display: none;
+}
 .reef-name-tag,
 .reef-context {
   position: absolute;
@@ -400,4 +413,102 @@
     max-height: 36dvh;
     z-index: 9;
   }
+}
+
+.reef-space-sheet {
+  position: absolute;
+  z-index: 8;
+  right: 12px;
+  top: 68px;
+  bottom: 80px;
+  width: min(360px, calc(100% - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px;
+  color: #fff1e8;
+  background: #172e36;
+  border: 2px solid #78b8ae;
+  box-shadow: 0 8px 24px #0006;
+}
+.reef-space-sheet label {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+.reef-space-sheet input,
+.reef-space-sheet select,
+.reef-space-sheet textarea {
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+.reef-space-sheet input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+}
+.reef-space-sheet button,
+.reef-space-sheet a {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.reef-space-sheet button:focus-visible,
+.reef-space-sheet a:focus-visible,
+.reef-space-sheet summary:focus-visible {
+  outline: 2px solid #ffd166;
+  outline-offset: 3px;
+}
+.reef-space-sheet h3 {
+  margin-top: 24px;
+}
+.reef-space-sheet p {
+  overflow-wrap: anywhere;
+}
+.reef-space-sheet time {
+  display: block;
+}
+.reef-space-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.reef-space-actions label {
+  flex: 1;
+  min-width: 100px;
+}
+.reef-notes {
+  list-style: none;
+  padding: 0;
+}
+.reef-notes li {
+  border-bottom: 1px solid #78b8ae;
+  padding-block: 16px;
+}
+.reef-room-hud {
+  flex-wrap: wrap;
+}
+@media (max-width: 767px) {
+  .reef-space-sheet {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    max-height: 58dvh;
+    border-width: 2px 0 0;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Social rows can contain long player names and multiple actions on a phone. */
+.reef-space-sheet {
+  overflow-wrap: anywhere;
+}
+.reef-space-sheet .reef-objects li {
+  flex-wrap: wrap;
+}
+.reef-space-sheet .reef-objects li > span {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+.reef-space-sheet .reef-drawer-heading h2 {
+  min-width: 0;
 }

@@ -177,6 +177,9 @@ impl HouseCommand {
                     }
                     _ => (Who::own(me), "he", t!(cx.lang(), "house.edit.start")),
                 };
+                if who.is_guest() && cx.app.db.socially_blocked(who.owner, me).await? {
+                    return cx.reply_ephemeral(t!(cx.lang(), "house.edit.blocked")).await;
+                }
                 let (_, rooms) = ensure_house(&cx.app, who.owner).await?;
                 let room = room_index(c.room).min(rooms.len().saturating_sub(1) as i16);
                 let state = EditState {
@@ -956,18 +959,42 @@ pub fn standing_on<'a>(
 /// Takes a placement (and whatever stands on it) back into the inventory; returns every piece
 /// that went, the placement first.
 async fn take_back(
-    cx: &Cx,
+    db: &pinchora_db::Db,
     content: &Content,
-    user_id: u64,
+    who: Who,
+    size: (u32, u32),
     placements: &[PlacementRow],
     p: &PlacementRow,
-) -> anyhow::Result<Vec<Piece>> {
+) -> anyhow::Result<Option<Vec<Piece>>> {
     let on_top = standing_on(content, placements, p);
-    for top in &on_top {
-        cx.app.db.pick_up(user_id, top.id).await?;
-    }
-    cx.app.db.pick_up(user_id, p.id).await?;
-    Ok(std::iter::once(p).chain(on_top).map(Piece::of).collect())
+    // Remove supported items first, but commit the whole group and inventory refund together.
+    let changes: Vec<_> = on_top
+        .iter()
+        .copied()
+        .chain(std::iter::once(p))
+        .cloned()
+        .map(RoomChange::Remove)
+        .collect();
+    let outcome = db
+        .edit_room(
+            who.owner,
+            who.owner,
+            who.owner,
+            p.room_idx,
+            &changes,
+            who.is_guest().then_some((who.stock, who.bond)),
+            |rows| {
+                if undo::fingerprint(rows) == undo::fingerprint(placements) {
+                    Ok(())
+                } else {
+                    Err("room_changed".into())
+                }
+            },
+            |rows, change| undo_fits(content, size, rows, change),
+        )
+        .await?;
+    Ok(matches!(outcome, RestoreOutcome::Done { .. })
+        .then(|| std::iter::once(p).chain(on_top).map(Piece::of).collect()))
 }
 
 /// Whether an undo change still fits the room as it stands (`current`).
@@ -1081,6 +1108,9 @@ pub(crate) async fn on_edit(
         _ => Who::own(me),
     };
     let _editor_guard = cx.app.db.house_editor(who.owner).await?;
+    if who.is_guest() && cx.app.db.socially_blocked(who.owner, me).await? {
+        return cx.reply_ephemeral(t!(cx.lang(), "house.edit.blocked")).await;
+    }
     let user_id = who.owner;
     let lang = cx.lang();
     // The partner whose house this is, when it is not the player's own: some lines name them.
@@ -1185,23 +1215,46 @@ pub(crate) async fn on_edit(
             Some(item_id) => {
                 let (width, depth) = (tier.width, tier.depth);
                 let (x, y, flipped) = (state.x, state.y, state.flipped);
+                let changes = [RoomChange::Add(PlacementRow {
+                    id: 0,
+                    room_idx: state.room,
+                    item_id: item_id.clone(),
+                    x: x as i16,
+                    y: y as i16,
+                    flipped,
+                })];
                 let outcome = cx
                     .app
                     .db
-                    .place_item_for(
+                    .edit_room(
                         who.owner,
                         who.stock,
+                        who.owner,
                         state.room,
-                        &item_id,
-                        x as i16,
-                        y as i16,
-                        flipped,
-                        |current| {
-                            let placed = placed_list(current);
-                            house::can_place(content, width, depth, &placed, &item_id, x, y, flipped)
+                        &changes,
+                        who.is_guest().then_some((who.stock, who.bond)),
+                        |rows| {
+                            if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                                Ok(())
+                            } else {
+                                Err("room_changed".into())
+                            }
                         },
+                        |rows, change| undo_fits(content, (width, depth), rows, change),
                     )
                     .await?;
+                let outcome = match outcome {
+                    RestoreOutcome::Done { added } => PlaceOutcome::Placed { id: added[0] },
+                    RestoreOutcome::Refused(Refusal::NotOwned(_)) => PlaceOutcome::NotOwned,
+                    RestoreOutcome::Refused(Refusal::Blocked(reason))
+                        if reason != "access_denied"
+                            && reason != "room_changed"
+                            && reason != "You are no longer partners." =>
+                    {
+                        PlaceOutcome::Blocked(reason)
+                    }
+                    RestoreOutcome::Refused(_) => PlaceOutcome::Blocked(t!(lang, "house.edit.blocked")),
+                };
                 let name = name_of(&item_id);
                 match outcome {
                     PlaceOutcome::Placed { id } => {
@@ -1252,7 +1305,12 @@ pub(crate) async fn on_edit(
         "v" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
                 let mut step = Step::new(Kind::Lift, name_of(&p.item_id));
-                step.removed = take_back(cx, content, user_id, &placements, p).await?;
+                let Some(removed) =
+                    take_back(&cx.app.db, content, who, (tier.width, tier.depth), &placements, p).await?
+                else {
+                    return cx.reply_ephemeral(t!(lang, "house.edit.blocked")).await;
+                };
+                step.removed = removed;
                 let on_top = step.removed.len() - 1;
                 history.push(step);
                 state.item = Some(p.item_id.clone());
@@ -1270,7 +1328,12 @@ pub(crate) async fn on_edit(
         "k" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
                 let mut step = Step::new(Kind::Store, name_of(&p.item_id));
-                step.removed = take_back(cx, content, user_id, &placements, p).await?;
+                let Some(removed) =
+                    take_back(&cx.app.db, content, who, (tier.width, tier.depth), &placements, p).await?
+                else {
+                    return cx.reply_ephemeral(t!(lang, "house.edit.blocked")).await;
+                };
+                step.removed = removed;
                 let on_top = step.removed.len() - 1;
                 history.push(step);
                 let extra = if on_top > 0 {
@@ -1323,7 +1386,29 @@ pub(crate) async fn on_edit(
                         t!(lang, "house.edit.cant-flip-top")
                     }
                     Ok(()) => {
-                        cx.app.db.flip_placement(user_id, p.id).await?;
+                        let outcome = cx
+                            .app
+                            .db
+                            .edit_room(
+                                who.owner,
+                                who.owner,
+                                who.owner,
+                                state.room,
+                                &[RoomChange::Flip(p.clone())],
+                                who.is_guest().then_some((who.stock, who.bond)),
+                                |rows| {
+                                    if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                                        Ok(())
+                                    } else {
+                                        Err("room_changed".into())
+                                    }
+                                },
+                                |rows, change| undo_fits(content, (tier.width, tier.depth), rows, change),
+                            )
+                            .await?;
+                        if !matches!(outcome, RestoreOutcome::Done { .. }) {
+                            return cx.reply_ephemeral(t!(lang, "house.edit.nothing-to-flip")).await;
+                        }
                         let on_wall = content.item(&p.item_id).is_some_and(|i| i.base.layer == Layer::Wall);
                         let mut step = Step::new(if on_wall { Kind::Flip } else { Kind::Turn }, name_of(&p.item_id));
                         step.turned = Some(Piece {
@@ -1344,7 +1429,38 @@ pub(crate) async fn on_edit(
         },
         // Clear room, confirmed: every piece goes back to the inventory, as one undo step.
         "z" => {
-            let removed = cx.app.db.clear_room(user_id, state.room).await?;
+            let mut removed = placements.clone();
+            removed.sort_by_key(|p| {
+                if content.item(&p.item_id).is_some_and(|i| i.base.layer == Layer::Surface) {
+                    0
+                } else {
+                    1
+                }
+            });
+            let changes: Vec<_> = removed.iter().cloned().map(RoomChange::Remove).collect();
+            let outcome = cx
+                .app
+                .db
+                .edit_room(
+                    who.owner,
+                    who.owner,
+                    who.owner,
+                    state.room,
+                    &changes,
+                    who.is_guest().then_some((who.stock, who.bond)),
+                    |rows| {
+                        if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                            Ok(())
+                        } else {
+                            Err("room_changed".into())
+                        }
+                    },
+                    |rows, change| undo_fits(content, (tier.width, tier.depth), rows, change),
+                )
+                .await?;
+            if !matches!(outcome, RestoreOutcome::Done { .. }) {
+                return cx.reply_ephemeral(t!(lang, "house.edit.already-empty")).await;
+            }
             state.release(content);
             if removed.is_empty() {
                 t!(lang, "house.edit.already-empty")
@@ -1367,9 +1483,22 @@ pub(crate) async fn on_edit(
                 let outcome = cx
                     .app
                     .db
-                    .restore_for(who.owner, who.stock, state.room, &changes, |current, change| {
-                        undo_fits(content, size, current, change)
-                    })
+                    .edit_room(
+                        who.owner,
+                        who.owner,
+                        who.stock,
+                        state.room,
+                        &changes,
+                        who.is_guest().then_some((who.stock, who.bond)),
+                        |rows| {
+                            if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                                Ok(())
+                            } else {
+                                Err("room_changed".into())
+                            }
+                        },
+                        |current, change| undo_fits(content, size, current, change),
+                    )
                     .await?;
                 match outcome {
                     RestoreOutcome::Done { added } => {
@@ -1898,6 +2027,66 @@ pub(crate) async fn on_upgrade(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Re
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn storing_a_support_and_its_items_refuses_a_stale_group_atomically() {
+        let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+            return;
+        };
+        let db = pinchora_db::Db::connect(&url, 5).await.unwrap();
+        db.migrate().await.unwrap();
+        let owner = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            >> 4) as u64;
+        let content = Content::get();
+        db.house(
+            owner,
+            &NewRoom {
+                room_type: "living".into(),
+                wallpaper: content.surfaces.wallpapers[0].id.clone(),
+                floor: content.surfaces.floors[0].id.clone(),
+            },
+        )
+        .await
+        .unwrap();
+        for item in ["crumbcorner_table__moss", "pagepair_books__moss"] {
+            db.grant_item(owner, item, 1).await.unwrap();
+            assert!(matches!(
+                db.place_item(owner, 0, item, 1, 1, false, |_| Ok(())).await.unwrap(),
+                PlaceOutcome::Placed { .. }
+            ));
+        }
+        let before = db.placements(owner, 0).await.unwrap();
+        let support = before.iter().find(|p| p.item_id == "crumbcorner_table__moss").unwrap();
+        assert_eq!(standing_on(content, &before, support).len(), 1);
+        sqlx::query("UPDATE placements SET flipped=NOT flipped WHERE id=$1")
+            .bind(support.id)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        assert!(
+            take_back(&db, content, Who::own(owner), (8, 8), &before, support)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(db.placements(owner, 0).await.unwrap().len(), 2);
+        assert!(db.inventory(owner).await.unwrap().iter().all(|r| r.quantity == 0));
+        let current = db.placements(owner, 0).await.unwrap();
+        let support = current.iter().find(|p| p.item_id == "crumbcorner_table__moss").unwrap();
+        assert_eq!(
+            take_back(&db, content, Who::own(owner), (8, 8), &current, support)
+                .await
+                .unwrap()
+                .unwrap()
+                .len(),
+            2
+        );
+        assert!(db.placements(owner, 0).await.unwrap().is_empty());
+        assert!(db.inventory(owner).await.unwrap().iter().all(|r| r.quantity == 1));
+    }
 
     fn pet(id: i64, species: &str, active: bool, away_until: Option<DateTime<Utc>>) -> PetRow {
         PetRow {

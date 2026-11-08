@@ -48,6 +48,38 @@
         "height": 12,
         "direction": "SW"
       }
+    },
+    "reedwink_stool": {
+      "kind": "seat",
+      "blocked": null,
+      "interaction": {
+        "kind": "seat",
+        "approaches": [
+          [0, 1],
+          [1, 0],
+          [-1, 0],
+          [0, -1]
+        ],
+        "anchor": [0, 0],
+        "height": 18,
+        "direction": "SW"
+      }
+    },
+    "hemloop_chair": {
+      "kind": "seat",
+      "blocked": null,
+      "interaction": {
+        "kind": "seat",
+        "approaches": [
+          [0, 1],
+          [1, 0],
+          [-1, 0],
+          [0, -1]
+        ],
+        "anchor": [0, 0],
+        "height": 24,
+        "direction": "SW"
+      }
     }
   }
 }

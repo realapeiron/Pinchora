@@ -32,6 +32,20 @@ impl Db {
         owner: u64,
         room: i16,
         update: HouseUpdate<'_>,
+        current_version: F,
+    ) -> anyhow::Result<HouseUpdateOutcome>
+    where
+        F: FnMut(&[PlacementRow]) -> bool,
+    {
+        self.update_house_receipted(owner, room, update, None, current_version)
+            .await
+    }
+    pub async fn update_house_receipted<F>(
+        &self,
+        owner: u64,
+        room: i16,
+        update: HouseUpdate<'_>,
+        receipt: Option<&crate::ReefEditRequest>,
         mut current_version: F,
     ) -> anyhow::Result<HouseUpdateOutcome>
     where
@@ -44,6 +58,11 @@ impl Db {
             .bind(id)
             .fetch_optional(&mut *tx)
             .await?;
+        if let Some(receipt) = receipt
+            && !receipt.check(&mut tx, owner).await?
+        {
+            return Ok(HouseUpdateOutcome::Conflict);
+        }
         let exists: Option<i16> = sqlx::query_scalar("SELECT idx FROM rooms WHERE user_id=$1 AND idx=$2 FOR UPDATE")
             .bind(id)
             .bind(room)
@@ -138,6 +157,9 @@ impl Db {
                     .execute(&mut *tx)
                     .await?;
             }
+        }
+        if let Some(receipt) = receipt {
+            receipt.save(&mut tx, owner, room).await?;
         }
         tx.commit().await?;
         Ok(HouseUpdateOutcome::Done)

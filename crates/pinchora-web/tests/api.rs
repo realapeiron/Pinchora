@@ -4023,3 +4023,6 @@ mod mod_parity;
 mod player_depth;
 #[path = "api/web_player.rs"]
 mod web_player;
+
+#[path = "api/reef_spaces.rs"]
+mod reef_spaces;

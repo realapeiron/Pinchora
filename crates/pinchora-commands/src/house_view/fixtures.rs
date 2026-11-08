@@ -450,6 +450,8 @@ fn used_catalog(scenes: &[Value]) -> Value {
             pets.insert(p["species"].as_str().expect("species").to_owned());
         }
     }
+    // Reef navigation fixtures share this catalogue and cover the first five seat bases.
+    bases.insert("reedwink_stool".to_owned());
     let all = catalog();
     let keep = |list: &Value, ids: &BTreeSet<String>| -> Vec<Value> {
         list.as_array()

@@ -478,6 +478,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         run(db, sql, user, other).await;
     }
     for sql in [
+        "INSERT INTO reef_edit_receipts(actor_id,request_id,owner_id,room_idx,payload) VALUES($1,'privacy',$1,0,'{}')",
+        "INSERT INTO reef_space_preferences(user_id,presence,visits,doorbell) VALUES($1,true,'friends',true)",
+        "INSERT INTO reef_doorbells(host_id,guest_id) VALUES($1,$2),($2,$1)",
         "INSERT INTO reef_loop(user_id) VALUES($1) ON CONFLICT DO NOTHING",
         "INSERT INTO reef_loop_daily(user_id,day,requests,dives,pet_reward,partner_reward)
          VALUES($1,floor(extract(epoch FROM now()) / 86400)::int,3,1,true,true),($1,1,3,1,true,true)",

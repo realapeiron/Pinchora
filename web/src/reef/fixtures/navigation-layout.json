@@ -3,10 +3,34 @@
     {
       "name": "floor and loose surface block but rug and wall do not",
       "placements": [
-        { "id": "1", "item_id": "crumbcorner_table__cream", "x": 0, "y": 0, "flipped": false },
-        { "id": "2", "item_id": "pagepair_books__moss", "x": 4, "y": 4, "flipped": false },
-        { "id": "3", "item_id": "rivetgrid_rug__charcoal", "x": 2, "y": 2, "flipped": true },
-        { "id": "4", "item_id": "pebblepane_window__sand", "x": 3, "y": 0, "flipped": true }
+        {
+          "id": "1",
+          "item_id": "crumbcorner_table__cream",
+          "x": 0,
+          "y": 0,
+          "flipped": false
+        },
+        {
+          "id": "2",
+          "item_id": "pagepair_books__moss",
+          "x": 4,
+          "y": 4,
+          "flipped": false
+        },
+        {
+          "id": "3",
+          "item_id": "rivetgrid_rug__charcoal",
+          "x": 2,
+          "y": 2,
+          "flipped": true
+        },
+        {
+          "id": "4",
+          "item_id": "pebblepane_window__sand",
+          "x": 3,
+          "y": 0,
+          "flipped": true
+        }
       ],
       "blocked": [
         [0, 0],
@@ -19,7 +43,15 @@
     },
     {
       "name": "flipped pilot seat transposes approaches and facing",
-      "placements": [{ "id": "5", "item_id": "pebblerest_stool__sand", "x": 2, "y": 3, "flipped": true }],
+      "placements": [
+        {
+          "id": "5",
+          "item_id": "pebblerest_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": true
+        }
+      ],
       "blocked": [[2, 3]],
       "targets": [
         {
@@ -39,7 +71,15 @@
     },
     {
       "name": "game furniture uses its full footprint for approaches",
-      "placements": [{ "id": "6", "item_id": "blinkslot_cabinet__plum", "x": 1, "y": 1, "flipped": false }],
+      "placements": [
+        {
+          "id": "6",
+          "item_id": "blinkslot_cabinet__plum",
+          "x": 1,
+          "y": 1,
+          "flipped": false
+        }
+      ],
       "blocked": [
         [1, 1],
         [2, 1],
@@ -59,6 +99,286 @@
           "anchor": [1, 1],
           "height": 0,
           "direction": "NW"
+        }
+      ]
+    },
+    {
+      "name": "wave7 hemloop_chair original",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "hemloop_chair",
+          "x": 2,
+          "y": 3,
+          "flipped": false
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [2, 4],
+            [3, 3],
+            [1, 3],
+            [2, 2]
+          ],
+          "anchor": [2, 3],
+          "height": 24,
+          "direction": "SW",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 hemloop_chair flipped",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "hemloop_chair",
+          "x": 2,
+          "y": 3,
+          "flipped": true
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [3, 3],
+            [2, 4],
+            [2, 2],
+            [1, 3]
+          ],
+          "anchor": [2, 3],
+          "height": 24,
+          "direction": "SE",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 pebblerest_stool original",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "pebblerest_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": false
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [2, 4],
+            [3, 3],
+            [1, 3],
+            [2, 2]
+          ],
+          "anchor": [2, 3],
+          "height": 20,
+          "direction": "SW",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 pebblerest_stool flipped",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "pebblerest_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": true
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [3, 3],
+            [2, 4],
+            [2, 2],
+            [1, 3]
+          ],
+          "anchor": [2, 3],
+          "height": 20,
+          "direction": "SE",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 mosshem_pouf original",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "mosshem_pouf__cream",
+          "x": 2,
+          "y": 3,
+          "flipped": false
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [2, 4],
+            [3, 3],
+            [1, 3],
+            [2, 2]
+          ],
+          "anchor": [2, 3],
+          "height": 12,
+          "direction": "SW",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 mosshem_pouf flipped",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "mosshem_pouf__cream",
+          "x": 2,
+          "y": 3,
+          "flipped": true
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [3, 3],
+            [2, 4],
+            [2, 2],
+            [1, 3]
+          ],
+          "anchor": [2, 3],
+          "height": 12,
+          "direction": "SE",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 reedwink_stool original",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "reedwink_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": false
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [2, 4],
+            [3, 3],
+            [1, 3],
+            [2, 2]
+          ],
+          "anchor": [2, 3],
+          "height": 18,
+          "direction": "SW",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 reedwink_stool flipped",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "reedwink_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": true
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [3, 3],
+            [2, 4],
+            [2, 2],
+            [1, 3]
+          ],
+          "anchor": [2, 3],
+          "height": 18,
+          "direction": "SE",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 duneplait_stool original",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "duneplait_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": false
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [2, 4],
+            [3, 3],
+            [1, 3],
+            [2, 2]
+          ],
+          "anchor": [2, 3],
+          "height": 18,
+          "direction": "SW",
+          "id": "82"
+        }
+      ]
+    },
+    {
+      "name": "wave7 duneplait_stool flipped",
+      "placements": [
+        {
+          "id": "82",
+          "item_id": "duneplait_stool__sand",
+          "x": 2,
+          "y": 3,
+          "flipped": true
+        }
+      ],
+      "blocked": [[2, 3]],
+      "targets": [
+        {
+          "kind": "seat",
+          "approaches": [
+            [3, 3],
+            [2, 4],
+            [2, 2],
+            [1, 3]
+          ],
+          "anchor": [2, 3],
+          "height": 18,
+          "direction": "SE",
+          "id": "82"
         }
       ]
     }

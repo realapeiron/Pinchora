@@ -76,7 +76,11 @@ async fn acquire(state: &WebState, key: RoomKey) -> anyhow::Result<Option<Owner>
     if cache.reef_get(&lease_key(key)).await?.is_some() {
         return Ok(None);
     }
-    let Some(fence) = state.app.db.reef_acquire(cache.namespace(), key.owner, key.idx).await? else {
+    let namespace = key.instance.map_or_else(
+        || cache.namespace().to_owned(),
+        |i| format!("{}:plaza:{i}", cache.namespace()),
+    );
+    let Some(fence) = state.app.db.reef_acquire(&namespace, key.owner, key.idx).await? else {
         return Ok(None);
     };
     if !cache
@@ -248,11 +252,25 @@ async fn route(
                 let Some(message) = message else { anyhow::bail!("subscription lost"); };
                 let wire: Wire = serde_json::from_str(&message)?;
                 match wire {
-                    Wire::Event {token,event} => {
+                    Wire::Event {token,mut event} => {
                         if let Some(peer) = peers.get(&token) {
                             if cache.reef_get(&lease_key(key)).await?.as_deref()!=Some(&event.epoch) { continue; }
                             if let Err(reason)=controller(state,peer).await {peer.terminate(reason);continue;}
                             pending.remove(&(token,event.request.clone()));
+                            // Revalidate at delivery as well as command admission: queued room events
+                            // must not disclose presence after a remote policy change.
+                            if event.body["type"] != "error" {
+                                let (allowed, blocked) = state.app.db.reef_delivery_policy(key.owner,key.idx,peer.user,key.instance.is_some()).await?;
+                                if !allowed || (key.instance.is_some()
+                                    && matches!(event.body["type"].as_str(), Some("chat" | "snapshot"))
+                                    && super::socket::room_access(state,key,peer.user).await.is_err()) {
+                                    peer.terminate("access_revoked");continue;
+                                }
+                                if !filter_presence(&mut event.body, &blocked) {
+                                    // Keep the delivery sequence intact without disclosing the identity.
+                                    event.body = serde_json::json!({"type":"correction","updates":[]});
+                                }
+                            }
                             if event.body["type"] == "chat" {
                                 let Some(id) = event.body["message_id"].as_str().and_then(|s|s.parse::<i64>().ok()) else {continue;};
                                 if !state.app.db.reef_chat_deliverable(id, peer.user).await? {continue;}
@@ -327,5 +345,46 @@ pub(super) fn close_reason(reason: &str) -> &'static str {
         "ownership_lost" => "ownership_lost",
         "routing_unavailable" => "routing_unavailable",
         _ => "room_unavailable",
+    }
+}
+
+/// Filter every identity-bearing room event, including compact movement tuples.
+fn filter_presence(body: &mut serde_json::Value, blocked: &[String]) -> bool {
+    let hidden = |id: &serde_json::Value| id.as_str().is_some_and(|id| blocked.iter().any(|b| b == id));
+    if hidden(&body["user_id"]) || hidden(&body["sender_id"]) || hidden(&body["player"]["user_id"]) {
+        return false;
+    }
+    if let Some(players) = body["players"].as_array_mut() {
+        players.retain(|p| !hidden(&p["user_id"]));
+    }
+    if let Some(updates) = body["updates"].as_array_mut() {
+        updates.retain(|p| !hidden(&p[0]));
+    }
+    true
+}
+
+#[cfg(test)]
+mod visibility_tests {
+    use super::filter_presence;
+    use serde_json::json;
+
+    #[test]
+    fn blocks_cover_rosters_movement_seating_chat_and_departures() {
+        let blocked = vec!["2".to_owned()];
+        let mut snapshot = json!({"type":"snapshot","players":[{"user_id":"1"},{"user_id":"2"}]});
+        assert!(filter_presence(&mut snapshot, &blocked));
+        assert_eq!(snapshot["players"], json!([{"user_id":"1"}]));
+        let mut correction = json!({"type":"correction","updates":[["1",0,0],["2",1,1]]});
+        assert!(filter_presence(&mut correction, &blocked));
+        assert_eq!(correction["updates"], json!([["1", 0, 0]]));
+        for mut event in [
+            json!({"type":"presence","player":{"user_id":"2"}}),
+            json!({"type":"presence","action":"leave","user_id":"2"}),
+            json!({"type":"path","user_id":"2"}),
+            json!({"type":"posture","player":{"user_id":"2"}}),
+            json!({"type":"chat","sender_id":"2"}),
+        ] {
+            assert!(!filter_presence(&mut event, &blocked), "{event}");
+        }
     }
 }

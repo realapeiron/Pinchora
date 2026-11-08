@@ -415,6 +415,7 @@ impl Db {
                     room_idx,
                     changes,
                     None,
+                    None,
                     &mut |_| Ok(()),
                     &mut check,
                 )
@@ -436,6 +437,27 @@ impl Db {
         room: i16,
         changes: &[RoomChange],
         partnership: Option<(u64, i64)>,
+        initial: G,
+        check: F,
+    ) -> anyhow::Result<RestoreOutcome>
+    where
+        F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
+        G: FnMut(&[PlacementRow]) -> Result<(), String>,
+    {
+        self.edit_room_receipted(owner, stock, refund, room, changes, partnership, None, initial, check)
+            .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn edit_room_receipted<F, G>(
+        &self,
+        owner: u64,
+        stock: u64,
+        refund: u64,
+        room: i16,
+        changes: &[RoomChange],
+        partnership: Option<(u64, i64)>,
+        receipt: Option<&crate::ReefEditRequest>,
         mut initial: G,
         mut check: F,
     ) -> anyhow::Result<RestoreOutcome>
@@ -453,6 +475,7 @@ impl Db {
                     room,
                     changes,
                     partnership,
+                    receipt,
                     &mut initial,
                     &mut check,
                 )
@@ -473,6 +496,7 @@ impl Db {
         room_idx: i16,
         changes: &[RoomChange],
         partnership: Option<(u64, i64)>,
+        receipt: Option<&crate::ReefEditRequest>,
         initial: &mut G,
         check: &mut F,
     ) -> anyhow::Result<RestoreOutcome>
@@ -487,7 +511,17 @@ impl Db {
             .bind(id)
             .execute(&mut *tx)
             .await?;
+        if let Some(receipt) = receipt
+            && !receipt.check(&mut tx, owner).await?
+        {
+            return Ok(RestoreOutcome::Refused(Refusal::Blocked("room_changed".into())));
+        }
         if let Some((guest, bond)) = partnership {
+            let blocked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1))")
+                .bind(id).bind(sql_id(guest)).fetch_one(&mut *tx).await?;
+            if blocked {
+                return Ok(RestoreOutcome::Refused(Refusal::Blocked("access_denied".into())));
+            }
             let pair: Option<(chrono::DateTime<chrono::Utc>,)> =
                 sqlx::query_as("SELECT since FROM partners WHERE user_a=$1 AND user_b=$2 FOR SHARE")
                     .bind(sql_id(owner.min(guest)))
@@ -583,6 +617,9 @@ impl Db {
                 }
             }
         }
+        if let Some(receipt) = receipt {
+            receipt.save(&mut tx, owner, room_idx).await?;
+        }
         tx.commit().await?;
         Ok(RestoreOutcome::Done { added })
     }
@@ -616,6 +653,12 @@ impl Db {
         wallpaper: Option<&str>,
         floor: Option<&str>,
     ) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user_id)]).await?;
+        sqlx::query("SELECT 1 FROM houses WHERE user_id=$1 FOR UPDATE")
+            .bind(sql_id(user_id))
+            .execute(&mut *tx)
+            .await?;
         sqlx::query(
             "UPDATE rooms SET wallpaper = COALESCE($3, wallpaper), floor = COALESCE($4, floor)
              WHERE user_id = $1 AND idx = $2",
@@ -624,17 +667,21 @@ impl Db {
         .bind(room_idx)
         .bind(wallpaper)
         .bind(floor)
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(())
     }
 
     pub async fn set_house_locked(&self, user_id: u64, locked: bool) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user_id)]).await?;
         sqlx::query("UPDATE houses SET locked = $2 WHERE user_id = $1")
             .bind(sql_id(user_id))
             .bind(locked)
-            .execute(self.pool())
+            .execute(&mut *tx)
             .await?;
+        tx.commit().await?;
         Ok(())
     }
 

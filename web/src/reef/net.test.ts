@@ -70,6 +70,22 @@ afterEach(() => {
 });
 
 describe("Reef socket", () => {
+  it("forgets blocked presence from complete corrections even without a policy notification", async () => {
+    const socket = await connected();
+    socket.message({ type: "correction", updates: [] }, 3);
+    expect(net.players.size).toBe(2); // A redacted event is not a complete roster.
+    socket.message({ type: "correction", roster: true, updates: [["1", 0, 7, 0, 7, "SE", "idle"]] }, 4);
+    expect([...net.players.keys()]).toEqual(["1"]);
+  });
+  it("removes old presence immediately on policy changes and reloads an authorized roster", async () => {
+    const socket = await connected();
+    expect(net.players.has("2")).toBe(true);
+    socket.message({ type: "policy_changed" }, 3, "");
+    expect(net.players.size).toBe(0);
+    expect(socket.sent.at(-1)?.type).toBe("snapshot");
+    socket.message({ type: "snapshot", revision: "r1", players: [player()] }, 4);
+    expect([...net.players.keys()]).toEqual(["1"]);
+  });
   it("clears private chat when a policy event is lost or arrives during gap recovery", async () => {
     const socket = await connected();
     const chat = { message_id: "private", sender_id: "2", name: "guest", text: "hello", created_at: "now" };
@@ -103,7 +119,7 @@ describe("Reef socket", () => {
     const socket = await connected();
     socket.message({ type: "correction", players: [player("2", [4, 7])] }, 4);
     expect(socket.sent.at(-1)?.type).toBe("snapshot");
-    expect(net.players.get("2")?.position).toEqual([0, 7]);
+    expect(net.players.has("2")).toBe(false);
     socket.message({ type: "snapshot", revision: "r2", players: [player()] }, 5, "room-b");
     expect(net.epoch).toBe("room-b");
     expect(net.players.size).toBe(1);

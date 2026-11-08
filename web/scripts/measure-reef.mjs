@@ -8,10 +8,34 @@ import { join } from "node:path";
 const web = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const files = readdirSync(join(web, "dist/assets"));
+// Include every static dependency and stylesheet, even when route splitting moves shared code.
+const build = JSON.parse(readFileSync(join(web, "dist/.vite/manifest.json")));
+const used = new Set();
+const visited = new Set();
+function include(key) {
+  if (visited.has(key)) return;
+  visited.add(key);
+  const chunk = build[key];
+  if (!chunk) throw new Error(`Missing build dependency ${key}`);
+  used.add(chunk.file);
+  for (const css of chunk.css ?? []) used.add(css);
+  for (const imported of chunk.imports ?? []) include(imported);
+}
+for (const [key, chunk] of Object.entries(build))
+  if (chunk.isEntry || /ReefStage-/.test(chunk.file)) include(key);
+for (const name of files) if (/^prepare\.worker-.*\.js$/.test(name)) used.add(`assets/${name}`);
+// These panels must remain deferred from the playable room's static dependency graph.
+for (const key of [
+  "src/components/HouseEditor.tsx",
+  "src/reef/DecoratePanel.tsx",
+  "src/reef/SpacesPanel.tsx",
+]) {
+  const chunk = build[key];
+  if (!chunk || used.has(chunk.file))
+    throw new Error(`Optional editor/social code entered the cold path: ${key}`);
+}
 const code =
-  files
-    .filter((n) => /^(index-|ReefStage-|prepare\.worker-).*\.(js|css)$/.test(n))
-    .reduce((n, f) => n + statSync(join(web, "dist/assets", f)).size, 0) +
+  [...used].reduce((n, f) => n + statSync(join(web, "dist", f)).size, 0) +
   statSync(join(web, "dist/index.html")).size;
 const manifest = JSON.parse(readFileSync(join(web, "public/assets/reef/manifest.json")));
 const manifestBytes = statSync(join(web, "public/assets/reef/manifest.json")).size;
@@ -61,10 +85,10 @@ console.log(
       catalogAllowance: catalog,
       reserve,
       conservativeColdBytes: bytes,
-      budget: 2_000_000,
+      budget: 1_970_000,
     },
     null,
     2,
   ),
 );
-if (bytes > 2_000_000) process.exitCode = 1;
+if (bytes > 1_970_000) process.exitCode = 1;

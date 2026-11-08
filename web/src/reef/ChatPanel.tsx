@@ -12,7 +12,15 @@ export const safetyError = (error: unknown) =>
       ? error.code
       : "safety_unavailable",
   );
-export function ChatPanel({ net, roomKey }: { net: ReefNet; roomKey: string }) {
+export function ChatPanel({
+  net,
+  roomKey,
+  guildManager = false,
+}: {
+  net: ReefNet;
+  roomKey: string;
+  guildManager?: boolean;
+}) {
   const lines = useSyncExternalStore(net.chat.subscribe, net.chat.snapshot);
   const [eligible, setEligible] = useState(false);
   const [version, setVersion] = useState(1);
@@ -79,7 +87,10 @@ export function ChatPanel({ net, roomKey }: { net: ReefNet; roomKey: string }) {
   return (
     <section className="reef-chat" aria-label={t("Room chat")}>
       <header>
-        <strong>{t("Room chat")}</strong> <Link to="/reef/moderation">{t("Reports and moderation")}</Link>
+        <strong>{t("Room chat")}</strong>{" "}
+        <Link to={guildManager ? `/reef/moderation?guild=${roomKey.split(":")[1]}` : "/reef/moderation"}>
+          {t("Reports and moderation")}
+        </Link>
       </header>
       {!eligible ? (
         <form
@@ -142,7 +153,7 @@ export function ChatPanel({ net, roomKey }: { net: ReefNet; roomKey: string }) {
                         >
                           {t("Block")}
                         </button>
-                        {(own || operator) &&
+                        {(own || operator || guildManager) &&
                           ["mute", "kick", "ban"].map((kind) => (
                             <button key={kind} disabled={busy} onClick={() => void moderate(line, kind)}>
                               {t(kind)}

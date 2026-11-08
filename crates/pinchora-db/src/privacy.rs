@@ -22,6 +22,11 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("reef_edit_receipts", "actor_id"),
+    ("reef_edit_receipts", "owner_id"),
+    ("reef_space_preferences", "user_id"),
+    ("reef_doorbells", "host_id"),
+    ("reef_doorbells", "guest_id"),
     ("card_design_history", "actor_id"),
     ("message_kit_history", "actor_id"),
     ("card_boost_state", "user_id"),
@@ -266,6 +271,8 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    // No user IDs; both foreign keys cascade with their registered personal-data parents.
+    "reef_guestbook_evidence",
     "dashboard_managers",
     "community_auto_channels",
     "anniversary_settings",

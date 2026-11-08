@@ -45,6 +45,12 @@ impl Db {
             .bind(sql_id(owner)).fetch_all(self.pool()).await?)
     }
     pub async fn reef_prune_outbox(&self) -> anyhow::Result<()> {
+        sqlx::query("DELETE FROM reef_edit_receipts WHERE (actor_id,request_id) IN (SELECT actor_id,request_id FROM reef_edit_receipts WHERE created_at<now()-interval '7 days' ORDER BY created_at LIMIT 500 FOR UPDATE SKIP LOCKED)")
+            .execute(self.pool())
+            .await?;
+        sqlx::query("DELETE FROM reef_doorbells WHERE id IN (SELECT id FROM reef_doorbells WHERE expires_at<now()-interval '1 day' ORDER BY expires_at LIMIT 500 FOR UPDATE SKIP LOCKED)")
+            .execute(self.pool())
+            .await?;
         sqlx::query("DELETE FROM reef_layout_outbox WHERE id IN (SELECT id FROM reef_layout_outbox WHERE created_at<clock_timestamp()-interval '1 day' LIMIT 500)").execute(self.pool()).await?;
         sqlx::query("DELETE FROM reef_room_leases WHERE expires_at<clock_timestamp()-interval '1 day'")
             .execute(self.pool())

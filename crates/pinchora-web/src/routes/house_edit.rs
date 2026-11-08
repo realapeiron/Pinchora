@@ -41,21 +41,38 @@ pub(super) async fn resolve(
     let me = current.session.user_id;
     match scope.scope.as_str() {
         "own" => Ok(Who::own(me)),
-        "partner" => state
-            .app
-            .db
-            .partner(me)
-            .await?
-            .map(|pair| Who::partner_of(me, pair))
-            .ok_or_else(|| ApiError::new(StatusCode::FORBIDDEN, "partner_only", "You are no longer partners.")),
+        "partner" => {
+            let pair =
+                state.app.db.partner(me).await?.ok_or_else(|| {
+                    ApiError::new(StatusCode::FORBIDDEN, "partner_only", "You are no longer partners.")
+                })?;
+            if state.app.db.socially_blocked(me, pair.partner_id).await? {
+                return Err(ApiError::new(StatusCode::FORBIDDEN, "access_denied", "access_denied"));
+            }
+            Ok(Who::partner_of(me, pair))
+        }
         "plaza" => {
             let id = scope
                 .guild
-                .filter(|id| *id > 0)
+                .filter(|id| *id > 0 && *id <= i64::MAX as u64)
                 .ok_or_else(|| ApiError::malformed("Choose a server."))?;
             // Identical Manage Server/Administrator/owner and bot-presence checks to ManagedGuild.
-            let guilds = discord::user_guilds(state, current, false).await?;
-            if !guilds.iter().any(|g| g.id() == Some(id) && (!write || g.can_manage())) {
+            let guilds = discord::user_guilds(state, current, true).await?;
+            let guild = guilds
+                .iter()
+                .find(|g| g.id() == Some(id))
+                .ok_or_else(ApiError::not_manager)?;
+            super::super::reef::spaces::membership(state, id, me)
+                .await
+                .map_err(|_| ApiError::not_manager())?;
+            if write
+                && !guild.can_manage()
+                && !crate::dashboard_access::permitted(
+                    "plazas",
+                    false,
+                    &crate::dashboard_access::areas(state, id, me).await?,
+                )
+            {
                 return Err(ApiError::not_manager());
             }
             if !discord::bot_present(state, id).await {
@@ -114,7 +131,10 @@ enum Op {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Request {
+    #[serde(alias = "expected_fingerprint")]
     expected: String,
+    request_id: Option<String>,
+    expected_revision: Option<String>,
     op: Op,
 }
 
@@ -126,6 +146,22 @@ async fn operate(
     ApiJson(request): ApiJson<Request>,
 ) -> ApiResult<Response> {
     let who = resolve(&state, &mut current, &scope, true).await?;
+    state.app.cache.ping().await?;
+    let receipt = match (&request.request_id, &request.expected_revision) {
+        (Some(id), Some(revision)) if !id.is_empty() && id.len() <= 100 => Some(pinchora_db::ReefEditRequest {
+            actor: current.session.user_id,
+            request: id.clone(),
+            payload: serde_json::to_string(&json!({"op":request.op,"expected":request.expected,"revision":revision}))
+                .map_err(anyhow::Error::from)?,
+            revision: revision
+                .parse::<i64>()
+                .ok()
+                .filter(|n| *n >= 0)
+                .ok_or_else(|| ApiError::malformed("Invalid revision."))?,
+        }),
+        (None, None) => None,
+        _ => return Err(ApiError::malformed("Request id and revision are required together.")),
+    };
     let _settings_guard = if matches!(&request.op, Op::Extra(_)) {
         Some(state.app.db.house_editor(who.owner).await?)
     } else {
@@ -133,18 +169,36 @@ async fn operate(
     };
     let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
     let before = house_edit::snapshot(&state.app, who, data.room.idx, &data.placements).await;
-    if request.expected != house_edit::fingerprint(&data.placements) {
+    if let Some(receipt) = receipt.as_ref().filter(|_| matches!(&request.op, Op::Extra(_))) {
+        match state
+            .app
+            .db
+            .reef_edit_receipt(who.owner, data.room.idx, receipt)
+            .await?
+        {
+            Some(true) => {
+                let mut value =
+                    house_edit::versioned_snapshot(&state.app, who, data.room.idx, &data.placements).await?;
+                value["replayed"] = json!(true);
+                return Ok(Json(value).into_response());
+            }
+            Some(false) => return Err(ApiError::blocked("This request id was already used.")),
+            None => {}
+        }
+    }
+    if receipt.is_none() && request.expected != house_edit::fingerprint(&data.placements) {
         return Ok(conflict(before));
     }
     let operation = serde_json::to_value(&request.op).map_err(anyhow::Error::from)?;
     let mut result = match request.op {
-        Op::Edit(op) => match house_edit::apply(
+        Op::Edit(op) => match house_edit::apply_receipted(
             &state.app,
             who,
             data.room.idx,
             (data.width, data.depth),
             &request.expected,
             op,
+            receipt.as_ref(),
         )
         .await?
         {
@@ -160,7 +214,7 @@ async fn operate(
         },
         Op::Extra(op) => {
             // The bot exposes decorating, upgrading and locking only for your own house.
-            if scope.scope != "own" {
+            if scope.scope != "own" && !(scope.scope == "plaza" && matches!(&op, ExtraOperation::Surface { .. })) {
                 return Err(ApiError::new(
                     StatusCode::FORBIDDEN,
                     "owner_only",
@@ -186,6 +240,9 @@ async fn operate(
                     };
                     let surface = list.iter().find(|s| &s.id == id).ok_or_else(ApiError::not_found)?;
                     let key = format!("{}:{id}", if wall { "wp" } else { "fl" });
+                    if scope.scope == "plaza" && !state.app.db.owns(who.stock, &key).await? {
+                        return Err(ApiError::blocked("You do not own this piece."));
+                    }
                     let (currency, label) = match surface.currency {
                         Currency::Shells => (pinchora_db::Currency::Shells, "shells"),
                         Currency::Pearls => (pinchora_db::Currency::Pearls, "pearls"),
@@ -193,7 +250,7 @@ async fn operate(
                     let outcome = state
                         .app
                         .db
-                        .update_house_checked(
+                        .update_house_receipted(
                             who.owner,
                             data.room.idx,
                             HouseUpdate::Surface {
@@ -202,8 +259,9 @@ async fn operate(
                                 key: &key,
                                 price: surface.price,
                                 currency,
-                                confirmed: confirm_price == Some(surface.price),
+                                confirmed: scope.scope == "own" && confirm_price == Some(surface.price),
                             },
+                            receipt.as_ref(),
                             |rows| house_edit::fingerprint(rows) == request.expected,
                         )
                         .await?;
@@ -233,8 +291,8 @@ async fn operate(
                             }
                         })
                         .collect();
-                    match state.app.db.update_house_checked(who.owner, data.room.idx,
-                        HouseUpdate::Upgrade { from_tier, price: next.price, rooms: &new_rooms },
+                    match state.app.db.update_house_receipted(who.owner, data.room.idx,
+                        HouseUpdate::Upgrade { from_tier, price: next.price, rooms: &new_rooms }, receipt.as_ref(),
                         |rows| house_edit::fingerprint(rows) == request.expected).await? {
                         HouseUpdateOutcome::Done => {},
                         HouseUpdateOutcome::Insufficient { balance } => return Ok((StatusCode::PAYMENT_REQUIRED, Json(json!({"code":"insufficient","balance":balance,"error":{"code":"insufficient","message":"Not enough shells."}}))).into_response()),
@@ -245,9 +303,13 @@ async fn operate(
                     if state
                         .app
                         .db
-                        .update_house_checked(who.owner, data.room.idx, HouseUpdate::Lock(locked), |rows| {
-                            house_edit::fingerprint(rows) == request.expected
-                        })
+                        .update_house_receipted(
+                            who.owner,
+                            data.room.idx,
+                            HouseUpdate::Lock(locked),
+                            receipt.as_ref(),
+                            |rows| house_edit::fingerprint(rows) == request.expected,
+                        )
                         .await?
                         != HouseUpdateOutcome::Done
                     {
@@ -255,7 +317,7 @@ async fn operate(
                     }
                 }
             }
-            house_edit::snapshot(&state.app, who, data.room.idx, &data.placements).await
+            house_edit::versioned_snapshot(&state.app, who, data.room.idx, &data.placements).await?
         }
     };
     result["scope"] = json!(scope.scope);

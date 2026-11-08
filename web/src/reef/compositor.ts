@@ -64,6 +64,7 @@ export interface ActorDraw {
   item: SceneItem;
   image: HTMLCanvasElement;
   offset: Point;
+  seat?: { id: string; rows: number };
 }
 /** Draw retained native bitmaps; the caller sets only integer scale/translation. */
 export class Compositor {
@@ -112,6 +113,27 @@ export class Compositor {
       if (a) {
         const [x, y] = anchor(a.item, a.item.sprite);
         ctx.drawImage(a.image, Math.round(x + a.offset[0]) + ox, Math.round(y + a.offset[1]) + oy);
+        if (a.seat) {
+          const at = this.room.scene.items.findIndex((i) => i.info.placement === a.seat!.id);
+          if (at >= 0) {
+            const sprite = this.sprites[at]!;
+            const item = this.room.scene.items[at]!;
+            const [sx, sy] = anchor(item, this.room.sprites[at]!);
+            const rows = Math.min(sprite.height, a.seat.rows);
+            const top = sprite.height - rows;
+            ctx.drawImage(
+              sprite,
+              0,
+              top,
+              sprite.width,
+              rows,
+              Math.round(sx) + ox,
+              Math.round(sy) + oy + top,
+              sprite.width,
+              rows,
+            );
+          }
+        }
       } else {
         const [x, y] = anchor(this.room.scene.items[i]!, this.room.sprites[i]!);
         ctx.drawImage(this.sprites[i]!, Math.round(x) + ox, Math.round(y) + oy);

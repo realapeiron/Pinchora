@@ -11,7 +11,7 @@ export type EditOp =
   | { type: "surface"; wallpaper?: string; floor?: string; confirm_price?: number }
   | { type: "upgrade"; from_tier: number }
   | { type: "lock"; locked: boolean };
-export type Snapshot = Pick<RoomJson, "placements" | "undo"> & { fingerprint: string };
+export type Snapshot = Pick<RoomJson, "placements" | "undo" | "revision"> & { fingerprint: string };
 
 export function optimistic(room: RoomJson, op: EditOp, temporary: string): RoomJson {
   const next = { ...room, placements: room.placements.map((p) => ({ ...p })) };
@@ -41,17 +41,17 @@ export function optimistic(room: RoomJson, op: EditOp, temporary: string): RoomJ
 
 /** One serialized queue per mounted room. A rejected operation discards its dependent edits. */
 export class RoomQueue {
-  private queue: { op: EditOp; temporary: string }[] = [];
+  private queue: { op: EditOp; temporary: string; request: string }[] = [];
   private serial = 0;
   private running = false;
   private disposed = false;
   room: RoomJson;
-  private send: (expected: string, op: EditOp) => Promise<Snapshot>;
+  private send: (expected: string, op: EditOp, revision?: string, request?: string) => Promise<Snapshot>;
   private reload: () => Promise<RoomJson>;
   private changed: (room: RoomJson, pending: boolean, error?: string, ids?: Record<string, string>) => void;
   constructor(
     room: RoomJson,
-    send: (expected: string, op: EditOp) => Promise<Snapshot>,
+    send: (expected: string, op: EditOp, revision?: string, request?: string) => Promise<Snapshot>,
     reload: () => Promise<RoomJson>,
     changed: (room: RoomJson, pending: boolean, error?: string, ids?: Record<string, string>) => void,
   ) {
@@ -75,7 +75,7 @@ export class RoomQueue {
   }
   enqueue(op: EditOp) {
     if (this.disposed) return;
-    this.queue.push({ op, temporary: `pending-${++this.serial}` });
+    this.queue.push({ op, temporary: `pending-${++this.serial}`, request: crypto.randomUUID() });
     this.paint();
     if (!this.running) void this.drain();
   }
@@ -89,7 +89,9 @@ export class RoomQueue {
     while (this.queue.length) {
       const first = this.queue[0]!;
       try {
-        const result = await this.send(this.room.fingerprint ?? "", first.op);
+        const result = await (this.room.revision
+          ? this.send(this.room.fingerprint ?? "", first.op, this.room.revision, first.request)
+          : this.send(this.room.fingerprint ?? "", first.op));
         if (this.disposed) break;
         const created = result.placements.find((p) => !this.room.placements.some((old) => old.id === p.id));
         this.room = { ...optimistic(this.room, first.op, first.temporary), ...result };
@@ -122,8 +124,22 @@ export class RoomQueue {
     this.running = false;
   }
 }
-export function sendOperation(target: HouseTarget, room: number, expected: string, op: EditOp) {
-  return api<Snapshot>(housePath(target, `/rooms/${room}/ops`), "POST", { expected, op });
+export function sendOperation(
+  target: HouseTarget,
+  room: number,
+  expected: string,
+  op: EditOp,
+  revision?: string,
+  request: string = crypto.randomUUID(),
+) {
+  const body = revision
+    ? { expected_fingerprint: expected, expected_revision: revision, request_id: request, op }
+    : { expected, op };
+  const send = () => api<Snapshot>(housePath(target, `/rooms/${room}/ops`), "POST", body);
+  return send().catch((error) => {
+    if (revision && !(error instanceof ApiError)) return send();
+    throw error;
+  });
 }
 
 /** Only preview subscribers redraw when the cursor crosses a tile; inventory and room pixels stay cached. */

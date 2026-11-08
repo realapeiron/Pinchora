@@ -1,5 +1,16 @@
+import { SEAT_FOREGROUND_ROWS } from "./seats";
+import type { EditBridge } from "./DecoratePanel";
+import { PageHead } from "../pages/PageHead";
+import type { HouseTarget } from "../lib/house";
+import { Art } from "../iso/art";
+import type { SceneItem } from "../iso/scene";
+import { footprint, surfaceLift } from "../iso/rules";
+import { anchor } from "../iso/render";
+import { levelTop, WALL_LEVELS } from "../iso/projection";
+import { flipHorizontal } from "../iso/image";
+import { bitmap, isStanding } from "./compositor";
 import { translate as spaTranslate } from "../i18n";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { PixelButton } from "../components/PixelButton";
 import type { RoomJson } from "../iso/scene";
 import { bootstrap } from "./bootstrap";
@@ -15,6 +26,9 @@ import { Footsteps } from "./effects";
 import { t, playerStatus } from "./i18n";
 import "./reef.css";
 
+const DecoratePanel = lazy(() => import("./DecoratePanel").then((m) => ({ default: m.DecoratePanel })));
+const SpacesPanel = lazy(() => import("./SpacesPanel").then((m) => ({ default: m.SpacesPanel })));
+
 interface Controls {
   walkTo: (id: string) => void;
   move: (p: Point, target?: Target) => void;
@@ -26,11 +40,17 @@ export default function ReefStage({
   own,
   roomKey,
   onLayout,
+  target,
+  editable,
+  userId,
   roomName,
   onExit,
   rooms,
   onRoom,
 }: {
+  target: HouseTarget;
+  editable: boolean;
+  userId: string;
   room: RoomJson;
   own: boolean;
   roomKey: string;
@@ -41,6 +61,9 @@ export default function ReefStage({
   rooms: { idx: number; name: string }[];
   onRoom: (idx: number) => void;
 }) {
+  const [decorating, setDecorating] = useState(false);
+  const [social, setSocial] = useState(false);
+  const editBridge = useRef<EditBridge | null>(null);
   const refreshLayout = useRef(onLayout);
   refreshLayout.current = onLayout;
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -124,6 +147,13 @@ export default function ReefStage({
       const camera = new Camera(window.devicePixelRatio || 1);
       const gesture = new Gesture();
       const actor = actorItem();
+      const seatMask = (id: string | undefined) => {
+        const piece = room.placements.find((p) => p.id === id);
+        const base = piece ? loaded.content.item(piece.item_id)?.base.id : undefined;
+        return id && base && SEAT_FOREGROUND_ROWS[base]
+          ? { id, rows: SEAT_FOREGROUND_ROWS[base]! }
+          : undefined;
+      };
       const motion = matchMedia("(prefers-reduced-motion: reduce)");
       let raf = 0,
         last = 0,
@@ -240,6 +270,21 @@ export default function ReefStage({
         const r = el.getBoundingClientRect();
         return [e.clientX - r.left, e.clientY - r.top];
       };
+      const placementTile = (point: Point): Point | null => {
+        const ghost = editBridge.current?.ghost;
+        if (ghost && loaded.content.item(ghost.item_id)?.base.layer === "wall") {
+          const [sx, sy] = camera.scene(...point);
+          const x = sx - compositor.room.origin[0],
+            y = sy - compositor.room.origin[1];
+          if (x < 0 !== ghost.flipped) return null;
+          const tile = Math.floor(Math.abs(x) / 32),
+            level = Math.floor((y - levelTop(x)) / 32);
+          return tile < (ghost.flipped ? room.depth : room.width) && level >= 0 && level < WALL_LEVELS
+            ? [tile, level]
+            : null;
+        }
+        return camera.tile(...point, compositor.room.origin, room.width, room.depth);
+      };
       const down = (e: PointerEvent) => {
         if (e.button !== 0) return;
         el.focus({ preventScroll: true });
@@ -247,6 +292,8 @@ export default function ReefStage({
         el.setPointerCapture(e.pointerId);
       };
       const drag = (e: PointerEvent) => {
+        if (editBridge.current && e.pointerType !== "touch" && !e.buttons)
+          editBridge.current.pick(placementTile(local(e)), null, true);
         const result = gesture.move(e.pointerId, local(e));
         if (!result) return;
         if (result.pan[0] || result.pan[1] || result.pinch) {
@@ -267,6 +314,10 @@ export default function ReefStage({
         const [x, y] = camera.scene(...p);
         const index = compositor.pick(x, y);
         const item = index === null ? null : compositor.room.scene.items[index];
+        if (editBridge.current) {
+          editBridge.current.pick(placementTile(p), item?.info.placement ?? null, false);
+          return;
+        }
         const target = loaded.nav.targets.find((t) => t.id === item?.info.placement);
         if (target) {
           contextTarget = target;
@@ -292,6 +343,10 @@ export default function ReefStage({
         }
       };
       const keydown = (e: KeyboardEvent) => {
+        if (editBridge.current?.key(e.key)) {
+          e.preventDefault();
+          return;
+        }
         const steps: Record<string, Point> = {
           ArrowRight: [1, 0],
           ArrowDown: [0, 1],
@@ -356,6 +411,12 @@ export default function ReefStage({
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
       };
+      let ghostId = "";
+      let ghostArt: Art | null = null;
+      let ghostBitmap: HTMLCanvasElement | null = null;
+      let ghostOrientation = "";
+      let ghostPosition = "";
+      let ghostItem: SceneItem | null = null;
       const frame = (now: number) => {
         const started = performance.now();
         const dt = last ? Math.min(100, now - last) : 0;
@@ -375,6 +436,7 @@ export default function ReefStage({
           }
         }
         el.dataset.players = String(net.players.size);
+        el.dataset.placements = String(room.placements.length);
         for (const [id, tag] of tags)
           if (!net.players.has(id) || !net.ready) {
             tag.remove();
@@ -413,7 +475,12 @@ export default function ReefStage({
             item.info.label = id;
             item.x = remote.position[0];
             item.y = remote.position[1];
-            remoteDraws.push({ item, image: f.image, offset: [-f.padding, lift - f.padding] });
+            remoteDraws.push({
+              item,
+              image: f.image,
+              offset: [-f.padding, lift - f.padding],
+              seat: seatMask(remote.seat?.id),
+            });
             let tag = tags.get(id);
             if (!tag) {
               tag = document.createElement("div");
@@ -470,7 +537,12 @@ export default function ReefStage({
             ctx,
             (
               [
-                { item: actor, image: f.image, offset: [-f.padding, lift - f.padding + bob] },
+                {
+                  item: actor,
+                  image: f.image,
+                  offset: [-f.padding, lift - f.padding + bob],
+                  seat: seatMask(player.target?.id),
+                },
                 ...remoteDraws,
               ] as ActorDraw[]
             ).sort((a, b) => a.item.info.label.localeCompare(b.item.info.label)),
@@ -490,6 +562,141 @@ export default function ReefStage({
             );
           }
         } else compositor.draw(ctx, [], ground);
+        const ghost = editBridge.current?.ghost;
+        if (ghost) {
+          if (ghost.item_id !== ghostId) {
+            ghostId = ghost.item_id;
+            ghostArt = null;
+            if (ghostBitmap) ghostBitmap.width = ghostBitmap.height = 0;
+            ghostBitmap = null;
+            ghostItem = null;
+            ghostPosition = "";
+            ghostOrientation = "";
+            const requested = ghostId;
+            const base = loaded.content.item(requested)?.base.id;
+            if (base)
+              void loaded.loader
+                .sprite(`f_${base}`)
+                .then((img) => {
+                  if (img && !abort.signal.aborted && ghostId === requested)
+                    ghostArt = new Art({ get: () => img, has: () => true }, loaded.content);
+                })
+                .catch(() => {
+                  if (!abort.signal.aborted && ghostId === requested)
+                    setWarnings((current) => [
+                      ...new Set([...current, spaTranslate("Some room art could not load.")]),
+                    ]);
+                });
+          }
+          const positionKey = `${ghostId}:${ghost.x}:${ghost.y}:${ghost.flipped}`;
+          if (ghostArt && positionKey !== ghostPosition) {
+            const sprite = ghostArt.item(ghostId);
+            const fp = footprint(loaded.content, ghostId, ghost.x, ghost.y, ghost.flipped);
+            ghostItem =
+              sprite && fp
+                ? {
+                    sprite,
+                    ...fp.rect,
+                    layer: fp.layer,
+                    flipped: ghost.flipped,
+                    selected: false,
+                    lift:
+                      fp.layer === "surface"
+                        ? surfaceLift(loaded.content, room.placements, fp.rect.x, fp.rect.y)
+                        : 0,
+                    info: { kind: "furniture", label: "", detail: null, placement: null },
+                  }
+                : null;
+            ghostPosition = positionKey;
+          }
+          const item = ghostItem;
+          if (item) {
+            const key = `${ghostId}:${ghost.flipped}`;
+            if (key !== ghostOrientation) {
+              if (ghostBitmap) ghostBitmap.width = ghostBitmap.height = 0;
+              ghostBitmap = bitmap(
+                item.flipped && isStanding(item) ? flipHorizontal(item.sprite) : item.sprite,
+              );
+              ghostOrientation = key;
+            }
+            const pos = anchor(item, item.sprite);
+            ctx.globalAlpha = 0.6;
+            const [ox, oy] = compositor.room.origin;
+            if (item.layer === "wall") {
+              const sign = ghost.flipped ? -1 : 1;
+              ctx.save();
+              ctx.transform(
+                sign,
+                0.5,
+                0,
+                1,
+                ox + sign * item.x * 32,
+                oy + levelTop(sign * item.x * 32) + item.y * 32,
+              );
+              ctx.drawImage(ghostBitmap!, 0, 0, item.w * 32, item.d * 32);
+              ctx.restore();
+            } else if (item.layer === "rug") {
+              const sw = item.sprite.width,
+                sh = item.sprite.height;
+              ctx.save();
+              if (ghost.flipped)
+                ctx.transform(
+                  (-32 * item.d) / sw,
+                  (16 * item.d) / sw,
+                  (32 * item.w) / sh,
+                  (16 * item.w) / sh,
+                  ox + 32 * (item.x - item.y),
+                  oy + 16 * (item.x + item.y),
+                );
+              else
+                ctx.transform(
+                  (32 * item.w) / sw,
+                  (16 * item.w) / sw,
+                  (-32 * item.d) / sh,
+                  (16 * item.d) / sh,
+                  ox + 32 * (item.x - item.y),
+                  oy + 16 * (item.x + item.y),
+                );
+              ctx.drawImage(ghostBitmap!, 0, 0);
+              ctx.restore();
+            } else ctx.drawImage(ghostBitmap!, Math.round(pos[0]) + ox, Math.round(pos[1]) + oy);
+            ctx.globalAlpha = 1;
+          }
+          const [ox, oy] = compositor.room.origin;
+          const x = ghost.x,
+            y = ghost.y,
+            w = item?.w ?? 1,
+            d = item?.d ?? 1;
+          const points =
+            item?.layer === "wall"
+              ? (() => {
+                  const sign = ghost.flipped ? -1 : 1,
+                    a = sign * 32 * x,
+                    b = sign * 32 * (x + w);
+                  return [
+                    [a, levelTop(a) + y * 32],
+                    [b, levelTop(b) + y * 32],
+                    [b, levelTop(b) + (y + d) * 32],
+                    [a, levelTop(a) + (y + d) * 32],
+                  ];
+                })()
+              : [
+                  [32 * (x - y), 16 * (x + y)],
+                  [32 * (x + w - y), 16 * (x + w + y)],
+                  [32 * (x + w - y - d), 16 * (x + w + y + d)],
+                  [32 * (x - y - d), 16 * (x + y + d)],
+                ];
+          ctx.strokeStyle = ghost.valid ? "#80dbad" : "#ff8e8e";
+          ctx.lineWidth = 2;
+          ctx.setLineDash(ghost.valid ? [] : [3, 3]);
+          ctx.beginPath();
+          points.forEach(([px, py], i) =>
+            i ? ctx.lineTo(ox + px!, oy + py!) : ctx.moveTo(ox + px!, oy + py!),
+          );
+          ctx.closePath();
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         const latest = new Map(
           net.chat
             .snapshot()
@@ -562,6 +769,7 @@ export default function ReefStage({
         el.removeEventListener("keydown", keydown);
         el.removeEventListener("focus", focus);
         el.removeEventListener("blur", blur);
+        if (ghostBitmap) ghostBitmap.width = ghostBitmap.height = 0;
         compositor.dispose();
         loaded.dispose();
       };
@@ -618,7 +826,31 @@ export default function ReefStage({
         />
         <div className="reef-vignette" aria-hidden="true" />
         <div className="reef-room-hud">
-          <span className="reef-room-name">{roomName}</span>
+          <div className="reef-room-name">
+            <PageHead title={roomName} lead={null} />
+          </div>
+          {editable && (
+            <button
+              type="button"
+              onClick={() => {
+                setDecorating(!decorating);
+                setSocial(false);
+                setDrawer(false);
+              }}
+            >
+              {t("Decorate")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setSocial(!social);
+              setDecorating(false);
+              setDrawer(false);
+            }}
+          >
+            {t("Social spaces")}
+          </button>
           <button type="button" className="reef-text-button" onClick={onExit}>
             {t("View")}
           </button>
@@ -768,6 +1000,9 @@ export default function ReefStage({
             {t("Walk to tile")}
           </PixelButton>
         </form>
+        <button type="button" disabled={!ready} onClick={() => controller.current?.send({ type: "stand" })}>
+          {t("Stand")}
+        </button>
         <h3>{t("Furniture and actions")}</h3>
         <ul className="reef-objects">
           {room.placements.map((p) => {
@@ -804,7 +1039,49 @@ export default function ReefStage({
           </p>
         ))}
       </aside>
-      {chatNet && <ChatPanel key={roomKey} net={chatNet} roomKey={roomKey} />}
+      <Suspense
+        fallback={
+          <p className="reef-loading" role="status">
+            {t("Loading…")}
+          </p>
+        }
+      >
+        {decorating && editable && (
+          <DecoratePanel
+            key={`${roomKey}:edit`}
+            room={room}
+            target={target}
+            bridge={editBridge}
+            onSaved={onLayout}
+            onClose={() => {
+              setDecorating(false);
+              editBridge.current = null;
+              canvas.current?.focus();
+            }}
+          />
+        )}
+        {social && (
+          <SpacesPanel
+            key={roomKey}
+            owner={roomKey.split(":")[1]!}
+            user={userId}
+            plaza={roomKey.startsWith("plaza:")}
+            canManage={editable}
+            onClose={() => {
+              setSocial(false);
+              canvas.current?.focus();
+            }}
+          />
+        )}
+      </Suspense>
+      {chatNet && (
+        <ChatPanel
+          key={roomKey}
+          net={chatNet}
+          roomKey={roomKey}
+          guildManager={editable && roomKey.startsWith("plaza:")}
+        />
+      )}
     </section>
   );
 }

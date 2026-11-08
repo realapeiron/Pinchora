@@ -66,6 +66,7 @@ export async function bootstrap(room: RoomJson, own: boolean, signal: AbortSigna
   const remoteReady = new Set<Animation>();
   return {
     loader,
+    content,
     ledger,
     animation,
     async loadAnimation(character: string) {

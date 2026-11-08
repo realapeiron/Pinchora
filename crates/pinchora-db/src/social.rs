@@ -56,6 +56,14 @@ impl Db {
         let (host, liker) = (sql_id(host), sql_id(liker));
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[host, liker]).await?;
+        let allowed: bool = sqlx::query_scalar("SELECT $1<>$2 AND reef_house_admitted($1,$2)")
+            .bind(host)
+            .bind(liker)
+            .fetch_one(&mut *tx)
+            .await?;
+        if !allowed {
+            return Ok(None);
+        }
         // A like given before the player deleted their data is still a like given today.
         let (before,): (bool,) = sqlx::query_as(
             "SELECT EXISTS (SELECT 1 FROM deleted_users WHERE user_id = $1 AND day = $3 AND $2 = ANY(liked))",

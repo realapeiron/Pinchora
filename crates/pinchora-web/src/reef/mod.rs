@@ -4,6 +4,7 @@ mod room;
 mod routing;
 pub(crate) mod safety;
 mod socket;
+pub(crate) mod spaces;
 pub(crate) use socket::{ticket, upgrade};
 
 use crate::state::WebState;
@@ -29,6 +30,9 @@ pub struct Envelope {
 }
 impl Envelope {
     pub fn parse(text: &str) -> Option<Self> {
+        if text.len() > MAX_MESSAGE {
+            return None;
+        }
         let envelope: Self = serde_json::from_str(text).ok()?;
         // serde flatten cannot enforce deny_unknown_fields. Keep the wire surface explicit.
         let raw: Value = serde_json::from_str(text).ok()?;
@@ -116,21 +120,30 @@ impl Peer {
 pub struct RoomKey {
     pub owner: u64,
     pub idx: i16,
+    pub instance: Option<u16>,
 }
 impl RoomKey {
     pub fn parse(raw: &str) -> Option<Self> {
         let parts: Vec<_> = raw.split(':').collect();
-        if parts.len() != 3 || parts[0] != "house" {
+        if !((parts.len() == 3 && parts[0] == "house") || (parts.len() == 4 && parts[0] == "plaza")) {
             return None;
         }
         let key = Self {
             owner: parts[1].parse().ok()?,
             idx: parts[2].parse().ok()?,
+            instance: if parts[0] == "plaza" {
+                Some(parts[3].parse::<u16>().ok().filter(|n| *n < 1024)?)
+            } else {
+                None
+            },
         };
         (key.owner > 0 && key.owner <= i64::MAX as u64 && (0..6).contains(&key.idx) && key.name() == raw).then_some(key)
     }
     pub fn name(self) -> String {
-        format!("house:{}:{}", self.owner, self.idx)
+        match self.instance {
+            Some(instance) => format!("plaza:{}:{}:{}", self.owner, self.idx, instance),
+            None => format!("house:{}:{}", self.owner, self.idx),
+        }
     }
 }
 pub enum Input {
@@ -359,7 +372,16 @@ mod tests {
     async fn remote_peers_do_not_accumulate_in_the_local_location_index() {
         let runtime = Runtime::default();
         for user in 1..1000 {
-            runtime.locate(user, RoomKey { owner: 1, idx: 0 }).await;
+            runtime
+                .locate(
+                    user,
+                    RoomKey {
+                        owner: 1,
+                        idx: 0,
+                        instance: None,
+                    },
+                )
+                .await;
         }
         assert!(runtime.locations.lock().await.is_empty());
     }
@@ -386,6 +408,9 @@ mod tests {
     fn protocol_intentions_only() {
         let envelope = serde_json::json!({"protocol_version":1,"request_id":"1","room_epoch":"","sequence":1,"type":"authenticate","ticket":"test"});
         assert!(Envelope::parse(&envelope.to_string()).is_some());
+        let mut oversized = envelope.clone();
+        oversized["ticket"] = json!("a".repeat(MAX_MESSAGE));
+        assert!(Envelope::parse(&oversized.to_string()).is_none());
         let forged = serde_json::json!({"protocol_version":1,"request_id":"2","room_epoch":"e","sequence":2,"type":"move_to","tile":[1,1],"position":[8,8],"speed":99});
         assert!(Envelope::parse(&forged.to_string()).is_none());
         for command in ["chat", "game_action", "teleport"] {
@@ -439,9 +464,21 @@ mod tests {
         assert!(limits.allow(&Command::Chat { text: "another".into() }, now + Duration::from_secs(60)));
     }
     #[test]
-    fn private_room_keys_only() {
-        assert_eq!(RoomKey::parse("house:123:0"), Some(RoomKey { owner: 123, idx: 0 }));
+    fn canonical_house_and_guild_room_keys() {
+        assert_eq!(
+            RoomKey::parse("house:123:0"),
+            Some(RoomKey {
+                owner: 123,
+                idx: 0,
+                instance: None
+            })
+        );
+        assert_eq!(RoomKey::parse("plaza:123:0:17").unwrap().instance, Some(17));
         for raw in [
+            "plaza:123:0:01",
+            "plaza:123:0:1024",
+            "plaza:123:6:0",
+            "plaza:0:0:0",
             "plaza:123:0",
             "house:123:6",
             "house:0:0",
