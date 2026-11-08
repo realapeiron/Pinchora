@@ -428,14 +428,20 @@ pub(crate) async fn expire(app: &Arc<App>, game: &GameSession) -> anyhow::Result
     let Some(done) = save(app, game, &s, None, true).await? else {
         return Ok(false);
     };
-    edit(app, &done, view(app, &done, &s).await?).await?;
+    // Settlement is durable even if the message was deleted or Discord is unavailable.
+    let display = async { edit(app, &done, view(app, &done, &s).await?).await }.await;
+    if let Err(error) = display {
+        tracing::warn!(%error, session = game.id, "reef expiry display failed");
+    }
     Ok(true)
 }
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let mut count = 0;
     for game in app.db.reef_due(app.now()).await? {
-        if expire(app, &game).await? {
-            count += 1;
+        match expire(app, &game).await {
+            Ok(true) => count += 1,
+            Ok(false) => {}
+            Err(error) => tracing::warn!(%error, session = game.id, "reef expiry failed"),
         }
     }
     Ok(count)
@@ -538,7 +544,14 @@ async fn view(app: &App, game: &GameSession, s: &State) -> anyhow::Result<Intera
         if let Board::Survival { .. } = &s.board {
             prompt = format!("{prompt}\n\n{}", s.notice);
         }
-        footer = t!(lang, "party-v2.reward");
+        footer = t!(
+            lang,
+            if s.kind == Kind::Critter {
+                "party-v2.no-reward"
+            } else {
+                "party-v2.reward"
+            }
+        );
     } else {
         match &s.board {
             Board::Quiz { questions, order, .. } => {
@@ -680,7 +693,11 @@ async fn view(app: &App, game: &GameSession, s: &State) -> anyhow::Result<Intera
     }
     let text = format!("{subtitle} · {footer}");
     let png = if let Board::Chess { moves } = &s.board {
-        let chess = chess::Game::from_moves(moves).ok_or_else(|| anyhow::anyhow!("invalid saved chess"))?;
+        // Replaying a long persisted game also belongs off the gateway executor.
+        let moves = moves.clone();
+        let chess = tokio::task::spawn_blocking(move || chess::Game::from_moves(&moves))
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("invalid saved chess"))?;
         let pieces = std::array::from_fn(|i| {
             chess.position.piece_at(i as u8).map_or(0, |p| {
                 let k = match p.kind {

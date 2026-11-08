@@ -37,7 +37,10 @@ fn search(p: Position, depth: u8, mut alpha: i32, beta: i32, b: &mut Budget) -> 
     if moves.is_empty() {
         return if p.in_check() { -30000 - i32::from(depth) } else { 0 };
     }
-    if depth == 0 || p.insufficient_material() || p.halfmove >= 100 {
+    if p.insufficient_material() || p.halfmove >= 100 {
+        return 0;
+    }
+    if depth == 0 {
         return value(&p);
     }
     for mv in moves {
@@ -91,11 +94,32 @@ mod tests {
     use super::*;
     #[test]
     fn levels_are_legal_and_bounded() {
-        for level in 1..=3 {
-            let p = Position::start();
-            let s = choose(&p, level);
-            assert!(p.legal_moves().contains(&s.mv.unwrap()));
-            assert!(s.nodes <= 6000);
+        for fen in [
+            crate::play::chess::START_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        ] {
+            for (level, cap) in [(1, 120), (2, 1200), (3, 6000)] {
+                let p = Position::from_fen(fen).unwrap();
+                let s = choose(&p, level);
+                assert!(p.legal_moves().contains(&s.mv.unwrap()));
+                assert!(s.nodes <= cap);
+            }
+        }
+    }
+    #[test]
+    fn drawn_leaves_score_zero_even_with_a_material_advantage() {
+        for fen in ["4k3/8/8/8/8/8/R7/4K3 w - - 100 80", "4k3/8/8/8/8/8/B7/4K3 w - - 0 1"] {
+            let p = Position::from_fen(fen).unwrap();
+            assert!(value(&p) > 0);
+            for depth in [0, 2] {
+                let mut budget = Budget {
+                    left: 100,
+                    nodes: 0,
+                    until: Instant::now() + Duration::from_secs(1),
+                };
+                assert_eq!(search(p, depth, -32000, 32000, &mut budget), 0);
+            }
         }
     }
     #[test]

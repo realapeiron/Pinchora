@@ -215,3 +215,58 @@ async fn erasure_removes_seat_identity_and_cannot_restore_deleted_rewards() {
     db.delete_user_data(host, now).await.unwrap();
     assert!(db.game(game.id).await.unwrap().is_none());
 }
+
+#[tokio::test]
+async fn concurrent_session_rewards_cannot_exceed_the_daily_cap() {
+    let Some(db) = db().await else { return };
+    let host = id();
+    let now = Utc::now();
+    let mut tasks = tokio::task::JoinSet::new();
+    for _ in 0..12 {
+        let game = db.reef_open(new(host, id()), "Host", now).await.unwrap().unwrap();
+        let db = db.clone();
+        tasks.spawn(async move {
+            db.reef_move(
+                &game,
+                ReefMove {
+                    state: "done",
+                    status: "done",
+                    deadline: now,
+                    now,
+                    timeout: false,
+                    join: None,
+                    results: &[(0, 5, true, true)],
+                },
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        });
+    }
+    while let Some(result) = tasks.join_next().await {
+        result.unwrap();
+    }
+    assert_eq!(db.user(host).await.unwrap().credits, 90);
+    assert_eq!(db.game_stats(host).await.unwrap()[0].played, 12);
+}
+
+#[tokio::test]
+async fn concurrent_legacy_and_reef_starts_share_the_channel_lock() {
+    let Some(db) = db().await else { return };
+    for _ in 0..8 {
+        let now = Utc::now();
+        let channel = id();
+        let reef = new(id(), channel);
+        let mut legacy = new(id(), channel);
+        legacy.kind = "trivia";
+        let (a, b) = tokio::join!(db.reef_open(reef, "Host", now), db.create_game(legacy));
+        assert_ne!(a.unwrap().is_some(), b.is_ok());
+        let (count,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM game_sessions WHERE channel_id=$1 AND status<>'done'")
+                .bind(channel as i64)
+                .fetch_one(db.pool())
+                .await
+                .unwrap();
+        assert_eq!(count, 1);
+    }
+}

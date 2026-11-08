@@ -136,6 +136,16 @@ async fn run(name: &'static str, kind: Kind, tr: bool, mode: &str) {
             }
         }
         Kind::Chess => {
+            let before = sim.app.db.game(id).await.unwrap().unwrap().state;
+            let denied = click(&mut sim, guest, &board, "answer").await;
+            assert!(denied.ephemeral && denied.modal.is_none());
+            let modal = click(&mut sim, host, &board, "answer").await;
+            let (form, _) = modal.modal.unwrap();
+            let forged = sim.run("stolen chess form".into(), guest, 5,
+                json!({"custom_id":form,"components":[{"type":18,"id":1,"component":{"type":4,"id":2,"custom_id":"answer","value":"e2e4"}}]}), Some(&board)).await;
+            assert!(forged.ephemeral);
+            assert!(answer(&mut sim, host, &board, "e2e5").await.ephemeral);
+            assert_eq!(sim.app.db.game(id).await.unwrap().unwrap().state, before);
             board = answer(&mut sim, host, &board, "e2e4").await;
             let s = state(&sim, id).await;
             let Board::Chess { moves } = &s.board else { panic!() };
@@ -325,4 +335,90 @@ async fn d9_lobby_and_solo_expiry_release_channels_in_both_languages() {
         assert!(!new.files.is_empty());
         click(&mut sim, host, &new, "leave").await;
     }
+}
+
+#[tokio::test]
+async fn d9_idle_guests_and_self_reported_guesses_never_pay() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("d9_no_solo_party_rewards").await else {
+        return;
+    };
+    for tr in [false, true] {
+        if tr {
+            turkish_server(&sim).await;
+            sim.locale = "tr";
+        }
+        for kind in [Kind::Quiz, Kind::Critter] {
+            sim.channel = unique();
+            let (host, guest) = (unique(), unique());
+            let mut board = sim.command(host, "party", json!([sub(kind.key(), vec![])])).await;
+            let id: i64 = custom(&board, "start").split(':').nth(2).unwrap().parse().unwrap();
+            board = click(&mut sim, guest, &board, "join").await;
+            board = click(&mut sim, host, &board, "start").await;
+            if kind == Kind::Critter {
+                for _ in 0..4 {
+                    board = click(&mut sim, host, &board, "yes").await;
+                }
+            } else {
+                let s = state(&sim, id).await;
+                let Board::Quiz { questions, order, .. } = &s.board else {
+                    panic!()
+                };
+                let correct = PlayContent::for_lang(s.lang)
+                    .question(&questions[0])
+                    .unwrap()
+                    .correct_slot(*order)
+                    .unwrap();
+                board = click(&mut sim, host, &board, &correct.to_string()).await;
+                click(&mut sim, guest, &board, "leave").await;
+            }
+            assert!(state(&sim, id).await.done);
+            if kind == Kind::Critter {
+                assert!(board.embeds[0].description.as_deref().unwrap().contains(if tr {
+                    "kabuk ödülü verilmez"
+                } else {
+                    "no shells are awarded"
+                }));
+            }
+            assert_eq!(sim.app.db.user(host).await.unwrap().credits, 0);
+            assert_eq!(sim.app.db.user(guest).await.unwrap().credits, 0);
+            assert!(
+                !sim.command(host, "play", json!([sub("kelpmaze", vec![])]))
+                    .await
+                    .files
+                    .is_empty()
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn d9_deleted_board_does_not_block_other_channel_expiry() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("d9_deleted_board_expiry").await else {
+        return;
+    };
+    let host = unique();
+    sim.channel = unique();
+    let board = sim.command(host, "play", json!([sub("kelpmaze", vec![])])).await;
+    let first: i64 = custom(&board, "leave").split(':').nth(2).unwrap().parse().unwrap();
+    sim.app
+        .db
+        .remember_game_message(first, sim.channel, board.message_id)
+        .await
+        .unwrap();
+    sim.mock.deleted.lock().unwrap().push(board.message_id);
+    sim.channel = unique();
+    let board = sim.command(host, "play", json!([sub("reefmind", vec![])])).await;
+    let second: i64 = custom(&board, "leave").split(':').nth(2).unwrap().parse().unwrap();
+    sim.app.shift_clock(chrono::Duration::seconds(121));
+    pinchora_commands::party_v2_tick(&sim.app).await.unwrap();
+    assert!(state(&sim, first).await.done);
+    assert!(state(&sim, second).await.done);
+    assert!(
+        !sim.command(host, "play", json!([sub("gemtide", vec![])]))
+            .await
+            .files
+            .is_empty()
+    );
 }

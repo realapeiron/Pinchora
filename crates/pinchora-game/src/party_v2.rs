@@ -83,6 +83,8 @@ pub enum Board {
         used: Vec<String>,
         last: String,
         best: usize,
+        #[serde(default)]
+        longest: Vec<(usize, usize)>,
     },
     Story {
         words: Vec<String>,
@@ -134,7 +136,8 @@ impl State {
                     .filter(|q| category == "all" || q.category.key() == category)
                     .collect();
                 let mut seen = std::collections::HashSet::new();
-                qs.retain(|q| seen.insert(q.question.to_lowercase()));
+                let mut topics = std::collections::HashSet::new();
+                qs.retain(|q| seen.insert(crate::lang::lower(lang, &q.question)) && topics.insert(quiz_topic(&q.id)));
                 for i in (1..qs.len()).rev() {
                     let j = (next(&mut rng) as usize) % (i + 1);
                     qs.swap(i, j);
@@ -150,6 +153,7 @@ impl State {
                 used: vec![],
                 last: String::new(),
                 best: 0,
+                longest: vec![],
             },
             Kind::Story => Board::Story { words: vec![] },
             Kind::Room => {
@@ -238,13 +242,45 @@ impl State {
                 s.ally = None;
             }
         }
+        match &mut self.board {
+            Board::Quiz { answered, .. } | Board::Room { answered, .. } => {
+                answered.retain(|&i| i != seat);
+            }
+            Board::Survival { choices, .. } => choices.retain(|&(i, _)| i != seat),
+            Board::Words { best, longest, .. } => {
+                // Older saved rounds only remember their leader; keep that candidate on resume.
+                if longest.is_empty() && *best > 0 {
+                    longest.push((self.turn, *best));
+                }
+                longest.retain(|&(i, _)| i != seat);
+                *best = 0;
+                for &(i, len) in longest.iter() {
+                    if len > *best {
+                        *best = len;
+                        self.turn = i;
+                    }
+                }
+            }
+            _ => {}
+        }
         if !self.lobby {
             if self.kind.solo() {
                 self.done = true;
             } else if self.active_count() <= 1 {
                 self.finish();
-            } else if self.turn == seat {
-                self.next_turn();
+            } else {
+                if self.turn == seat {
+                    self.next_turn();
+                }
+                match &self.board {
+                    Board::Quiz { answered, .. } | Board::Room { answered, .. }
+                        if answered.len() == self.active_count() =>
+                    {
+                        self.advance_round()
+                    }
+                    Board::Survival { choices, .. } if choices.len() == self.active_count() => self.survive(),
+                    _ => {}
+                }
             }
         }
         self.seq += 1;
@@ -307,7 +343,12 @@ impl State {
     }
     /// Only genuine participation is paid; all modes share a database daily allowance.
     pub fn reward_seats(&self) -> Vec<usize> {
-        if self.cancelled {
+        // Critter is a self-reported solo guess even though it has a party lobby.
+        if !self.done
+            || self.cancelled
+            || self.kind == Kind::Critter
+            || (!self.kind.solo() && self.seats.iter().filter(|s| s.actions > 0).count() < 2)
+        {
             return vec![];
         }
         self.winners
@@ -379,6 +420,7 @@ impl State {
                 used,
                 last,
                 best,
+                longest,
             } => {
                 let mode = word_mode(&self.mode, self.round);
                 if (mode == "relay" || mode == "chain") && seat != self.turn {
@@ -397,6 +439,10 @@ impl State {
                 *last = word;
                 self.seats[seat].actions += 1;
                 if mode == "longest" {
+                    if longest.is_empty() && *best > 0 {
+                        longest.push((self.turn, *best));
+                    }
+                    longest.push((seat, len));
                     if len > *best {
                         *best = len;
                         self.turn = seat;
@@ -481,9 +527,6 @@ impl State {
                         self.seats[seat].score = 1;
                         self.winners = vec![seat];
                     }
-                }
-                if game.plies() >= 240 {
-                    self.done = true;
                 }
             }
             Board::Maze(board) => {
@@ -622,11 +665,16 @@ impl State {
                 }
                 self.round += 1;
                 if let Board::Words {
-                    fragment, best, last, ..
+                    fragment,
+                    best,
+                    last,
+                    longest,
+                    ..
                 } = &mut self.board
                 {
                     *fragment = crate::party_v2::fragment(self.lang, self.seed + self.round as u64).into();
                     *best = 0;
+                    longest.clear();
                     last.clear();
                 }
                 if self.active_count() < 2 || self.round >= 12 {
@@ -648,6 +696,21 @@ impl State {
         self.seq += 1;
     }
 }
+// Alternate Turkish questions can ask the same fact with different punctuation or wording.
+fn quiz_topic(id: &str) -> &str {
+    match id {
+        "science_tr_t01" => "science_tr_015",
+        "science_tr_t02" => "nature_tr_001",
+        "science_tr_t03" => "nature_tr_035",
+        "science_tr_t05" => "nature_tr_031",
+        "science_tr_t07" => "nature_tr_036",
+        "ocean_tr_t05" => "ocean_tr_012",
+        "ocean_tr_t08" => "ocean_tr_003",
+        "ocean_tr_t06" => "geography_tr_t10",
+        _ => id,
+    }
+}
+
 pub fn word_mode(mode: &str, round: usize) -> &str {
     if mode == "mixed" {
         ["relay", "longest", "shoal"][round % 3]
@@ -682,6 +745,176 @@ mod tests {
         }
         s
     }
+    #[test]
+    fn party_rewards_require_two_actual_players_and_exclude_self_reported_critter() {
+        for kind in [
+            Kind::Quiz,
+            Kind::Words,
+            Kind::Story,
+            Kind::Room,
+            Kind::Survival,
+            Kind::Critter,
+        ] {
+            let mut s = started(kind, Lang::En, "quick");
+            s.seats[0].actions = 4;
+            s.seats[0].score = 4;
+            s.finish();
+            assert!(
+                s.reward_seats().is_empty(),
+                "{kind:?}: an idle second seat is not participation"
+            );
+            s.seats[1].actions = 2;
+            if kind == Kind::Critter {
+                assert!(s.reward_seats().is_empty(), "self-reported guesses cannot earn shells");
+            } else {
+                assert_eq!(s.reward_seats(), vec![0]);
+            }
+        }
+    }
+
+    #[test]
+    fn departing_answers_do_not_skip_other_players() {
+        for kind in [Kind::Quiz, Kind::Room, Kind::Survival] {
+            let mut s = State::new(kind, Lang::En, "quick", "all", 42);
+            s.add_seat();
+            s.add_seat();
+            s.start();
+            let action = if kind == Kind::Survival { "shelter" } else { "0" };
+            s.act(0, action, false).unwrap();
+            s.forfeit(0);
+            s.act(1, action, false).unwrap();
+            assert_eq!(s.round, 0, "{kind:?}: seat 2 still needs a turn");
+            s.act(2, action, false).unwrap();
+            assert_eq!(s.round, 1);
+        }
+    }
+
+    #[test]
+    fn last_unanswered_departure_advances_the_round() {
+        for kind in [Kind::Quiz, Kind::Room, Kind::Survival] {
+            let mut s = State::new(kind, Lang::En, "quick", "all", 42);
+            s.add_seat();
+            s.add_seat();
+            s.start();
+            let action = if kind == Kind::Survival { "shelter" } else { "0" };
+            s.act(0, action, false).unwrap();
+            s.act(1, action, false).unwrap();
+            s.forfeit(2);
+            assert_eq!(s.round, 1, "{kind:?}: all remaining players have answered");
+        }
+    }
+
+    #[test]
+    fn longest_word_departure_awards_the_remaining_best_word_after_resume() {
+        let mut s = State::new(Kind::Words, Lang::En, "longest", "all", 42);
+        s.add_seat();
+        s.add_seat();
+        s.start();
+        let Board::Words { fragment, .. } = &mut s.board else {
+            panic!()
+        };
+        *fragment = "ea".into();
+        s.act(0, "pearl", false).unwrap();
+        s.act(2, "sea", false).unwrap();
+        let mut s: State = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+        s.forfeit(0);
+        s.timeout();
+        assert_eq!(s.seats[0].score, 0);
+        assert_eq!(s.seats[1].score, 0);
+        assert_eq!(s.seats[2].score, 1);
+        let Board::Words { longest, .. } = &s.board else {
+            panic!()
+        };
+        assert!(longest.is_empty());
+    }
+
+    #[test]
+    fn old_word_rounds_without_candidate_history_still_resume() {
+        let s = started(Kind::Words, Lang::En, "longest");
+        let mut saved = serde_json::to_value(s).unwrap();
+        saved["board"]["Words"].as_object_mut().unwrap().remove("longest");
+        let mut restored: State = serde_json::from_value(saved).unwrap();
+        restored.timeout();
+        assert_eq!(restored.round, 1);
+    }
+
+    #[test]
+    fn turkish_wordwake_preserves_every_turkish_letter() {
+        let mut s = started(Kind::Words, Lang::Tr, "shoal");
+        for (fragment, word, normalized) in [
+            ("iş", "İŞÇİ", "işçi"),
+            ("ış", "IŞIK", "ışık"),
+            ("ağ", "AĞAÇ", "ağaç"),
+            ("gö", "GÖZ", "göz"),
+            ("gü", "GÜNEŞ", "güneş"),
+        ] {
+            if let Board::Words { fragment: f, .. } = &mut s.board {
+                *f = fragment.into();
+            }
+            s.act(0, word, false).unwrap();
+            let Board::Words { last, .. } = &s.board else { panic!() };
+            assert_eq!(last, normalized);
+            assert_eq!(s.act(1, normalized, false), Err("word"));
+        }
+    }
+
+    #[test]
+    fn quiz_packs_do_not_repeat_paraphrased_facts() {
+        let repeated = [
+            ["science_tr_015", "science_tr_t01"],
+            ["nature_tr_001", "science_tr_t02"],
+            ["nature_tr_035", "science_tr_t03"],
+            ["nature_tr_031", "science_tr_t05"],
+            ["nature_tr_036", "science_tr_t07"],
+            ["ocean_tr_012", "ocean_tr_t05"],
+            ["ocean_tr_003", "ocean_tr_t08"],
+            ["geography_tr_t10", "ocean_tr_t06"],
+        ];
+        for (category, seed) in [("science", 712), ("ocean", 55), ("all", 547)] {
+            let s = State::new(Kind::Quiz, Lang::Tr, "team", category, seed);
+            let Board::Quiz { questions, .. } = s.board else {
+                panic!()
+            };
+            for pair in repeated {
+                assert!(
+                    !pair.iter().all(|id| questions.iter().any(|q| q == id)),
+                    "{category}: {pair:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn reviewed_nature_answers_match_the_question_in_both_languages() {
+        // USGS: magnitude is distinct from shaking intensity. NOAA: hail grows in thunderstorms.
+        for (lang, prefix, magnitude, storm, richter, hail) in [
+            (
+                Lang::En,
+                "nature_",
+                "magnitude",
+                "thunderstorm",
+                "Richter scale",
+                "Hail",
+            ),
+            (
+                Lang::Tr,
+                "nature_tr_",
+                "büyüklüğünü",
+                "fırtına",
+                "Richter ölçeği",
+                "Dolu",
+            ),
+        ] {
+            let content = PlayContent::for_lang(lang);
+            let q = content.question(&format!("{prefix}041")).unwrap();
+            assert!(q.question.contains(magnitude));
+            assert_eq!(q.answer, richter);
+            let q = content.question(&format!("{prefix}047")).unwrap();
+            assert!(q.question.contains(storm));
+            assert_eq!(q.answer, hail);
+        }
+    }
+
     #[test]
     fn quiz_packs_unique_and_complete_in_both_languages() {
         for lang in [Lang::En, Lang::Tr] {
@@ -809,6 +1042,45 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn chess_does_not_end_a_legal_game_at_an_arbitrary_ply_limit() {
+        let mut game = chess::Game::new();
+        let mut seed = 17;
+        for _ in 0..238 {
+            let mut candidates = game.position.legal_moves();
+            let mut chosen = None;
+            while !candidates.is_empty() {
+                let index = next(&mut seed) as usize % candidates.len();
+                let mv = candidates.swap_remove(index);
+                let mut after = game.clone();
+                after.play(mv).unwrap();
+                if after.outcome().is_none() {
+                    chosen = Some(after);
+                    break;
+                }
+            }
+            game = chosen.expect("the fixture can continue legally");
+        }
+        let mut s = State::new(Kind::Chess, Lang::En, "easy", "all", 1);
+        s.board = Board::Chess {
+            moves: game.moves_text(),
+        };
+        for mv in game.position.legal_moves() {
+            let mut candidate = s.clone();
+            candidate.act(0, &mv.uci(), false).unwrap();
+            let Board::Chess { moves } = &candidate.board else {
+                panic!()
+            };
+            let after = chess::Game::from_moves(moves).unwrap();
+            if after.outcome().is_none() {
+                assert_eq!(after.plies(), 240);
+                assert!(!candidate.done, "only a rules outcome, forfeit or timeout ends chess");
+                return;
+            }
+        }
+        panic!("the fixture has a non-terminal continuation");
+    }
+
     #[test]
     fn chess_moves_ai_and_forfeit() {
         for lang in [Lang::En, Lang::Tr] {
