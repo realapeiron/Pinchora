@@ -356,7 +356,6 @@ async fn parity_change(
         return cx.reply_ephemeral(t!(cx.lang(), "xp.parity-invalid")).await;
     }
     cx.app.db.save_leveling_parity(guild, &policy).await?;
-    cx.app.forget_leveling_parity(guild).await;
     cx.reply_ephemeral(t!(cx.lang(), "xp.parity-saved")).await
 }
 

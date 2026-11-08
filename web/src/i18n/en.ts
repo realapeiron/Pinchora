@@ -1,4 +1,9 @@
 export const en = {
+  "File must be readable and at most 2 MB.": "File must be readable and at most 2 MB.",
+  "Malformed CSV row.": "Malformed CSV row.",
+  "Import members must be verified in this server.": "Import members must be verified in this server.",
+  "Leave grace must be at most 604800 seconds.": "Leave grace must be at most 604800 seconds.",
+  "Leave grace (seconds)": "Leave grace (seconds)",
   "VOICE LEVEL ROLES": "VOICE LEVEL ROLES",
   "When separate voice levels are on, members earn these roles from voice time.":
     "When separate voice levels are on, members earn these roles from voice time.",
@@ -1125,8 +1130,8 @@ export const en = {
   "Where they chatted": "Where they chatted",
   "Level-up message": "Level-up message",
   "VOICE XP": "VOICE XP",
-  "Members in a voice channel with someone else earn XP every minute; not while muted and deafened, and not in the AFK channel.":
-    "Members in a voice channel with someone else earn XP every minute; not while muted and deafened, and not in the AFK channel.",
+  "Members in a voice channel with someone else earn XP every minute; not while muted or deafened, and not in the AFK channel.":
+    "Members in a voice channel with someone else earn XP every minute; not while muted or deafened, and not in the AFK channel.",
   "XP a minute": "XP a minute",
   "Leveling is off, so nobody earns XP. Turn it on above.":
     "Leveling is off, so nobody earns XP. Turn it on above.",

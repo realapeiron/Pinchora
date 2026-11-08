@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use pinchora_core::{
     card_design::{CardKind, Delivery},
     i18n::Lang,
-    leveling::{scale, week_start},
+    leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, scale, week_start},
     modules::Module,
     settings::MessageKind,
     t,
@@ -115,13 +115,31 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         }
         return Ok(());
     }
-    let mut amount = rand::random_range(parity.message_min..=parity.message_max);
+    let base = rand::random_range(MESSAGE_XP);
+    let global_xp = if app
+        .cache
+        .try_cooldown(
+            &format!("xp:global:{g}:{u}"),
+            Duration::from_secs(MESSAGE_XP_COOLDOWN_SECS),
+        )
+        .await?
+        .is_none()
+    {
+        base
+    } else {
+        0
+    };
+    let mut amount = if parity.message_min == 15 && parity.message_max == 25 {
+        base
+    } else {
+        rand::random_range(parity.message_min..=parity.message_max)
+    };
     if parity.effort && (msg.content.chars().count() >= 200 || !msg.attachments.is_empty()) {
         amount += parity.effort_bonus;
     }
     let grant = XpGrant {
         server_xp: scale(amount, multiplier),
-        global_xp: amount,
+        global_xp,
         points,
     };
     let gain = app.db.add_xp(g, u, grant, week_start(app.now())).await?;

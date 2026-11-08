@@ -136,7 +136,7 @@ export function Leveling() {
         >
           {" "}
           {spaTranslate(
-            "Members in a voice channel with someone else earn XP every minute; not while muted and deafened, and not in the AFK channel.",
+            "Members in a voice channel with someone else earn XP every minute; not while muted or deafened, and not in the AFK channel.",
           )}{" "}
         </SwitchRow>
         <Field

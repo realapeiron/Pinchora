@@ -72,6 +72,7 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
 
 /// A member joined, before their join role and welcome.
 pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
+    crate::leveling_parity::on_member_join(app, event).await;
     if crate::mod_parity::member_join(app, event.guild_id.get(), event.user.id.get()).await == JoinVerdict::Held {
         return JoinVerdict::Held;
     }
@@ -98,7 +99,7 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
 
 /// A member left or was removed, before the goodbye.
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
-    crate::leveling_parity::on_member_leave(app, event);
+    crate::leveling_parity::on_member_leave(app, event).await;
     crate::verification::on_member_leave(app, event).await;
     if let Err(error) = app
         .db

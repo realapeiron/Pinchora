@@ -16,6 +16,7 @@ pub struct LevelingParity {
     pub votes: bool,
     pub separate_voice_level: bool,
     pub reset_on_leave: bool,
+    pub leave_grace_secs: u64,
     pub reaction_xp: i64,
     pub effort_bonus: i64,
     pub vote_xp: i64,
@@ -46,6 +47,7 @@ impl Default for LevelingParity {
             votes: false,
             separate_voice_level: false,
             reset_on_leave: false,
+            leave_grace_secs: 300,
             reaction_xp: 5,
             effort_bonus: 5,
             vote_xp: 10,
@@ -57,6 +59,9 @@ impl Default for LevelingParity {
 
 impl LevelingParity {
     pub fn validate(&self) -> Result<(), &'static str> {
+        if self.leave_grace_secs > 604_800 {
+            return Err("Leave grace must be at most 604800 seconds.");
+        }
         if !(1..=1000).contains(&self.message_min) || !(self.message_min..=1000).contains(&self.message_max) {
             return Err("Message XP must be between 1 and 1000, with minimum at most maximum.");
         }

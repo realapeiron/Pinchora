@@ -28,3 +28,19 @@ CREATE TABLE guild_leveling_highlight_posts (
     posted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (guild_id, week)
 );
+
+-- Durable receipts survive Redis eviction and reaction removal.
+CREATE TABLE leveling_reaction_awards (
+    guild_id BIGINT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message_id BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, message_id)
+);
+
+CREATE TABLE leveling_departures (
+    guild_id BIGINT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    reset_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+);
+CREATE INDEX leveling_departures_due ON leveling_departures (reset_at);

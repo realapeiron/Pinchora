@@ -596,6 +596,22 @@ async fn discord(
                 .unwrap_or_default();
             return (StatusCode::OK, member_json(number(user), &roles).to_string());
         }
+        (&Method::GET, [.., "channels", channel, "messages", message]) => {
+            let found = mock
+                .history
+                .lock()
+                .unwrap()
+                .get(&number(channel))
+                .and_then(|rows| rows.iter().find(|row| row["id"] == *message))
+                .cloned();
+            return match found {
+                Some(message) => (StatusCode::OK, message.to_string()),
+                None => (
+                    StatusCode::NOT_FOUND,
+                    json!({"code":10008,"message":"Unknown Message"}).to_string(),
+                ),
+            };
+        }
         (&Method::GET, [.., "channels", channel, "messages"]) => {
             let history = mock
                 .history

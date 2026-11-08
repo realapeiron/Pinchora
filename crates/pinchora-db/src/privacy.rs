@@ -23,6 +23,8 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("member_voice_levels", "user_id"),
+    ("leveling_reaction_awards", "user_id"),
+    ("leveling_departures", "user_id"),
     ("mod_booster_roles", "user_id"),
     ("mod_notes", "user_id"),
     ("mod_notes", "author_id"),

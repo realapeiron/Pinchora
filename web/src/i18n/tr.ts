@@ -1,5 +1,11 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "File must be readable and at most 2 MB.": "Dosya okunabilir ve en fazla 2 MB olmalı.",
+  "Malformed CSV row.": "CSV satırı hatalı.",
+  "Import members must be verified in this server.":
+    "İçe aktarılacak üyelerin bu sunucuda olduğu doğrulanmalı.",
+  "Leave grace must be at most 604800 seconds.": "Ayrılma bekleme süresi en fazla 604800 saniye olabilir.",
+  "Leave grace (seconds)": "Ayrılma bekleme süresi (saniye)",
   "VOICE LEVEL ROLES": "SES SEVİYESİ ROLLERİ",
   "When separate voice levels are on, members earn these roles from voice time.":
     "Ayrı ses seviyesi açıkken üyeler bu rolleri ses süresinden kazanır.",
@@ -1130,8 +1136,8 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Where they chatted": "Nerede sohbet ettiler",
   "Level-up message": "Seviye atlama mesajı",
   "VOICE XP": "SES XP",
-  "Members in a voice channel with someone else earn XP every minute; not while muted and deafened, and not in the AFK channel.":
-    "Başkasıyla birlikte bir ses kanalındaki üyeler her dakika XP kazanır; sessiz ve sağır durumdayken ve AFK kanalında değil.",
+  "Members in a voice channel with someone else earn XP every minute; not while muted or deafened, and not in the AFK channel.":
+    "Bir ses kanalında başka biriyle bulunan üyeler her dakika XP kazanır; susturulmuş veya sağırlaştırılmış üyeler ile AFK kanalındakiler XP kazanmaz.",
   "XP a minute": "bir dakika XP",
   "Leveling is off, so nobody earns XP. Turn it on above.":
     "Seviyelendirme kapalı olduğundan kimse XP kazanamaz. Yukarıda açın.",

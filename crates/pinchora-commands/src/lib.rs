@@ -38,7 +38,9 @@ mod leveling_parity;
 mod util;
 mod utility;
 mod voice_xp;
-pub use leveling_parity::spawn_ticker as spawn_leveling_parity_ticker;
+pub use leveling_parity::{
+    post_weekly_highlights as leveling_highlights_tick, spawn_ticker as spawn_leveling_parity_ticker,
+};
 mod xp_admin;
 pub use utility::{
     bot_permissions as utility_bot_permissions, creator_may_ping as utility_creator_may_ping,

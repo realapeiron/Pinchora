@@ -49,12 +49,12 @@ struct VoiceRoleBody {
 async fn put_voice_role(
     State(state): State<WebState>,
     managed: ManagedGuild,
-    Path(role): Path<String>,
+    Path(params): Path<BTreeMap<String, String>>,
     ApiJson(body): ApiJson<VoiceRoleBody>,
 ) -> ApiResult<Json<Value>> {
-    let role = role
-        .parse::<u64>()
-        .ok()
+    let role = params
+        .get("role")
+        .and_then(|role| role.parse::<u64>().ok())
         .filter(|id| *id > 0 && *id <= i64::MAX as u64)
         .ok_or_else(|| ApiError::malformed("Invalid role ID."))?;
     let level = level_rules::check_level(body.level)?;
@@ -94,11 +94,11 @@ async fn put_voice_role(
 async fn delete_voice_role(
     State(state): State<WebState>,
     managed: ManagedGuild,
-    Path(role): Path<String>,
+    Path(params): Path<BTreeMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let role = role
-        .parse::<u64>()
-        .ok()
+    let role = params
+        .get("role")
+        .and_then(|role| role.parse::<u64>().ok())
         .filter(|id| *id > 0 && *id <= i64::MAX as u64)
         .ok_or_else(|| ApiError::malformed("Invalid role ID."))?;
     let old = state
@@ -157,7 +157,6 @@ async fn save_settings(
     let old = state.app.db.leveling_parity(managed.id).await?;
     if config != old {
         state.app.db.save_leveling_parity(managed.id, &config).await?;
-        state.app.forget_leveling_parity(managed.id).await;
         audit::finish(
             &state,
             &managed.current.session,
@@ -265,6 +264,7 @@ fn csv_fields(line: &str) -> ApiResult<Vec<String>> {
     let mut fields = Vec::new();
     let mut field = String::new();
     let mut quoted = false;
+    let mut closed = false;
     let mut chars = line.chars().peekable();
     while let Some(ch) = chars.next() {
         match ch {
@@ -272,10 +272,16 @@ fn csv_fields(line: &str) -> ApiResult<Vec<String>> {
                 chars.next();
                 field.push('"');
             }
-            '"' => quoted = !quoted,
+            '"' if quoted => {
+                quoted = false;
+                closed = true;
+            }
+            '"' if field.is_empty() && !closed => quoted = true,
             ',' if !quoted => {
                 fields.push(std::mem::take(&mut field));
+                closed = false;
             }
+            _ if !quoted && (closed || ch == '"') => return Err(ApiError::malformed("Malformed CSV row.")),
             _ => field.push(ch),
         }
     }
@@ -306,6 +312,9 @@ fn parse_csv(data: &str) -> ApiResult<Vec<(u64, i64)>> {
     let mut out = Vec::new();
     for line in lines {
         let row = csv_fields(line)?;
+        if row.len() != headers.len() {
+            return Err(ApiError::malformed("Malformed CSV row."));
+        }
         let id = row
             .get(id_at)
             .and_then(|v| v.trim().parse::<u64>().ok())
@@ -345,6 +354,31 @@ fn parse_import(format: &str, data: &str) -> ApiResult<Vec<(u64, i64)>> {
     Ok(unique.into_iter().collect())
 }
 
+async fn check_import_members(state: &WebState, guild: u64, rows: &[(u64, i64)]) -> ApiResult<()> {
+    use futures_util::{StreamExt, TryStreamExt};
+    use twilight_model::id::Id;
+    futures_util::stream::iter(rows.iter().copied().map(|(user, _)| async move {
+        let response = state
+            .app
+            .http
+            .guild_member(Id::new(guild), Id::new(user))
+            .await
+            .map_err(|_| ApiError::blocked("Import members must be verified in this server."))?;
+        let member = response
+            .model()
+            .await
+            .map_err(|_| ApiError::blocked("Import members must be verified in this server."))?;
+        if member.user.bot {
+            return Err(ApiError::blocked("Import members must be verified in this server."));
+        }
+        Ok(())
+    }))
+    .buffer_unordered(8)
+    .try_collect::<Vec<_>>()
+    .await?;
+    Ok(())
+}
+
 async fn preview(
     State(state): State<WebState>,
     managed: ManagedGuild,
@@ -354,6 +388,7 @@ async fn preview(
         return Err(ApiError::malformed("Choose merge or replace."));
     }
     let rows = parse_import(&body.format, &body.data)?;
+    check_import_members(&state, managed.id, &rows).await?;
     let comparison = state
         .app
         .db
@@ -390,48 +425,73 @@ async fn apply(
     let raw = state
         .app
         .cache
-        .take(&key)
+        .get(&key)
         .await?
         .ok_or_else(|| ApiError::blocked("Preview expired. Preview the file again."))?;
     let (mode, rows): (String, Vec<(u64, i64)>) =
         serde_json::from_str(&raw).map_err(|_| ApiError::malformed("Invalid preview."))?;
-    let mut updated = 0;
-    for chunk in rows.chunks(1000) {
-        updated += state
-            .app
-            .db
-            .import_member_xp_page(managed.id, chunk, mode == "replace")
-            .await?;
-    }
+    check_import_members(&state, managed.id, &rows).await?;
+    let (updated, fresh) = state
+        .app
+        .db
+        .apply_level_import(
+            &rows,
+            mode == "replace",
+            &pinchora_db::NewAudit {
+                guild: managed.id,
+                actor: managed.current.session.user_id,
+                actor_name: managed.current.session.display_name(),
+                source: pinchora_db::AuditSource::Web,
+                action: "xp.import.offline",
+                target: Some(&body.preview_id),
+                before: None,
+                after: None,
+            },
+        )
+        .await?;
     let users: Vec<u64> = rows.iter().map(|row| row.0).collect();
     let app = state.app.clone();
     let guild = managed.id;
-    state.app.spawn(async move {
-        for user in users {
-            if let Err(error) = pinchora_commands::sync_member_roles(&app, guild, user).await {
-                tracing::warn!(%error, guild, user, "import role sync failed");
+    if fresh {
+        state.app.spawn(async move {
+            for user in users {
+                if let Err(error) = pinchora_commands::sync_member_roles(&app, guild, user).await {
+                    tracing::warn!(%error, guild, user, "import role sync failed");
+                }
             }
-        }
-    });
-    audit::finish(
-        &state,
-        &managed.current.session,
-        Change {
-            guild: managed.id,
-            action: "xp.import.offline",
-            target: None,
-            before: Value::Null,
-            after: json!({"mode": mode, "checked": rows.len(), "updated": updated}),
-        },
-        None,
-    )
-    .await;
+        });
+    }
     Ok(Json(json!({"checked": rows.len(), "updated": updated})))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rejects_oversized_and_malformed_imports() {
+        assert!(parse_import("json", &" ".repeat(2_000_001)).is_err());
+        for csv in [
+            "id,xp\n123,4,5",
+            "id,xp\n123",
+            "id,xp\n12\"3,4",
+            "id,xp\n\"123\"junk,4",
+            "id,xp\n\"123,4",
+            "id,xp\n0,3",
+            "id,xp\n123,1000000001",
+        ] {
+            assert!(parse_import("csv", csv).is_err(), "{csv}");
+        }
+        for json in [
+            "[]",
+            "{}",
+            "[null]",
+            "[{\"id\":\"123\",\"xp\":1.5}]",
+            "[{\"id\":\"123\",\"xp\":-1}]",
+        ] {
+            assert!(parse_import("json", json).is_err(), "{json}");
+        }
+    }
+
     #[test]
     fn json_and_csv_imports() {
         assert_eq!(

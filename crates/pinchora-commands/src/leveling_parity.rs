@@ -17,9 +17,19 @@ use pinchora_core::t;
 use twilight_model::id::Id;
 
 pub async fn post_weekly_highlights(app: &App) -> anyhow::Result<usize> {
+    for (guild, user) in app.db.due_level_departures(app.now()).await? {
+        app.db
+            .finish_level_departure(guild as u64, user as u64, app.now(), false)
+            .await?;
+    }
     let week = week_start(app.now()) - chrono::Duration::weeks(1);
     let mut posted = 0;
     for (guild, channel) in app.db.due_leveling_highlights(week).await? {
+        if !app.guild_settings(guild).await?.leveling_enabled
+            || !app.module_allowed(guild, Some(channel), Module::Leveling).await
+        {
+            continue;
+        }
         if !app.db.claim_leveling_highlight(guild, week).await? {
             continue;
         }
@@ -84,7 +94,7 @@ async fn reaction(
         return Ok(());
     };
     let user = added.user_id.get();
-    if user == app.application_id.get() || added.member.as_ref().is_some_and(|m| m.user.bot) {
+    if user == app.application_id.get() || added.member.as_ref().is_none_or(|m| m.user.bot) {
         return Ok(());
     }
     let settings = app.guild_settings(guild).await?;
@@ -108,14 +118,13 @@ async fn reaction(
     if xp == 0 {
         return Ok(());
     }
-    // A member can earn from each message once per day, regardless of emoji or remove/re-add.
-    let key = format!("xp:reaction:{guild}:{user}:{}", added.message_id.get());
-    if app
-        .cache
-        .try_cooldown(&key, Duration::from_secs(86_400))
+    let message = app
+        .http
+        .message(added.channel_id, added.message_id)
         .await?
-        .is_some()
-    {
+        .model()
+        .await?;
+    if message.author.id.get() == user || message.author.bot || message.webhook_id.is_some() {
         return Ok(());
     }
     if app
@@ -126,7 +135,13 @@ async fn reaction(
     {
         return Ok(());
     }
-    let gain = app.db.add_event_xp(guild, user, xp, week_start(app.now())).await?;
+    let Some(gain) = app
+        .db
+        .add_reaction_xp(guild, user, added.message_id.get(), xp, week_start(app.now()))
+        .await?
+    else {
+        return Ok(());
+    };
     let before = parity.level_of(gain.old_xp);
     let after = parity.level_of(gain.new_xp);
     if after > before {
@@ -149,24 +164,39 @@ async fn reaction(
     Ok(())
 }
 
-pub(crate) fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
+pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     if event.user.bot {
         return;
     }
     let (guild, user) = (event.guild_id.get(), event.user.id.get());
-    let app = app.clone();
-    app.clone().spawn(async move {
-        let result = async {
-            if app.leveling_parity(guild).await?.reset_on_leave {
-                app.db.reset_departed_level(guild, user).await?;
-            }
-            anyhow::Ok(())
+    let result = async {
+        let config = app.leveling_parity(guild).await?;
+        if config.reset_on_leave {
+            app.db
+                .schedule_level_reset(
+                    guild,
+                    user,
+                    app.now() + chrono::Duration::seconds(config.leave_grace_secs as i64),
+                )
+                .await?;
+            app.db.finish_level_departure(guild, user, app.now(), false).await?;
         }
-        .await;
-        if let Err(error) = result {
-            tracing::warn!(%error, guild, user, "leave XP reset failed");
-        }
-    });
+        anyhow::Ok(())
+    }
+    .await;
+    if let Err(error) = result {
+        tracing::warn!(%error, guild, user, "leave XP reset failed");
+    }
+}
+
+pub(crate) async fn on_member_join(app: &Arc<App>, event: &twilight_model::gateway::payload::incoming::MemberAdd) {
+    if let Err(error) = app
+        .db
+        .finish_level_departure(event.guild_id.get(), event.user.id.get(), app.now(), true)
+        .await
+    {
+        tracing::warn!(%error, "rejoin XP preservation failed");
+    }
 }
 
 /// Only a first cast on one poll or suggestion earns XP. Switching or withdrawing never pays.

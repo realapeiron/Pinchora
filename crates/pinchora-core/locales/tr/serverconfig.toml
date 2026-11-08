@@ -55,7 +55,7 @@ log-current = "Sunucu kaydı: {summary}"
 [xp]
 no-xp = "{subject} · **XP yok**"
 multiplied = "{subject} · **×{multiplier}**"
-voice-summary = "**{state}** · yanında biri varken dakikada {amount} XP; mikrofon ve kulaklık kapalıyken ya da AFK kanalındayken verilmez"
+voice-summary = "**{state}** · yanında biri varken dakikada {amount} XP; mikrofon veya kulaklık kapalıyken ya da AFK kanalındayken verilmez"
 voice-leveling-off = "\n> Seviye sistemi kapalı, bu yüzden kimse XP kazanmıyor. `/progression leveling settings` ile aç."
 pick-one = "Çarpanın ayarlanacağı bir kanal **ya da** bir rol seç."
 normal-again = "{subject} yeniden normal XP ve puan kazanıyor."

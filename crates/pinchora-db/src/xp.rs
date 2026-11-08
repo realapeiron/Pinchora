@@ -136,7 +136,7 @@ impl Db {
         let users: Vec<i64> = grants.iter().map(|(user, _)| sql_id(*user)).collect();
         let amounts: Vec<i64> = grants.iter().map(|(_, xp)| *xp).collect();
         let rows = retry("add_voice_xp", || {
-            self.add_voice_xp_once(guild_id, &users, &amounts, week, true, separate)
+            self.add_voice_xp_once(guild_id, &users, &amounts, week, (true, separate), None)
         })
         .await?;
         Ok(rows
@@ -159,7 +159,7 @@ impl Db {
         let users = [sql_id(user)];
         let amounts = [amount];
         let rows = retry("add_event_xp", || {
-            self.add_voice_xp_once(guild, &users, &amounts, week, false, false)
+            self.add_voice_xp_once(guild, &users, &amounts, week, (false, false), None)
         })
         .await?;
         let (_, new_xp, _) = rows.into_iter().next().expect("one positive grant");
@@ -169,6 +169,28 @@ impl Db {
         })
     }
 
+    /// Award a reaction once per member/message, atomically with its durable receipt.
+    pub async fn add_reaction_xp(
+        &self,
+        guild: u64,
+        user: u64,
+        message: u64,
+        amount: i64,
+        week: NaiveDate,
+    ) -> anyhow::Result<Option<XpGain>> {
+        anyhow::ensure!((1..=25_000).contains(&amount), "event XP out of range");
+        let users = [sql_id(user)];
+        let amounts = [amount];
+        let rows = retry("add_reaction_xp", || {
+            self.add_voice_xp_once(guild, &users, &amounts, week, (false, false), Some(message))
+        })
+        .await?;
+        Ok(rows.first().map(|(_, xp, amount)| XpGain {
+            old_xp: xp - amount,
+            new_xp: *xp,
+        }))
+    }
+
     /// One attempt of [`Db::add_voice_xp`]: (user, XP now, XP added) per member.
     async fn add_voice_xp_once(
         &self,
@@ -176,15 +198,25 @@ impl Db {
         users: &[i64],
         amounts: &[i64],
         week: NaiveDate,
-        voice: bool,
-        separate: bool,
+        mode: (bool, bool),
+        reaction: Option<u64>,
     ) -> anyhow::Result<Vec<(i64, i64, i64)>> {
+        let (voice, separate) = mode;
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, users).await?;
         sqlx::query("INSERT INTO users (id) SELECT UNNEST($1::BIGINT[]) ON CONFLICT DO NOTHING")
             .bind(users)
             .execute(&mut *tx)
             .await?;
+        if let Some(message) = reaction {
+            let claimed = sqlx::query("INSERT INTO leveling_reaction_awards (guild_id, user_id, message_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING")
+                .bind(sql_id(guild_id)).bind(users[0]).bind(sql_id(message))
+                .execute(&mut *tx).await?.rows_affected();
+            if claimed == 0 {
+                tx.commit().await?;
+                return Ok(Vec::new());
+            }
+        }
         let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
             "WITH g AS (
                  SELECT * FROM UNNEST($2::BIGINT[], $3::BIGINT[]) AS t(user_id, amount) WHERE amount > 0

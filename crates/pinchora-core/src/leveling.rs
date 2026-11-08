@@ -197,7 +197,7 @@ pub struct VoicePresence {
 }
 
 /// Who earns voice XP this minute among the people in voice (bots excluded). Nobody earns in the
-/// server's AFK channel, alone in a channel, or while both muted and deafened.
+/// server's AFK channel, alone in a channel, or while muted or deafened.
 pub fn voice_earners(present: &[VoicePresence], afk: Option<u64>) -> Vec<u64> {
     let mut company: HashMap<u64, usize> = HashMap::new();
     for member in present {
@@ -205,7 +205,7 @@ pub fn voice_earners(present: &[VoicePresence], afk: Option<u64>) -> Vec<u64> {
     }
     present
         .iter()
-        .filter(|m| Some(m.channel) != afk && company[&m.channel] >= 2 && !(m.muted && m.deafened))
+        .filter(|m| Some(m.channel) != afk && company[&m.channel] >= 2 && !m.muted && !m.deafened)
         .map(|m| m.user)
         .collect()
 }
@@ -431,18 +431,14 @@ mod tests {
     }
 
     #[test]
-    fn voice_skips_the_muted_and_deafened_but_either_alone_is_fine() {
+    fn voice_skips_either_muted_or_deafened() {
         let present = [
             here(1, 10, true, true),
             here(2, 10, true, false),
             here(3, 10, false, true),
             here(4, 10, false, false),
         ];
-        assert_eq!(
-            voice_earners(&present, None),
-            vec![2, 3, 4],
-            "only both at once is idle"
-        );
+        assert_eq!(voice_earners(&present, None), vec![4], "either flag prevents XP");
         let pair = [here(1, 10, true, true), here(2, 10, false, false)];
         assert_eq!(
             voice_earners(&pair, None),

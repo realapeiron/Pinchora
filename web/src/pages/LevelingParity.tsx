@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { translate as tr } from "../i18n";
 import { Field } from "../components/Field";
 import { Panel } from "../components/Panel";
@@ -7,9 +7,13 @@ import { PixelToggle } from "../components/PixelToggle";
 import { ChannelPicker, RolePicker, RoleTag } from "../components/Pickers";
 import type { GuildInfo } from "../lib/api";
 import { useMe } from "../lib/queries";
-import { type Curve, type LevelingParity, useLevelingParity } from "../lib/levelingParity";
+import { type Curve, type LevelingParity, readLevelImport, useLevelingParity } from "../lib/levelingParity";
 
 const apiErrors: Record<string, () => string> = {
+  "Leave grace must be at most 604800 seconds.": () => tr("Leave grace must be at most 604800 seconds."),
+  "Import members must be verified in this server.": () =>
+    tr("Import members must be verified in this server."),
+  "Malformed CSV row.": () => tr("Malformed CSV row."),
   "Invalid role ID.": () => tr("Invalid role ID."),
   "A server can have 25 voice level roles.": () => tr("A server can have 25 voice level roles."),
   "Invalid highlights channel.": () => tr("Invalid highlights channel."),
@@ -103,6 +107,8 @@ function Editor({
 }) {
   const [draft, setDraft] = useState(saved);
   const [file, setFile] = useState("");
+  const fileVersion = useRef(0);
+  const previewVersion = useRef(0);
   const [format, setFormat] = useState<"json" | "csv">("json");
   const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -114,7 +120,13 @@ function Editor({
   const number = (
     key: keyof Pick<
       LevelingParity,
-      "message_min" | "message_max" | "message_cooldown_secs" | "reaction_xp" | "effort_bonus" | "vote_xp"
+      | "message_min"
+      | "message_max"
+      | "message_cooldown_secs"
+      | "reaction_xp"
+      | "effort_bonus"
+      | "vote_xp"
+      | "leave_grace_secs"
     >,
     label: string,
     min: number,
@@ -145,16 +157,21 @@ function Editor({
     </label>
   );
   const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const version = ++fileVersion.current;
+    ++previewVersion.current;
     const picked = event.target.files?.[0];
     setPreviewId(null);
-    if (!picked) return;
-    if (picked.size > 2_000_000) {
-      setFileError(tr("File must be at most 2 MB."));
-      return;
-    }
-    setFile(await picked.text());
-    setFormat(picked.name.toLowerCase().endsWith(".csv") ? "csv" : "json");
+    setFile("");
     setFileError(null);
+    if (!picked) return;
+    try {
+      const loaded = await readLevelImport(picked);
+      if (version !== fileVersion.current) return;
+      setFile(loaded.data);
+      setFormat(loaded.format);
+    } catch {
+      if (version === fileVersion.current) setFileError(tr("File must be readable and at most 2 MB."));
+    }
   };
   const kind = curveKind(draft.curve);
   const coeff =
@@ -164,6 +181,8 @@ function Editor({
         ? (draft.curve as { polynomial: { base: number; linear: number; quadratic: number } }).polynomial
         : null;
   const invalid =
+    draft.leave_grace_secs < 0 ||
+    draft.leave_grace_secs > 604800 ||
     draft.message_min < 1 ||
     draft.message_max < draft.message_min ||
     draft.message_max > 1000 ||
@@ -254,6 +273,7 @@ function Editor({
           {number("reaction_xp", "Reaction XP", 1, 100)}
           {number("effort_bonus", "Effort bonus XP", 1, 100)}
           {number("vote_xp", "Vote XP", 1, 100)}
+          {number("leave_grace_secs", "Leave grace (seconds)", 0, 604800)}
         </div>
         <div className="list">
           {toggle("messages", "Messages")}
@@ -428,6 +448,7 @@ function Editor({
               className="pixel-input pixel-select"
               value={mode}
               onChange={(e) => {
+                ++previewVersion.current;
                 setMode(e.target.value as typeof mode);
                 setPreviewId(null);
               }}
@@ -444,12 +465,17 @@ function Editor({
         )}
         <PixelButton
           disabled={!file || data.preview.isPending}
-          onClick={() =>
+          onClick={() => {
+            const version = previewVersion.current;
             data.preview.mutate(
               { format, data: file, mode },
-              { onSuccess: (result) => setPreviewId(result.preview_id) },
-            )
-          }
+              {
+                onSuccess: (result) => {
+                  if (version === previewVersion.current) setPreviewId(result.preview_id);
+                },
+              },
+            );
+          }}
         >
           {tr("Preview import")}
         </PixelButton>

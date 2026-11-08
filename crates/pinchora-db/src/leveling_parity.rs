@@ -17,6 +17,54 @@ pub struct PublicLevelRow {
 }
 
 impl Db {
+    /// Import and its receipt/audit commit together. A repeated preview never overwrites newer XP.
+    pub async fn apply_level_import(
+        &self,
+        rows: &[(u64, i64)],
+        replace: bool,
+        audit: &crate::NewAudit<'_>,
+    ) -> anyhow::Result<(u64, bool)> {
+        anyhow::ensure!(
+            !rows.is_empty()
+                && rows.len() <= 10_000
+                && rows
+                    .iter()
+                    .all(|(id, xp)| *id > 0 && *id <= i64::MAX as u64 && (0..=1_000_000_000).contains(xp)),
+            "invalid import"
+        );
+        anyhow::ensure!(
+            audit.action == "xp.import.offline" && audit.target.is_some(),
+            "missing import receipt"
+        );
+        let users: Vec<i64> = rows.iter().map(|r| sql_id(r.0)).collect();
+        let amounts: Vec<i64> = rows.iter().map(|r| r.1).collect();
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &users).await?;
+        // Receipt requests share the same user locks, including across pods.
+        let old: Option<String> = sqlx::query_scalar("SELECT after::text FROM dashboard_audit WHERE guild_id=$1 AND actor_id=$2 AND action='xp.import.offline' AND target=$3 LIMIT 1")
+            .bind(sql_id(audit.guild)).bind(sql_id(audit.actor)).bind(audit.target).fetch_optional(&mut *tx).await?;
+        if let Some(old) = old {
+            let old: serde_json::Value = serde_json::from_str(&old)?;
+            tx.commit().await?;
+            return Ok((old["updated"].as_u64().unwrap_or(0), false));
+        }
+        let updated = sqlx::query("INSERT INTO members (guild_id,user_id,xp) SELECT $1, user_id, xp FROM UNNEST($2::BIGINT[],$3::BIGINT[]) p(user_id,xp)
+            ON CONFLICT (guild_id,user_id) DO UPDATE SET xp=CASE WHEN $4 THEN EXCLUDED.xp ELSE GREATEST(members.xp,EXCLUDED.xp) END
+            WHERE CASE WHEN $4 THEN members.xp <> EXCLUDED.xp ELSE members.xp < EXCLUDED.xp END")
+            .bind(sql_id(audit.guild)).bind(&users).bind(&amounts).bind(replace).execute(&mut *tx).await?.rows_affected();
+        let after = serde_json::json!({"mode": if replace { "replace" } else { "merge" }, "checked": rows.len(), "updated": updated}).to_string();
+        crate::audit::insert_in(
+            &mut tx,
+            &crate::NewAudit {
+                after: Some(&after),
+                ..audit.clone()
+            },
+        )
+        .await?;
+        tx.commit().await?;
+        Ok((updated, true))
+    }
+
     pub async fn preview_member_xp_import(
         &self,
         guild: u64,
@@ -51,6 +99,12 @@ impl Db {
 
     pub async fn add_voice_level_role(&self, guild: u64, role: u64, level: i32) -> anyhow::Result<bool> {
         anyhow::ensure!((1..=1000).contains(&level), "invalid level");
+        self.guild_settings(guild).await?;
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT id FROM guilds WHERE id=$1 FOR UPDATE")
+            .bind(sql_id(guild))
+            .execute(&mut *tx)
+            .await?;
         let n = sqlx::query(
             "INSERT INTO voice_level_roles (guild_id, role_id, level)
             SELECT $1, $2, $3 WHERE (SELECT count(*) FROM voice_level_roles WHERE guild_id = $1) < 25
@@ -60,9 +114,10 @@ impl Db {
         .bind(sql_id(guild))
         .bind(sql_id(role))
         .bind(level)
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?
         .rows_affected();
+        tx.commit().await?;
         Ok(n > 0)
     }
 
@@ -212,25 +267,79 @@ impl Db {
         Ok(rows)
     }
 
-    pub async fn reset_departed_level(&self, guild: u64, user: u64) -> anyhow::Result<()> {
+    pub async fn schedule_level_reset(
+        &self,
+        guild: u64,
+        user: u64,
+        at: chrono::DateTime<chrono::Utc>,
+    ) -> anyhow::Result<()> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
-        sqlx::query("UPDATE members SET xp = 0 WHERE guild_id = $1 AND user_id = $2")
-            .bind(sql_id(guild))
-            .bind(sql_id(user))
-            .execute(&mut *tx)
-            .await?;
-        sqlx::query("DELETE FROM weekly_xp WHERE guild_id = $1 AND user_id = $2")
-            .bind(sql_id(guild))
-            .bind(sql_id(user))
-            .execute(&mut *tx)
-            .await?;
-        sqlx::query("DELETE FROM member_voice_levels WHERE guild_id = $1 AND user_id = $2")
-            .bind(sql_id(guild))
-            .bind(sql_id(user))
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query("INSERT INTO leveling_departures (guild_id,user_id,reset_at) VALUES ($1,$2,$3) ON CONFLICT (guild_id,user_id) DO NOTHING")
+            .bind(sql_id(guild)).bind(sql_id(user)).bind(at).execute(&mut *tx).await?;
         tx.commit().await?;
         Ok(())
     }
+
+    /// A rejoin cancels a pending reset; an already expired grace period still resets XP.
+    pub async fn finish_level_departure(
+        &self,
+        guild: u64,
+        user: u64,
+        now: chrono::DateTime<chrono::Utc>,
+        rejoined: bool,
+    ) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        let due: Option<bool> = sqlx::query_scalar("DELETE FROM leveling_departures WHERE guild_id=$1 AND user_id=$2 AND ($4 OR reset_at <= $3) RETURNING reset_at <= $3")
+            .bind(sql_id(guild)).bind(sql_id(user)).bind(now).bind(rejoined).fetch_optional(&mut *tx).await?;
+        let enabled: Option<bool> = sqlx::query_scalar(
+            "SELECT COALESCE((config->>'reset_on_leave')::boolean, false) FROM guild_leveling_parity WHERE guild_id=$1",
+        )
+        .bind(sql_id(guild))
+        .fetch_optional(&mut *tx)
+        .await?;
+        let reset = due == Some(true) && enabled == Some(true);
+        if reset {
+            reset_in(&mut tx, guild, user).await?;
+        }
+        tx.commit().await?;
+        Ok(reset)
+    }
+
+    pub async fn due_level_departures(&self, now: chrono::DateTime<chrono::Utc>) -> anyhow::Result<Vec<(i64, i64)>> {
+        Ok(sqlx::query_as(
+            "SELECT guild_id,user_id FROM leveling_departures WHERE reset_at <= $1 ORDER BY reset_at LIMIT 1000",
+        )
+        .bind(now)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    pub async fn reset_departed_level(&self, guild: u64, user: u64) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        reset_in(&mut tx, guild, user).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+}
+
+async fn reset_in(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, guild: u64, user: u64) -> anyhow::Result<()> {
+    sqlx::query("UPDATE members SET xp = 0 WHERE guild_id = $1 AND user_id = $2")
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .execute(&mut **tx)
+        .await?;
+    sqlx::query("DELETE FROM weekly_xp WHERE guild_id = $1 AND user_id = $2")
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .execute(&mut **tx)
+        .await?;
+    sqlx::query("DELETE FROM member_voice_levels WHERE guild_id = $1 AND user_id = $2")
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
 }

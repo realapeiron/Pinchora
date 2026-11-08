@@ -54,16 +54,15 @@ async fn announce_voice_level(
                 role_id: row.role_id as u64,
             })
             .collect();
-        let (given, _) = roles::apply_level_roles(
-            app,
-            guild,
-            user,
-            level,
-            &record.roles,
-            &rewards,
-            settings.level_roles_stack,
-        )
-        .await;
+        let member = app
+            .http
+            .guild_member(Id::new(guild), Id::new(user))
+            .await?
+            .model()
+            .await?;
+        let held: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+        let (given, _) =
+            roles::apply_level_roles(app, guild, user, level, &held, &rewards, settings.level_roles_stack).await;
         let role = rewards
             .iter()
             .filter(|row| given.contains(&row.role_id))

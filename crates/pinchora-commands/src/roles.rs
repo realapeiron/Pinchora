@@ -140,6 +140,27 @@ pub(crate) async fn unassignable(cx: &Cx, guild: u64, role: &Role) -> Option<Str
     }
 }
 
+/// Recheck live roles before automatic grants: configuration-time permission is not permanent.
+pub(crate) async fn safe_reward_roles(app: &App, guild: u64) -> anyhow::Result<(Vec<u64>, Vec<u64>)> {
+    let (roles, top) = roles_and_bot_position(app, guild).await?;
+    let existing = roles.iter().map(|role| role.id.get()).collect();
+    let safe = roles
+        .iter()
+        .filter(|role| {
+            let facts = RoleFacts {
+                everyone: role.id.get() == guild,
+                managed: role.managed,
+                position: role.position,
+                permissions: role.permissions.bits(),
+            };
+            settings::role_refusal(facts, Some(top), "reward").is_none()
+                && settings::run_time_refusal_in(Lang::En, facts.permissions, "reward").is_none()
+        })
+        .map(|role| role.id.get())
+        .collect();
+    Ok((safe, existing))
+}
+
 /// Gives and takes the level roles a member at `level` should hold, as the roles given and how many
 /// were taken. Discord refusals are logged and skipped; a role that no longer exists is dropped from
 /// the rewards.
@@ -155,7 +176,26 @@ pub(crate) async fn apply_level_roles(
     let (add, remove) = leveling::role_changes(rewards, level, stack, current);
     let (guild_id, user_id) = (Id::new(guild.max(1)), Id::new(user.max(1)));
     let (mut added, mut removed) = (Vec::new(), 0);
+    let (safe, existing) = if add.is_empty() {
+        (Vec::new(), Vec::new())
+    } else {
+        match safe_reward_roles(app, guild).await {
+            Ok(safe) => safe,
+            Err(error) => {
+                tracing::warn!(%error, guild, "cannot verify reward roles");
+                (Vec::new(), add.clone())
+            }
+        }
+    };
     for role in add {
+        if !existing.contains(&role)
+            && let Err(error) = app.db.forget_role(guild, role).await
+        {
+            tracing::warn!(%error, guild, role, "cannot clean up deleted reward");
+        }
+        if !safe.contains(&role) {
+            continue;
+        }
         match app
             .http
             .add_guild_member_role(guild_id, user_id, Id::new(role.max(1)))

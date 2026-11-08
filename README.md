@@ -54,7 +54,7 @@ independent restrictions. Old version-1 backups normalize before validation and 
 | `/progression leveling roles-add\|roles-remove\|roles-list\|roles-mode\|roles-sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
 | `/progression leveling xp-multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
 | `/progression leveling xp-clear [channel] [role]`, `/progression leveling xp-show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
-| `/progression leveling xp-voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
+| `/progression leveling xp-voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted or deafened, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
 | `/progression leveling xp-curve`, `xp-tuning`, `xp-sources` | Pick the existing classic/MEE6-like quadratic curve, a linear curve, or a custom polynomial; set message XP range (1–1,000), cooldown (5–3,600 seconds), reaction, effort and vote bonuses. Switch messages, reactions, voice, effort and votes separately; optionally keep voice levels apart from message levels or reset server XP on leave. Reaction XP is limited to one award per member per message per day and one per minute. Poll and suggestion XP pays on the first vote only (Manage Server) |
 | `/progression leveling xp-voice-role-add`, `xp-voice-role-remove`, `xp-voice-role-list` | Manage up to 25 safe reward roles for the separate voice level; voice levels have a `/rank voice:true` card and `/leaderboard board:voice` (Manage Server for configuration) |
 | `/progression leveling xp-public` | Choose a weekly highlights channel and a public leaderboard URL name. Pinchora posts the previous UTC week's top five gainers once per week. The dashboard also shows the current week's leaders; the public `/lb/{name}` page respects profile and leaderboard privacy (Manage Server) |
@@ -1566,3 +1566,14 @@ Autopurge holds a PostgreSQL transaction lock through the run so minute boundari
 staff evidence redacted. All seven personal D11 tables participate in privacy deletion.
 Migration **0074** owns policy, notes, reports, appeals, saved restriction roles, voice bans and personal
 booster mappings. Configuration backups include policy only; evidence and sanctions remain private.
+
+D3 review: the classic default keeps existing XP and level thresholds unchanged. Server curves are
+read from the database for all server-level displays and achievement progress; changing a curve
+never posts level-up messages or automatically reissues rewards. Leave reset has a configurable
+0–604800 second grace period (default 300); rejoining during it preserves XP. Reaction XP excludes
+self-reactions, bots and webhooks, and durable receipts prevent remove/re-add farming. Offline imports
+verify current guild membership at preview and apply, commit XP with audit atomically, and safely
+replay a preview without overwriting XP earned since the first application.
+
+Server message tuning and effort bonuses do not alter global XP amounts or its one-minute cooldown.
+Automatic level rewards recheck live role hierarchy and dangerous permissions before granting.

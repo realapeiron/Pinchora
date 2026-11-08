@@ -265,6 +265,7 @@ pub async fn sync_member_roles(app: &App, guild: u64, user: u64) -> anyhow::Resu
     let stack = app.db.guild_settings(guild).await?.level_roles_stack;
     let held: Vec<_> = member.roles.iter().map(|r| r.get()).collect();
     let (wanted, _) = leveling::role_changes(&rewards, level, stack, &[]);
+    let (safe, _) = crate::roles::safe_reward_roles(app, guild).await?;
     for role in rewards
         .iter()
         .map(|r| r.role_id)
@@ -274,7 +275,7 @@ pub async fn sync_member_roles(app: &App, guild: u64, user: u64) -> anyhow::Resu
             app.http
                 .remove_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
                 .await?;
-        } else if !held.contains(&role) && wanted.contains(&role) {
+        } else if !held.contains(&role) && wanted.contains(&role) && safe.contains(&role) {
             app.http
                 .add_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
                 .await?;

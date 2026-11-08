@@ -18,6 +18,7 @@ export type LevelingParity = {
   votes: boolean;
   separate_voice_level: boolean;
   reset_on_leave: boolean;
+  leave_grace_secs: number;
   reaction_xp: number;
   effort_bonus: number;
   vote_xp: number;
@@ -72,4 +73,12 @@ export function useLevelingParity(guild: string) {
     },
   });
   return { query, save, highlights, voiceRoles, putVoiceRole, deleteVoiceRole, preview, apply };
+}
+
+export async function readLevelImport(file: Pick<File, "size" | "name" | "text">) {
+  if (file.size > 2_000_000) throw new Error("File must be at most 2 MB.");
+  return {
+    data: await file.text(),
+    format: file.name.toLowerCase().endsWith(".csv") ? ("csv" as const) : ("json" as const),
+  };
 }

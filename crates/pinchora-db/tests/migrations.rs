@@ -114,3 +114,85 @@ async fn command_domains_upgrade_applied_0066_and_preserve_constraints() {
     assert_eq!(again, read, "on-write normalization is idempotent");
     tx.rollback().await.unwrap();
 }
+
+#[tokio::test]
+async fn leveling_0077_preserves_existing_xp_and_levels() {
+    use pinchora_core::leveling_parity::LevelingParity;
+    let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let mut conn = PgConnection::connect(&url).await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    sqlx::query("CREATE SCHEMA leveling_upgrade_fixture")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("SET LOCAL search_path TO leveling_upgrade_fixture")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let all = sqlx::migrate!("../../migrations");
+    let before = Migrator::with_migrations(all.iter().filter(|m| m.version < 77).cloned().collect());
+    before.run(&mut *tx).await.unwrap();
+    // Golden current-schema fixture: level boundaries and an established high-XP member.
+    let fixture = [
+        (11_i64, 0_i64, 0),
+        (12, 99, 0),
+        (13, 100, 1),
+        (14, 254, 1),
+        (15, 255, 2),
+        (16, 474, 2),
+        (17, 475, 3),
+        (18, 1_000_000, 79),
+    ];
+    sqlx::query("INSERT INTO guilds(id) VALUES (100),(200)")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    for (user, xp, level) in fixture {
+        assert_eq!(pinchora_core::leveling::level_of(xp), level);
+        sqlx::query("INSERT INTO users(id,xp) VALUES($1,$2)")
+            .bind(user)
+            .bind(xp)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO members(guild_id,user_id,xp) VALUES(100,$1,$2),(200,$1,$2)")
+            .bind(user)
+            .bind(xp)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+    }
+    let snapshot: Vec<(i64, i64, i64)> =
+        sqlx::query_as("SELECT guild_id,user_id,xp FROM members ORDER BY guild_id,user_id")
+            .fetch_all(&mut *tx)
+            .await
+            .unwrap();
+    all.run(&mut *tx).await.unwrap();
+    let after: Vec<(i64, i64, i64)> =
+        sqlx::query_as("SELECT guild_id,user_id,xp FROM members ORDER BY guild_id,user_id")
+            .fetch_all(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(after, snapshot);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM guild_leveling_parity")
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap(),
+        0
+    );
+    let defaults: LevelingParity = serde_json::from_str("{}").unwrap();
+    for (_, user, xp) in after {
+        let expected = fixture.iter().find(|r| r.0 == user).unwrap().2;
+        assert_eq!(defaults.level_of(xp), expected);
+        assert_eq!(defaults.progress(xp), pinchora_core::leveling::progress(xp));
+    }
+    let global: Vec<(i64, i64)> = sqlx::query_as("SELECT id,xp FROM users ORDER BY id")
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(global, fixture.iter().map(|(id, xp, _)| (*id, *xp)).collect::<Vec<_>>());
+    tx.rollback().await.unwrap();
+}

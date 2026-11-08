@@ -1,10 +1,7 @@
 //! Server achievement definitions, progress, and atomic one-time grants.
 
 use chrono::{DateTime, Utc};
-use pinchora_core::{
-    achievements::{Kind, MAX_ACHIEVEMENTS, valid_description, valid_icon, valid_name},
-    leveling,
-};
+use pinchora_core::achievements::{Kind, MAX_ACHIEVEMENTS, valid_description, valid_icon, valid_name};
 
 use crate::{
     Db,
@@ -241,7 +238,10 @@ async fn achievement_progress_on(
             Kind::Level => {
                 let xp: Option<i64> = sqlx::query_scalar("SELECT xp FROM members WHERE guild_id=$1 AND user_id=$2")
                     .bind(g).bind(u).fetch_optional(&mut *conn).await?;
-                i64::from(leveling::level_of(xp.unwrap_or(0)))
+                let config: Option<serde_json::Value> = sqlx::query_scalar("SELECT config FROM guild_leveling_parity WHERE guild_id=$1")
+                    .bind(g).fetch_optional(&mut *conn).await?;
+                let policy: pinchora_core::leveling_parity::LevelingParity = config.map(serde_json::from_value).transpose()?.unwrap_or_default();
+                i64::from(policy.level_of(xp.unwrap_or(0)))
             }
             Kind::Invites => {
                 let regular: i64 = sqlx::query_scalar("SELECT count(DISTINCT user_id) FROM invite_joins WHERE guild_id=$1 AND inviter_id=$2 AND user_id<>$2 AND left_at IS NULL AND NOT fake AND source IN ('invite','temporary') AND to_timestamp(((user_id >> 22) + 1420070400000)::DOUBLE PRECISION / 1000) <= joined_at - interval '7 days'")
