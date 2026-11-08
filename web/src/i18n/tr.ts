@@ -1,5 +1,21 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "{size} cm": "{size} cm",
+  "Aquarium and garden": "Akvaryum ve bahçe",
+  "{count}/6 fish at home": "Evde {count}/6 balık",
+  "Bring a catch home with /house aquarium in Discord.":
+    "Discord’da /house aquarium ile yakaladığın balıkları eve getir.",
+  "Name your tank and move fish with /house aquarium.":
+    "/house aquarium ile akvaryumuna ad ver, balıklarını yerleştir.",
+  "Brinebud Garden": "Tuzfiliz Bahçesi",
+  "Seaweed: {count}/999": "Yosun: {count}/999",
+  "Watered. Your plants never wither.": "Sulandı. Bitkilerin asla solmaz.",
+  "Growing. Water once after the first hour.": "Büyüyor. İlk saatin ardından bir kez sula.",
+  "One empty bed, ready for seeds.": "Tohum bekleyen boş bir bahçe yatağı.",
+  "Harvest from {time}": "Hasat zamanı: {time}",
+  "Use /house garden to tend your plants, then /house craft to make furniture.":
+    "/house garden ile bitkilerine bak, ardından /house craft ile mobilya üret.",
+
   "File must be readable and at most 2 MB.": "Dosya okunabilir ve en fazla 2 MB olmalı.",
   "Malformed CSV row.": "CSV satırı hatalı.",
   "Import members must be verified in this server.":
@@ -791,14 +807,14 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Buy furniture, keep it in your inventory, give it away or sell it from your own stall.":
     "Mobilya al, envanterinde sakla, hediye et ya da kendi tezgâhında sat.",
   "House & plaza": "Ev ve meydan",
-  "Your own pixel house, the weekly room contest, and the plaza the whole server shares.":
-    "Kendi piksel evin, haftalık oda yarışması ve tüm sunucunun paylaştığı meydan.",
+  "Your pixel house, named aquarium, seaweed garden, furniture crafting and shared plaza.":
+    "Piksel evin, isimli akvaryumun, yosun bahçen, mobilya üretimi ve ortak meydan.",
   Pets: "Evcil hayvanlar",
   "Adopt a pet, look after it, and send it on trips that bring souvenirs home.":
     "Bir hayvan sahiplen, ona iyi bak ve eve hatıra getirdiği gezilere gönder.",
   Fishing: "Balıkçılık",
-  "Cast a line, fill your bucket, sell the catch and complete the fish book.":
-    "Oltanı at, kovanı doldur, avını sat ve balık defterini tamamla.",
+  "Fish, trade at Mallowfin’s dock, enter daily and seasonal contests, or dive for pearls.":
+    "Balık tut, Mallowfin’e teslim et, günlük ve sezonluk yarışmalara katıl, inci için dal.",
   "Friends & partners": "Arkadaşlar ve partnerler",
   "Add friends, pair up with a partner, and send animated greetings.":
     "Arkadaş ekle, bir partnerle eşleş ve hareketli selamlar gönder.",

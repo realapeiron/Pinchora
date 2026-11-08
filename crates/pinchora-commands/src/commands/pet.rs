@@ -50,6 +50,8 @@ pub enum PetCommand {
     Rename(PetRename),
     #[command(name = "trip")]
     Trip(trip::PetTrip),
+    #[command(name = "streak")]
+    PetStreak(super::reef_loop::PetStreak),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -84,6 +86,8 @@ impl PetCommand {
         let user = cx.author()?.id.get();
         let lang = cx.lang();
         match self {
+            Self::PetStreak(c) => c.run(cx).await,
+
             Self::View(_) => match cx.app.db.active_pet(user).await? {
                 Some(pet) => {
                     let data = pet_card(&cx.app, lang, &pet, None).await?;

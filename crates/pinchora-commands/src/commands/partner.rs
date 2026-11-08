@@ -39,6 +39,8 @@ pub enum PartnerCommand {
     View(PartnerView),
     #[command(name = "leave")]
     Leave(PartnerLeave),
+    #[command(name = "streak")]
+    PartnerStreak(super::reef_loop::PartnerStreak),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -73,6 +75,8 @@ impl PartnerCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let me = cx.author()?.id.get();
         match self {
+            Self::PartnerStreak(c) => c.run(cx).await,
+
             Self::Propose(c) => {
                 let other = &c.user.resolved;
                 let to = other.id.get();

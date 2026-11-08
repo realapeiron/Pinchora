@@ -357,6 +357,8 @@ impl Db {
             .await?;
         let week_best = match catch.weekly {
             Some((guild, week)) => {
+                sqlx::query("INSERT INTO reef_catches(guild_id,day,user_id,fish_id,size_cm,score) VALUES($1,(now() AT TIME ZONE 'UTC')::DATE,$2,$3,$4,$5) ON CONFLICT(guild_id,day,user_id) DO UPDATE SET fish_id=EXCLUDED.fish_id,size_cm=EXCLUDED.size_cm,score=EXCLUDED.score,caught_at=now() WHERE EXCLUDED.score>reef_catches.score")
+                    .bind(sql_id(guild)).bind(id).bind(catch.fish_id).bind(catch.size_cm).bind(catch.ratio).execute(&mut *tx).await?;
                 sqlx::query(
                     "INSERT INTO weekly_catch (guild_id, week, user_id, fish_id, size_cm, ratio)
                      VALUES ($1, $2, $3, $4, $5, $6)

@@ -15368,3 +15368,6 @@ mod mod_parity;
 mod web_house_edit;
 #[path = "simulate/web_player.rs"]
 mod web_player;
+
+#[path = "simulate/reef_loop.rs"]
+mod reef_loop;

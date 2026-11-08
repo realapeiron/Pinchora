@@ -31,6 +31,7 @@ export interface RoomSummary {
 }
 
 export interface HouseOverview {
+  reef_loop?: import("../components/ReefLoop").ReefHome | null;
   editable?: boolean;
   scope: "own" | "partner" | "plaza" | "visit";
   next?: { name: string; price: number; rooms: number; width: number; depth: number } | null;
@@ -60,6 +61,8 @@ export function useHouse(target: HouseTarget) {
   return useQuery({
     queryKey: [base(target)],
     queryFn: () => api<HouseOverview>(base(target)),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     retry: false,
   });
 }

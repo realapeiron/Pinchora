@@ -1092,6 +1092,85 @@
         },
         {
           "aliases": [],
+          "description": "Evindeki isimli akvaryumda en fazla altı balık sergile",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Göster",
+                "Ad değiştir",
+                "Balık ekle",
+                "Balığı geri al"
+              ],
+              "description": "Yapılacak işlem (varsayılan: göster)",
+              "name": "action",
+              "required": false
+            },
+            {
+              "description": "Akvaryum adı",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Akvaryumun kova listesinde görünen balık numarası",
+              "name": "fish",
+              "required": false
+            },
+            {
+              "description": "Sergileme yuvası, 1–6",
+              "name": "slot",
+              "required": false
+            },
+            {
+              "description": "Kova sayfası, 1–5",
+              "name": "page",
+              "required": false
+            }
+          ],
+          "path": "house aquarium",
+          "usage": "/house aquarium [action] [name] [fish] [slot] [page]"
+        },
+        {
+          "aliases": [],
+          "description": "Tuzfiliz Bahçesi: ek, bir saat sonra sula, sekiz saat sonra hasat et",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Göster",
+                "Ek (40 kabuk)",
+                "Sula",
+                "Hasat et"
+              ],
+              "description": "Yapılacak işlem (varsayılan: göster)",
+              "name": "action",
+              "required": false
+            }
+          ],
+          "path": "house garden",
+          "usage": "/house garden [action]"
+        },
+        {
+          "aliases": [],
+          "description": "Yosun, yaygın balık, inci ve kabukla sana bağlı mobilya üret",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Filiz Basamak Saksısı",
+                "Resif Balonu Lambası",
+                "Pembe Yaprak Saksısı"
+              ],
+              "description": "Üretilecek tarif; maliyetleri görmek için boş bırak",
+              "name": "recipe",
+              "required": false
+            }
+          ],
+          "path": "house craft",
+          "usage": "/house craft [recipe]"
+        },
+        {
+          "aliases": [],
           "description": "Sunucu meydanında bir tur at",
           "manager": false,
           "options": [],
@@ -1117,7 +1196,7 @@
           "usage": "/community server plaza-edit"
         }
       ],
-      "intro": "Kendi piksel evin, haftalık oda yarışması ve tüm sunucunun paylaştığı meydan.",
+      "intro": "Piksel evin, isimli akvaryumun, yosun bahçen, mobilya üretimi ve ortak meydan.",
       "key": "house-and-plaza",
       "title": "Ev ve meydan"
     },
@@ -1205,6 +1284,14 @@
           "options": [],
           "path": "pet trip claim",
           "usage": "/pet trip claim"
+        },
+        {
+          "aliases": [],
+          "description": "Günlük bakım serini ve yosun ödülünü gör",
+          "manager": false,
+          "options": [],
+          "path": "pet streak",
+          "usage": "/pet streak"
         }
       ],
       "intro": "Bir hayvan sahiplen, ona iyi bak ve eve hatıra getirdiği gezilere gönder.",
@@ -1265,9 +1352,70 @@
           "options": [],
           "path": "fish book",
           "usage": "/fish book"
+        },
+        {
+          "aliases": [],
+          "description": "Mallowfin: iki balık ver, iki yosun al; sipariş 8 saatte yenilenir",
+          "manager": false,
+          "options": [
+            {
+              "description": "İstenen balıklardan ikisini kovandan teslim et",
+              "name": "deliver",
+              "required": false
+            }
+          ],
+          "path": "fish dock",
+          "usage": "/fish dock [deliver]"
+        },
+        {
+          "aliases": [],
+          "description": "UTC gününün balıkçılık yarışması",
+          "manager": false,
+          "options": [
+            {
+              "description": "Dünün kesin sonuçlarını göster",
+              "name": "yesterday",
+              "required": false
+            }
+          ],
+          "path": "fish contest",
+          "usage": "/fish contest [yesterday]"
+        },
+        {
+          "aliases": [],
+          "description": "Mevsimlik balıklar, sıralama ve önceki sezonun hatırası",
+          "manager": false,
+          "options": [
+            {
+              "description": "Önceki sezonun kesin sonuçlarını göster",
+              "name": "previous",
+              "required": false
+            },
+            {
+              "description": "Üç balıkçılık günüyle önceki sezonun hatırasını al",
+              "name": "claim",
+              "required": false
+            }
+          ],
+          "path": "fish season",
+          "usage": "/fish season [previous] [claim]"
+        },
+        {
+          "aliases": [],
+          "description": "Fener Dalışı: 300 kabuk, günde bir kez, en fazla üç inci",
+          "manager": false,
+          "options": [
+            {
+              "description": "300 kabuk ödeyerek 90 saniyelik dalış başlat",
+              "name": "start",
+              "required": false
+            }
+          ],
+          "path": "fish dive",
+          "usage": "/fish dive [start]"
         }
       ],
-      "intro": "Oltanı at, kovanı doldur, avını sat ve balık defterini tamamla.",
+      "intro": "Balık tut, Mallowfin’e teslim et, günlük ve sezonluk yarışmalara katıl, inci için dal.",
       "key": "fishing",
       "title": "Balıkçılık"
     },
@@ -1350,6 +1498,14 @@
           "options": [],
           "path": "partner leave",
           "usage": "/partner leave"
+        },
+        {
+          "aliases": [],
+          "description": "İkiniz de günlük ziyaret edin, birer yosun kazanın",
+          "manager": false,
+          "options": [],
+          "path": "partner streak",
+          "usage": "/partner streak"
         },
         {
           "aliases": [],
@@ -7512,5 +7668,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 388
+  "count": 397
 }

@@ -183,6 +183,8 @@ impl Db {
         xp: i32,
         at: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(owner)]).await?;
         let n = sqlx::query(
             "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = $9
              WHERE id = $1 AND owner_id = $2
@@ -204,9 +206,13 @@ impl Db {
         .bind(seen.xp)
         .bind(seen.trip_dest.as_deref())
         .bind(seen.trip_ends_at)
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?
         .rows_affected();
+        if n == 1 {
+            crate::reef_loop::reef_pet_care(&mut tx, sql_id(owner), at).await?;
+        }
+        tx.commit().await?;
         Ok(n == 1)
     }
 

@@ -703,3 +703,34 @@ const DEMO_EMPTY: u64 = 770_000_000_000_000_003;
 
 #[path = "house_edit/mod.rs"]
 mod house_edit;
+
+#[tokio::test]
+async fn reef_loop_house_snapshot_is_session_scoped_and_respects_house_privacy() {
+    let Some(site) = Site::new("reef_loop_house_snapshot").await else {
+        return;
+    };
+    let owner = unique();
+    let visitor = unique();
+    site.move_in(owner, 1, &[]).await;
+    site.app.db.reef_state(owner).await.unwrap();
+    sqlx::query("INSERT INTO reef_aquarium(user_id,slot,fish_id,size_cm) VALUES($1,1,'toaststripe_minnow',5)")
+        .bind(owner as i64)
+        .execute(&site.pool)
+        .await
+        .unwrap();
+    let mut browser = site.browser();
+    assert_eq!(browser.get("/api/house").await.status, StatusCode::UNAUTHORIZED);
+    browser.login(owner).await;
+    let own = browser.get("/api/house").await.json();
+    assert_eq!(own["reef_loop"]["fish"].as_array().unwrap().len(), 1);
+    assert!(own["reef_loop"]["garden"].is_object());
+    browser.login(visitor).await;
+    let guest = browser.get(&format!("/api/house/visit/{owner}")).await.json();
+    assert!(guest["reef_loop"]["garden"].is_null());
+    assert_eq!(guest["reef_loop"]["fish"][0]["id"], "toaststripe_minnow");
+    site.app.db.set_privacy(owner, Hide::House, true).await.unwrap();
+    assert_eq!(
+        browser.get(&format!("/api/house/visit/{owner}")).await.status,
+        StatusCode::FORBIDDEN
+    );
+}

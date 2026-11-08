@@ -1092,6 +1092,85 @@
         },
         {
           "aliases": [],
+          "description": "Your named house aquarium: display up to six fish from your bucket",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "View",
+                "Rename",
+                "Add fish",
+                "Return fish"
+              ],
+              "description": "What to do (default: view)",
+              "name": "action",
+              "required": false
+            },
+            {
+              "description": "Aquarium name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Fish number shown by the aquarium's bucket list",
+              "name": "fish",
+              "required": false
+            },
+            {
+              "description": "Display slot, 1 to 6",
+              "name": "slot",
+              "required": false
+            },
+            {
+              "description": "Bucket page, 1 to 5",
+              "name": "page",
+              "required": false
+            }
+          ],
+          "path": "house aquarium",
+          "usage": "/house aquarium [action] [name] [fish] [slot] [page]"
+        },
+        {
+          "aliases": [],
+          "description": "Brinebud Garden: plant, water after one hour, harvest after eight hours",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "View",
+                "Plant (40 shells)",
+                "Water",
+                "Harvest"
+              ],
+              "description": "What to do (default: view)",
+              "name": "action",
+              "required": false
+            }
+          ],
+          "path": "house garden",
+          "usage": "/house garden [action]"
+        },
+        {
+          "aliases": [],
+          "description": "Craft bound furniture with seaweed, common fish, pearls and shells",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Sprigstep planter",
+                "Reefbubble lamp",
+                "Blushpetal planter"
+              ],
+              "description": "Craft this recipe; leave empty to browse the costs",
+              "name": "recipe",
+              "required": false
+            }
+          ],
+          "path": "house craft",
+          "usage": "/house craft [recipe]"
+        },
+        {
+          "aliases": [],
           "description": "Look around the server plaza",
           "manager": false,
           "options": [],
@@ -1117,7 +1196,7 @@
           "usage": "/community server plaza-edit"
         }
       ],
-      "intro": "Your own pixel house, the weekly room contest, and the plaza the whole server shares.",
+      "intro": "Your pixel house, named aquarium, seaweed garden, furniture crafting and shared plaza.",
       "key": "house-and-plaza",
       "title": "House & plaza"
     },
@@ -1205,6 +1284,14 @@
           "options": [],
           "path": "pet trip claim",
           "usage": "/pet trip claim"
+        },
+        {
+          "aliases": [],
+          "description": "See your daily pet-care streak and gentle seaweed reward",
+          "manager": false,
+          "options": [],
+          "path": "pet streak",
+          "usage": "/pet streak"
         }
       ],
       "intro": "Adopt a pet, look after it, and send it on trips that bring souvenirs home.",
@@ -1265,9 +1352,70 @@
           "options": [],
           "path": "fish book",
           "usage": "/fish book"
+        },
+        {
+          "aliases": [],
+          "description": "Visit Mallowfin: two requested fish for two seaweed; rotates every 8 hours",
+          "manager": false,
+          "options": [
+            {
+              "description": "Deliver two of the requested fish from your bucket",
+              "name": "deliver",
+              "required": false
+            }
+          ],
+          "path": "fish dock",
+          "usage": "/fish dock [deliver]"
+        },
+        {
+          "aliases": [],
+          "description": "Daily fishing contest: your best size relative to its species, UTC",
+          "manager": false,
+          "options": [
+            {
+              "description": "Show yesterday's final results",
+              "name": "yesterday",
+              "required": false
+            }
+          ],
+          "path": "fish contest",
+          "usage": "/fish contest [yesterday]"
+        },
+        {
+          "aliases": [],
+          "description": "Seasonal fish, standings and last season's furniture keepsake",
+          "manager": false,
+          "options": [
+            {
+              "description": "Show the previous season's final results",
+              "name": "previous",
+              "required": false
+            },
+            {
+              "description": "Claim the previous season's keepsake (three fishing days)",
+              "name": "claim",
+              "required": false
+            }
+          ],
+          "path": "fish season",
+          "usage": "/fish season [previous] [claim]"
+        },
+        {
+          "aliases": [],
+          "description": "Lantern Descent: 300 shells, once daily, up to three pearls at risk",
+          "manager": false,
+          "options": [
+            {
+              "description": "Pay 300 shells and start a 90-second dive",
+              "name": "start",
+              "required": false
+            }
+          ],
+          "path": "fish dive",
+          "usage": "/fish dive [start]"
         }
       ],
-      "intro": "Cast a line, fill your bucket, sell the catch and complete the fish book.",
+      "intro": "Fish, trade at Mallowfin’s dock, enter daily and seasonal contests, or dive for pearls.",
       "key": "fishing",
       "title": "Fishing"
     },
@@ -1350,6 +1498,14 @@
           "options": [],
           "path": "partner leave",
           "usage": "/partner leave"
+        },
+        {
+          "aliases": [],
+          "description": "Check in together: both partners visit daily for one seaweed each",
+          "manager": false,
+          "options": [],
+          "path": "partner streak",
+          "usage": "/partner streak"
         },
         {
           "aliases": [],
@@ -7512,5 +7668,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 388
+  "count": 397
 }

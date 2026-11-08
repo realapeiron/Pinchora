@@ -14,9 +14,9 @@ start = { title = "Start here", intro = "The everyday basics. Pick an area from 
 profile = { title = "Profile & cards", intro = "Your look, your character, and what other people may see of you." }
 rewards = { title = "Shells & rewards", intro = "Bigger rewards every week and month, shells for friends, reputation, and reminders." }
 shops = { title = "Shops & trading", intro = "Buy furniture, keep it in your inventory, give it away or sell it from your own stall." }
-house = { title = "House & plaza", intro = "Your own pixel house, the weekly room contest, and the plaza the whole server shares." }
+house = { title = "House & plaza", intro = "Your pixel house, named aquarium, seaweed garden, furniture crafting and shared plaza." }
 pets = { title = "Pets", intro = "Adopt a pet, look after it, and send it on trips that bring souvenirs home." }
-fishing = { title = "Fishing", intro = "Cast a line, fill your bucket, sell the catch and complete the fish book." }
+fishing = { title = "Fishing", intro = "Fish, trade at Mallowfin’s dock, enter daily and seasonal contests, or dive for pearls." }
 friends = { title = "Friends & partners", intro = "Add friends, pair up with a partner, and send animated greetings." }
 duels = { title = "Duels", intro = "Challenge a friend to a quick game. Most take an optional wager." }
 puzzles = { title = "Puzzles & word games", intro = "Play on your own, or start a party game for the whole channel." }

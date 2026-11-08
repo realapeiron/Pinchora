@@ -149,7 +149,11 @@ feeds remove
 feeds test
 fish book
 fish cast
+fish contest
+fish dive
+fish dock
 fish gear
+fish season
 fish sell
 fish shop
 form list
@@ -172,12 +176,15 @@ giveaway reroll
 giveaway start
 help
 highfive
+house aquarium
 house contest enter
 house contest view
 house contest vote
 house contest winners
+house craft
 house decorate
 house edit
+house garden
 house guestbook
 house like
 house lock
@@ -226,6 +233,7 @@ monthly
 nick
 partner leave
 partner propose
+partner streak
 partner view
 party acronym
 party fun
@@ -241,6 +249,7 @@ pet adopt
 pet capsule
 pet list
 pet rename
+pet streak
 pet trip claim
 pet trip go
 pet view

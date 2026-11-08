@@ -10,9 +10,11 @@ rendered from sprite atlases in `assets/sprites/`. Mechanics come from the surve
 | Name | Kind | Sources | Sinks |
 |---|---|---|---|
 | **Shells** 🐚 | soft, tradable | chat, `/daily`, fishing, quests, selling, visits | shop, house tiers, capsules, pet care, fees |
-| **Pearls** | premium, untradable | quest all-clear, events, (later) purchase | premium furniture, cosmetics |
+| **Pearls** | premium, untradable | quest all-clear, events, capped paid diving, (later) purchase | premium furniture, cosmetics, house crafting |
 
-Every movement is written to `credit_ledger` (pearls get their own ledger).
+Shell movements are written to `credit_ledger`. Pearl balance changes are transactional;
+the existing schema has no separate pearl ledger. D7 entry costs and craft shell costs use
+`reef_dive`, `reef_seed` and `reef_craft` ledger reasons.
 
 ## House
 
@@ -237,7 +239,8 @@ player's gear at that moment.
 | Pet status | 860×420 | done |
 | Character editor | 860×420 | done |
 | Leaderboard | 900×716 | done |
-| Fish catch | 800×400 | later |
+| Fish catch | 800×400 | done |
+| Reef loop / aquarium / season | 960×640 | done (D7) |
 
 ## Art direction
 
@@ -264,4 +267,89 @@ calm games (hangman, daily and practice wordle, trivia, Pixel Picross, Tide 2048
 cards, welcome card designer, pixel characters (`/character`), leaderboard card, card backgrounds and badges (`/customize`).
 
 Next, in order: wallpaper/floor selection inside the editor, pet walks that find items,
-seasonal events with an event currency, furniture crafting, a web editor for free placement.
+seasonal events with an event currency and a web editor for free placement.
+Furniture crafting, seasonal fishing and the aquarium/garden loop are described in D7 below.
+
+## D7 — fish–house–pet long loop (migration 0078)
+
+All actions live under existing member roots: `/fish dock|contest|season|dive`,
+`/house aquarium|garden|craft`, `/pet streak`, `/partner streak`. No new root, module,
+admin setting or configurable currency mint. Diving reuses the fishing component namespace
+as `fz:loop:<owner>:<nonce>:<depth>:push|surface`; ownership, deadline and expected state
+are checked in the database. New commands answer privately; the aquarium also accompanies
+ordinary authorized house views/visits. Web house overviews show aquarium fish and, only
+for the owner, garden status. Editing and tending use the Discord commands; existing web
+house placement supports the crafted items without a separate editor or new mutation API.
+
+- **Mallowfin's Dock** rotates at 00:00/08:00/16:00 UTC. It requests two common, non-junk,
+  shore fish available all day in the current season. One delivery per rotation, three per
+  UTC day globally; consumes the two smallest matching bucket fish and gives two seaweed.
+  No shells or pearls are paid, and aquarium specimens are never consumed.
+- **Daily Ripple Cup** automatically records the best non-junk catch in each server per
+  UTC day, inside the catch transaction. Score = size / species' typical size (same metric
+  as weekly fishing). At midnight the closed day stops changing; `/fish contest yesterday:true`
+  shows its final standings. **Tidebook Season** sums daily bests; ties use earliest catch,
+  then user ID. Northern meteorological seasons begin March/June/September/December 1 UTC,
+  matching the existing seasonal fish, odds and art. `/fish season previous:true` displays
+  a finished season card, and `claim:true` grants one bound `reefbubble_lamp__sky~bound`
+  after at least three fishing days in that server. Claims are global per player/season,
+  so fishing in extra servers cannot multiply the reward. No daily cash prizes. Hidden
+  profiles/boards are excluded from standings. Results stay for 366 days; the previous
+  season remains claimable throughout the current season.
+- **Ripple Nook** is a six-slot, named aquarium. Moving a caught specimen removes the
+  bucket row; returning it creates one bucket row with the exact species and size. A full
+  60-fish bucket refuses returns. Names are 1–24 characters without control characters.
+  The house visit's existing privacy/lock/social checks guard its accompanying aquarium;
+  the web snapshot uses the same house authorization before exposing fish. Bucket browsing
+  has five pages of 12. No fish are cloned and the permanent fish book is unchanged.
+- **Brinebud Garden** has one bed. Planting costs **40 shells**; water once at least
+  **1 hour** after planting; harvest at least **8 hours** after planting, only if watered,
+  for **4 seaweed**. Plants never wither. There is no offline multiplier or catch-up harvest.
+  Earliest sustained output: **12 seaweed/day for 120 shells/day**. All garden timestamps
+  persist in PostgreSQL; neither a process restart nor a replay accelerates the clock.
+- **Lantern Descent** costs **300 shells**, one entry per UTC day globally. Three descents
+  are possible in a **90-second** session. Each success adds one held pearl; failure loses
+  all held pearls and ends the dive. Loss probabilities are **15%, 35%, 55%**, published
+  before entry. Surface banks 0–3 pearls; timeouts lose held pearls and never refund the fee.
+  Pure fixed-depth strategies return **0.85 / 1.105 / 0.745875 pearls per paid entry** at
+  depths 1/2/3 respectively; depth 2 is optimal in expectation. Maximum issuance is
+  **3 pearls/day (1,095 per 365 days)** for at least **109,500 shells of entry sinks/year**
+  when entering daily; optimal expected issuance is **403.325/year**, about **271.49 shells
+  per expected pearl**. Existing fishing payouts and rarity shares are unchanged.
+- **Little Care Calendar** advances on a successful pet-care write, once per player/UTC
+  day across pets, and gives **1 seaweed**. Opening a status card pays nothing. **Two Tides
+  Together** advances only when both current partners check in on the same UTC day and
+  grants **1 seaweed each**. Both streaks allow one missed day; longer gaps reset the count,
+  never possessions. Rewards do not grow with the streak. Re-pairing cannot repeat a day's
+  reward. Seaweed is untradeable, unsellable and capped at **999**; overflow care rewards
+  stop at the cap, and paid planting/harvesting/deliveries refuse when there is no room.
+
+**Tideweave Workshop sinks** (one bound item per craft, atomic inventory/balance/bucket
+transaction; the smallest common non-junk bucket specimens are used):
+
+| Recipe / catalog item | Seaweed | Common fish | Pearls | Shells |
+|---|---:|---:|---:|---:|
+| Sprigstep / `sprigstep_planter_box__mint` | 8 | 1 | 1 | 250 |
+| Reefbubble / `reefbubble_lamp__sky` | 12 | 2 | 2 | 400 |
+| Blushpetal / `blushpetal_planter__lilac` | 16 | 3 | 3 | 600 |
+
+These are personal crafting alternatives to existing catalog furniture. The bound suffix
+is already understood by inventory, placement, undo and both renderers, and prevents
+selling, gifting, plaza donation or placement in a partner's house. Ingredients have
+opportunity costs (bait, fish that cannot be sold, seed fees, time); crafting additionally
+removes pearls and shells. Combined maximum seaweed supply is **20/player/day** (12 garden,
+6 dock, 1 care, 1 partner), with no cash conversion. Finite inventory ingredients and the
+crafting pearl costs provide sinks for every new repeatable source. Season keepsakes have
+no tradable or sellable value. The existing economy and fishing-budget tests still apply.
+
+**Durability/privacy:** seven tables: `reef_loop`, `reef_aquarium`, `reef_loop_daily`,
+`reef_requests`, `reef_catches`, `reef_season_claims`, `reef_partner_streaks`. Player advisory
+locks precede row locks; both partner locks are acquired in sorted order before rechecking
+the relationship. Failed recipes roll back every cost. Daily limits remain as same-day
+privacy tombstones; other player data is deleted. The hourly janitor uses `SKIP LOCKED`,
+retains daily counters for 35 days, requests for two days and results for 366 days.
+
+**Art:** 960×640 pixel cards reuse the fish and furniture atlas. Mallowfin, seaweed and dive
+pearls are original procedural pixel motifs in `pinchora-render/src/cards/reef_loop.rs`;
+no external art, new atlas sheets or owner-supplied placeholder assets are required. Both
+EN/TR cards include translated instructions, costs, results and deadlines in the embed.

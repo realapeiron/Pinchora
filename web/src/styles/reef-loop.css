@@ -1,0 +1,58 @@
+.reef-home {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-block: 1.5rem;
+}
+.reef-home > div {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 2px solid #448b74;
+}
+.reef-home h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+.reef-home p {
+  max-width: 65ch;
+  overflow-wrap: anywhere;
+}
+.reef-home-tank {
+  flex: 2 1 25rem;
+  background: #123247;
+  color: #f3e8cf;
+  border-bottom: 8px solid #a79b7c !important;
+}
+.reef-home-garden {
+  flex: 1 1 15rem;
+  background: #203d3b;
+  color: #f3e8cf;
+}
+.reef-home-fish {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.reef-home-fish li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+.reef-home-fish canvas {
+  image-rendering: pixelated;
+  object-fit: contain;
+  max-width: 100%;
+}
+@media (max-width: 480px) {
+  .reef-home-fish {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

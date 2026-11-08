@@ -64,6 +64,12 @@ pub enum HouseCommand {
     Guestbook(super::guestbook::HouseGuestbook),
     #[command(name = "contest")]
     Contest(super::contest::HouseContest),
+    #[command(name = "aquarium")]
+    Aquarium(super::reef_loop::Aquarium),
+    #[command(name = "garden")]
+    Garden(super::reef_loop::Garden),
+    #[command(name = "craft")]
+    Craft(super::reef_loop::Craft),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -124,6 +130,10 @@ impl HouseCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let author = cx.author()?.clone();
         match self {
+            Self::Aquarium(c) => c.run(cx).await,
+            Self::Garden(c) => c.run(cx).await,
+            Self::Craft(c) => c.run(cx).await,
+
             Self::View(c) => {
                 let unread = cx.app.db.guestbook_unread(author.id.get()).await?;
                 let footer = (unread > 0).then(|| t!(cx.lang(), "house.view.unread", count = unread));
@@ -435,7 +445,11 @@ pub(crate) async fn room_card(
             components: buttons,
         })]
     };
-    Ok(Cx::card(embed, "room.png", png, components, false))
+    let mut data = Cx::card(embed, "room.png", png, components, false);
+    if !plaza {
+        super::reef_loop::attach_aquarium(cx, owner_id, &mut data).await?;
+    }
+    Ok(data)
 }
 
 /// Visits a house: whoever the command named, or a friend the shortlist offered.

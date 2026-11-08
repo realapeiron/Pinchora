@@ -243,6 +243,9 @@ async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> any
 /// `fz:k:<user>:<page>` pages the bucket, `fz:s:<user>:<all|dup>` sells; `fz:b:` is the book's.
 pub(crate) async fn on_bucket(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let what = args.next().unwrap_or_default();
+    if what == "loop" {
+        return crate::commands::reef_loop::on_dive(cx, args).await;
+    }
     if what == "b" {
         return super::book::on_page(cx, args).await;
     }
