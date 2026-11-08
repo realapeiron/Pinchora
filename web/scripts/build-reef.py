@@ -61,6 +61,10 @@ for path in sorted((ROOT / 'assets/reef/looks').glob('*_metadata.json')):
     assert meta['rows'] == ['SW','SE','NW','NE'] and len(meta['frames']) == 32
     directions = {d: page(sheet.crop((0,r*128,768,(r+1)*128))) for r,d in enumerate(meta['rows'])}
     frames = [{k:f[k] for k in ('direction','pose','foot_anchor','seat_contact','accessory_anchors','hands')} for f in meta['frames']]
+    # Null seat contacts are the default for standing frames; omit their repeated wire keys.
+    for frame in frames:
+        if frame['seat_contact'] is None:
+            del frame['seat_contact']
     manifest['looks'][meta['look']] = {'directions':directions, 'frames':frames}
 assert len(manifest['looks']) == 24
 encoded = json.dumps(manifest, separators=(',', ':'), sort_keys=True).encode()

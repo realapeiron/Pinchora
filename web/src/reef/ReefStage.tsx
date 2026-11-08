@@ -15,6 +15,7 @@ import { PixelButton } from "../components/PixelButton";
 import type { RoomJson } from "../iso/scene";
 import { bootstrap } from "./bootstrap";
 import { ChatPanel } from "./ChatPanel";
+
 import { ReefNet, type NetworkState } from "./net";
 import { poseAt, type Animation } from "./animation";
 import { Camera, Gesture } from "./camera";
@@ -26,6 +27,7 @@ import { Footsteps } from "./effects";
 import { t, playerStatus } from "./i18n";
 import "./reef.css";
 
+const ActivityPanel = lazy(() => import("./games/ActivityPanel"));
 const DecoratePanel = lazy(() => import("./DecoratePanel").then((m) => ({ default: m.DecoratePanel })));
 const SpacesPanel = lazy(() => import("./SpacesPanel").then((m) => ({ default: m.SpacesPanel })));
 
@@ -63,6 +65,8 @@ export default function ReefStage({
 }) {
   const [decorating, setDecorating] = useState(false);
   const [social, setSocial] = useState(false);
+  const [activities, setActivities] = useState(false);
+  const [gamePlacement, setGamePlacement] = useState<string | null>(null);
   const editBridge = useRef<EditBridge | null>(null);
   const refreshLayout = useRef(onLayout);
   refreshLayout.current = onLayout;
@@ -818,7 +822,7 @@ export default function ReefStage({
       aria-label={t("Play in this room")}
       data-controls-open={drawer}
       data-decorating={decorating}
-      data-panel-open={decorating || social || drawer}
+      data-panel-open={decorating || social || activities || drawer}
     >
       <div className="reef-surface">
         <canvas
@@ -839,6 +843,7 @@ export default function ReefStage({
             <button
               type="button"
               onClick={() => {
+                setActivities(false);
                 setDecorating(!decorating);
                 setSocial(false);
                 setDrawer(false);
@@ -850,12 +855,26 @@ export default function ReefStage({
           <button
             type="button"
             onClick={() => {
+              setActivities(false);
               setSocial(!social);
               setDecorating(false);
               setDrawer(false);
             }}
           >
             {t("Social spaces")}
+          </button>
+          <button
+            type="button"
+            disabled={network !== "connected"}
+            onClick={() => {
+              setActivities(!activities);
+              setGamePlacement(null);
+              setDecorating(false);
+              setSocial(false);
+              setDrawer(false);
+            }}
+          >
+            {t("Room activities")}
           </button>
           <button type="button" className="reef-text-button" onClick={onExit}>
             {t("View")}
@@ -868,8 +887,15 @@ export default function ReefStage({
           <button
             type="button"
             onClick={() => {
+              if (selected?.kind === "usable") {
+                setGamePlacement(selected.id);
+                setActivities(true);
+                setDrawer(false);
+                setSocial(false);
+                setDecorating(false);
+              }
               if (selected) controls.current?.move(selected.anchor, selected);
-              canvas.current?.focus({ preventScroll: true });
+              if (selected?.kind !== "usable") canvas.current?.focus({ preventScroll: true });
             }}
           >
             {selected?.kind === "seat" ? t("Sit") : t("Use")}
@@ -958,6 +984,11 @@ export default function ReefStage({
             ×
           </button>
         </div>
+        <p id="reef-help" className="muted">
+          {t(
+            "Tap or click to walk or interact. Drag to pan; pinch or use + / − to zoom. Arrow keys move one tile. Home centres the camera.",
+          )}
+        </p>
         {rooms.length > 1 && (
           <label className="reef-room-picker">
             {t("Room")}
@@ -970,11 +1001,6 @@ export default function ReefStage({
             </select>
           </label>
         )}
-        <p id="reef-help" className="muted">
-          {t(
-            "Tap or click to walk or interact. Drag to pan; pinch or use + / − to zoom. Arrow keys move one tile. Home centres the camera.",
-          )}
-        </p>
         <form
           className="reef-walk"
           onSubmit={(e) => {
@@ -1024,9 +1050,17 @@ export default function ReefStage({
                 <button
                   type="button"
                   disabled={!ready}
-                  onClick={() =>
-                    target ? controls.current?.move(target.anchor, target) : controls.current?.walkTo(p.id)
-                  }
+                  onClick={() => {
+                    if (target?.kind === "usable") {
+                      setGamePlacement(p.id);
+                      setActivities(true);
+                      setDrawer(false);
+                      setSocial(false);
+                      setDecorating(false);
+                    }
+                    if (target) controls.current?.move(target.anchor, target);
+                    else controls.current?.walkTo(p.id);
+                  }}
                 >
                   {target?.kind === "seat" ? t("Sit") : target?.kind === "usable" ? t("Use") : t("Walk to")}
                 </button>
@@ -1066,6 +1100,18 @@ export default function ReefStage({
             }}
           />
         )}
+        {activities && (
+          <ActivityPanel
+            room={roomKey}
+            user={userId}
+            placement={gamePlacement}
+            bubbleTarget={canvas.current?.parentElement ?? null}
+            onClose={() => {
+              setActivities(false);
+              canvas.current?.focus();
+            }}
+          />
+        )}
         {social && (
           <SpacesPanel
             key={roomKey}
@@ -1080,14 +1126,16 @@ export default function ReefStage({
           />
         )}
       </Suspense>
-      {chatNet && (
-        <ChatPanel
-          key={roomKey}
-          net={chatNet}
-          roomKey={roomKey}
-          guildManager={editable && roomKey.startsWith("plaza:")}
-        />
-      )}
+      <Suspense fallback={null}>
+        {chatNet && (
+          <ChatPanel
+            key={roomKey}
+            net={chatNet}
+            roomKey={roomKey}
+            guildManager={editable && roomKey.startsWith("plaza:")}
+          />
+        )}
+      </Suspense>
     </section>
   );
 }

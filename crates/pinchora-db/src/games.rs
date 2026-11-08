@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use crate::{
     Db,
     economy::ledger,
-    locks::{lock_users, retry},
+    locks::{lock_users, retry, try_lock_users},
     sql_id,
 };
 
@@ -292,12 +292,91 @@ impl Db {
         only_if_expired: bool,
     ) -> anyhow::Result<Option<GameSession>> {
         retry("settle_game", || {
-            self.settle_game_once(id, from_state, final_state, payout, only_if_expired)
+            self.settle_game_once(id, from_state, final_state, payout, only_if_expired, None)
+        })
+        .await
+        .map(|r| r.map(|(s, _)| s))
+    }
+
+    /// Final board state, wager, statistics and capped reward share one commit.
+    pub async fn settle_board_game(
+        &self,
+        session: &GameSession,
+        final_state: &str,
+        winner: Option<u64>,
+        reward: i64,
+        cap: i64,
+    ) -> anyhow::Result<Option<i64>> {
+        retry("settle_board_game", || {
+            self.settle_game_once(
+                session.id,
+                Some(&session.state),
+                final_state,
+                winner.map_or(Payout::Refund, Payout::Winner),
+                false,
+                Some((winner, reward, cap)),
+            )
+        })
+        .await
+        .map(|r| r.map(|(_, paid)| paid))
+    }
+
+    /// Trivia answers, statistics, cap receipts and payments settle in one recoverable commit.
+    pub async fn settle_trivia_game(
+        &self,
+        expected: &GameSession,
+        correct: Option<i16>,
+        reward: i64,
+        cap: i64,
+    ) -> anyhow::Result<Option<Vec<(u64, bool, i64)>>> {
+        retry("settle_trivia_game", || async {
+            let mut tx = self.pool().begin().await?;
+            let mut users: Vec<i64> = sqlx::query_scalar("SELECT user_id FROM game_answers WHERE session_id=$1")
+                .bind(expected.id)
+                .fetch_all(&mut *tx)
+                .await?;
+            users.push(expected.host_id);
+            lock_users(&mut tx, &users).await?;
+            let current: Option<GameSession> = sqlx::query_as(concat!(
+                "SELECT ",
+                columns!(),
+                " FROM game_sessions WHERE id=$1 FOR UPDATE"
+            ))
+            .bind(expected.id)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if !current.is_some_and(|s| s.kind == "trivia" && s.status == ACTIVE && s.state == expected.state) {
+                return Ok(None);
+            }
+            let answers: Vec<(i64, i16)> =
+                sqlx::query_as("SELECT user_id,choice FROM game_answers WHERE session_id=$1 ORDER BY user_id")
+                    .bind(expected.id)
+                    .fetch_all(&mut *tx)
+                    .await?;
+            try_lock_users(&mut tx, &answers.iter().map(|(u, _)| *u).collect::<Vec<_>>()).await?;
+            let mut result = Vec::new();
+            for (user, choice) in answers {
+                let won = correct == Some(choice);
+                crate::game_rewards::game_stat(&mut tx, user, "trivia", won).await?;
+                let paid = if won {
+                    crate::game_rewards::capped_win(&mut tx, user, "trivia", reward, cap, "trivia").await?
+                } else {
+                    0
+                };
+                result.push((user as u64, won, paid));
+            }
+            sqlx::query("UPDATE game_sessions SET status='done' WHERE id=$1")
+                .bind(expected.id)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+            Ok(Some(result))
         })
         .await
     }
 
     /// One attempt of [`Db::settle_game`].
+    #[allow(clippy::too_many_arguments)]
     async fn settle_game_once(
         &self,
         id: i64,
@@ -305,7 +384,8 @@ impl Db {
         final_state: &str,
         payout: Payout,
         only_if_expired: bool,
-    ) -> anyhow::Result<Option<GameSession>> {
+        reward: Option<(Option<u64>, i64, i64)>,
+    ) -> anyhow::Result<Option<(GameSession, i64)>> {
         let mut tx = self.pool().begin().await?;
         lock_players(&mut tx, id).await?;
         let session: Option<GameSession> = sqlx::query_as(concat!(
@@ -345,8 +425,28 @@ impl Db {
             .bind(final_state)
             .execute(&mut *tx)
             .await?;
+        let mut paid = 0;
+        if let Some((winner, amount, cap)) = reward {
+            for user in [Some(session.host_id), session.guest_id].into_iter().flatten() {
+                crate::game_rewards::game_stat(&mut tx, user, &session.kind, winner == Some(user as u64)).await?;
+            }
+            if let Some(winner) = winner {
+                anyhow::ensure!(session.has_player(winner), "invalid winner");
+                if session.bet == 0 {
+                    paid = crate::game_rewards::capped_win(
+                        &mut tx,
+                        sql_id(winner),
+                        &session.kind,
+                        amount,
+                        cap,
+                        &format!("{}_win", session.kind),
+                    )
+                    .await?;
+                }
+            }
+        }
         tx.commit().await?;
-        Ok(Some(session))
+        Ok(Some((session, paid)))
     }
 
     /// Sessions whose clock ran out and that nobody ended, oldest first.
@@ -381,15 +481,25 @@ impl Db {
 
     /// Records a trivia answer; false when this player already answered the round.
     pub async fn add_game_answer(&self, session: i64, user: u64, choice: i16) -> anyhow::Result<bool> {
-        let added = sqlx::query(
-            "INSERT INTO game_answers (session_id, user_id, choice) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-        )
-        .bind(session)
-        .bind(sql_id(user))
-        .bind(choice)
-        .execute(self.pool())
-        .await?
-        .rows_affected();
+        if !(0..4).contains(&choice) {
+            return Ok(false);
+        }
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        let live: Option<i64> = sqlx::query_scalar("SELECT id FROM game_sessions WHERE id=$1 AND kind='trivia' AND status='active' AND expires_at>now() FOR UPDATE")
+            .bind(session).fetch_optional(&mut *tx).await?;
+        if live.is_none() {
+            return Ok(false);
+        }
+        let added =
+            sqlx::query("INSERT INTO game_answers(session_id,user_id,choice) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
+                .bind(session)
+                .bind(sql_id(user))
+                .bind(choice)
+                .execute(&mut *tx)
+                .await?
+                .rows_affected();
+        tx.commit().await?;
         Ok(added == 1)
     }
 
@@ -540,14 +650,11 @@ impl Db {
 /// row is locked (see the `locks` module). The players and the bet of a session never change, so the
 /// plain read is good for the locked one that follows.
 async fn lock_players(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> anyhow::Result<()> {
-    let row: Option<(i64, Option<i64>, i64)> =
-        sqlx::query_as("SELECT host_id, guest_id, bet FROM game_sessions WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&mut **tx)
-            .await?;
-    if let Some((host, guest, bet)) = row
-        && bet > 0
-    {
+    let row: Option<(i64, Option<i64>)> = sqlx::query_as("SELECT host_id, guest_id FROM game_sessions WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&mut **tx)
+        .await?;
+    if let Some((host, guest)) = row {
         lock_users(tx, &[Some(host), guest].into_iter().flatten().collect::<Vec<_>>()).await?;
     }
     Ok(())

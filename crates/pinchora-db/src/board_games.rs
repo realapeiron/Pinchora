@@ -15,6 +15,8 @@ pub struct PicrossGame {
     pub grid: String,
     /// How many times the player asked how many of their marks are wrong.
     pub checks: i16,
+    pub revision: i64,
+    pub paid: i64,
     pub status: String,
 }
 
@@ -44,7 +46,7 @@ impl SoloGame {
 /// The columns of a [`PicrossGame`] and of a [`SoloGame`], for queries that need a literal string.
 macro_rules! picross_columns {
     () => {
-        "user_id, mode, day, picture, variant, grid, checks, status"
+        "user_id, mode, day, picture, variant, grid, checks, status, revision, paid"
     };
 }
 macro_rules! solo_columns {
@@ -153,11 +155,13 @@ impl Db {
         (picture, variant): (u8, u8),
         replace: bool,
     ) -> anyhow::Result<PicrossGame> {
+        let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
         let sql = if replace {
             "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, mode, day)
              DO UPDATE SET picture = EXCLUDED.picture, variant = EXCLUDED.variant, grid = EXCLUDED.grid,
-                 checks = 0, status = 'playing', started_at = now(), solved_at = NULL"
+                 checks = 0, status = 'playing', started_at = now(), solved_at = NULL, paid = 0, revision = nextval('picross_revision')"
         } else {
             "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, mode, day) DO NOTHING"
@@ -169,11 +173,58 @@ impl Db {
             .bind(i16::from(picture))
             .bind(i16::from(variant))
             .bind(".".repeat(100))
-            .execute(self.pool())
+            .execute(&mut *tx)
             .await?;
-        self.picross_game(user, mode, day)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("picross board vanished"))
+        let row = sqlx::query_as::<_, PicrossGame>(concat!(
+            "SELECT ",
+            picross_columns!(),
+            " FROM picross_games WHERE user_id=$1 AND mode=$2 AND day=$3"
+        ))
+        .bind(sql_id(user))
+        .bind(mode)
+        .bind(day)
+        .fetch_one(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(row)
+    }
+
+    /// A practice reset is conditional on the completed revision displayed by the browser.
+    pub async fn next_picross(
+        &self,
+        user: u64,
+        revision: i64,
+        picture: u8,
+        variant: u8,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        self.reset_picross(user, revision, picture, variant, "solved").await
+    }
+
+    /// Retiring an upcoming daily picture must not overwrite a concurrent reset or edit.
+    pub async fn retire_picross(
+        &self,
+        user: u64,
+        revision: i64,
+        picture: u8,
+        variant: u8,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        self.reset_picross(user, revision, picture, variant, "playing").await
+    }
+
+    async fn reset_picross(
+        &self,
+        user: u64,
+        revision: i64,
+        picture: u8,
+        variant: u8,
+        status: &str,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
+        let row=sqlx::query_as(concat!("UPDATE picross_games SET picture=$3,variant=$4,grid=repeat('.',100),checks=0,status='playing',paid=0,revision=nextval('picross_revision'),started_at=now(),solved_at=NULL WHERE user_id=$1 AND mode='practice' AND day=0 AND status=$5 AND revision=$2 RETURNING ",picross_columns!()))
+            .bind(sql_id(user)).bind(revision).bind(i16::from(picture)).bind(i16::from(variant)).bind(status).fetch_optional(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(row)
     }
 
     /// Replaces a board's marks, if they are still `from` (nobody marked in between) and the board is
@@ -188,23 +239,94 @@ impl Db {
         to: &str,
         solved: bool,
     ) -> anyhow::Result<Option<PicrossGame>> {
-        Ok(sqlx::query_as::<_, PicrossGame>(concat!(
-            "UPDATE picross_games
-             SET grid = $5,
-                 status = CASE WHEN $6 THEN 'solved' ELSE status END,
-                 solved_at = CASE WHEN $6 THEN now() ELSE solved_at END
-             WHERE user_id = $1 AND mode = $2 AND day = $3 AND grid = $4 AND status = 'playing'
-             RETURNING ",
-            picross_columns!()
-        ))
-        .bind(sql_id(user))
-        .bind(mode)
-        .bind(day)
-        .bind(from)
-        .bind(to)
-        .bind(solved)
-        .fetch_optional(self.pool())
-        .await?)
+        self.picross_marks_at(user, mode, day, from, to, solved, None).await
+    }
+
+    /// The browser carries the revision too, preventing an ABA edit across a practice reset.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn picross_marks_at(
+        &self,
+        user: u64,
+        mode: &str,
+        day: i32,
+        from: &str,
+        to: &str,
+        solved: bool,
+        revision: Option<i64>,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        self.picross_marks_with_reward(user, mode, day, from, to, solved, revision, true)
+            .await
+    }
+
+    /// Private-room completion shares progress but cannot mint a reward.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn picross_marks_with_reward(
+        &self,
+        user: u64,
+        mode: &str,
+        day: i32,
+        from: &str,
+        to: &str,
+        solved: bool,
+        revision: Option<i64>,
+        reward: bool,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
+        let row=sqlx::query_as::<_,PicrossGame>(concat!("UPDATE picross_games SET grid=$5,revision=nextval('picross_revision'), status=CASE WHEN $6 THEN 'solved' ELSE status END,solved_at=CASE WHEN $6 THEN now() ELSE solved_at END WHERE user_id=$1 AND mode=$2 AND day=$3 AND grid=$4 AND status='playing' AND ($7::bigint IS NULL OR revision=$7) RETURNING ",picross_columns!()))
+            .bind(sql_id(user)).bind(mode).bind(day).bind(from).bind(to).bind(solved).bind(revision).fetch_optional(&mut *tx).await?;
+        let Some(mut row) = row else {
+            return Ok(None);
+        };
+        if solved {
+            let deleted: Option<i32> = sqlx::query_scalar("SELECT picross_day FROM deleted_users WHERE user_id=$1")
+                .bind(sql_id(user))
+                .fetch_optional(&mut *tx)
+                .await?
+                .flatten();
+            crate::game_rewards::game_stat(&mut tx, sql_id(user), "picross", true).await?;
+            let paid = if !reward {
+                0
+            } else if mode == "daily" {
+                if deleted.is_some_and(|d| d >= day) {
+                    0
+                } else {
+                    let days:Vec<i32>=sqlx::query_scalar("SELECT day FROM picross_games WHERE user_id=$1 AND mode='daily' AND status='solved' AND day<=$2 ORDER BY day DESC LIMIT 7").bind(sql_id(user)).bind(day).fetch_all(&mut *tx).await?;
+                    let streak = days
+                        .iter()
+                        .enumerate()
+                        .take_while(|(i, d)| **d == day - *i as i32)
+                        .count() as i64;
+                    let amount = if row.checks > 0 {
+                        15
+                    } else {
+                        30 + 5 * streak.clamp(1, 7)
+                    };
+                    crate::game_rewards::game_credit(&mut tx, sql_id(user), amount, "picross_daily").await?;
+                    amount
+                }
+            } else {
+                crate::game_rewards::capped_win(
+                    &mut tx,
+                    sql_id(user),
+                    "picross",
+                    if row.checks > 0 { 5 } else { 10 },
+                    5,
+                    "picross_win",
+                )
+                .await?
+            };
+            row.paid = paid;
+            sqlx::query("UPDATE picross_games SET paid=$4 WHERE user_id=$1 AND mode=$2 AND day=$3")
+                .bind(sql_id(user))
+                .bind(mode)
+                .bind(day)
+                .bind(paid)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(Some(row))
     }
 
     /// Uses one of a board's checks, if it still has one under `limit`, and returns the board as it is
@@ -218,7 +340,7 @@ impl Db {
         limit: i16,
     ) -> anyhow::Result<Option<PicrossGame>> {
         Ok(sqlx::query_as::<_, PicrossGame>(concat!(
-            "UPDATE picross_games SET checks = checks + 1
+            "UPDATE picross_games SET checks = checks + 1, revision = nextval('picross_revision')
              WHERE user_id = $1 AND mode = $2 AND day = $3 AND status = 'playing' AND checks < $4
              RETURNING ",
             picross_columns!()

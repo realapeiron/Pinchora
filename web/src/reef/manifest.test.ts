@@ -68,3 +68,25 @@ it("every directional row preserves the supplied sheet pixels", async () => {
     }
   }
 }, 30000);
+it("compact seat contacts preserve every source frame's animation anchors", async () => {
+  const { readdirSync } = await import("node:fs");
+  const sourceDir = new URL("../assets/reef/looks/", dir);
+  let omitted = 0;
+  for (const file of readdirSync(sourceDir).filter((n) => n.endsWith("_metadata.json"))) {
+    const source = JSON.parse(readFileSync(new URL(file, sourceDir), "utf8"));
+    for (const frame of manifest.looks[source.look]!.frames) {
+      const original = source.frames.find(
+        (f: { direction: string; pose: string }) => f.direction === frame.direction && f.pose === frame.pose,
+      );
+      expect(frame.seat_contact ?? null).toEqual(original.seat_contact);
+      expect(frame.foot_anchor).toEqual(original.foot_anchor);
+      expect(frame.accessory_anchors).toEqual(original.accessory_anchors);
+      expect(frame.hands).toEqual(original.hands);
+      if (original.seat_contact === null) {
+        expect(frame).not.toHaveProperty("seat_contact");
+        omitted++;
+      }
+    }
+  }
+  expect(omitted).toBeGreaterThan(100);
+});

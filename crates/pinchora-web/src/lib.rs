@@ -58,6 +58,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     let state = WebState::new(app.clone(), settings);
     tokio::spawn(prune_audit(app.clone()));
     tokio::spawn(reef::safety::retention(app.clone()));
+    tokio::spawn(reef::games::sweep(app.clone()));
 
     let listener = tokio::net::TcpListener::bind(bind).await?;
     tracing::info!(%bind, "web dashboard listening");

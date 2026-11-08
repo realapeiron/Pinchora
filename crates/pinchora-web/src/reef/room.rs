@@ -321,6 +321,21 @@ impl Room {
             self.snapshot(&member.peer, request);
             return Ok(());
         }
+        if let Command::GameAction { game_id, payload } = &envelope.command {
+            let peer = member.peer.clone();
+            let id = game_id.parse::<i64>().unwrap_or(0);
+            match super::games::action(state, peer.user, id, payload.clone(), Some(self.key), Some(&self.fence)).await {
+                Ok(game) => {
+                    peer.send(&self.epoch, request, json!({"type":"game_changed","game":game}));
+                    for m in self.members.values().filter(|m| m.peer.user != peer.user) {
+                        m.peer
+                            .send(&self.epoch, "", json!({"type":"game_changed","game_id":game_id}));
+                    }
+                }
+                Err(e) => peer.error(&self.epoch, request, e.code),
+            }
+            return Ok(());
+        }
         if let Command::Chat { text } = &envelope.command {
             let peer = member.peer.clone();
             if let Err(reason) = pinchora_game::chat::check(text) {

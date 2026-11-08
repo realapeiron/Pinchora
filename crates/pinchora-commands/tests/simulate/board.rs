@@ -1018,7 +1018,11 @@ async fn picross_streaks_pay_more_and_practice_puzzles_are_endless_but_capped() 
         );
     }
     assert_eq!(paid, 5, "the daily limit for practice");
-    assert_eq!(record_of(&sim, user, "picross").await, (7, 7));
+    assert_eq!(
+        record_of(&sim, user, "picross").await,
+        (9, 9),
+        "two historical solves and seven current solves settle statistics atomically"
+    );
 }
 
 // /Tide 2048

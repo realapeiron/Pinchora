@@ -6,7 +6,7 @@ export interface Frame {
   direction: Direction;
   pose: Pose;
   foot_anchor: Point;
-  seat_contact: Point | null;
+  seat_contact?: Point | null;
   accessory_anchors: { hat: Point; head: Point; torso: Point };
   hands: { screen_left: Point | null; screen_right: Point | null };
 }

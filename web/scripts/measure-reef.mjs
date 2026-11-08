@@ -29,8 +29,19 @@ for (const key of [
   "src/components/HouseEditor.tsx",
   "src/reef/DecoratePanel.tsx",
   "src/reef/SpacesPanel.tsx",
+  "src/reef/games/ActivityPanel.tsx",
+  "src/reef/games/Checkers.tsx",
+  "src/reef/games/Chess.tsx",
+  "src/reef/games/Picross.tsx",
+  "src/reef/games/Trivia.tsx",
 ]) {
-  const chunk = build[key];
+  // Rollup can name a shared dynamic facade by its chunk name instead of its source path.
+  const name = key
+    .split("/")
+    .at(-1)
+    .replace(/\.tsx$/, "");
+  const chunk =
+    build[key] ?? Object.values(build).find((entry) => entry.isDynamicEntry && entry.name === name);
   if (!chunk || used.has(chunk.file))
     throw new Error(`Optional editor/social code entered the cold path: ${key}`);
 }
@@ -85,10 +96,10 @@ console.log(
       catalogAllowance: catalog,
       reserve,
       conservativeColdBytes: bytes,
-      budget: 2_000_000,
+      budget: 1_985_000,
     },
     null,
     2,
   ),
 );
-if (bytes > 2_000_000) process.exitCode = 1;
+if (bytes > 1_985_000) process.exitCode = 1;

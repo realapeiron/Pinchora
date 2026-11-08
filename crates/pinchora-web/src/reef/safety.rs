@@ -227,6 +227,9 @@ pub async fn retention(app: std::sync::Arc<pinchora_commands::App>) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
     loop {
         interval.tick().await;
+        if app.db.reef_prune_games().await.is_err() {
+            tracing::warn!("Reef game retention failed");
+        }
         if app.db.reef_prune_outbox().await.is_err() {
             tracing::warn!("Reef outbox retention failed");
         }

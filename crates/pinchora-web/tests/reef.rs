@@ -1675,3 +1675,6 @@ async fn wave7_doorbell_retention_preserves_recent_abuse_counters() {
         .unwrap();
     assert_eq!(retained, vec![recent]);
 }
+
+#[path = "reef/games.rs"]
+mod games;

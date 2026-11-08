@@ -4,7 +4,7 @@ use std::{str::Split, sync::Arc, time::Duration};
 
 use chrono::{Duration as Span, Utc};
 use pinchora_core::t;
-use pinchora_db::{ACTIVE, NewGame, Payout};
+use pinchora_db::{ACTIVE, NewGame};
 use pinchora_game::play::{
     Game, PlayContent, Question, TriviaCategory, find_question,
     trivia::{decode_order, encode_order, permutation},
@@ -18,7 +18,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
-use super::games::{button, channel_of, edit_message, location, pay_win, quiet, record, track_message};
+use super::games::{button, channel_of, edit_message, location, quiet, track_message};
 use crate::{
     App, Cx, Responder,
     util::{BRAND, SUCCESS, mention, relative},
@@ -215,7 +215,7 @@ pub(crate) async fn on_answer(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
 /// everyone's game. Exactly one caller gets to do it; `fallback` edits the round's own message if
 /// the bot cannot reach it by id. False when someone else ended the round first.
 pub(crate) async fn finish(app: &Arc<App>, id: i64, fallback: Option<Arc<Responder>>) -> anyhow::Result<bool> {
-    let Some(session) = app.db.settle_game(id, None, "done", Payout::None, false).await? else {
+    let Some(session) = app.db.game(id).await?.filter(|s| s.kind == "trivia" && s.is_active()) else {
         return Ok(false);
     };
     let Some((q, order)) = decode(&session.state) else {
@@ -223,14 +223,17 @@ pub(crate) async fn finish(app: &Arc<App>, id: i64, fallback: Option<Arc<Respond
     };
     let lang = q.lang;
     let right = q.correct_slot(order).map(|s| s as i16);
-    let answers = app.db.game_answers(id).await?;
+    let Some(answers) = app
+        .db
+        .settle_trivia_game(&session, right, q.difficulty.reward(), Game::Trivia.daily_cap())
+        .await?
+    else {
+        return Ok(false);
+    };
     let mut winners = Vec::new();
-    for (user, slot) in &answers {
-        let correct = Some(*slot) == right;
-        record(app, Game::Trivia, *user, correct).await;
-        if correct {
-            let paid = pay_win(app, *user, Game::Trivia, q.difficulty.reward(), "trivia").await?;
-            winners.push(if paid > 0 {
+    for (user, correct, paid) in &answers {
+        if *correct {
+            winners.push(if *paid > 0 {
                 format!("{} +{paid}", mention(user))
             } else {
                 mention(user)
