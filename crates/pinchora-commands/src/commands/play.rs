@@ -26,6 +26,12 @@ const MAX_EMBED_FIELDS: usize = 25;
 )]
 #[allow(clippy::large_enum_variant)] // parsed once per interaction, never stored
 pub enum PlayCommand {
+    #[command(name = "reefmind")]
+    Reefmind(super::party_v2::Chess),
+    #[command(name = "kelpmaze")]
+    Kelpmaze(super::party_v2::Maze),
+    #[command(name = "gemtide")]
+    Gemtide(super::party_v2::Match),
     #[command(name = "hangman")]
     Hangman(PlayHangman),
     #[command(name = "wordle")]
@@ -224,6 +230,9 @@ pub struct PlayStats {
 impl PlayCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         match self {
+            Self::Reefmind(c) => c.run(cx).await,
+            Self::Kelpmaze(_) => super::party_v2::open(cx, pinchora_game::party_v2::Kind::Maze, "", "all").await,
+            Self::Gemtide(_) => super::party_v2::open(cx, pinchora_game::party_v2::Kind::Match, "", "all").await,
             Self::Hangman(_) => hangman::start(cx).await,
             Self::Wordle(c) => wordle::start(cx, c.mode != Some(WordleMode::Practice)).await,
             Self::Trivia(c) => trivia::start(cx, c.category.map(TriviaTopic::category)).await,
@@ -288,6 +297,36 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
             _ => t!(lang, "play.stats.none"),
         };
         fields.push(EmbedFieldBuilder::new(format!("{} {}", game.emoji(), game.name(lang)), value).inline());
+    }
+    for kind in [
+        pinchora_game::party_v2::Kind::Quiz,
+        pinchora_game::party_v2::Kind::Words,
+        pinchora_game::party_v2::Kind::Story,
+        pinchora_game::party_v2::Kind::Room,
+        pinchora_game::party_v2::Kind::Critter,
+        pinchora_game::party_v2::Kind::Chess,
+        pinchora_game::party_v2::Kind::Maze,
+        pinchora_game::party_v2::Kind::Match,
+        pinchora_game::party_v2::Kind::Survival,
+    ] {
+        if let Some(r) = rows.iter().find(|r| r.game == kind.key()).filter(|r| r.played > 0) {
+            played += r.played;
+            won += r.won;
+            fields.push(
+                EmbedFieldBuilder::new(
+                    kind.title(lang),
+                    t!(
+                        lang,
+                        "play.stats.record",
+                        won = r.won,
+                        played = r.played,
+                        percent = r.won * 100 / r.played,
+                        best = ""
+                    ),
+                )
+                .inline(),
+            );
+        }
     }
     // Discord takes 25 fields to an embed, so the games past the 25th go in a second embed.
     let embeds = fields

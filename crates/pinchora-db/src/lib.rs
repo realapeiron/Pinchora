@@ -220,3 +220,6 @@ pub use web_player::*;
 
 mod reef_loop;
 pub use reef_loop::*;
+
+mod party_v2;
+pub use party_v2::ReefMove;

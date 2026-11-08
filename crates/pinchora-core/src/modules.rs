@@ -549,9 +549,9 @@ impl Module {
             "play" => match sub {
                 Some(
                     "hangman" | "wordle" | "trivia" | "memory" | "minesweeper" | "higherlower" | "anagram" | "typing"
-                    | "guessnumber",
+                    | "guessnumber" | "kelpmaze" | "gemtide",
                 ) => Self::Puzzles,
-                Some("picross" | "2048") => Self::BoardGames,
+                Some("picross" | "2048" | "reefmind") => Self::BoardGames,
                 Some("derby" | "heist" | "shells") => Self::Party,
                 Some("stats") => Self::Profile,
                 _ => return None,
@@ -593,6 +593,9 @@ impl Module {
             "qc" => Self::Quests,
             "tt" | "c4" | "rp" => Self::Duels,
             "bs" | "ck" | "cc" | "of" | "pz" | "tz" => Self::BoardGames,
+            "d9c" => Self::BoardGames,
+            "d9s" => Self::Puzzles,
+            "d9p" => Self::PartyGames,
             "hm" | "wo" | "tv" | "mm" | "mi" | "yl" | "ag" | "yt" | "gn" => Self::Puzzles,
             "dy" | "sh" | "sz" | "ss" | "hs" => Self::Party,
             "hl" | "ac" | "cn" | "wx" | "wy" | "td" | "ni" => Self::PartyGames,

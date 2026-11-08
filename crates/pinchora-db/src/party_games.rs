@@ -234,6 +234,7 @@ impl Db {
     async fn create_party_once(&self, new: NewParty<'_>) -> anyhow::Result<PartyGame> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(new.host)]).await?;
+        crate::party_v2::guard_channel(&mut tx, new.channel_id).await?;
         let game: PartyGame = sqlx::query_as(concat!(
             "INSERT INTO party_games (kind, guild_id, channel_id, host_id, status, phase, rounds, state, deadline)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ",

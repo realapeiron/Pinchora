@@ -109,6 +109,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("ss") => surge::on_button(cx, parts).await,
         Some("hs") => heist::on_button(cx, parts).await,
         Some("sn") => crate::commands::feeds::on_component(cx, parts).await,
+        Some(prefix @ ("d9p" | "d9s" | "d9c")) => crate::commands::party_v2::on_component(cx, prefix, parts).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td" | "ni")) => {
             party_games::on_component(cx, prefix, parts).await
         }
@@ -144,6 +145,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("ca") => character::on_modal(cx, parts, fields).await,
         Some("cm") => customcommand::on_modal(cx, parts, fields).await,
         Some("pz") if parts.next() == Some("m") => board::picross::on_modal(cx, parts, fields).await,
+        Some(prefix @ ("d9p" | "d9s" | "d9c")) => crate::commands::party_v2::on_modal(cx, prefix, parts, fields).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx")) => party_games::on_modal(cx, prefix, parts, fields).await,
         Some("vc") => tempvoice::on_modal(cx, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {

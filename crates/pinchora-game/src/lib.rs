@@ -18,3 +18,5 @@ pub mod trips;
 pub use content::*;
 
 pub mod chat;
+
+pub mod party_v2;

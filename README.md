@@ -1664,3 +1664,21 @@ Automatic level rewards recheck live role hierarchy and dangerous permissions be
 The aquarium appears with authorized house visits and on the web house page; owners also
 see garden status there. All commands/cards are EN/TR. Migration **0078** only; balance,
 privacy, artwork and retention details are in [GAME_DESIGN.md](docs/GAME_DESIGN.md#d7--fishhousepet-long-loop-migration-0078).
+
+### Party and team games v2
+
+| Command | Original Pinchora game |
+| --- | --- |
+| `/party reefquiz [mode] [category]` | Reef Signals: five distinct EN/TR questions; balanced Coral/Kelp teams or quickfire, categories All/Ocean/Science/Nature |
+| `/party wordwake [mode]` | Wordwake: timed dictionary words containing a fragment; relay, chain, longest, many-word and mixed modes; no repeated words |
+| `/party driftstory` | Drift Tale: 18 turns writing a sea story, one filtered word at a time |
+| `/party roomwake` | Cabin Glimpse: identify four original scenes made with the house renderer and furniture atlas |
+| `/party crittercompass` | Critter Compass: three yes/no clues identify one of eight original reef creatures |
+| `/party lastreef` | Last Reef: eight survival tides, shelter/forage/explore choices, reciprocal alliances and a winners card |
+| `/play reefmind [level]` | Reefmind: white against a local Rust chess captain, easy/medium/hard; legal moves include castling, en passant and promotion |
+| `/play kelpmaze` | Kelp Trail: connected, generated 7×7 maze with direction buttons and a 150-move limit |
+| `/play gemtide` | Gem Tide: adjacent swaps on a 4×4 shell grid; matches, gravity, cascades and dead-board reshuffling; 30 points in 20 swaps |
+
+Public pixel cards use the server language. Party lobbies hold 2–12 players for 90 seconds; the host starts or cancels, players can leave or forfeit. One D9 session occupies a channel and excludes legacy multiplayer starts. Solo boards belong to their creator. All controls check channel, guild, seat and state version. Text entry uses modals, so Message Content intent is unnecessary. State survives restarts in existing `game_sessions`/`party_members`; the game janitor handles deadlines. No new tables or migration.
+
+Completed games feed `/play stats`. Eligible winners receive 15 shells through the economy ledger, with a shared **90 shells per UTC day** across these games. Cancellation pays nothing. State, stats and reward commit together, preventing repeated clicks from paying twice. Chess searches run off the async executor and stop at **120/1,200/6,000 nodes** and **20/75/150 ms** for easy/medium/hard (checked between nodes); no engine downloads or network calls.

@@ -2014,6 +2014,123 @@
         },
         {
           "aliases": [],
+          "description": "Reefmind: play chess against a local sea captain",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Easy",
+                "Medium",
+                "Hard"
+              ],
+              "description": "Captain difficulty",
+              "name": "level",
+              "required": false
+            }
+          ],
+          "path": "play reefmind",
+          "usage": "/play reefmind [level]"
+        },
+        {
+          "aliases": [],
+          "description": "Kelp Trail: navigate the pixel maze to the golden reef",
+          "manager": false,
+          "options": [],
+          "path": "play kelpmaze",
+          "usage": "/play kelpmaze"
+        },
+        {
+          "aliases": [],
+          "description": "Gem Tide: swap adjacent shells to match three and score 30",
+          "manager": false,
+          "options": [],
+          "path": "play gemtide",
+          "usage": "/play gemtide"
+        },
+        {
+          "aliases": [],
+          "description": "Reef Signals: five rounds of team or quickfire trivia",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Teams",
+                "Quickfire"
+              ],
+              "description": "Teams or a quickfire race",
+              "name": "mode",
+              "required": false
+            },
+            {
+              "choices": [
+                "All",
+                "Ocean",
+                "Science",
+                "Nature"
+              ],
+              "description": "Question category",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "party reefquiz",
+          "usage": "/party reefquiz [mode] [category]"
+        },
+        {
+          "aliases": [],
+          "description": "Wordwake: timed letter fragments, longest words and word chains",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Relay",
+                "Chain",
+                "Longest",
+                "Many words",
+                "Mixed"
+              ],
+              "description": "Word round rules",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "party wordwake",
+          "usage": "/party wordwake [mode]"
+        },
+        {
+          "aliases": [],
+          "description": "Drift Tale: build a sea story one word at a time",
+          "manager": false,
+          "options": [],
+          "path": "party driftstory",
+          "usage": "/party driftstory"
+        },
+        {
+          "aliases": [],
+          "description": "Cabin Glimpse: identify rooms from Pinchora house cards",
+          "manager": false,
+          "options": [],
+          "path": "party roomwake",
+          "usage": "/party roomwake"
+        },
+        {
+          "aliases": [],
+          "description": "Critter Compass: think of a reef creature and answer its clues",
+          "manager": false,
+          "options": [],
+          "path": "party crittercompass",
+          "usage": "/party crittercompass"
+        },
+        {
+          "aliases": [],
+          "description": "Last Reef: survive the tides, form alliances and reach the winners card",
+          "manager": false,
+          "options": [],
+          "path": "party lastreef",
+          "usage": "/party lastreef"
+        },
+        {
+          "aliases": [],
           "description": "Type a word with the syllable before the pearl pops; last one with lives wins",
           "manager": false,
           "options": [
@@ -8068,5 +8185,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 422
+  "count": 431
 }

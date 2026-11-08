@@ -76,6 +76,8 @@ mod board;
 mod branding;
 #[path = "simulate/leveling_parity.rs"]
 mod leveling_parity;
+#[path = "simulate/party_v2.rs"]
+mod party_v2;
 #[path = "simulate/quick.rs"]
 mod quick;
 // Welcome and goodbye images from the dashboard's editor.
