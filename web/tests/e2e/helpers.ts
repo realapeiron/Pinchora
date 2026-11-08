@@ -18,22 +18,34 @@ export interface Guild {
 /** Reuse identical login fixtures within a worker; a restarted worker can log in again. */
 const sessions = new Map<string, Cookie[]>();
 
-/** Logs in through `/auth/dev-login` as `user` with `guilds` on their server list. */
+/** Logs in as `user` with `guilds` and seeds English for tests with English locators. */
 export async function devLogin(page: Page, user: string, guilds: Guild[], username = "captain_crab") {
   await page.route("https://cdn.discordapp.com/**", (route) =>
     route.fulfill({ contentType: "image/svg+xml", body: AVATAR }),
   );
   const sessionKey = JSON.stringify({ user, username, guilds });
   const known = sessions.get(sessionKey);
+  let csrf: string | undefined;
   if (known) {
     await page.context().addCookies(known);
-    if ((await page.request.get("/api/me")).ok()) return;
+    const response = await page.request.get("/api/me");
+    if (response.ok()) csrf = (await response.json()).csrf;
   }
-  const response = await page.request.post("/auth/dev-login", {
-    data: { user_id: user, username, guilds: guilds.map((g) => ({ ...g, icon: null })) },
+  if (!csrf) {
+    const response = await page.request.post("/auth/dev-login", {
+      data: { user_id: user, username, guilds: guilds.map((g) => ({ ...g, icon: null })) },
+    });
+    expect(response.ok(), await response.text()).toBeTruthy();
+    csrf = (await response.json()).csrf;
+    sessions.set(sessionKey, await page.context().cookies());
+  }
+  // Account preferences survive browser contexts and suite runs (notably mock owner "1").
+  // Reset through the real API on both fresh and cached sessions, before the app loads /api/me.
+  const response = await page.request.post("/api/me/language", {
+    headers: { "X-CSRF-Token": csrf! },
+    data: { language: "en" },
   });
   expect(response.ok(), await response.text()).toBeTruthy();
-  sessions.set(sessionKey, await page.context().cookies());
 }
 
 export async function shot(page: Page, name: string, fullPage = false) {

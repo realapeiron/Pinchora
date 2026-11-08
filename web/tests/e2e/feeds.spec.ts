@@ -140,6 +140,10 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
   await page.getByLabel("Text", { exact: true }).pressSequentially(": ");
   await page.getByRole("button", { name: "{title}", exact: true }).click();
   await page.getByLabel("Only titles with").fill("lighthouse, Shells, shells");
+  await expect(page.getByLabel("Only titles with", { exact: true })).toHaveValue(
+    "lighthouse, Shells, shells",
+  );
+  await expect(page.getByLabel("Text", { exact: true })).toHaveValue("New from {account}: {title}");
   await expect(page.locator(".feed-word")).toHaveCount(2);
   const live = page.locator(".preview-live");
   await expect(live).not.toHaveClass(/is-busy/, { timeout: 15_000 });

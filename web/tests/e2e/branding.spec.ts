@@ -60,7 +60,12 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
     },
   ]);
   await shot(page, "branding-desktop", true);
+  const languageSaved = page.waitForResponse(
+    (response) => response.url().endsWith("/api/me/language") && response.request().method() === "POST",
+  );
   await page.getByRole("group", { name: "Language" }).getByRole("button", { name: "TR" }).click();
+  expect((await languageSaved).ok()).toBeTruthy();
+  expect((await (await page.request.get("/api/me")).json()).language).toBe("tr");
   await expect(
     page.getByRole("heading", { level: 1, name: "Sunucu marka kimliği", exact: true }),
   ).toBeVisible();
@@ -72,4 +77,9 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
   await page.locator(".branding-editor textarea").fill("B".repeat(190));
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "branding-phone", true);
+
+  // Reusing this account must seed English again, even with a cached login and saved TR preference.
+  await devLogin(page, "1", [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "32" }]);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Server branding", exact: true })).toBeVisible();
 });

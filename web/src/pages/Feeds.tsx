@@ -620,12 +620,10 @@ function FeedEditor({
     const base = draft.message ?? kindInfo?.default_message ?? "";
     const [start, end] =
       el && draft.message !== null ? [el.selectionStart, el.selectionEnd] : [base.length, base.length];
-    set("message", base.slice(0, start) + token + base.slice(end));
-    requestAnimationFrame(() => {
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(start + token.length, start + token.length);
-    });
+    // Commit before restoring selection so a deferred focus cannot steal input from another field.
+    flushSync(() => set("message", base.slice(0, start) + token + base.slice(end)));
+    el?.focus();
+    el?.setSelectionRange(start + token.length, start + token.length);
   };
 
   const onSave = () => {

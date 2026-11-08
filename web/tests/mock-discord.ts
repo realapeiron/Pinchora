@@ -5,6 +5,7 @@
 //   MOCK_PORT=18191 node --experimental-strip-types tests/mock-discord.ts
 
 import { createServer, type ServerResponse } from "node:http";
+import { countingChannelId } from "./discord-fixtures.ts";
 
 const port = Number(process.env.MOCK_PORT ?? 18191);
 
@@ -125,6 +126,8 @@ function channelsJson(guild: string) {
     channel(guild, "7004", "Chat", 4, 3, null),
     channel(guild, "7001", "general", 0, 4, "7004"),
     channel(guild, "7002", "memes", 0, 5, "7004"),
+    // Counting persists by globally unique channel ID; fixed IDs collide across runs/guilds.
+    channel(guild, countingChannelId(guild), "counting", 0, 5, "7004"),
     channel(guild, "7003", "Lounge", 2, 6, "7004"),
     channel(guild, "7005", "Gaming", 2, 6, "7004"),
     channel(guild, "7006", "Study hall", 2, 6, "7004"),

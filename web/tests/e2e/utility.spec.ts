@@ -9,7 +9,7 @@ const user = `${stamp}6`;
 test("Messages editor saves a schedule and fits desktop and phone", async ({ page }) => {
   await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/utility`);
-  await expect(page.getByRole("heading", { name: "MESSAGES" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "MESSAGES", exact: true })).toBeVisible();
   await expect(page.getByText("SCHEDULED MESSAGES · 0/20 USED")).toBeVisible();
   await page.getByRole("button", { name: "Schedule a message" }).click();
   await page.getByLabel("Channel").selectOption({ label: "#general" });
