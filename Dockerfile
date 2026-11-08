@@ -64,6 +64,10 @@ COPY . .
 COPY --from=web /src/web/dist web/dist
 ARG GIT_SHA=dev
 ENV GIT_SHA=${GIT_SHA}
+# The thin-LTO link of the final binary runs one worker per job; with all VM cores it
+# outgrows an 8 GB Docker VM.
+ARG CARGO_BUILD_JOBS=4
+ENV CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS}
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     cargo build --release --locked -p pinchora \
