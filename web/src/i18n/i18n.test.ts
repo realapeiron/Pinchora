@@ -6,6 +6,7 @@ import ts from "typescript";
 import { date, number, plural, serverText, setLocale, translate } from ".";
 import { en } from "./en";
 import { tr } from "./tr";
+import { t as workflowText, workflowEn, workflowTr } from "./workflows";
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -20,6 +21,20 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe("SPA message catalogs", () => {
+  it("keeps deferred workflow translations complete in both languages", async () => {
+    expect(Object.keys(workflowTr).sort()).toEqual(Object.keys(workflowEn).sort());
+    for (const key of Object.keys(workflowEn) as (keyof typeof workflowEn)[]) {
+      expect(workflowTr[key].trim().length, key).toBeGreaterThan(0);
+      expect([...workflowTr[key].matchAll(/\{\w+\}/g)].map(([value]) => value).sort()).toEqual(
+        [...workflowEn[key].matchAll(/\{\w+\}/g)].map(([value]) => value).sort(),
+      );
+      await setLocale("tr");
+      expect(workflowText(key)).toBe(workflowTr[key]);
+      await setLocale("en");
+      expect(workflowText(key)).toBe(workflowEn[key]);
+    }
+  });
+
   it("has a Turkish translation for every English key and no orphaned keys", () => {
     expect(Object.keys(tr).sort()).toEqual(Object.keys(en).sort());
     for (const key of Object.keys(en)) {
@@ -50,7 +65,7 @@ describe("SPA message catalogs", () => {
     const runtimeKeys = new Set(["appealed", "Messages must contain 1–200 characters."]);
     // TOML and TypeScript sources can spell multiline messages with escaped newlines.
     expect(
-      Object.keys(en).filter(
+      Object.keys({ ...en, ...workflowEn }).filter(
         (key) =>
           !source.includes(key) &&
           !source.includes(JSON.stringify(key).slice(1, -1)) &&

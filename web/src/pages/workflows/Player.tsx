@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import type { Playback } from "../../lib/workflows";
 export function Player({ playback }: { playback: Playback }) {
   const [index, setIndex] = useState(0);

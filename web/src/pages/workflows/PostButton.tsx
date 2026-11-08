@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { PixelButton } from "../../components/PixelButton";
 import { api } from "../../lib/api";
 export function PostButton({ path }: { path: string }) {

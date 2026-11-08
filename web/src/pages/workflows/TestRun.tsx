@@ -1,4 +1,4 @@
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { Panel } from "../../components/Panel";
 import { PixelButton } from "../../components/PixelButton";
 import { Player } from "./Player";

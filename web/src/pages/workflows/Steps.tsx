@@ -1,4 +1,4 @@
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { PixelButton } from "../../components/PixelButton";
 import { EmbedEditor } from "../../components/EmbedEditor";
 import { PlaceholderChips } from "../../components/PlaceholderChips";

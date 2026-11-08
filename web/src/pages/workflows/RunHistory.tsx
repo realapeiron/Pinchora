@@ -1,4 +1,5 @@
-import { translate as t, dateTime } from "../../i18n";
+import { dateTime } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { Panel } from "../../components/Panel";
 import { Loading, Problem } from "../States";
 import { Player } from "./Player";

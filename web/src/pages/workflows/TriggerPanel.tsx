@@ -1,4 +1,4 @@
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { Panel } from "../../components/Panel";
 import type { Data } from "../../lib/workflows";
 import { NodeFields } from "./Steps";

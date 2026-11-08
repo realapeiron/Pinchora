@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router";
-import { translate as t } from "../i18n";
+import { t } from "../i18n/workflows";
 import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import { Panel } from "../components/Panel";

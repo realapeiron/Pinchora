@@ -1,4 +1,4 @@
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { IdList } from "../../components/IdList";
 import type { Editor } from "./useWorkflowEditor";
 export function FakeEvent({ editor }: { editor: Editor }) {

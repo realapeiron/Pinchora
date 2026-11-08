@@ -14,8 +14,8 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
-The merged wave 6 command tree has **78 slash roots plus the Report message action**,
-covering **431 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
+The registered command tree has **78 slash roots plus Report and Open ticket (80 registrations)**,
+covering **454 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
 separate roots. F20 adds four member roots, F16 adds `/roblox`, and F17 adds `/game`.
 `/setup` has six groups and `/integrations` has five;
 `/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.

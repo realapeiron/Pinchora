@@ -300,8 +300,8 @@ impl Room {
         }
         // Recovery and duplicate-command snapshots expose the same private room as movement.
         // A remote revocation must apply before any early snapshot return.
-        if room_access(state, self.key, member.peer.user).await.is_err() {
-            member.peer.terminate("access_revoked");
+        if let Err(error) = room_access(state, self.key, member.peer.user).await {
+            member.peer.terminate(super::socket::access_close_reason(&error));
             return Ok(());
         }
         if envelope.sequence > 0 && envelope.sequence <= member.last_sequence {
@@ -544,8 +544,7 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                     for (token,member) in &room.members {
                         if !super::routing::in_room(state,&member.peer,key).await {relocated.push(token.clone());continue;}
                         if let Err(reason)=super::routing::controller(state,&member.peer).await {member.peer.terminate(reason);}
-                        else if matches!(state.app.db.reef_sanctioned(member.peer.user,key.owner,key.idx,false).await,Ok(true)) {member.peer.terminate("sanctioned");}
-                        else if room_access(state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
+                        else if let Err(error)=room_access(state,key,member.peer.user).await {member.peer.terminate(super::socket::access_close_reason(&error));}
                     }
                     for token in relocated {room.leave(&token);}
                     policy=Instant::now();

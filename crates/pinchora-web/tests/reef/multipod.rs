@@ -789,3 +789,39 @@ async fn recovery_snapshots_do_not_bypass_remote_access_revocation() {
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn sanctions_keep_their_reason_without_a_control_notification() {
+    let Some(a) = Site::new().await else { return };
+    let b = Site::new().await.unwrap();
+    // Exercise both the owner-command path and the remote event-delivery path. There is
+    // deliberately no moderation HTTP call to send a competing "sanctioned" close.
+    for remote in [false, true] {
+        let (host, guest) = (unique(), unique());
+        a.house(host).await;
+        let mut p = eligible(&a, host).await.connect().await;
+        p.join(host).await;
+        let mut q = eligible(if remote { &b } else { &a }, guest).await.connect().await;
+        q.join(host).await;
+        a.app
+            .db
+            .reef_moderate(&pinchora_db::ReefModeration {
+                actor: host,
+                operator: false,
+                target: guest,
+                owner: Some(host),
+                idx: Some(0),
+                kind: "ban".into(),
+                seconds: 60,
+                report: None,
+            })
+            .await
+            .unwrap();
+        let policy = a.app.db.reef_delivery_policy(host, 0, guest, false).await.unwrap();
+        assert!(!policy.allowed && policy.sanctioned);
+        // Even when another restriction is also present, the active sanction wins.
+        a.app.db.set_house_locked(host, true).await.unwrap();
+        q.send(json!({"type":"snapshot"})).await;
+        assert_eq!(q.close_reason().await, "sanctioned");
+    }
+}

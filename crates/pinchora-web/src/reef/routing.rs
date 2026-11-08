@@ -260,13 +260,16 @@ async fn route(
                             // Revalidate at delivery as well as command admission: queued room events
                             // must not disclose presence after a remote policy change.
                             if event.body["type"] != "error" {
-                                let (allowed, blocked) = state.app.db.reef_delivery_policy(key.owner,key.idx,peer.user,key.instance.is_some()).await?;
-                                if !allowed || (key.instance.is_some()
-                                    && matches!(event.body["type"].as_str(), Some("chat" | "snapshot"))
-                                    && super::socket::room_access(state,key,peer.user).await.is_err()) {
-                                    peer.terminate("access_revoked");continue;
+                                let policy = state.app.db.reef_delivery_policy(key.owner,key.idx,peer.user,key.instance.is_some()).await?;
+                                if !policy.allowed {
+                                    peer.terminate(if policy.sanctioned { "sanctioned" } else { "access_revoked" });continue;
                                 }
-                                if !filter_presence(&mut event.body, &blocked) {
+                                if key.instance.is_some()
+                                    && matches!(event.body["type"].as_str(), Some("chat" | "snapshot"))
+                                    && let Err(error) = super::socket::room_access(state,key,peer.user).await {
+                                    peer.terminate(super::socket::access_close_reason(&error));continue;
+                                }
+                                if !filter_presence(&mut event.body, &policy.blocked) {
                                     // Keep the delivery sequence intact without disclosing the identity.
                                     event.body = serde_json::json!({"type":"correction","updates":[]});
                                 }

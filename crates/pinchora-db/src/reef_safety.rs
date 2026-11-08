@@ -8,6 +8,13 @@ use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 pub const REEF_CONSENT_VERSION: i32 = 1;
 
+/// Delivery admission and its reason come from the same database snapshot.
+pub struct ReefDeliveryPolicy {
+    pub allowed: bool,
+    pub sanctioned: bool,
+    pub blocked: Vec<String>,
+}
+
 #[derive(sqlx::FromRow)]
 pub struct ReefEvidence {
     pub id: i64,
@@ -67,10 +74,14 @@ impl Db {
         idx: i16,
         user: u64,
         plaza: bool,
-    ) -> anyhow::Result<(bool, Vec<String>)> {
-        let (allowed, blocked): (bool, Vec<i64>) = sqlx::query_as("SELECT (CASE WHEN $4 THEN EXISTS(SELECT 1 FROM guilds WHERE id=$1) ELSE reef_house_admitted($1,$3) END) AND NOT EXISTS(SELECT 1 FROM reef_sanctions WHERE user_id=$3 AND expires_at>clock_timestamp() AND (owner_id IS NULL OR owner_id=$1) AND (room_idx IS NULL OR room_idx=$2) AND kind IN ('kick','ban')), ARRAY(SELECT blocked_id FROM guestbook_blocks WHERE host_id=$3 UNION SELECT host_id FROM guestbook_blocks WHERE blocked_id=$3)")
+    ) -> anyhow::Result<ReefDeliveryPolicy> {
+        let (admitted, sanctioned, blocked): (bool, bool, Vec<i64>) = sqlx::query_as("SELECT (CASE WHEN $4 THEN EXISTS(SELECT 1 FROM guilds WHERE id=$1) ELSE reef_house_admitted($1,$3) END), EXISTS(SELECT 1 FROM reef_sanctions WHERE user_id=$3 AND expires_at>clock_timestamp() AND (owner_id IS NULL OR owner_id=$1) AND (room_idx IS NULL OR room_idx=$2) AND kind IN ('kick','ban')), ARRAY(SELECT blocked_id FROM guestbook_blocks WHERE host_id=$3 UNION SELECT host_id FROM guestbook_blocks WHERE blocked_id=$3)")
             .bind(sql_id(owner)).bind(idx).bind(sql_id(user)).bind(plaza).fetch_one(self.pool()).await?;
-        Ok((allowed, blocked.into_iter().map(|id| id.to_string()).collect()))
+        Ok(ReefDeliveryPolicy {
+            allowed: admitted && !sanctioned,
+            sanctioned,
+            blocked: blocked.into_iter().map(|id| id.to_string()).collect(),
+        })
     }
     /// Site, house and room scopes all apply. Kicks prevent immediate reconnect for one minute.
     pub async fn reef_sanctioned(&self, user: u64, owner: u64, idx: i16, speaking: bool) -> anyhow::Result<bool> {

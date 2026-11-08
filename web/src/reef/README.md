@@ -288,3 +288,7 @@ phone/desktop captures, spectator and reconnect checks, and Picross solved from 
 The lead runs Chromium; `npx playwright test tests/e2e/reef-games.spec.ts --list` checks discovery here.
 `node web/scripts/measure-reef.mjs` now enforces **1,985,000 bytes** and verifies every game facade stays
 outside the cold dependency graph. Its conservative response-body envelope is not a device FPS claim.
+
+Active kick/ban sanctions close sockets with `sanctioned` consistently across room commands,
+remote deliveries and periodic admission checks. This reason takes precedence over other
+access restrictions observed alongside the sanction; ordinary revocation uses `access_revoked`.

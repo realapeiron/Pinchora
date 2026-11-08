@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { Panel } from "../../components/Panel";
 import { PixelButton } from "../../components/PixelButton";
 import { Problem } from "../States";

@@ -197,16 +197,10 @@ impl Runtime {
             let Some(peer) = self.controllers.lock().await.get(&user).cloned() else {
                 continue;
             };
-            let reason = if matches!(
-                state.app.db.reef_sanctioned(user, key.owner, key.idx, false).await,
-                Ok(true)
-            ) {
-                Some("sanctioned")
-            } else if socket::room_access(state, key, user).await.is_err() {
-                Some("access_revoked")
-            } else {
-                None
-            };
+            let reason = socket::room_access(state, key, user)
+                .await
+                .err()
+                .map(|error| socket::access_close_reason(&error));
             if let Some(reason) = reason {
                 // A room transition or controller replacement may have completed during the DB read.
                 let controllers = self.controllers.lock().await;

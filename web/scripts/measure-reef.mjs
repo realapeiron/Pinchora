@@ -34,6 +34,7 @@ for (const key of [
   "src/reef/games/Chess.tsx",
   "src/reef/games/Picross.tsx",
   "src/reef/games/Trivia.tsx",
+  "src/pages/Workflows.tsx",
 ]) {
   // Rollup can name a shared dynamic facade by its chunk name instead of its source path.
   const name = key

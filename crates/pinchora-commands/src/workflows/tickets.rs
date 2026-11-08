@@ -31,7 +31,7 @@ pub(super) async fn open_ticket(app: &App, guild: u64, user: u64, panel_id: i64,
         &ops,
         user,
         member.roles.iter().map(|role| role.get()),
-        Some(member.joined_at.as_secs()),
+        member.joined_at.map(|joined| joined.as_secs()),
         app.now(),
         app.guild_lang(guild).await,
     ) {

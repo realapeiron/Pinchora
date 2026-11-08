@@ -294,12 +294,29 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     }
     let _ = writer_task.await;
 }
-pub(crate) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> anyhow::Result<()> {
-    anyhow::ensure!(state.app.db.character(user).await?.is_some(), "access denied");
-    anyhow::ensure!(
-        !state.app.db.reef_sanctioned(user, key.owner, key.idx, false).await?,
+#[derive(Debug)]
+struct Sanctioned;
+impl std::fmt::Display for Sanctioned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("sanctioned")
+    }
+}
+impl std::error::Error for Sanctioned {}
+
+/// Keep the admission reason through command, relay and periodic checks.
+pub(crate) fn access_close_reason(error: &anyhow::Error) -> &'static str {
+    if error.is::<Sanctioned>() {
         "sanctioned"
-    );
+    } else {
+        "access_revoked"
+    }
+}
+
+pub(crate) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> anyhow::Result<()> {
+    if state.app.db.reef_sanctioned(user, key.owner, key.idx, false).await? {
+        return Err(Sanctioned.into());
+    }
+    anyhow::ensure!(state.app.db.character(user).await?.is_some(), "access denied");
     if key.instance.is_some() {
         super::spaces::membership(state, key.owner, user).await?;
         return Ok(());

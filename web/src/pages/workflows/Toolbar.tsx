@@ -1,4 +1,4 @@
-import { translate as t } from "../../i18n";
+import { t } from "../../i18n/workflows";
 import { PixelButton } from "../../components/PixelButton";
 import { payload, fingerprint } from "../../lib/workflows";
 import type { Editor } from "./useWorkflowEditor";

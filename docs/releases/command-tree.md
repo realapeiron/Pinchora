@@ -1,5 +1,10 @@
 # Command tree release rehearsal
 
+The integrated Wave 8 tree has **78 slash roots plus Report and Open ticket (80 registrations)**
+and **454 executable entries**. The largest roots measure `/progression` **6,642**,
+`/setup` **6,624**, and `/community` **6,367** characters, with no node exceeding 25 children.
+Migrations **0085**, **0086**, and **0087** cover room games, ticket operations, and workflows.
+
 D12 extends `/ticket` with seven staff leaves (`priority`, `escalate`, `transfer`, `request-close`,
 `force-open`, `note`, `snippet`). The root has 16 children and remains below the 6,800-character
 limit. No slash root is added. Migration **0086** adds ticket operation state, panel and support
