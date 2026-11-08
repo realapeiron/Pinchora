@@ -127,6 +127,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::listen_for_invalidations(&app).await;
     // Ends duels and rounds whose clock ran out, so no wager stays held after a restart.
     pinchora_commands::spawn_game_janitor(app.clone());
+    pinchora_commands::spawn_economy_v2_ticker(app.clone());
     pinchora_commands::spawn_mod_parity_ticker(app.clone());
     pinchora_commands::spawn_leveling_parity_ticker(app.clone());
     // Sends the reminders that came due; every pod runs it and the table's leases keep one from

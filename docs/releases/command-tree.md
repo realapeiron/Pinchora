@@ -161,3 +161,17 @@ Adds six `/party` leaves (`reefquiz`, `wordwake`, `driftstory`, `roomwake`,
 78 slash roots plus Report. The localized size check measures `/party` at
 1,934 characters and `/play` at 2,076, below the 6,800-character limit.
 EN/TR descriptions and the route inventory include all nine leaves. No migration, dependencies, registration or deployment.
+
+## D8 player economy v2
+
+Twelve actions extend `/rewards`, `/stall` and `/progression economy`; registration remains
+78 slash roots plus Report (443 executable source entries). The largest root is
+`/progression` at 6,762 characters; every root remains below 6,800 with at most 25 children.
+The internal `economyv2`
+model is pruned from registration by the canonical manifest. `sl:eco:*` extends the stall
+component namespace with owner-bound shift and trade controls; old stall controls retain
+their original payloads. All twelve leaves defer privately, and administration remains
+under `/progression economy tools` with the server-side Manage Server check.
+Migration 0083 only. Apply before restarting the gateway/web processes, which then share
+the 30-second idempotent auction/trade sweeper. Register the regenerated tree only through
+the owner's ordinary release process. No registration or deployment is performed here.

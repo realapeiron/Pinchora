@@ -629,6 +629,268 @@
       "commands": [
         {
           "aliases": [
+            "economyv2 auction"
+          ],
+          "description": "Açık artırmaları gör veya eşya listele; %5 kesinti, son tekliflerde iki dakika uzatma",
+          "manager": false,
+          "options": [
+            {
+              "description": "Envanter eşya kimliği",
+              "name": "item",
+              "required": false
+            },
+            {
+              "description": "Başlangıç fiyatı",
+              "name": "price",
+              "required": false
+            },
+            {
+              "description": "Saat olarak süre (varsayılan 24)",
+              "name": "hours",
+              "required": false
+            }
+          ],
+          "path": "stall auction",
+          "usage": "/stall auction [item] [price] [hours]"
+        },
+        {
+          "aliases": [
+            "economyv2 auction-close"
+          ],
+          "description": "Biten açık artırmayı sonuçlandır veya teklif almayan ilanını iptal et",
+          "manager": false,
+          "options": [
+            {
+              "description": "Açık artırma numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "İlk tekliften önce iptal et",
+              "name": "cancel",
+              "required": false
+            }
+          ],
+          "path": "stall auction-close",
+          "usage": "/stall auction-close <id> [cancel]"
+        },
+        {
+          "aliases": [
+            "economyv2 bid"
+          ],
+          "description": "Teklifi emanete ayır; geçilen teklifin kabukları hemen döner",
+          "manager": false,
+          "options": [
+            {
+              "description": "Açık artırma numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Kabuk teklifi (en az %5, en az bir artış)",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "stall bid",
+          "usage": "/stall bid <id> <amount>"
+        },
+        {
+          "aliases": [
+            "economyv2 trade"
+          ],
+          "description": "Değişmez takas teklif et; iki oyuncu da inceleyip onaylamalı",
+          "manager": false,
+          "options": [
+            {
+              "description": "Takas yapacağın oyuncu",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Verdiğin kabuk",
+              "name": "give",
+              "required": false
+            },
+            {
+              "description": "İstediğin kabuk",
+              "name": "receive",
+              "required": false
+            },
+            {
+              "description": "Verdiğin bir envanter eşyası",
+              "name": "item",
+              "required": false
+            },
+            {
+              "description": "İstediğin bir envanter eşyası",
+              "name": "request_item",
+              "required": false
+            }
+          ],
+          "path": "stall trade",
+          "usage": "/stall trade <user> [give] [receive] [item] [request_item]"
+        },
+        {
+          "aliases": [
+            "economyv2 trade-review"
+          ],
+          "description": "Onaylamadan önce takastaki eşyaları, tutarları ve oyuncuyu incele",
+          "manager": false,
+          "options": [
+            {
+              "description": "Takas numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "stall trade-review",
+          "usage": "/stall trade-review <id>"
+        },
+        {
+          "aliases": [
+            "economyv2 tools"
+          ],
+          "description": "Mağaza ve puan",
+          "manager": true,
+          "options": [
+            {
+              "description": "İşlem",
+              "name": "action",
+              "required": false
+            },
+            {
+              "description": "Seviye",
+              "name": "level",
+              "required": false
+            },
+            {
+              "description": "Gün",
+              "name": "days",
+              "required": false
+            },
+            {
+              "description": "Hedef",
+              "name": "goal",
+              "required": false
+            },
+            {
+              "description": "Açık",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Kalan %",
+              "name": "percent",
+              "required": false
+            },
+            {
+              "description": "Önizleme kodu",
+              "name": "version",
+              "required": false
+            }
+          ],
+          "path": "progression economy tools",
+          "usage": "/progression economy tools [action] [level] [days] [goal] [enabled] [percent] [version]"
+        },
+        {
+          "aliases": [
+            "economyv2 chest"
+          ],
+          "description": "Kazanılan sandık: %70 25, %25 50, %5 100 kabuk; satılmaz",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kazanılan bir sandığı aç",
+              "name": "open",
+              "required": false
+            }
+          ],
+          "path": "rewards chest",
+          "usage": "/rewards chest [open]"
+        },
+        {
+          "aliases": [
+            "economyv2 donate"
+          ],
+          "description": "Bu sunucunun kalıcı topluluk havuzuna kabuk bağışla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Bağışlanacak kabuk; geri çekme veya kişisel ödül yok",
+              "name": "amount",
+              "required": false
+            }
+          ],
+          "path": "rewards donate",
+          "usage": "/rewards donate [amount]"
+        },
+        {
+          "aliases": [
+            "economyv2 jobs"
+          ],
+          "description": "Resif meslekleri: günde üç vardiya, on vardiyada bir terfi",
+          "manager": false,
+          "options": [
+            {
+              "description": "Başlat: kelp_keeper, coral_courier veya beacon_tender; görüntülemek için boş bırak",
+              "name": "job",
+              "required": false
+            }
+          ],
+          "path": "rewards jobs",
+          "usage": "/rewards jobs [job]"
+        },
+        {
+          "aliases": [
+            "economyv2 prestige"
+          ],
+          "description": "40 vardiya sonrası: 10000 kabuk harca, meslek seviyesini sıfırla, prestij kazan",
+          "manager": false,
+          "options": [
+            {
+              "description": "10000 kabuk harcamayı ve meslek seviyesini sıfırlamayı onayla",
+              "name": "confirm",
+              "required": false
+            }
+          ],
+          "path": "rewards prestige",
+          "usage": "/rewards prestige [confirm]"
+        },
+        {
+          "aliases": [
+            "economyv2 provisions"
+          ],
+          "description": "Erzak bakımı: saatte on kabuk, en fazla 120",
+          "manager": false,
+          "options": [
+            {
+              "description": "tend: hazırla, claim: topla; görüntülemek için boş bırak",
+              "name": "action",
+              "required": false
+            }
+          ],
+          "path": "rewards provisions",
+          "usage": "/rewards provisions [action]"
+        },
+        {
+          "aliases": [
+            "economyv2 season"
+          ],
+          "description": "Ücretsiz aylık sezon: on aşama, her biri 100 kabuk",
+          "manager": false,
+          "options": [
+            {
+              "description": "Sıradaki aşamayı al",
+              "name": "tier",
+              "required": false
+            }
+          ],
+          "path": "rewards season",
+          "usage": "/rewards season [tier]"
+        },
+        {
+          "aliases": [
             "weekly"
           ],
           "description": "Haftalık kabuklarını topla (7 günde bir)",
@@ -8185,5 +8447,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 431
+  "count": 443
 }

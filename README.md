@@ -1737,3 +1737,20 @@ the pre-existing house editor's separate plaza scope remains available.
 Public pixel cards use the server language. Party lobbies hold 2–12 players for 90 seconds; the host starts or cancels, players can leave or forfeit. One D9 session occupies a channel and excludes legacy multiplayer starts. Solo boards belong to their creator. All controls check channel, guild, seat and state version. Text entry uses modals, so Message Content intent is unnecessary. State survives restarts in existing `game_sessions`/`party_members`; the game janitor handles deadlines. No new tables or migration.
 
 Completed games feed `/play stats`. Eligible winners receive 15 shells through the economy ledger, with a shared **90 shells per UTC day** across these games. Party rewards require at least two players to actually participate; the self-reported Critter Compass guessing game pays no shells. Cancellation pays nothing. State, stats and reward commit together, preventing repeated clicks from paying twice. Chess searches run off the async executor and stop at **120/1,200/6,000 nodes** and **20/75/150 ms** for easy/medium/hard (checked between nodes); no engine downloads or network calls.
+
+### D8 Player economy v2
+
+| Commands / page | Behavior |
+| --- | --- |
+| `/rewards jobs [job]` | Kelp keeper, coral courier and beacon tender shifts; three ordered button tasks, promotions, one-hour cooldown, three paid shifts/day |
+| `/rewards provisions [action]`, `/rewards chest [open]` | Capped free provisions and earned-only chests with odds displayed before opening |
+| `/rewards season [tier]`, `/rewards prestige [confirm]` | Free monthly ten-tier reward track; opt-in 10,000-shell prestige sink after 40 shifts |
+| `/rewards donate [amount]` | Permanent shell donations to this server's community goal |
+| `/stall auction [item] [price] [hours]`, `/stall bid id amount`, `/stall auction-close id [cancel]` | Timed auctions, bid escrow/refunds, bounded anti-snipe, 5% fee and restart-safe settlement |
+| `/stall trade user [give] [receive] [item] [request_item]`, `/stall trade-review id` | Fixed offers, exact review, both confirmations, atomic items + shells swap, cancel/expiry refunds |
+| `/progression economy tools` | Manage Server: store conditions and donation goal; preview then scale/reset server points |
+| `/me/wallet` | Jobs, provisions, earned treasure, auctions, trades, donation pools, season and prestige alongside the existing wallet/ledger |
+| `/g/:guildId/economy` | Economy settings; configuration-area delegates use the same ManagedGuild boundary as the store |
+
+D8 adds no registered slash roots. Migration 0083 is the only schema change. Global shells
+are never minted or reset by server administrators. See [reward budgets and trade rules](docs/GAME_DESIGN.md#d8-player-economy-v2).

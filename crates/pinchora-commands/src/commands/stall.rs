@@ -226,6 +226,10 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
 
 /// `sl:<price>` select: list the chosen item.
 pub(crate) async fn on_list(cx: &Cx, mut args: std::str::Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
+    if args.clone().next() == Some("eco") {
+        args.next();
+        return super::economy_v2::on_component(cx, args).await;
+    }
     let price: i64 = args
         .next()
         .and_then(|v| v.parse().ok())

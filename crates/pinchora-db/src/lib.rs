@@ -225,3 +225,5 @@ mod server_tools;
 pub use server_tools::{AuditFilter, DASHBOARD_AREAS, DashboardManager, MAX_DASHBOARD_MANAGERS};
 mod party_v2;
 pub use party_v2::ReefMove;
+
+pub mod economy_v2;

@@ -22,6 +22,12 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("economy_requests", "user_id"),
+    ("economy_players", "user_id"),
+    ("economy_auctions", "seller_id"),
+    ("economy_auctions", "bidder_id"),
+    ("economy_trades", "user_a"),
+    ("economy_trades", "user_b"),
     ("card_design_history", "actor_id"),
     ("message_kit_history", "actor_id"),
     ("card_boost_state", "user_id"),
@@ -235,6 +241,7 @@ pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
 /// the games' own sweep of old days.
 pub const DAILY_LIMITS: &[(&str, &str, &str)] = &[
     ("reef_loop_daily", "user_id", "day"),
+    ("economy_limits", "user_id", "day"),
     ("collection_daily", "user_id", "day"),
     ("party_daily", "user_id", "day"),
 ];
@@ -266,6 +273,7 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "economy_settings",
     "dashboard_managers",
     "community_auto_channels",
     "anniversary_settings",
@@ -501,6 +509,7 @@ impl Db {
             .fetch_optional(&mut **tx)
             .await?;
         leave_tombstone(tx, id, now, today).await?;
+        crate::economy_v2::privacy_refund(tx, id, now).await?;
 
         let held: Vec<(i64, i64, Option<i64>, i64)> = sqlx::query_as(
             "SELECT id, host_id, guest_id, bet FROM game_sessions
@@ -728,7 +737,11 @@ async fn others_written(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64)
          UNION SELECT r.reporter_id FROM reef_reports r JOIN reef_chat_evidence e ON e.id=r.message_id
              WHERE e.sender_id=$1 OR e.owner_id=$1
          UNION SELECT e.sender_id FROM reef_chat_evidence e WHERE e.owner_id=$1
-         UNION SELECT e.owner_id FROM reef_chat_evidence e WHERE e.sender_id=$1",
+         UNION SELECT e.owner_id FROM reef_chat_evidence e WHERE e.sender_id=$1
+         UNION SELECT seller_id FROM economy_auctions WHERE bidder_id=$1 AND status='open'
+         UNION SELECT bidder_id FROM economy_auctions WHERE seller_id=$1 AND status='open'
+         UNION SELECT user_a FROM economy_trades WHERE user_b=$1 AND status='open'
+         UNION SELECT user_b FROM economy_trades WHERE user_a=$1 AND status='open'",
     )
     .bind(id)
     .fetch_all(&mut **tx)

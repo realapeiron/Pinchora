@@ -12776,6 +12776,13 @@ async fn admin_paths_refuse_members_without_manage_server() {
     });
     let rows: Vec<(&str, Value)> = vec![
         (
+            "economyv2 tools",
+            json!([sub(
+                "tools",
+                vec![text_option("action", "save"), int_option("goal", 20000)]
+            )]),
+        ),
+        (
             "robloxadmin settings",
             json!([sub("settings", vec![bool_option("enabled", true)])]),
         ),
@@ -15412,3 +15419,6 @@ mod web_player;
 
 #[path = "simulate/reef_loop.rs"]
 mod reef_loop;
+
+#[path = "simulate/economy_v2.rs"]
+mod economy_v2;

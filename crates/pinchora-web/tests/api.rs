@@ -4023,3 +4023,6 @@ mod mod_parity;
 mod player_depth;
 #[path = "api/web_player.rs"]
 mod web_player;
+
+#[path = "api/economy_v2.rs"]
+mod economy_v2;

@@ -12,8 +12,8 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 112);
-    assert_eq!(paths.len(), 431);
+    assert_eq!(tree.len(), 113);
+    assert_eq!(paths.len(), 443);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     assert_eq!(
@@ -46,7 +46,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 228);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 240);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()

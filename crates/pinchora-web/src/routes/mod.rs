@@ -12,6 +12,7 @@ mod community;
 mod community_pack;
 mod community_v2;
 mod discord_info;
+mod economy_v2;
 mod events;
 mod feed_links;
 mod feed_webhooks;
@@ -107,6 +108,7 @@ pub fn router(state: WebState) -> Router {
     let api = Router::new()
         .route("/api/me", get(me::me))
         .nest("/api/me", web_player::router())
+        .nest("/api/me/economy", economy_v2::player_router())
         .route("/api/me/language", post(me::language))
         .route("/api/me/trackers", get(trackers::export))
         .route("/api/me/guilds", get(me::guilds))

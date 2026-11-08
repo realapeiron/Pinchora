@@ -235,6 +235,7 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
     let (emoji, name) = (&settings.points_emoji, &settings.points_name);
     let (price, balance) = match db.buy_store_item(guild, buyer, item_id).await? {
         StoreBuy::Bought { price, balance, .. } => (price, balance),
+        StoreBuy::Conditions => return cx.reply_ephemeral(t!(lang, "eco.store_conditions")).await,
         StoreBuy::Gone => return cx.reply_ephemeral(t!(lang, "store.gone")).await,
         StoreBuy::SoldOut => return cx.reply_ephemeral(t!(lang, "store.role-sold-out", role = role)).await,
         StoreBuy::Insufficient { price, balance } => {

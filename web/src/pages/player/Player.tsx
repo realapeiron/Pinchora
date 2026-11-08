@@ -13,6 +13,7 @@ import { ProfileStudio } from "./ProfileStudio";
 import { CharacterStudio } from "./CharacterStudio";
 import { Friends, Guestbook, FishBook, Inventory, Pets, Quests, Stall } from "./Depth";
 import "../../styles/web-player.css";
+import { EconomyPanels } from "./Economy";
 
 export function PlayerRoutes() {
   useLocale();
@@ -217,6 +218,7 @@ function Wallet() {
             className="player-wallet"
             alt={t("Your wallet card")}
           />
+          <EconomyPanels />
           <Panel title={t("Recent transactions")}>
             <p>
               {t("{shells} shells · {pearls} pearls", {

@@ -103,6 +103,10 @@ const localizedRoutes: RouteObject[] = [
       },
       { path: "leveling", element: <Leveling /> },
       { path: "points", element: <Points /> },
+      {
+        path: "economy",
+        lazy: async () => ({ Component: (await import("./pages/EconomySettings")).EconomySettings }),
+      },
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
       {

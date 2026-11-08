@@ -283,3 +283,6 @@ pub mod undo;
 pub use commands::house::Who;
 
 pub use commands::party_v2::tick as party_v2_tick;
+
+mod economy_v2;
+pub use economy_v2::spawn_ticker as spawn_economy_v2_ticker;

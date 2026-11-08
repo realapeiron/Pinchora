@@ -48,6 +48,7 @@ const PAGE_AREAS: Record<string, string> = {
   "message-studio": "configuration",
   leveling: "configuration",
   points: "configuration",
+  economy: "configuration",
   commands: "configuration",
   responders: "configuration",
   roles: "roles",

@@ -20,6 +20,7 @@ pub(crate) mod decorate;
 pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
+pub(crate) mod economy_v2;
 pub use economy::{wallet_card_for, wallet_preview_for};
 pub(crate) mod events;
 pub(crate) mod feeds;
@@ -163,6 +164,7 @@ commands!(
     periodic::Weekly,
     periodic::Monthly,
     economy::Balance,
+    economy_v2::EconomyCommand,
     economy::Give,
     rep::Rep,
     bio::Bio,
