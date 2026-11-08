@@ -16,7 +16,7 @@ use std::{
 };
 
 use axum::{
-    Router,
+    Json, Router,
     body::{Body, Bytes},
     extract::ConnectInfo,
     http::{HeaderMap, Method, Request, StatusCode, header},
@@ -91,11 +91,19 @@ impl Site {
         let db = Db::connect(&database, 5).await.expect("connect to the database");
         db.migrate().await.expect("migrate");
         let cache = Cache::connect(&redis).await.expect("connect to redis");
-        // The house routes never call Discord, so nothing listens behind this proxy.
+        // Plaza entry verifies membership freshly even when the OAuth guild list is cached.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener,Router::new().fallback(|uri:axum::http::Uri|async move {
+                let user=uri.path().rsplit('/').next().unwrap_or("1");
+                Json(json!({"user":{"id":user,"username":"member","discriminator":"0","avatar":null},"roles":[],"joined_at":"2024-01-01T00:00:00.000000+00:00","deaf":false,"mute":false,"flags":0,"pending":false}))
+            })).await.unwrap();
+        });
         let rest = Arc::new(
             Client::builder()
                 .token("Bot house-test".into())
-                .proxy("127.0.0.1:9".into(), true)
+                .proxy(address.to_string(), true)
                 .ratelimiter(None)
                 .build(),
         );

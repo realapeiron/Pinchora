@@ -3,7 +3,7 @@
 use std::str::Split;
 
 use pinchora_core::{i18n::Lang, t};
-use pinchora_db::{BuyOutcome, Currency as DbCurrency};
+use pinchora_db::Currency as DbCurrency;
 use pinchora_game::{Content, Currency, Surface, house};
 use twilight_model::{
     channel::message::{
@@ -179,39 +179,54 @@ pub(crate) async fn on_component(
     };
     let user = cx.author()?.id.get();
     let key = format!("{}:{}", if wall { "wp" } else { "fl" }, surface.id);
-    let mut note = String::new();
-    if !cx.app.db.owns(user, &key).await? {
-        let currency = match surface.currency {
-            Currency::Shells => DbCurrency::Shells,
-            Currency::Pearls => DbCurrency::Pearls,
-        };
-        match cx.app.db.buy_item(user, &key, surface.price, currency, 1).await? {
-            BuyOutcome::Bought { .. } => {
-                note = t!(
-                    cx.lang(),
-                    "house.decorate.bought",
-                    name = content.name(&surface.id, cx.lang()),
-                    price = price_text(cx.lang(), surface)
-                )
-            }
-            _ => {
-                return cx
-                    .reply_ephemeral(t!(
-                        cx.lang(),
-                        "house.decorate.costs",
-                        name = content.name(&surface.id, cx.lang()),
-                        price = price_text(cx.lang(), surface)
-                    ))
-                    .await;
-            }
-        }
-    }
+    let _guard = cx.app.db.house_editor(user).await?;
+    let owned = cx.app.db.owns(user, &key).await?;
     let (wp, fl) = if wall {
         (Some(surface.id.as_str()), None)
     } else {
         (None, Some(surface.id.as_str()))
     };
-    cx.app.db.set_room_surfaces(user, room, wp, fl).await?;
+    let currency = match surface.currency {
+        Currency::Shells => DbCurrency::Shells,
+        Currency::Pearls => DbCurrency::Pearls,
+    };
+    let outcome = cx
+        .app
+        .db
+        .update_house_checked(
+            user,
+            room,
+            pinchora_db::HouseUpdate::Surface {
+                wallpaper: wp,
+                floor: fl,
+                key: &key,
+                price: surface.price,
+                currency,
+                confirmed: true,
+            },
+            |_| true,
+        )
+        .await?;
+    if outcome != pinchora_db::HouseUpdateOutcome::Done {
+        return cx
+            .reply_ephemeral(t!(
+                cx.lang(),
+                "house.decorate.costs",
+                name = content.name(&surface.id, cx.lang()),
+                price = price_text(cx.lang(), surface)
+            ))
+            .await;
+    }
+    let note = if owned {
+        String::new()
+    } else {
+        t!(
+            cx.lang(),
+            "house.decorate.bought",
+            name = content.name(&surface.id, cx.lang()),
+            price = price_text(cx.lang(), surface)
+        )
+    };
     let _ = cx
         .app
         .cache

@@ -251,7 +251,7 @@ impl Room {
         for token in old {
             self.leave(&token);
         }
-        if self.members.len() >= 16 {
+        if self.members.len() >= if self.key.instance.is_some() { 32 } else { 16 } {
             peer.error(&self.epoch, &request, "room_full");
             return;
         }
@@ -273,6 +273,13 @@ impl Room {
         };
         let presence = member.json();
         self.members.insert(peer.token.clone(), member);
+        if self.key.instance.is_none() && self.key.owner != peer.user {
+            let _ = state
+                .app
+                .db
+                .record_visit(self.key.owner, peer.user, chrono::Utc::now().date_naive(), 0, 0)
+                .await;
+        }
         self.snapshot(&peer, &request);
         self.broadcast("", json!({"type":"presence","action":"join","player":presence}));
     }
@@ -341,6 +348,7 @@ impl Room {
                     let mut event = evidence.json();
                     event["type"] = json!("chat");
                     event["name"] = json!(peer.name);
+                    event["room"] = json!(self.key.name());
                     for member in self.members.values() {
                         if recipients.contains(&member.peer.user) {
                             member.peer.send(
@@ -510,6 +518,9 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                     if empty_since.elapsed()>Duration::from_secs(2) {break;}
                 } else {empty_since=now;}
                 if refreshed.elapsed()>=Duration::from_secs(1) {
+                    if key.instance.is_some() {
+                        let _=state.app.cache.reef_claim(&format!("occupancy:{}",key.name()),&room.members.len().to_string(),3000,true).await;
+                    }
                     if state.app.cache.ping().await.is_err() || room.refresh(state).await.is_err() {break;}
                     refreshed=Instant::now();
                 }

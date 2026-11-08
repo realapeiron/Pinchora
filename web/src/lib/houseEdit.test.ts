@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RoomQueue, optimistic, type Snapshot } from "./houseEdit";
+import { RoomQueue, optimistic, sendOperation, type Snapshot } from "./houseEdit";
 import { ApiError } from "./api";
 import type { RoomJson } from "../iso/scene";
 import { canPlace } from "../iso/rules";
@@ -241,4 +241,63 @@ it("uses Discord's Turkish names in room tabs and house upgrade offers", async (
     await setLocale("en");
   }
   expect(tierLabel(2, "Beach Cottage")).toBe("Beach Cottage");
+});
+
+it("carries server revisions and distinct intention IDs across queued edits", async () => {
+  const send = vi
+    .fn()
+    .mockResolvedValueOnce({ fingerprint: "placed", revision: "10", placements: [{ ...place, id: "123" }] })
+    .mockResolvedValueOnce({ fingerprint: "cleared", revision: "11", placements: [] });
+  const q = new RoomQueue(
+    { ...room, revision: "9" },
+    send,
+    async () => room,
+    () => {},
+  );
+  q.enqueue(place);
+  q.enqueue({ type: "clear" });
+  await tick();
+  expect(send.mock.calls.map((c) => c[2])).toEqual(["9", "10"]);
+  expect(send.mock.calls[0]![3]).toMatch(/^[0-9a-f-]{36}$/);
+  expect(send.mock.calls[1]![3]).not.toBe(send.mock.calls[0]![3]);
+  expect(q.room.revision).toBe("11");
+});
+
+it("retries a lost response with exactly the same idempotent request", async () => {
+  const fetch = vi
+    .fn()
+    .mockRejectedValueOnce(new TypeError("connection lost"))
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ fingerprint: "placed", revision: "10", placements: [] })),
+    );
+  vi.stubGlobal("fetch", fetch);
+  try {
+    await sendOperation({ kind: "own" }, 0, "first", place, "9", "intention-1");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[0]).toEqual(fetch.mock.calls[1]);
+    expect(JSON.parse(fetch.mock.calls[0]![1].body)).toMatchObject({
+      request_id: "intention-1",
+      expected_revision: "9",
+    });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("does not retry a server conflict or a legacy mutation without a receipt", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { code: "room_changed", message: "changed" } }), { status: 409 }),
+    );
+  vi.stubGlobal("fetch", fetch);
+  try {
+    await expect(sendOperation({ kind: "own" }, 0, "first", place, "9")).rejects.toBeInstanceOf(ApiError);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    fetch.mockRejectedValueOnce(new TypeError("connection lost"));
+    await expect(sendOperation({ kind: "own" }, 0, "first", place)).rejects.toBeInstanceOf(TypeError);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

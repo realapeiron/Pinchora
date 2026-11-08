@@ -289,12 +289,16 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     }
     let _ = writer_task.await;
 }
-pub(super) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> anyhow::Result<()> {
+pub(crate) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> anyhow::Result<()> {
     anyhow::ensure!(state.app.db.character(user).await?.is_some(), "access denied");
     anyhow::ensure!(
         !state.app.db.reef_sanctioned(user, key.owner, key.idx, false).await?,
         "sanctioned"
     );
+    if key.instance.is_some() {
+        super::spaces::membership(state, key.owner, user).await?;
+        return Ok(());
+    }
     anyhow::ensure!(!state.app.db.is_guild(key.owner).await?, "access denied");
     if key.owner == user {
         return Ok(());
@@ -306,7 +310,15 @@ pub(super) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> an
         .house_if_any(key.owner)
         .await?
         .ok_or_else(|| anyhow::anyhow!("access denied"))?;
-    anyhow::ensure!(!house.locked && rooms.iter().any(|r| r.idx == key.idx), "access denied");
+    let admitted = state.app.db.reef_admitted(key.owner, user).await?;
+    anyhow::ensure!(
+        (!house.locked || admitted) && rooms.iter().any(|r| r.idx == key.idx),
+        "access denied"
+    );
+    anyhow::ensure!(
+        super::spaces::visit_consent(state, key.owner, user).await?,
+        "access denied"
+    );
     anyhow::ensure!(!state.app.db.socially_blocked(key.owner, user).await?, "access denied");
     Ok(())
 }

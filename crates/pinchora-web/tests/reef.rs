@@ -912,6 +912,11 @@ async fn retention_preserves_reported_evidence_and_deletion_removes_chat_but_not
     use pinchora_core::config_backup::{EXCLUDED_REEF_TABLES, Names, Policy};
     let guild = unique();
     site.app.db.guild_settings(guild).await.unwrap();
+    sqlx::query("DELETE FROM events WHERE guild_id=$1")
+        .bind(guild as i64)
+        .execute(&site.pool)
+        .await
+        .unwrap();
     let backup = site.app.db.export_config(guild, Names::default()).await.unwrap();
     for table in EXCLUDED_REEF_TABLES {
         assert!(
@@ -1023,3 +1028,361 @@ async fn operator_site_scope_room_scope_and_reversal_are_authorized() {
 
 #[path = "reef/multipod.rs"]
 mod multipod;
+
+impl Browser {
+    async fn api_value(&self, method: reqwest::Method, path: &str, body: Value) -> (reqwest::StatusCode, Value) {
+        let response = reqwest::Client::new()
+            .request(method, format!("{}{}", self.url, path))
+            .header("cookie", format!("pinchora_sid={}", self.sid))
+            .header("origin", &self.url)
+            .header("x-csrf-token", "reef-test-csrf")
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        let status = response.status();
+        let bytes = response.bytes().await.unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+    }
+}
+#[tokio::test]
+async fn wave7_atomic_receipts_revision_races_and_shared_undo() {
+    let Some(site) = Site::new().await else { return };
+    let owner = unique();
+    site.house(owner).await;
+    let browser = site.browser(owner).await;
+    let item = "pebblerest_stool__sand";
+    site.app.db.grant_item(owner, item, 2).await.unwrap();
+    let (_, before) = browser
+        .api_value(reqwest::Method::GET, "/api/house/rooms/0", Value::Null)
+        .await;
+    let request = json!({"request_id":"wave7-place","expected_revision":before["revision"],"expected_fingerprint":before["fingerprint"],"op":{"type":"place","item_id":item,"x":1,"y":1,"flipped":false}});
+    let (a, b) = tokio::join!(
+        browser.api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", request.clone()),
+        browser.api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", request.clone())
+    );
+    assert_eq!(a.0, 200, "{:?}", a);
+    assert_eq!(b.0, 200, "{:?}", b);
+    assert_eq!(site.app.db.placements(owner, 0).await.unwrap().len(), 1);
+    let mut reused = request.clone();
+    reused["op"]["x"] = json!(2);
+    assert_eq!(
+        browser
+            .api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", reused)
+            .await
+            .0,
+        422
+    );
+    let mut stale = request;
+    stale["request_id"] = json!("stale");
+    assert_eq!(
+        browser
+            .api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", stale)
+            .await
+            .0,
+        409
+    );
+    let rows = site.app.db.placements(owner, 0).await.unwrap();
+    let result = pinchora_commands::house_edit::apply(
+        &site.app,
+        pinchora_commands::Who::own(owner),
+        0,
+        (8, 8),
+        &pinchora_commands::house_edit::fingerprint(&rows),
+        pinchora_commands::house_edit::Operation::Undo,
+    )
+    .await
+    .unwrap();
+    assert!(matches!(result, pinchora_commands::house_edit::Outcome::Done(_)));
+    assert!(site.app.db.placements(owner, 0).await.unwrap().is_empty());
+    assert_eq!(
+        site.app
+            .db
+            .inventory(owner)
+            .await
+            .unwrap()
+            .iter()
+            .find(|r| r.item_id == item)
+            .unwrap()
+            .quantity,
+        2
+    );
+    let (_, before) = browser
+        .api_value(reqwest::Method::GET, "/api/house/rooms/0", Value::Null)
+        .await;
+    // A surface-only edit must invalidate a furniture edit even when its fingerprint is unchanged.
+    site.app
+        .db
+        .set_room_surfaces(owner, 0, Some(&Content::get().surfaces.wallpapers[1].id), None)
+        .await
+        .unwrap();
+    let request = json!({"request_id":"after-surface","expected_revision":before["revision"],"expected_fingerprint":before["fingerprint"],"op":{"type":"place","item_id":item,"x":1,"y":1,"flipped":false}});
+    assert_eq!(
+        browser
+            .api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", request)
+            .await
+            .0,
+        409
+    );
+    let (_, fresh) = browser
+        .api_value(reqwest::Method::GET, "/api/house/rooms/0", Value::Null)
+        .await;
+    let wallpaper = &Content::get().surfaces.wallpapers[0].id;
+    site.app
+        .db
+        .grant_item(owner, &format!("wp:{wallpaper}"), 1)
+        .await
+        .unwrap();
+    let surface = json!({"request_id":"surface-retry","expected_revision":fresh["revision"],"expected_fingerprint":fresh["fingerprint"],"op":{"type":"surface","wallpaper":wallpaper}});
+    let (status, saved) = browser
+        .api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", surface.clone())
+        .await;
+    assert_eq!(status, 200, "{saved}");
+    assert_eq!(saved["wallpaper"], *wallpaper);
+    let newer = &Content::get().surfaces.wallpapers[2].id;
+    site.app
+        .db
+        .set_room_surfaces(owner, 0, Some(newer), None)
+        .await
+        .unwrap();
+    let revision = site.app.db.reef_edit_revision(owner).await.unwrap();
+    let (status, replay) = browser
+        .api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", surface)
+        .await;
+    assert_eq!(status, 200, "{replay}");
+    assert_eq!(replay["replayed"], true);
+    assert_eq!(
+        replay["wallpaper"], *newer,
+        "retry reconciles current authoritative surfaces"
+    );
+    assert_eq!(replay["revision"], revision);
+    assert_eq!(site.app.db.reef_edit_revision(owner).await.unwrap(), revision);
+}
+#[tokio::test]
+async fn wave7_doorbell_admission_expiry_blocks_and_presence_consent() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let guest = unique();
+    site.house(host).await;
+    let h = site.browser(host).await;
+    let g = site.browser(guest).await;
+    site.app.db.befriend(host, guest).await.unwrap();
+    assert_eq!(
+        h.api_value(
+            reqwest::Method::PUT,
+            "/api/reef/preferences",
+            json!({"presence":false,"visits":"doorbell","doorbell":true})
+        )
+        .await
+        .0,
+        200
+    );
+    let key = format!("house:{host}:0");
+    let mut visitor = g.connect().await;
+    visitor.send(json!({"type":"join","room":key})).await;
+    assert_eq!(visitor.until("error").await["reason"], "access_denied");
+    let path = format!("/api/reef/houses/{host}/doorbells");
+    let (status, bell) = g.api_value(reqwest::Method::POST, &path, json!({})).await;
+    assert_eq!(status, 200, "{bell}");
+    assert_eq!(g.api_value(reqwest::Method::POST, &path, json!({})).await.0, 403);
+    let decision = format!("/api/reef/doorbells/{}/decision", bell["id"].as_str().unwrap());
+    assert_eq!(
+        g.api_value(reqwest::Method::POST, &decision, json!({"accept":true}))
+            .await
+            .0,
+        403
+    );
+    assert_eq!(
+        h.api_value(reqwest::Method::POST, &decision, json!({"accept":true}))
+            .await
+            .0,
+        200
+    );
+    visitor.send(json!({"type":"join","room":key})).await;
+    visitor.until("snapshot").await;
+    let mut owner = h.connect().await;
+    owner.send(json!({"type":"join","room":key})).await;
+    owner.until("snapshot").await;
+    assert_eq!(
+        g.api_value(reqwest::Method::GET, "/api/reef/social", Value::Null)
+            .await
+            .1["people"][0]["online"],
+        false
+    );
+    h.api_value(
+        reqwest::Method::PUT,
+        "/api/reef/preferences",
+        json!({"presence":true,"visits":"doorbell","doorbell":true}),
+    )
+    .await;
+    assert_eq!(
+        g.api_value(reqwest::Method::GET, "/api/reef/social", Value::Null)
+            .await
+            .1["people"][0]["online"],
+        true
+    );
+    sqlx::query("UPDATE reef_doorbells SET expires_at=now()-interval '1 second' WHERE host_id=$1")
+        .bind(host as i64)
+        .execute(&site.pool)
+        .await
+        .unwrap();
+    assert!(!site.app.db.reef_house_access(host, guest).await.unwrap());
+    site.app.db.block_signer(host, guest, "").await.unwrap();
+    assert!(
+        g.api_value(reqwest::Method::GET, "/api/reef/social", Value::Null)
+            .await
+            .1["people"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(g.api_value(reqwest::Method::POST, &path, json!({})).await.0, 403);
+    assert_eq!(
+        h.api_value(reqwest::Method::POST, &decision, json!({"accept":true}))
+            .await
+            .0,
+        403
+    );
+}
+#[tokio::test]
+async fn wave7_guestbook_appreciation_and_evidence_reuse() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let guest = unique();
+    site.house(host).await;
+    let h = site.browser(host).await;
+    let g = site.browser(guest).await;
+    site.app.db.reef_consent(guest, 1, "13_plus", true).await.unwrap();
+    let mut player = g.connect().await;
+    player
+        .send(json!({"type":"join","room":format!("house:{host}:0")}))
+        .await;
+    player.until("snapshot").await;
+    let path = format!("/api/reef/houses/{host}/guestbook");
+    assert_eq!(
+        g.api_value(reqwest::Method::POST, &path, json!({"text":"Lovely room"}))
+            .await
+            .1["signed"],
+        true
+    );
+    assert_eq!(
+        g.api_value(reqwest::Method::POST, &path, json!({"text":"Lovely room again"}))
+            .await
+            .1["signed"],
+        false
+    );
+    assert_eq!(
+        g.api_value(reqwest::Method::POST, &path, json!({"text":"https://example.com"}))
+            .await
+            .0,
+        422
+    );
+    let note = g.api_value(reqwest::Method::GET, &path, Value::Null).await.1["notes"][0]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let report = format!("{path}/{note}/report");
+    let a = h
+        .api_value(reqwest::Method::POST, &report, json!({"reason":"other"}))
+        .await;
+    let b = h
+        .api_value(reqwest::Method::POST, &report, json!({"reason":"other"}))
+        .await;
+    assert_eq!(a.0, 200, "{:?}", a);
+    assert_eq!(a.1["receipt"], b.1["receipt"]);
+    let path = format!("/api/reef/houses/{host}/appreciate");
+    assert_eq!(h.api_value(reqwest::Method::POST, &path, json!({})).await.0, 403);
+    assert_eq!(
+        g.api_value(reqwest::Method::POST, &path, json!({})).await.1["appreciated"],
+        true
+    );
+    assert_eq!(
+        g.api_value(reqwest::Method::POST, &path, json!({})).await.1["appreciated"],
+        false
+    );
+    let response = reqwest::Client::new()
+        .post(format!("{}{}", h.url, path))
+        .header("cookie", format!("pinchora_sid={}", h.sid))
+        .json(&json!({}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 403);
+}
+
+#[tokio::test]
+#[ignore = "seeds isolated Wave 7 browser fixtures for the lead"]
+async fn seed_reef_wave7() {
+    let site = Site::new().await.expect("test services");
+    let host = 770000000000000181u64;
+    let guest = 770000000000000182u64;
+    let guild = 770000000000000180u64;
+    site.app.db.guild_settings(guild).await.unwrap();
+    sqlx::query("DELETE FROM events WHERE guild_id=$1")
+        .bind(guild as i64)
+        .execute(&site.pool)
+        .await
+        .unwrap();
+    for user in [host, guest, guild] {
+        site.house(user).await;
+        sqlx::query("DELETE FROM placements WHERE user_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM reef_edit_receipts WHERE actor_id=$1 OR owner_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM reef_doorbells WHERE host_id=$1 OR guest_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM guestbook_blocks WHERE host_id=$1 OR blocked_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM guestbook_notes WHERE host_id=$1 OR author_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM house_likes WHERE host_id=$1 OR liker_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM reef_sanctions WHERE user_id=$1")
+            .bind(user as i64)
+            .execute(&site.pool)
+            .await
+            .unwrap();
+        site.app.db.set_house_locked(user, false).await.unwrap();
+        site.app.db.set_privacy(user, Hide::House, false).await.unwrap();
+        site.app
+            .db
+            .reef_save_space_preferences(
+                user,
+                &pinchora_db::ReefSpacePreferences {
+                    presence: false,
+                    visits: "open".into(),
+                    doorbell: true,
+                },
+            )
+            .await
+            .unwrap();
+        site.app.db.grant_item(user, "pebblerest_stool__sand", 5).await.unwrap();
+        if user != guild {
+            site.app
+                .db
+                .set_character(user, &Character::starter(Content::get()).encode())
+                .await
+                .unwrap();
+            site.app.db.reef_consent(user, 1, "13_plus", true).await.unwrap();
+        }
+    }
+    site.app.db.befriend(host, guest).await.unwrap();
+}

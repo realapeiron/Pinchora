@@ -634,7 +634,7 @@ must be edited by a manager before they can send broad mentions again.
 
 Reef consent, sanctions, chat evidence and recipients, reports/appeals, and moderator audit records
 are player data and are excluded from configuration exports, restore points and imports. Reef chat
-moderation stays at `/reef/moderation` (linked from the room chat); it is house/operator scoped, not a
+moderation stays at `/reef/moderation` (linked from the room chat); it is house/guild/operator scoped, not a
 server command-control setting. The server sidebar retains Commands and Backup under Server.
 
 ### AutoMod
@@ -1595,7 +1595,7 @@ Hosts moderate their house; comma-separated `PINCHORA_WEB__OPERATOR_IDS` grants 
 Reports have receipts, dispositions and appeals; evidence reads and actions are audited. Evidence expires after
 7 days, or 90 days if reported. Migration 0065 extends guestbook blocks to general social exclusion and adds
 privacy-registered safety records. Active sanctions survive account deletion only until their expiry.
-Public plaza chat remains disabled. No automatic Discord chat bridge exists.
+Guild plaza chat uses the same eligibility and moderation checks. There is no public global plaza or automatic Discord chat bridge.
 A second tab for an account replaces its earlier controller. An unavailable socket falls back to local preview.
 Rooms now route presence, movement and chat across web pods with fenced ownership and one controller per account.
 Migration `0070` adds room leases and a transactional layout outbox for bot/web edits; reconnects recover by snapshot.
@@ -1717,8 +1717,8 @@ The existing Roles editor already handles button/menu/reaction panels, v2 fields
 preview and shared `post_role_panel(&App, …)` publication/update, so W7 reuses it. Leveling now has an
 explicit public-board switch using D3's existing optional slug and `/lb/:slug`; switching off and
 saving clears the slug and makes the old public URL return 404. D10 community pages are reused.
-Reef explicitly excludes guild plazas (`web/src/reef/README.md`), so no Reef plaza editor is added;
-the pre-existing house editor's separate plaza scope remains available.
+Reef Wave 7 adds in-world plaza editing and scheduling using the dashboard community access area;
+the existing house editor's separate plaza scope remains available.
 
 ### Party and team games v2
 
@@ -1737,3 +1737,15 @@ the pre-existing house editor's separate plaza scope remains available.
 Public pixel cards use the server language. Party lobbies hold 2–12 players for 90 seconds; the host starts or cancels, players can leave or forfeit. One D9 session occupies a channel and excludes legacy multiplayer starts. Solo boards belong to their creator. All controls check channel, guild, seat and state version. Text entry uses modals, so Message Content intent is unnecessary. State survives restarts in existing `game_sessions`/`party_members`; the game janitor handles deadlines. No new tables or migration.
 
 Completed games feed `/play stats`. Eligible winners receive 15 shells through the economy ledger, with a shared **90 shells per UTC day** across these games. Party rewards require at least two players to actually participate; the self-reported Critter Compass guessing game pays no shells. Cancellation pays nothing. State, stats and reward commit together, preventing repeated clicks from paying twice. Chess searches run off the async executor and stop at **120/1,200/6,000 nodes** and **20/75/150 ms** for easy/medium/hard (checked between nodes); no engine downloads or network calls.
+
+
+### Reef decorating and social spaces (Wave 7)
+
+Play now includes **Decorate** and **Social spaces**: shared inventory/undo, atomic placement and moves,
+flip/store/surfaces, a desktop ghost and phone placement sheet, five seats, consent-controlled friend
+and partner visits, expiring doorbells, moderated guestbooks and daily house appreciation.
+Guild plazas require live membership, support 32 players per instance, and reuse dashboard community
+manager grants. F21 gathering and RSVP links preserve the chosen instance; a full invited room is
+reported rather than silently splitting the group. No passive rewards or new slash commands.
+Migration **0082** adds revisions, retry receipts and expiring social admission records with privacy
+coverage. See [Wave 7 contracts and lead browser checks](web/src/reef/README.md#decorating-and-social-spaces-r25r37).

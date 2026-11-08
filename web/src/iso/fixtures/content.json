@@ -170,6 +170,30 @@
         1,
         1
       ],
+      "id": "reedwink_stool",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Reedwink Stool",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "woven"
+      ],
+      "variants": [
+        "sand",
+        "moss",
+        "cream",
+        "charcoal",
+        "sky"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
       "id": "duneplait_stool",
       "iso_width": 64,
       "layer": "floor",

@@ -1,4 +1,4 @@
-# Reef client engine and multiplayer (R02–R24)
+# Reef client engine and social spaces (R02–R37)
 
 Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. The room picker in Controls preserves the flag.
 
@@ -26,7 +26,7 @@ No new npm dependencies. `reef:assets` runs automatically before dev/build and u
 - Standing objects and fractional actors share the existing footprint dependency graph, overlap rank, stable ready queue and cycle fallback. `fixtures/order.json` adds fractional wide-furniture cases. Alpha picking follows reverse painter order.
 - Camera scaling and translations are integers in physical pixels. CSS size derives from the backing resolution and DPR; the floor inverse retains its `-1` boundary. Drag/pinch/cancel consume taps. Keyboard arrows, tile coordinates, and a furniture/action list provide pointer-free control.
 - Navigation uses four neighbours, Manhattan distance, `(f, h, insertion)` ties and no diagonals. `fixtures/navigation.json` is the shared Rust/TypeScript contract. Empty/full rooms, blocked and unreachable goals, replan-without-corner-cutting, approach tiles, sit/stand and use completion are covered.
-- Rugs/walls are walkable; floor and loose surface items default to solid. Three pilot seats are allowlisted (`pebblerest_stool`, `duneplait_stool`, `mosshem_pouf`); game-tagged items play the use animation. Seat approaches and directions transpose when flipped. Unknown seats remain solid. All other furniture offers walking to a reachable adjacent tile.
+- Rugs/walls are walkable; floor and loose surface items default to solid. Five seats are allowlisted (`pebblerest_stool`, `duneplait_stool`, `mosshem_pouf`, `reedwink_stool`, `hemloop_chair`); game-tagged items play the use animation. Seat approaches and directions transpose when flipped. Unknown seats remain solid. All other furniture offers walking to a reachable adjacent tile.
 - All 32 frames per look are composed once with the fixed foot anchor. Key skin/hair/top/bottom ramps are sourced from the bot; custom OKLCH ramps are checked against 136 fixtures generated from the actual Rust palette implementation. The palette file in this checkout is `assets/sprites/avatar_palette.hex`.
 - Accessories use original procedural pixels obtained by comparing the existing character endpoint's base and single-accessory images. These layers are positioned by metadata, ordered by slot, mirrored by facing and padded beyond the character cell. Faces are occluded while facing away; use poses put held items away. Missing hand landmarks retain a saved anchor and produce a visible warning; unknown accessories are named in a warning. No replacement art is generated.
 
@@ -40,7 +40,7 @@ The camera fits the room with 24 CSS pixels of padding at the largest integer **
 
 ## Measurements and limits
 
-`reef:budget` sums uncompressed production entry/Play/worker JS and CSS, the complete manifest, the largest initial texture pages and four-direction look, pixel fonts, a full 650-item catalogue allowance, and 300 KB for API bodies/appearance PNGs/headers. It fails over 2,000,000 bytes. Flagged Play uses system body text to avoid downloading the two ~600 KB Noto TTFs; other routes retain their fonts. This is a conservative static envelope, not a measured HTTP capture.
+`reef:budget` follows the production build manifest to sum entry/Play/worker JS, every static dependency and CSS, the complete manifest, the largest initial texture pages and four-direction look, pixel fonts, a full 650-item catalogue allowance, and 300 KB for API bodies/appearance PNGs/headers. It fails over 2,000,000 bytes. Flagged Play uses system body text to avoid downloading the two ~600 KB Noto TTFs; other routes retain their fonts. Dashboard routes and the optional Decorate/Social sheets load on demand. This is a conservative static envelope, not a measured HTTP capture.
 
 `tests/reef/play.spec.ts` uses the production build and mocked authenticated API data with the complete furniture catalogue and real original art/fonts. `tests/reef/perf.spec.ts` exercises a 14×12 scene, 60 furnishings, and 16/32 animated actors at 4× Chromium CPU throttling, reporting draw CPU p95 and observed rAF FPS. `perf.test.ts` measures only ordering/anchor CPU cost and must not be reported as browser FPS.
 
@@ -53,7 +53,7 @@ Local preview remains available when multiplayer cannot connect. Seat heights an
 Play attempts a fenced room connection across pods; an unavailable socket leaves the local preview usable.
 Two separate browser profiles, signed in as different accounts with saved characters, can open
 /house/&lt;owner-id&gt;?play=1. The owner can use /me/house?play=1. Hidden or locked houses and
-bidirectional guestbook blocks refuse visitors. There is no friends-only policy; house and global Reef sanctions apply. Owners bypass visitor privacy checks. Guild plazas are not admitted.
+bidirectional guestbook blocks refuse visitors. Visit preferences support open, friends/partner, accepted doorbells and closed access. House and global Reef sanctions apply; partners never bypass blocks or visit consent. Guild plaza admission checks live membership and the Plaza module.
 
 - GET /api/reef/bootstrap: authenticated saved appearance; visitors do not need to own a house.
 - POST /api/reef/socket-ticket: authenticated, CSRF-protected, Redis single-use ticket, 30-second TTL.
@@ -171,3 +171,51 @@ sanctions retain the target id until expiry to prevent deletion/rejoin bypass, f
 Run `web/tests/e2e/reef-chat.spec.ts` with the real development server and assigned database/Redis.
 The lead owns execution of Playwright; the spec uses two contexts and verifies chat, report receipt, queue,
 and block revocation. The existing seed resets the two fixture accounts' blocks and sanctions.
+
+## Decorating and social spaces (R25–R37)
+
+Apply migration **0082** before running this code. It adds `houses.edit_revision`,
+`reef_edit_receipts`, `reef_space_preferences`, `reef_doorbells`, and a nullable note reference
+on the existing moderation evidence. New personal records are privacy-registered; receipts expire
+after seven days and doorbells are removed one day after expiry by the existing retention worker.
+
+In Play choose **Decorate**. The sheet shares the existing house operation queue and undo stack.
+Choose inventory or an existing piece, position by pointer/tap or numeric coordinates, rotate and
+confirm. Canvas arrows move the ghost, R rotates, Enter confirms and Escape cancels selection.
+Phones use a bottom sheet; a pan/pinch never places furniture. Owned surfaces and a confirmed
+clear are available. Surface purchases remain in the existing house editor. Plaza managers apply
+owned surfaces without spending a player's wallet. Five original-art seat foreground bands are
+replayed from the same (possibly flipped) sprite after seated actors; ordinary rendering is unchanged.
+
+`POST /api/house/rooms/{idx}/ops` accepts `request_id`, `expected_revision`,
+`expected_fingerprint`, and `op`; old `{expected,op}` requests remain compatible. Revision comparison,
+inventory changes, a successful retry receipt and outbox writes commit together. Reusing an ID with
+another payload is rejected. Identical retries return current authoritative state with `replayed:true`.
+The shared PostgreSQL editor lock spans Redis undo advancement. A crash after commit can invalidate
+undo history, but cannot repeat the mutation; stale history remains conservatively discarded.
+
+**Social spaces** reuses friends/partners, guestbooks, daily house appreciation and F21 events.
+Online presence defaults off and reveals only online status to unblocked friends/partners.
+Doorbells require opt-in: pending for two minutes, accepted admission for ten minutes, one request
+per pair/minute, six per sender/minute, sixteen pending per host. Privacy and blocks override admission;
+closing visits or disabling doorbells revokes grants. A successful in-world visit records a visit with
+zero reward; movement/chat/presence never mint currency. Guestbook signing requires chat consent,
+safe text, a recent visit and daily uniqueness. Reports use existing evidence/receipts/moderator audit.
+
+Guild plazas use `plaza:GUILD:ROOM:INSTANCE`, a separate fenced lease per instance, and 32 occupants.
+`GET /api/reef/guilds/{guild}/plazas` routes to a nonfull instance (up to sixteen ordinary instances).
+Passing `instance` pins the group to that instance: full means `409 room_full`, never silent splitting.
+Counts are advisory, expire after three seconds, and the actor always enforces capacity.
+Every join/command and periodic access check verifies Discord membership; Redis failure closes play.
+Editing and scheduling require full management rights or the dashboard **community** access area.
+The same scope authorizes guild mute/kick/ban through the existing moderation action endpoint.
+
+Gatherings reuse F21 event rows and RSVP capacity/waitlists. A manager schedules a one-hour room tour
+from the panel; the event's location is the exact plaza room key, shared by RSVP and Join links.
+The Events module and required roles are checked. This does not create a Discord bridge or public global plaza.
+
+Lead browser acceptance (real backend and mock Discord, no intercepted room APIs):
+`npx playwright test tests/e2e/reef-spaces.spec.ts` using `playwright.config.ts` and the assigned
+Postgres/Redis environment. Four journeys cover two browsers, desktop/phone placement, shared undo,
+doorbell admission, notes/likes, blocking, plaza entry and scheduled RSVP. Screenshots go to
+`web/test-results/screens/reef7-*`. Chromium execution and final seat silhouette review remain lead gates.

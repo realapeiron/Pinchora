@@ -95,7 +95,7 @@ impl Db {
         {
             return Ok(Err("ownership_lost"));
         }
-        let accessible: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$1 AND r.idx=$2 AND ($1=$3 OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy p WHERE p.user_id=$1 AND p.hide_house)))) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$3) OR (host_id=$3 AND blocked_id=$1))")
+        let accessible: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$1 AND r.idx=$2 AND reef_house_admitted($1,$3)) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$3) OR (host_id=$3 AND blocked_id=$1))")
             .bind(sql_id(owner)).bind(idx).bind(sql_id(sender)).fetch_one(&mut *tx).await?;
         if !accessible {
             return Ok(Err("access_denied"));
@@ -112,14 +112,14 @@ impl Db {
         }
         let evidence: ReefEvidence = sqlx::query_as("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text) VALUES($1,$2,$3,$4) RETURNING id,owner_id,room_idx,sender_id,text,created_at")
             .bind(sql_id(owner)).bind(idx).bind(sql_id(sender)).bind(text).fetch_one(&mut *tx).await?;
-        let recipients: Vec<i64> = sqlx::query_scalar("INSERT INTO reef_chat_recipients(message_id,user_id) SELECT DISTINCT $1, p FROM unnest($2::bigint[]) p WHERE EXISTS(SELECT 1 FROM reef_consents c WHERE c.user_id=p AND c.version=$4 AND c.accepted AND c.age_band='13_plus') AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=p AND b.blocked_id IN ($3,$5)) OR (b.host_id IN ($3,$5) AND b.blocked_id=p)) AND EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$5 AND r.idx=$6 AND (p=$5 OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy privacy WHERE privacy.user_id=$5 AND privacy.hide_house)))) AND NOT EXISTS(SELECT 1 FROM reef_sanctions s WHERE s.user_id=p AND s.expires_at>clock_timestamp() AND (s.owner_id IS NULL OR s.owner_id=$5) AND (s.room_idx IS NULL OR s.room_idx=$6) AND s.kind IN ('kick','ban')) RETURNING user_id")
+        let recipients: Vec<i64> = sqlx::query_scalar("INSERT INTO reef_chat_recipients(message_id,user_id) SELECT DISTINCT $1, p FROM unnest($2::bigint[]) p WHERE EXISTS(SELECT 1 FROM reef_consents c WHERE c.user_id=p AND c.version=$4 AND c.accepted AND c.age_band='13_plus') AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=p AND b.blocked_id IN ($3,$5)) OR (b.host_id IN ($3,$5) AND b.blocked_id=p)) AND EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$5 AND r.idx=$6 AND reef_house_admitted($5,p)) AND NOT EXISTS(SELECT 1 FROM reef_sanctions s WHERE s.user_id=p AND s.expires_at>clock_timestamp() AND (s.owner_id IS NULL OR s.owner_id=$5) AND (s.room_idx IS NULL OR s.room_idx=$6) AND s.kind IN ('kick','ban')) RETURNING user_id")
             .bind(evidence.id).bind(peers.iter().copied().map(sql_id).collect::<Vec<_>>()).bind(sql_id(sender)).bind(REEF_CONSENT_VERSION).bind(sql_id(owner)).bind(idx).fetch_all(&mut *tx).await?;
         tx.commit().await?;
         Ok(Ok((evidence, recipients.into_iter().map(|id| id as u64).collect())))
     }
     /// A remote policy change can commit after evidence creation but before relay delivery.
     pub async fn reef_chat_deliverable(&self, message: i64, user: u64) -> anyhow::Result<bool> {
-        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_chat_evidence e JOIN reef_chat_recipients r ON r.message_id=e.id JOIN reef_consents c ON c.user_id=r.user_id JOIN houses h ON h.user_id=e.owner_id WHERE e.id=$1 AND r.user_id=$2 AND c.version=$3 AND c.accepted AND c.age_band='13_plus' AND ($2=e.owner_id OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy p WHERE p.user_id=e.owner_id AND p.hide_house))) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=$2 AND b.blocked_id IN (e.sender_id,e.owner_id)) OR (b.host_id IN (e.sender_id,e.owner_id) AND b.blocked_id=$2)) AND NOT EXISTS(SELECT 1 FROM reef_sanctions s WHERE s.user_id=$2 AND s.expires_at>clock_timestamp() AND (s.owner_id IS NULL OR s.owner_id=e.owner_id) AND (s.room_idx IS NULL OR s.room_idx=e.room_idx) AND s.kind IN ('kick','ban')))")
+        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_chat_evidence e JOIN reef_chat_recipients r ON r.message_id=e.id JOIN reef_consents c ON c.user_id=r.user_id JOIN houses h ON h.user_id=e.owner_id WHERE e.id=$1 AND r.user_id=$2 AND c.version=$3 AND c.accepted AND c.age_band='13_plus' AND reef_house_admitted(e.owner_id,$2) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=$2 AND b.blocked_id IN (e.sender_id,e.owner_id)) OR (b.host_id IN (e.sender_id,e.owner_id) AND b.blocked_id=$2)) AND NOT EXISTS(SELECT 1 FROM reef_sanctions s WHERE s.user_id=$2 AND s.expires_at>clock_timestamp() AND (s.owner_id IS NULL OR s.owner_id=e.owner_id) AND (s.room_idx IS NULL OR s.room_idx=e.room_idx) AND s.kind IN ('kick','ban')))")
             .bind(message).bind(sql_id(user)).bind(REEF_CONSENT_VERSION).fetch_one(self.pool()).await?)
     }
     pub async fn reef_report(&self, user: u64, message: i64, reason: &str) -> anyhow::Result<Option<String>> {
@@ -154,10 +154,18 @@ impl Db {
     }
     /// Restricted report evidence only, never a general chat-history endpoint. Each read is audited.
     pub async fn reef_queue(&self, actor: u64, operator: bool) -> anyhow::Result<Vec<Value>> {
+        self.reef_queue_scoped(actor, operator, None).await
+    }
+    /// A route-verified manager may read only this guild's evidence, with their own audit identity.
+    pub async fn reef_queue_guild(&self, actor: u64, guild: u64) -> anyhow::Result<Vec<Value>> {
+        anyhow::ensure!(self.is_guild(guild).await?, "guild required");
+        self.reef_queue_scoped(actor, false, Some(guild)).await
+    }
+    async fn reef_queue_scoped(&self, actor: u64, operator: bool, guild: Option<u64>) -> anyhow::Result<Vec<Value>> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(actor)]).await?;
-        let rows: Vec<ReportEvidenceRow> = sqlx::query_as("SELECT r.id,r.message_id,r.reason,r.status,r.disposition,r.appeal,e.owner_id,e.room_idx,e.sender_id,e.text,e.created_at FROM reef_reports r JOIN reef_chat_evidence e ON e.id=r.message_id WHERE ($2 OR e.owner_id=$1) AND r.status IN ('open','appealed') ORDER BY r.id LIMIT 100")
-            .bind(sql_id(actor)).bind(operator).fetch_all(&mut *tx).await?;
+        let rows: Vec<ReportEvidenceRow> = sqlx::query_as("SELECT r.id,r.message_id,r.reason,r.status,r.disposition,r.appeal,e.owner_id,e.room_idx,e.sender_id,e.text,e.created_at FROM reef_reports r JOIN reef_chat_evidence e ON e.id=r.message_id WHERE (($3::bigint IS NULL AND ($2 OR e.owner_id=$1)) OR e.owner_id=$3) AND r.status IN ('open','appealed') ORDER BY r.id LIMIT 100")
+            .bind(sql_id(actor)).bind(operator).bind(guild.map(sql_id)).fetch_all(&mut *tx).await?;
         let mut items = vec![];
         for (id, message, reason, status, disposition, appeal, owner, idx, sender, text, created) in rows {
             audit(&mut tx, actor, None, "evidence_read", Some(id)).await?;
@@ -189,9 +197,20 @@ impl Db {
     }
     /// Permission is checked both by the route and here; report disposition and action are atomic.
     pub async fn reef_moderate(&self, action: &ReefModeration) -> anyhow::Result<bool> {
+        self.reef_moderate_scoped(action, false).await
+    }
+    /// Caller must check fresh guild membership and dashboard community management rights.
+    /// Even that caller cannot elevate a guild action into a house or site action.
+    pub async fn reef_moderate_guild(&self, action: &ReefModeration, guild: u64) -> anyhow::Result<bool> {
+        if action.owner != Some(guild) || !self.is_guild(guild).await? {
+            return Ok(false);
+        }
+        self.reef_moderate_scoped(action, true).await
+    }
+    async fn reef_moderate_scoped(&self, action: &ReefModeration, guild_manager: bool) -> anyhow::Result<bool> {
         let a = action;
         if !["mute", "kick", "ban", "no_action", "warned", "revoke"].contains(&a.kind.as_str())
-            || (!a.operator && a.owner != Some(a.actor))
+            || (!a.operator && !guild_manager && a.owner != Some(a.actor))
             || a.target == a.actor
             || !(1..=90 * 86400).contains(&a.seconds)
             || a.idx.is_some_and(|i| !(0..6).contains(&i))
@@ -212,7 +231,7 @@ impl Db {
         lock_users(&mut tx, &ids).await?;
         if let Some(report) = a.report {
             let allowed: bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_reports r JOIN reef_chat_evidence e ON e.id=r.message_id WHERE r.id=$1 AND e.sender_id=$2 AND ($3 OR e.owner_id=$4) AND ($5::bigint IS NULL OR e.owner_id=$5) AND ($6::smallint IS NULL OR e.room_idx=$6))")
-                .bind(report).bind(sql_id(a.target)).bind(a.operator).bind(sql_id(a.actor)).bind(a.owner.map(sql_id)).bind(a.idx).fetch_one(&mut *tx).await?;
+                .bind(report).bind(sql_id(a.target)).bind(a.operator || guild_manager).bind(sql_id(a.actor)).bind(a.owner.map(sql_id)).bind(a.idx).fetch_one(&mut *tx).await?;
             if !allowed {
                 return Ok(false);
             }

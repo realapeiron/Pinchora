@@ -60,6 +60,7 @@ export default defineConfig({
     },
   },
   build: {
+    manifest: true,
     outDir: "dist",
     assetsDir: "assets",
     // Fonts come from the Rust server at runtime (the same files the cards use).

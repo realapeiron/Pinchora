@@ -279,9 +279,17 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
               {playing && room.data && (
                 <Suspense fallback={<Loading label={t("Opening Play")} />}>
                   <ReefStage
+                    key={housePath(target)}
+                    target={target}
+                    editable={house.data.editable !== false && target.kind !== "visit"}
+                    userId={me.user.id}
                     room={room.data}
                     own={house.data.scope === "own"}
-                    roomKey={`house:${house.data.owner.id}:${room.data.idx}`}
+                    roomKey={
+                      target.kind === "plaza"
+                        ? `plaza:${target.guild}:${room.data.idx}:${params.get("instance") ?? "0"}`
+                        : `house:${house.data.owner.id}:${room.data.idx}`
+                    }
                     onLayout={() => void room.refetch()}
                     roomName={summary?.name ?? house.data.house.name}
                     playerName={me.user.global_name ?? me.user.username}

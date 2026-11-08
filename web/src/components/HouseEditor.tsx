@@ -75,7 +75,8 @@ export function HouseEditor({
   useEffect(() => {
     const q = new RoomQueue(
       initial,
-      (expected, op) => sendOperation(target, initial.idx, expected, op),
+      (expected, op, revision, request) =>
+        sendOperation(target, initial.idx, expected, op, revision, request),
       () => api<RoomJson>(housePath(target, `/rooms/${initial.idx}`)),
       (next, busy, error, ids) => {
         setSelected((id) => {

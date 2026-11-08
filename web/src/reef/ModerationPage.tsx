@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "./i18n";
+import { PageHead } from "../pages/PageHead";
 import { safetyError } from "./ChatPanel";
 import "./reef.css";
 interface Report {
@@ -23,6 +24,8 @@ interface Receipt {
   appeal: string | null;
 }
 export function ModerationPage() {
+  const [params] = useSearchParams();
+  const guild = params.get("guild");
   const [reports, setReports] = useState<Report[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [notice, setNotice] = useState("");
@@ -32,7 +35,9 @@ export function ModerationPage() {
   const [sitewide, setSitewide] = useState(false);
   async function refresh() {
     const [queue, mine, profile] = await Promise.all([
-      api<{ items: Report[] }>("/api/reef/moderation"),
+      api<{ items: Report[] }>(
+        guild ? `/api/reef/moderation?guild=${encodeURIComponent(guild)}` : "/api/reef/moderation",
+      ),
       api<{ items: Receipt[] }>("/api/reef/reports"),
       api<{ operator: boolean }>("/api/reef/bootstrap"),
     ]);
@@ -42,7 +47,7 @@ export function ModerationPage() {
   }
   useEffect(() => {
     void refresh().catch((error) => setNotice(safetyError(error)));
-  }, []);
+  }, [guild]);
   async function act(action: () => Promise<void>) {
     setBusy(true);
     try {
@@ -57,9 +62,15 @@ export function ModerationPage() {
   }
   return (
     <main className="reef-moderation">
-      <h1>{t("Reports and moderation")}</h1>
+      <PageHead title={t("Reports and moderation")} lead={null} />
       <Link to="/me/house">{t("Return to your house")}</Link>
-      <p>{t("Hosts see reports in their house. Operators see all reports. Evidence access is audited.")}</p>
+      <p>
+        {t(
+          guild
+            ? "Community managers see reports in this plaza. Evidence access is audited."
+            : "Hosts see reports in their house. Operators see all reports. Evidence access is audited.",
+        )}
+      </p>
       {operator && (
         <label>
           <input type="checkbox" checked={sitewide} onChange={(event) => setSitewide(event.target.checked)} />

@@ -76,7 +76,11 @@ async fn acquire(state: &WebState, key: RoomKey) -> anyhow::Result<Option<Owner>
     if cache.reef_get(&lease_key(key)).await?.is_some() {
         return Ok(None);
     }
-    let Some(fence) = state.app.db.reef_acquire(cache.namespace(), key.owner, key.idx).await? else {
+    let namespace = key.instance.map_or_else(
+        || cache.namespace().to_owned(),
+        |i| format!("{}:plaza:{i}", cache.namespace()),
+    );
+    let Some(fence) = state.app.db.reef_acquire(&namespace, key.owner, key.idx).await? else {
         return Ok(None);
     };
     if !cache

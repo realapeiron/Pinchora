@@ -1323,7 +1323,29 @@ pub(crate) async fn on_edit(
                         t!(lang, "house.edit.cant-flip-top")
                     }
                     Ok(()) => {
-                        cx.app.db.flip_placement(user_id, p.id).await?;
+                        let outcome = cx
+                            .app
+                            .db
+                            .edit_room(
+                                who.owner,
+                                who.owner,
+                                who.owner,
+                                state.room,
+                                &[RoomChange::Flip(p.clone())],
+                                who.is_guest().then_some((who.stock, who.bond)),
+                                |rows| {
+                                    if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                                        Ok(())
+                                    } else {
+                                        Err("room_changed".into())
+                                    }
+                                },
+                                |rows, change| undo_fits(content, (tier.width, tier.depth), rows, change),
+                            )
+                            .await?;
+                        if !matches!(outcome, RestoreOutcome::Done { .. }) {
+                            return cx.reply_ephemeral(t!(lang, "house.edit.nothing-to-flip")).await;
+                        }
                         let on_wall = content.item(&p.item_id).is_some_and(|i| i.base.layer == Layer::Wall);
                         let mut step = Step::new(if on_wall { Kind::Flip } else { Kind::Turn }, name_of(&p.item_id));
                         step.turned = Some(Piece {
@@ -1344,7 +1366,38 @@ pub(crate) async fn on_edit(
         },
         // Clear room, confirmed: every piece goes back to the inventory, as one undo step.
         "z" => {
-            let removed = cx.app.db.clear_room(user_id, state.room).await?;
+            let mut removed = placements.clone();
+            removed.sort_by_key(|p| {
+                if content.item(&p.item_id).is_some_and(|i| i.base.layer == Layer::Surface) {
+                    0
+                } else {
+                    1
+                }
+            });
+            let changes: Vec<_> = removed.iter().cloned().map(RoomChange::Remove).collect();
+            let outcome = cx
+                .app
+                .db
+                .edit_room(
+                    who.owner,
+                    who.owner,
+                    who.owner,
+                    state.room,
+                    &changes,
+                    who.is_guest().then_some((who.stock, who.bond)),
+                    |rows| {
+                        if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                            Ok(())
+                        } else {
+                            Err("room_changed".into())
+                        }
+                    },
+                    |rows, change| undo_fits(content, (tier.width, tier.depth), rows, change),
+                )
+                .await?;
+            if !matches!(outcome, RestoreOutcome::Done { .. }) {
+                return cx.reply_ephemeral(t!(lang, "house.edit.already-empty")).await;
+            }
             state.release(content);
             if removed.is_empty() {
                 t!(lang, "house.edit.already-empty")
@@ -1367,9 +1420,22 @@ pub(crate) async fn on_edit(
                 let outcome = cx
                     .app
                     .db
-                    .restore_for(who.owner, who.stock, state.room, &changes, |current, change| {
-                        undo_fits(content, size, current, change)
-                    })
+                    .edit_room(
+                        who.owner,
+                        who.owner,
+                        who.stock,
+                        state.room,
+                        &changes,
+                        who.is_guest().then_some((who.stock, who.bond)),
+                        |rows| {
+                            if undo::fingerprint(rows) == undo::fingerprint(&placements) {
+                                Ok(())
+                            } else {
+                                Err("room_changed".into())
+                            }
+                        },
+                        |current, change| undo_fits(content, size, current, change),
+                    )
                     .await?;
                 match outcome {
                     RestoreOutcome::Done { added } => {

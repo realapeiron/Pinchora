@@ -54,6 +54,19 @@ pub async fn snapshot(app: &App, who: Who, room: i16, rows: &[PlacementRow]) -> 
         "undo": history.steps().iter().map(|s| json!({"kind": s.kind, "describe": s.describe()})).collect::<Vec<_>>()})
 }
 
+/// Called while the shared editor guard is held; surface state and revision travel together.
+pub async fn versioned_snapshot(app: &App, who: Who, room: i16, rows: &[PlacementRow]) -> anyhow::Result<Value> {
+    let mut value = snapshot(app, who, room, rows).await;
+    value["revision"] = json!(app.db.reef_edit_revision(who.owner).await?);
+    if let Some((_, rooms)) = app.db.house_if_any(who.owner).await?
+        && let Some(r) = rooms.iter().find(|r| r.idx == room)
+    {
+        value["wallpaper"] = json!(r.wallpaper);
+        value["floor"] = json!(r.floor);
+    }
+    Ok(value)
+}
+
 pub enum Outcome {
     Done(Value),
     Conflict(Value),
@@ -69,7 +82,37 @@ pub async fn apply(
     expected: &str,
     op: Operation,
 ) -> anyhow::Result<Outcome> {
+    apply_receipted(app, who, room, size, expected, op, None).await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn apply_receipted(
+    app: &App,
+    who: Who,
+    room: i16,
+    size: (u32, u32),
+    expected: &str,
+    op: Operation,
+    receipt: Option<&pinchora_db::ReefEditRequest>,
+) -> anyhow::Result<Outcome> {
     let _guard = app.db.house_editor(who.owner).await?;
+    if let Some(request) = receipt {
+        match app.db.reef_edit_receipt(who.owner, room, request).await? {
+            Some(true) => {
+                let rows = app.db.placements(who.owner, room).await?;
+                let mut value = versioned_snapshot(app, who, room, &rows).await?;
+                value["replayed"] = json!(true);
+                return Ok(Outcome::Done(value));
+            }
+            Some(false) => {
+                return Ok(Outcome::Refused {
+                    code: "request_reused",
+                    message: "This request id was already used.".into(),
+                });
+            }
+            None => {}
+        }
+    }
     let content = Content::get();
     if matches!(&op, Operation::Place { x, y, .. } | Operation::Move { x, y, .. } if *x < 0 || *y < 0) {
         return Ok(Outcome::Refused {
@@ -196,13 +239,14 @@ pub async fn apply(
     };
     let result = app
         .db
-        .edit_room(
+        .edit_room_receipted(
             who.owner,
             stock,
             refund,
             room,
             &changes,
             (who.owner != who.stock).then_some((who.stock, who.bond)),
+            receipt,
             |rows| {
                 if fingerprint(rows) == expected {
                     Ok(())
@@ -263,7 +307,7 @@ pub async fn apply(
                 .cache
                 .publish_invalidation(pinchora_cache::Invalidation::House(who.owner))
                 .await;
-            let mut value = snapshot(app, who, room, &after).await;
+            let mut value = versioned_snapshot(app, who, room, &after).await?;
             value["step"] = description.into();
             Ok(Outcome::Done(value))
         }

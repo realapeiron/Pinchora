@@ -44,7 +44,7 @@ impl Db {
     ) -> anyhow::Result<Option<SignOutcome>> {
         let (locked, blocked, visited, signed): (bool, bool, bool, bool) = sqlx::query_as(
             "SELECT
-                 COALESCE((SELECT locked FROM houses WHERE user_id = $1), FALSE),
+                 NOT reef_house_admitted($1,$2),
                  EXISTS (SELECT 1 FROM guestbook_blocks WHERE (host_id = $1 AND blocked_id = $2) OR (host_id = $2 AND blocked_id = $1)),
                  EXISTS (SELECT 1 FROM visits WHERE host_id = $1 AND guest_id = $2
                          AND visited_at > now() - interval '1 day'),
@@ -55,10 +55,10 @@ impl Db {
         .bind(day)
         .fetch_one(self.pool())
         .await?;
-        Ok(if locked {
-            Some(SignOutcome::Locked)
-        } else if blocked {
+        Ok(if blocked {
             Some(SignOutcome::Blocked)
+        } else if locked {
+            Some(SignOutcome::Locked)
         } else if !visited {
             Some(SignOutcome::NoVisit)
         } else if signed {
@@ -79,7 +79,7 @@ impl Db {
     ) -> anyhow::Result<SignOutcome> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(host), sql_id(author)]).await?;
-        let (locked, blocked, visited): (bool,bool,bool) = sqlx::query_as("SELECT COALESCE((SELECT locked FROM houses WHERE user_id=$1),FALSE), EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1)), EXISTS(SELECT 1 FROM visits WHERE host_id=$1 AND guest_id=$2 AND visited_at>now()-interval '1 day')")
+        let (locked, blocked, visited): (bool,bool,bool) = sqlx::query_as("SELECT NOT reef_house_admitted($1,$2), EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1)), EXISTS(SELECT 1 FROM visits WHERE host_id=$1 AND guest_id=$2 AND visited_at>now()-interval '1 day')")
             .bind(sql_id(host)).bind(sql_id(author)).fetch_one(&mut *tx).await?;
         if blocked {
             return Ok(SignOutcome::Blocked);

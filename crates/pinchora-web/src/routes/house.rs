@@ -210,7 +210,9 @@ async fn open(state: &WebState, whose: Whose) -> ApiResult<(HouseRow, Vec<RoomRo
     let Some((house, rooms)) = state.app.db.house_if_any(whose.owner()).await? else {
         return Err(no_house(whose));
     };
-    if house.locked && whose.scope() == "visit" {
+    if let Whose::Visit { owner, guest } = whose
+        && !state.app.db.reef_house_access(owner, guest).await?
+    {
         let name = owner_name(state, whose.owner()).await;
         return Err(ApiError::new(
             StatusCode::FORBIDDEN,
@@ -297,6 +299,7 @@ async fn own_house(
 ) -> ApiResult<Json<Value>> {
     let who = super::house_edit::resolve(&state, &mut current, &query, false).await?;
     let Json(mut value) = overview(&state, &current, Whose::Own(who.owner)).await?;
+    value["revision"] = json!(state.app.db.reef_edit_revision(who.owner).await?);
     value["scope"] = json!(query.scope);
     value["whose"] = json!(who.owner.to_string());
     value["owner"]["you"] = json!(who.owner == current.session.user_id);
@@ -306,6 +309,11 @@ async fn own_house(
                 .await?
                 .iter()
                 .any(|g| g.id() == Some(who.owner) && g.can_manage())
+            || crate::dashboard_access::permitted(
+                "plazas",
+                false,
+                &crate::dashboard_access::areas(&state, who.owner, current.session.user_id).await?
+            )
     );
     if who.owner != current.session.user_id {
         value["owner"]["name"] = json!(owner_name(&state, who.owner).await);
@@ -329,6 +337,7 @@ async fn own_room(
 ) -> ApiResult<Json<Value>> {
     let mut current = current;
     let who = super::house_edit::resolve(&state, &mut current, &query, false).await?;
+    let _guard = state.app.db.house_editor(who.owner).await?;
     let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
     let mut value = data.json();
     let extra = pinchora_commands::house_edit::snapshot(&state.app, who, data.room.idx, &data.placements).await;
@@ -336,6 +345,7 @@ async fn own_room(
         .as_object_mut()
         .expect("room object")
         .extend(extra.as_object().expect("snapshot object").clone());
+    value["revision"] = json!(state.app.db.reef_edit_revision(who.owner).await?);
     value["scope"] = json!(query.scope);
     value["whose"] = json!(who.owner.to_string());
     Ok(Json(value))

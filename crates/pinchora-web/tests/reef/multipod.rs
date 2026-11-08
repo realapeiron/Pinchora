@@ -378,9 +378,10 @@ async fn outbox_delivers_a_lower_id_that_commits_after_a_higher_id() {
     p.join(host).await;
     q.join(host).await;
     let mut late = a.pool.begin().await.unwrap();
-    sqlx::query("UPDATE rooms SET wallpaper=$2 WHERE user_id=$1 AND idx=0")
+    // Reserve an outbox ID before the layout mutation. House revisions now serialize
+    // actual mutations across rooms, but the delivery scan must still tolerate late IDs.
+    sqlx::query("INSERT INTO reef_layout_outbox(owner_id,transaction_id) VALUES($1,txid_current())")
         .bind(host as i64)
-        .bind(&Content::get().surfaces.wallpapers[1].id)
         .execute(&mut *late)
         .await
         .unwrap();
@@ -390,7 +391,7 @@ async fn outbox_delivers_a_lower_id_that_commits_after_a_higher_id() {
             .fetch_one(&mut *late)
             .await
             .unwrap();
-    // A separate room allows the later transaction to commit without waiting for the first row lock.
+    // The reservation holds no layout lock.
     sqlx::query("UPDATE rooms SET floor=$2 WHERE user_id=$1 AND idx=1")
         .bind(host as i64)
         .bind(&Content::get().surfaces.floors[1].id)
@@ -406,6 +407,12 @@ async fn outbox_delivers_a_lower_id_that_commits_after_a_higher_id() {
     assert_eq!(q.until("layout_changed").await["event_id"], high.to_string());
     p.until("snapshot").await;
     q.until("snapshot").await;
+    sqlx::query("UPDATE rooms SET wallpaper=$2 WHERE user_id=$1 AND idx=0")
+        .bind(host as i64)
+        .bind(&Content::get().surfaces.wallpapers[1].id)
+        .execute(&mut *late)
+        .await
+        .unwrap();
     late.commit().await.unwrap();
     assert_eq!(p.until("layout_changed").await["event_id"], low.to_string());
     assert_eq!(q.until("layout_changed").await["event_id"], low.to_string());

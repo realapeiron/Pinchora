@@ -13,8 +13,10 @@ pub fn route_area(path: &str) -> Option<&'static str> {
         "mod-parity" | "moderation" | "logs" | "cases" | "staff-log" | "automod" | "anti_nuke" | "safety" => {
             Some("safety")
         }
-        "community" | "community-pack" | "community-v2" | "suggestions" | "critters" | "surge" | "temp-voice"
-        | "tickets" | "birthdays" | "events" | "starboard" | "achievements" | "utility" => Some("community"),
+        "plazas" | "community" | "community-pack" | "community-v2" | "suggestions" | "critters" | "surge"
+        | "temp-voice" | "tickets" | "birthdays" | "events" | "starboard" | "achievements" | "utility" => {
+            Some("community")
+        }
         "feeds" | "trackers" | "roblox" => Some("feeds"),
         "stats" | "invites" => Some("stats"),
         "audit" | "audit-tools" => Some("audit"),
