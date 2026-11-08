@@ -229,3 +229,7 @@ POST	/message-studio/send	configuration
 PUT	/message-studio/{key}	configuration
 GET	/message-studio/{key}/history	configuration
 POST	/message-studio/{key}/rollback/{version}	configuration
+GET	/reef/guilds/{guild}/plazas	community
+GET	/reef/guilds/{guild}/gatherings	community
+POST	/reef/guilds/{guild}/gatherings	community
+POST	/reef/guilds/{guild}/gatherings/{event}/rsvp	community

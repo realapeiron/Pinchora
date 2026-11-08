@@ -13,6 +13,7 @@ use sqlx::{Postgres, Transaction};
 use crate::{
     Db,
     economy::ledger,
+    economy_v2::movement,
     house::add_inventory,
     locks::{Retry, lock_users, retry},
     sql_id,
@@ -489,6 +490,8 @@ impl Db {
             sqlx::query("INSERT INTO collection_shard_ledger (user_id, request_id, kind, entry_id, delta, balance) VALUES ($1,$2,$3,$4,$5,$6)")
                 .bind(sql_id(user)).bind(request).bind("recycle").bind(entry).bind(shards).bind(left)
                 .execute(&mut *tx).await?;
+            movement(&mut tx, sql_id(user), &format!("collection:{entry}"), -1, "collection_recycle").await?;
+            movement(&mut tx, sql_id(user), "shards", shards, "collection_recycle").await?;
             tx.commit().await?;
             Ok(Some(left))
         }).await
@@ -532,6 +535,8 @@ impl Db {
                 return Ok(None);
             };
             add_inventory(&mut tx, sql_id(user), &soulbound(item), 1).await?;
+            movement(&mut tx, sql_id(user), "shards", -cost, "collection_craft").await?;
+            movement(&mut tx, sql_id(user), &format!("item:{}", soulbound(item)), 1, "collection_craft").await?;
             sqlx::query("INSERT INTO collection_shard_ledger (user_id, request_id, kind, entry_id, delta, balance) VALUES ($1,$2,$3,$4,$5,$6)")
                 .bind(sql_id(user)).bind(request).bind("craft").bind(item).bind(-cost).bind(left)
                 .execute(&mut *tx).await?;
@@ -566,6 +571,15 @@ impl Db {
             return Ok(None);
         };
         add_inventory(&mut tx, id, &soulbound(item), 1).await?;
+        movement(&mut tx, id, "fragments", -cost, "collection_exchange").await?;
+        movement(
+            &mut tx,
+            id,
+            &format!("item:{}", soulbound(item)),
+            1,
+            "collection_exchange",
+        )
+        .await?;
         tx.commit().await?;
         Ok(Some(left))
     }
@@ -1258,6 +1272,7 @@ impl Db {
             return Ok(PotUpgrade::Poor { balance });
         };
         ledger(&mut tx, id, -cost, "crab_pot_upgrade").await?;
+        movement(&mut tx, id, "shells", -cost, "collection_upgrade").await?;
         sqlx::query("UPDATE collection_players SET pot_level = pot_level + 1 WHERE user_id = $1")
             .bind(id)
             .execute(&mut *tx)
@@ -1314,6 +1329,14 @@ async fn grant(tx: &mut Tx<'_>, user: u64, award: Award<'_>, paid: bool, reason:
     .fetch_one(&mut **tx)
     .await?;
     let new = caught == 1;
+    movement(
+        tx,
+        sql_id(user),
+        &format!("collection:{}", award.entry),
+        1,
+        "collection_reward",
+    )
+    .await?;
     let (shells, fragments) = match (paid, new) {
         (false, _) => (0, 0),
         (true, true) => (award.new_shells, award.bonus_fragments),
@@ -1343,7 +1366,8 @@ async fn earn(tx: &mut Tx<'_>, user: u64, shells: i64, reason: &str) -> anyhow::
     .bind(shells)
     .execute(&mut **tx)
     .await?;
-    ledger(tx, sql_id(user), shells, reason).await
+    ledger(tx, sql_id(user), shells, reason).await?;
+    movement(tx, sql_id(user), "shells", shells, "collection_reward").await
 }
 
 async fn add_fragments(tx: &mut Tx<'_>, user: u64, fragments: i64) -> anyhow::Result<()> {
@@ -1355,5 +1379,5 @@ async fn add_fragments(tx: &mut Tx<'_>, user: u64, fragments: i64) -> anyhow::Re
     .bind(fragments)
     .execute(&mut **tx)
     .await?;
-    Ok(())
+    movement(tx, sql_id(user), "fragments", fragments, "collection_reward").await
 }

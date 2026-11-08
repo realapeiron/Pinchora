@@ -306,19 +306,27 @@ mod route_inventory_tests {
     fn every_registered_guild_method_is_in_the_reviewed_area_matrix() {
         let mut actual = BTreeSet::new();
         registered("guilds", "", &mut actual);
+        // Reef player routes sit outside the dashboard router but share its management areas.
+        let mut reef = BTreeSet::new();
+        registered("../reef/spaces", "/reef", &mut reef);
+        actual.extend(
+            reef.into_iter()
+                .filter(|(_, path)| path.starts_with("/reef/guilds/{guild}/")),
+        );
         let mut reviewed = BTreeSet::new();
         for line in include_str!("../../../docs/w7-guild-route-matrix.tsv").lines().skip(1) {
             let fields: Vec<_> = line.split('\t').collect();
             let (method, path, area) = (fields[0], fields[1], fields[2]);
             reviewed.insert((method.to_owned(), path.to_owned()));
+            let area_path = path.strip_prefix("/reef/guilds/{guild}/").unwrap_or(path);
             for grant in pinchora_db::DASHBOARD_AREAS {
                 assert_eq!(
-                    permitted(path, method == "GET", &[(*grant).into()]),
+                    permitted(area_path, method == "GET", &[(*grant).into()]),
                     area == *grant || area == "shell" && method == "GET",
                     "{method} {path} with {grant}"
                 );
             }
-            assert!(!permitted(path, method == "GET", &[]));
+            assert!(!permitted(area_path, method == "GET", &[]));
         }
         assert_eq!(
             actual, reviewed,

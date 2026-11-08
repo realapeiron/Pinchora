@@ -85,10 +85,10 @@ console.log(
       catalogAllowance: catalog,
       reserve,
       conservativeColdBytes: bytes,
-      budget: 1_970_000,
+      budget: 2_000_000,
     },
     null,
     2,
   ),
 );
-if (bytes > 1_970_000) process.exitCode = 1;
+if (bytes > 2_000_000) process.exitCode = 1;

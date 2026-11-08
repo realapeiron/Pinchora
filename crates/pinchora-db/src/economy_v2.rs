@@ -132,13 +132,15 @@ async fn ensure_player(tx: &mut Tx<'_>, user: i64) -> anyhow::Result<()> {
     Ok(())
 }
 /// The two sides are inserted together; every balance/inventory write and its pair commit together.
-async fn movement(tx: &mut Tx<'_>, user: i64, asset: &str, delta: i64, reason: &str) -> anyhow::Result<()> {
+pub(crate) async fn movement(tx: &mut Tx<'_>, user: i64, asset: &str, delta: i64, reason: &str) -> anyhow::Result<()> {
     if delta == 0 {
         return Ok(());
     }
     let account = match reason {
-        "job_shift" | "provisions" | "earned_chest" | "season_pass" => "source",
-        "donation_pool" | "prestige" | "auction_fee" => "sink",
+        "job_shift" | "provisions" | "earned_chest" | "season_pass" | "job_chest" | "collection_reward" => "source",
+        "donation_pool" | "prestige" | "auction_fee" | "chest_open" | "collection_upgrade" => "sink",
+        "collection_recycle" | "collection_craft" | "collection_exchange" if delta > 0 => "source",
+        "collection_recycle" | "collection_craft" | "collection_exchange" => "sink",
         _ => "escrow",
     };
     sqlx::query("WITH m AS MATERIALIZED (SELECT nextval('economy_movement_ids') AS id) INSERT INTO economy_ledger(movement,user_id,account,asset,delta,reason) SELECT id,$1,'wallet',$2,$3,$4 FROM m UNION ALL SELECT id,$1,$5,$2,-$3,$4 FROM m")
@@ -357,6 +359,9 @@ impl Db {
                         .execute(&mut *tx)
                         .await?;
                     sqlx::query("UPDATE economy_players SET shifts=LEAST(shifts,999999)+1,season_xp=LEAST(1000,season_xp+10),chests=LEAST(10,chests+CASE WHEN (shifts+1)%5=0 THEN 1 ELSE 0 END) WHERE user_id=$1").bind(user).execute(&mut *tx).await?;
+                    if p.shifts % 5 == 4 && p.chests < 10 {
+                        movement(&mut tx, user, "chests", 1, "job_chest").await?;
+                    }
                 }
                 sqlx::query("UPDATE economy_players SET shift_step=shift_step+1 WHERE user_id=$1")
                     .bind(user)
@@ -402,6 +407,7 @@ impl Db {
                     .bind(user)
                     .execute(&mut *tx)
                     .await?;
+                movement(&mut tx, user, "chests", -1, "chest_open").await?;
                 json!({"amount":amount})
             }
             Action::Season { tier } => {

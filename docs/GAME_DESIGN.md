@@ -463,3 +463,8 @@ each completed habitat set (shore, tide pool, kelp, reef, deep) cuts the cost by
 minimum of **7**. The five sets require every critter of that habitat; each discount is a
 permanent book bonus. The craft is atomic with the shard debit and inventory grant. This
 loop turns repeated cards into personal decor and has no resale path. Every shard credit and debit has a transactional ledger entry keyed by a unique request, so retrying a confirmation or craft cannot repeat the award.
+
+Wave 7 integration records collection copies, shells, fragments, shards and bound craft rewards
+in the balanced `economy_ledger`, alongside the request-keyed shard receipts. Earned chest grants
+and openings also record their item movement, including the storage cap. All entries commit
+with their corresponding balance or inventory change; retries and privacy deletion cover both ledgers.

@@ -926,3 +926,69 @@ async fn admin_audit_failure_rolls_back_settings_and_reset() {
     assert_eq!(db.economy_points_preview(u + 10).await.unwrap()["total"], "1000");
     assert_eq!(db.user(u).await.unwrap().credits, 20000);
 }
+
+#[tokio::test]
+async fn earned_chest_moves_are_ledgered_once_and_respect_storage_cap() {
+    let Some((db, u)) = setup().await else { return };
+    for (n, stored) in [(0, 0), (1, 10)] {
+        let time = now() + Duration::hours(n);
+        let v = db
+            .economy_action(
+                u,
+                &format!("chest-start:{n}"),
+                &A::StartShift {
+                    job: "kelp_keeper".into(),
+                },
+                time,
+            )
+            .await
+            .unwrap();
+        sqlx::query("UPDATE economy_players SET shifts=4,chests=$2 WHERE user_id=$1")
+            .bind(u as i64)
+            .bind(stored)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let token = v["token"].as_i64().unwrap();
+        for step in 0..3 {
+            let action = A::Step { token, step };
+            let key = format!("chest-step:{n}:{step}");
+            let (a, b) = tokio::join!(
+                db.economy_action(u, &key, &action, time),
+                db.economy_action(u, &key, &action, time)
+            );
+            assert_eq!(a.unwrap(), b.unwrap());
+        }
+        let held: i32 = sqlx::query_scalar("SELECT chests FROM economy_players WHERE user_id=$1")
+            .bind(u as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        assert_eq!(held, if n == 0 { 1 } else { 10 });
+        if n == 0 {
+            let (a, b) = tokio::join!(
+                db.economy_action(u, "chest-open", &A::Chest, time),
+                db.economy_action(u, "chest-open", &A::Chest, time)
+            );
+            assert_eq!(a.unwrap(), b.unwrap());
+        }
+    }
+    let entries: Vec<(String, String, i64)> = sqlx::query_as(
+        "SELECT reason,account,delta FROM economy_ledger WHERE user_id=$1 AND asset='chests'
+         ORDER BY reason,account",
+    )
+    .bind(u as i64)
+    .fetch_all(db.pool())
+    .await
+    .unwrap();
+    assert_eq!(
+        entries,
+        vec![
+            ("chest_open".into(), "sink".into(), 1),
+            ("chest_open".into(), "wallet".into(), -1),
+            ("job_chest".into(), "source".into(), -1),
+            ("job_chest".into(), "wallet".into(), 1),
+        ]
+    );
+    ledger_matches(&db, u).await;
+}

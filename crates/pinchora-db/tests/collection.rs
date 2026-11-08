@@ -1072,6 +1072,41 @@ async fn depth_shard_ledger_deduplicates_concurrent_retries_and_preserves_origin
             .unwrap();
     assert_eq!((sum, count), (10, 3));
     assert_eq!(sum, db.shards(user).await.unwrap());
+    let moves: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT asset, sum(delta)::bigint FROM economy_ledger
+         WHERE user_id=$1 AND account='wallet' GROUP BY asset ORDER BY asset",
+    )
+    .bind(user as i64)
+    .fetch_all(db.pool())
+    .await
+    .unwrap();
+    assert_eq!(
+        moves,
+        vec![
+            ("collection:x_one".into(), -2),
+            ("item:dewtrail_print~bound".into(), 1),
+            ("shards".into(), 10),
+        ]
+    );
+    let broken: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM (SELECT movement FROM economy_ledger WHERE user_id=$1
+         GROUP BY movement HAVING count(*)<>2 OR sum(delta)<>0 OR count(DISTINCT asset)<>1) p",
+    )
+    .bind(user as i64)
+    .fetch_one(db.pool())
+    .await
+    .unwrap();
+    assert_eq!(broken, 0);
+    db.delete_user_data(user, Utc::now()).await.unwrap();
+    let remaining: i64 = sqlx::query_scalar(
+        "SELECT (SELECT count(*) FROM economy_ledger WHERE user_id=$1)
+         + (SELECT count(*) FROM collection_shard_ledger WHERE user_id=$1)",
+    )
+    .bind(user as i64)
+    .fetch_one(db.pool())
+    .await
+    .unwrap();
+    assert_eq!(remaining, 0);
 }
 
 #[tokio::test]
