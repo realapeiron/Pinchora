@@ -58,52 +58,14 @@ export default function Board({ game, busy, send }: GameProps) {
         aria-label={t(chess ? "Reef Chess" : "Pearl Checkers")}
       >
         <div className="reef-game-board" role="group" aria-label={t("Game board")}>
-          {Array.from({ length: 64 }, (_, display) => {
-            const row = Math.floor(display / 8),
-              col = display % 8;
-            const dark = (row + col) % 2 === 1;
-            const sq = chess ? (7 - row) * 8 + col : row * 4 + Math.floor(col / 2);
-            const value = cells[chess ? display : sq] ?? ".";
-            const coord = `${String.fromCharCode(97 + col)}${8 - row}`;
-            if (!chess && !dark) return <span key={display} className="reef-game-square" />;
-            const label =
-              value === "."
-                ? t("Empty")
-                : chess
-                  ? `${t(value === value.toUpperCase() ? "White" : "Black")} ${t(names[value.toLowerCase()] ?? "Piece")}`
-                  : `${t(value.toLowerCase() === "a" ? "Pearl" : "Coral")} ${t(value === value.toUpperCase() ? "King" : "Piece")}`;
-            const destination = moves.some((m) => m.to === sq);
-            return (
-              <button
-                key={display}
-                type="button"
-                className={`reef-game-square ${dark ? "dark" : ""}`}
-                data-square={sq}
-                data-piece={value}
-                data-destination={destination}
-                aria-label={`${coord}: ${label}${destination ? ` · ${t("Legal destination")}` : ""}`}
-                aria-pressed={selected === sq}
-                disabled={!enabled}
-                onClick={() => choose(sq)}
-              >
-                <span aria-hidden="true">
-                  {value === "."
-                    ? destination
-                      ? "·"
-                      : ""
-                    : chess
-                      ? pieces[value]
-                      : value === value.toUpperCase()
-                        ? value === "A"
-                          ? "◎"
-                          : "◉"
-                        : value === "a"
-                          ? "○"
-                          : "●"}
-                </span>
-              </button>
-            );
-          })}
+          <Squares
+            chess={chess}
+            cells={cells}
+            selected={selected}
+            moves={moves}
+            enabled={enabled}
+            choose={choose}
+          />
         </div>
       </div>
       {promotion && (
@@ -144,6 +106,75 @@ export default function Board({ game, busy, send }: GameProps) {
           ))}
         </select>
       </label>
+    </>
+  );
+}
+
+function Squares({
+  chess,
+  cells,
+  selected,
+  moves,
+  enabled,
+  choose,
+}: {
+  chess: boolean;
+  cells: string[];
+  selected: number | null;
+  moves: NonNullable<GameProps["game"]["board"]["legal"]>;
+  enabled: boolean;
+  choose: (sq: number) => void;
+}) {
+  return (
+    <>
+      {Array.from({ length: 64 }, (_, display) => {
+        const row = Math.floor(display / 8),
+          col = display % 8;
+        const dark = (row + col) % 2 === 1;
+        const sq = chess ? (7 - row) * 8 + col : row * 4 + Math.floor(col / 2);
+        const value = cells[chess ? display : sq] ?? ".";
+        const coord = `${String.fromCharCode(97 + col)}${8 - row}`;
+        if (!chess && !dark) return <span key={display} className="reef-game-square" />;
+        const label =
+          value === "."
+            ? t("Empty")
+            : chess
+              ? `${t(value === value.toUpperCase() ? "White" : "Black")} ${t(names[value.toLowerCase()] ?? "Piece")}`
+              : `${t(value.toLowerCase() === "a" ? "Pearl" : "Coral")} ${t(value === value.toUpperCase() ? "King" : "Piece")}`;
+        const destination = moves.some((m) => m.to === sq);
+        return (
+          <button
+            key={display}
+            type="button"
+            className={`reef-game-square ${dark ? "dark" : ""}`}
+            data-square={sq}
+            data-piece={value}
+            data-destination={destination}
+            aria-label={`${coord}: ${label}${destination ? ` · ${t("Legal destination")}` : ""}`}
+            aria-pressed={selected === sq}
+            aria-disabled={!enabled}
+            onClick={() => {
+              if (enabled) choose(sq);
+            }}
+          >
+            <span aria-hidden="true">
+              {value === "."
+                ? destination
+                  ? "·"
+                  : ""
+                : chess
+                  ? pieces[value]
+                  : value === value.toUpperCase()
+                    ? value === "A"
+                      ? "◎"
+                      : "◉"
+                    : value === "a"
+                      ? "○"
+                      : "●"}
+            </span>
+          </button>
+        );
+      })}
     </>
   );
 }

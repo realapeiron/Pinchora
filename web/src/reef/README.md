@@ -1,4 +1,4 @@
-# Reef client engine, social spaces and games (R02–R49)
+# Reef client engine, social spaces and games
 
 Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. The room picker in Controls preserves the flag.
 
@@ -221,9 +221,9 @@ Postgres/Redis environment. Four journeys cover two browsers, desktop/phone plac
 doorbell admission, notes/likes, blocking, plaza entry and scheduled RSVP. Screenshots go to
 `web/test-results/screens/reef7-*`. Chromium execution and final seat silhouette review remain lead gates.
 
-## Room games and shared economy (R38–R49)
+## Room games and shared economy
 
-Wave 8 uses migration **0085**, adds no slash roots and adds no dependencies.
+Room games use migration **0085**, adds no slash roots and adds no dependencies.
 `Room activities` is available in house rooms and guild plazas. Usable game furniture opens the
 same lobby with a placement binding; the accessible activity menu needs no furniture. The lobby,
 Checkers, Chess, Picross, Trivia, game translations and game styles load on demand. The art manifest
@@ -246,14 +246,15 @@ omits redundant null seat contacts while preserving all pixels, pose anchors and
   length or result. Self-join cannot occupy a second seat. Guild-plaza games use the existing reward
   amounts, minimum moves and paid-win caps. This is a private-room farming rule, not a claim to
   identify every alternate account in a public guild. No web wagers or passive income exist.
-- `game_reward_daily` replaces the Redis-only `pay_win` allowance for bot and web. Migration seeds
-  historical paid wins from the ledger; today's counters survive privacy deletion. A missing counter
-  after a same-day deletion stays closed until tomorrow, covering legacy deleted ledgers at cutover. Restart bot and
-  web together at cutover so older binaries cannot keep spending the old Redis-only allowance.
+- `game_reward_daily` shares the board, Picross and Trivia allowance between bot and web. Migration seeds
+  today’s paid wins from the ledger; today's counters survive privacy deletion. A missing counter
+  after a same-day deletion stays closed until tomorrow, covering legacy deleted ledgers at cutover. A ledger trigger counts and caps old-binary payments during rolling deployment as well.
+  Unrelated Discord games retain their existing counters.
 - Bot board conclusions now commit rewards and stats with `settle_game`'s state/wager effects.
   Bot Trivia also commits answers' statistics and capped payments with its completed state.
   Picross commits its solved state, stats, daily/streak or capped practice reward in the mark
   transaction. Both clients use `picross_games`; daily tombstones, checks and reduced rewards remain.
+  Private-room Picross completion records zero payment and consumes that puzzle completion.
   Browser edits carry a monotonic revision as well as the grid, including across practice resets.
   Both clients retire practice pictures that approach the next daily puzzles.
 - Trivia reuses EN/TR question content and option permutation. Question IDs, shuffle seeds/order,
@@ -279,7 +280,7 @@ The browser's two-second lobby poll also recovers missed events and HTTP changes
 
 Verification: `crates/pinchora-db/tests/reef_games.rs` injects PostgreSQL failures at the stats and
 ledger and final receipt stages, verifies full rollback, retries after a lost committed response, checks shared bot/web
-caps and deletion tombstones. `crates/pinchora-web/tests/reef/wave8.rs` exercises real sessions, CSRF,
+caps and deletion tombstones. `crates/pinchora-web/tests/reef/games.rs` exercises real sessions, CSRF,
 HTTP/socket parity, stale actions, spectator authorization, Trivia concealment/deadlines and Picross
 cross-transport resume. The existing EN/TR bot simulator journeys exercise the changed settlement paths.
 `web/tests/e2e/reef-games.spec.ts` contains four real-server two-browser complete-game journeys, including

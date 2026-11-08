@@ -379,7 +379,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          SELECT id, $1, 1 FROM collection_drops WHERE host_id = $1",
         "INSERT INTO collection_votes (drop_id, user_id, slot)
          SELECT id, $1, 0 FROM collection_drops WHERE guild_id = $1 AND host_id = $1",
-        // Wave 8 room ownership, hosting, participation and exact request receipts.
+        // Room ownership, hosting, participation and exact request receipts.
         "INSERT INTO reef_games(room_key,owner_id,host_id,kind,request_id,state,finished,deadline)
          VALUES ('house:'||$1::bigint||':0',$1,$2,'chess','privacy-owner','{}',true,now()),
                 ('house:'||$2::bigint||':0',$2,$1,'chess','privacy-host','{}',true,now())",

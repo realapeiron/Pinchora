@@ -30,3 +30,5 @@ export type Intent =
   | { action: "move"; code: string }
   | { action: "answer"; choice: number };
 export type GameProps = { game: Game; busy: boolean; send: (intent: Intent) => void };
+
+export const names = { checkers: "Pearl Checkers", chess: "Reef Chess", trivia: "Trivia" };

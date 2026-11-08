@@ -23,7 +23,7 @@ async fn action(b: &Browser, g: &Value, intent: Value) -> (StatusCode, Value) {
     .await
 }
 #[tokio::test]
-async fn wave8_chess_match_spectator_stale_retry_csrf_and_private_alts() {
+async fn room_games_chess_match_spectator_stale_retry_csrf_and_private_alts() {
     let Some(site) = Site::new().await else {
         return;
     };
@@ -68,7 +68,7 @@ async fn wave8_chess_match_spectator_stale_retry_csrf_and_private_alts() {
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 #[tokio::test]
-async fn wave8_trivia_conceal_answer_reconnect_and_deadline() {
+async fn room_games_trivia_conceal_answer_reconnect_and_deadline() {
     let Some(site) = Site::new().await else {
         return;
     };
@@ -104,14 +104,22 @@ async fn wave8_trivia_conceal_answer_reconnect_and_deadline() {
         .execute(&site.pool)
         .await
         .unwrap();
-    let (code, reveal) = action(&b, &g, json!({"action":"answer","choice":3})).await;
+    let (code, _) = action(&b, &g, json!({"action":"answer","choice":3})).await;
+    assert_eq!(code, StatusCode::CONFLICT);
+    let (code, reveal) = b
+        .api_value(
+            Method::GET,
+            &format!("/api/reef/games/{}", g["id"].as_str().unwrap()),
+            Value::Null,
+        )
+        .await;
     assert_eq!(code, StatusCode::OK, "{reveal}");
     assert_eq!(reveal["board"]["phase"], "done");
     assert!(reveal["board"]["correct"].is_number());
     assert!(!reveal["answered"].as_bool().unwrap());
 }
 #[tokio::test]
-async fn wave8_picross_cross_transport_resume_stale_and_private_projection() {
+async fn room_games_picross_cross_transport_resume_stale_and_private_projection() {
     let Some(site) = Site::new().await else {
         return;
     };
@@ -154,7 +162,7 @@ async fn wave8_picross_cross_transport_resume_stale_and_private_projection() {
     );
 }
 #[tokio::test]
-async fn wave8_checkers_socket_and_http_share_authority() {
+async fn room_games_checkers_socket_and_http_share_authority() {
     let Some(site) = Site::new().await else {
         return;
     };
@@ -185,7 +193,7 @@ async fn wave8_checkers_socket_and_http_share_authority() {
 }
 
 #[tokio::test]
-async fn wave8_furniture_revision_binding_blocks_and_wire_limits() {
+async fn room_games_furniture_revision_binding_blocks_and_wire_limits() {
     let Some(site) = Site::new().await else {
         return;
     };
@@ -257,7 +265,7 @@ async fn wave8_furniture_revision_binding_blocks_and_wire_limits() {
 }
 
 #[tokio::test]
-async fn wave8_picross_retired_practice_cannot_expose_upcoming_daily() {
+async fn room_games_picross_retired_practice_cannot_expose_upcoming_daily() {
     let Some(site) = Site::new().await else {
         return;
     };
@@ -280,4 +288,88 @@ async fn wave8_picross_retired_practice_cannot_expose_upcoming_daily() {
     let next = site.app.db.picross_game(user, "practice", 0).await.unwrap().unwrap();
     assert_ne!(next.picture, old.picture);
     assert!(next.revision > old.revision);
+}
+
+#[tokio::test]
+async fn trivia_waiting_stale_spectator_and_leave_cannot_bypass_the_round() {
+    let Some(site) = Site::new().await else {
+        return;
+    };
+    let host = unique();
+    site.house(host).await;
+    let a = site.browser(host).await;
+    let b = site.browser(unique()).await;
+    let c = site.browser(unique()).await;
+    let spectator = site.browser(unique()).await;
+    let waiting = create(&a, host, "trivia").await;
+    assert!(waiting["board"].get("question").is_none());
+    assert!(waiting["board"].get("options").is_none());
+    let (_, joined) = action(&b, &waiting, json!({"action":"join"})).await;
+    let (_, joined) = action(&c, &joined, json!({"action":"join"})).await;
+    let (_, active) = action(&a, &joined, json!({"action":"start"})).await;
+    assert!(active["board"]["question"].is_string());
+    assert_eq!(
+        action(&b, &joined, json!({"action":"answer","choice":0})).await.0,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        action(&spectator, &active, json!({"action":"answer","choice":0}))
+            .await
+            .0,
+        StatusCode::FORBIDDEN
+    );
+    let (code, answered) = action(&a, &active, json!({"action":"answer","choice":0})).await;
+    assert_eq!(code, StatusCode::OK);
+    assert_eq!(
+        action(&b, &active, json!({"action":"answer","choice":1})).await.0,
+        StatusCode::CONFLICT
+    );
+    let (code, left) = action(&b, &answered, json!({"action":"leave"})).await;
+    assert_eq!(code, StatusCode::OK, "{left}");
+    assert_eq!(left["board"]["phase"], "active");
+    assert!(left["board"].get("correct").is_none());
+    assert!(left["side"].is_null());
+    assert_eq!(left["players"].as_array().unwrap().len(), 2);
+    let (code, done) = action(&c, &left, json!({"action":"answer","choice":1})).await;
+    assert_eq!(code, StatusCode::OK, "{done}");
+    assert!(done["board"]["correct"].is_number());
+    let waiting = create(&a, host, "trivia").await;
+    let (_, cancelled) = action(&a, &waiting, json!({"action":"leave"})).await;
+    assert!(cancelled["board"].get("correct").is_none());
+}
+
+#[tokio::test]
+async fn private_picross_http_completion_has_no_ledger_payment() {
+    let Some(site) = Site::new().await else {
+        return;
+    };
+    let host = unique();
+    site.house(host).await;
+    let a = site.browser(host).await;
+    let path = format!("/api/reef/rooms/house:{host}:0/picross");
+    let (_, p) = a.api_value(Method::POST, &path, json!({"mode":"daily"})).await;
+    let day = p["day"].as_i64().unwrap() as i32;
+    let row = site.app.db.picross_game(host, "daily", day).await.unwrap().unwrap();
+    let puzzle = pinchora_game::play::picross::Puzzle::new(row.picture as usize, row.variant as u8);
+    let mut grid = pinchora_game::play::picross::Grid::default();
+    let mut last = 0;
+    for cell in 0..100 {
+        if puzzle.filled(cell) {
+            grid.set(cell, true);
+            last = cell;
+        }
+    }
+    grid.set(last, false);
+    let row = site
+        .app
+        .db
+        .picross_marks(host, "daily", day, &row.grid, &grid.encode(), false)
+        .await
+        .unwrap()
+        .unwrap();
+    let (code, solved) = a.api_value(Method::POST,&format!("{path}/marks"),
+        json!({"mode":"daily","day":day,"grid":row.grid,"revision":row.revision.to_string(),"cell":last,"filled":true})).await;
+    assert_eq!(code, StatusCode::OK, "{solved}");
+    assert_eq!(solved["status"], "solved");
+    assert_eq!(solved["paid"], 0);
 }

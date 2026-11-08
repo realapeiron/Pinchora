@@ -175,10 +175,12 @@ impl Session {
                 }
             }
             Board::Trivia { .. } => {
-                if let Some((q, order)) = self.question() {
+                if self.phase != "waiting"
+                    && let Some((q, order)) = self.question()
+                {
                     out["question"] = json!(q.question);
                     out["options"] = json!(q.shown(order));
-                    if self.phase == "done" {
+                    if self.phase == "done" && self.reason.as_deref() == Some("reveal") {
                         out["correct"] = json!(q.correct_slot(order));
                     }
                 }
@@ -203,12 +205,14 @@ mod tests {
     fn trivia_projection_conceals_solution_and_identity_until_reveal() {
         for lang in [Lang::En, Lang::Tr] {
             let mut s = Session::new("trivia", lang, 42).unwrap();
+            assert!(s.projection().get("question").is_none());
+            s.phase = "active".into();
             let p = s.projection();
             assert!(p.get("correct").is_none());
             assert!(p.get("order").is_none());
             assert!(p.get("lang").is_none());
             assert_eq!(p["question"], s.question().unwrap().0.question);
-            s.finish(None, "deadline");
+            s.finish(None, "reveal");
             assert!(s.projection()["correct"].is_number());
         }
     }

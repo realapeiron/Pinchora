@@ -634,6 +634,11 @@ impl Db {
             .bind(id).execute(&mut **tx).await?;
         sqlx::query("DELETE FROM roblox_cache WHERE key IN (SELECT 'groups:' || roblox_id::text FROM roblox_links WHERE user_id=$1)")
             .bind(sql_id(user)).execute(&mut **tx).await?;
+        // Remember guest sessions before the registry removes their seat and request receipts.
+        let joined_games: Vec<i64> = sqlx::query_scalar("SELECT game_id FROM reef_game_players WHERE user_id=$1")
+            .bind(id)
+            .fetch_all(&mut **tx)
+            .await?;
         for (table, column) in USER_COLUMNS {
             // Table and column names are the constants above.
             let rows = sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table} WHERE {column} = $1")))
@@ -651,6 +656,16 @@ impl Db {
         for (board, message) in affected_stars {
             sqlx::query("UPDATE starboard_posts SET star_count=(SELECT COALESCE(SUM(weight),0)::INT FROM starboard_stars WHERE starboard_id=$1 AND message_id=$2),sync_due=now(),sync_version=sync_version+1 WHERE starboard_id=$1 AND message_id=$2")
                 .bind(board).bind(message).execute(&mut **tx).await?;
+        }
+        // A removed seat must not leave a live game that can pay or be reused after deletion.
+        let games = sqlx::query("DELETE FROM reef_games WHERE id=ANY($1)")
+            .bind(&joined_games)
+            .execute(&mut **tx)
+            .await?
+            .rows_affected();
+        deleted.rows += games;
+        if games > 0 && !touched.contains(&"reef_games") {
+            touched.push("reef_games");
         }
         deleted.tables = touched.len();
         Ok(deleted)
@@ -760,6 +775,9 @@ async fn others_written(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64)
              WHERE e.sender_id=$1 OR e.owner_id=$1
          UNION SELECT e.sender_id FROM reef_chat_evidence e WHERE e.owner_id=$1
          UNION SELECT e.owner_id FROM reef_chat_evidence e WHERE e.sender_id=$1
+         UNION SELECT p.user_id FROM reef_game_players p JOIN reef_games g ON g.id=p.game_id
+             WHERE g.host_id=$1 OR g.owner_id=$1 OR g.id IN
+               (SELECT game_id FROM reef_game_players WHERE user_id=$1)
          UNION SELECT seller_id FROM economy_auctions WHERE bidder_id=$1 AND status='open'
          UNION SELECT bidder_id FROM economy_auctions WHERE seller_id=$1 AND status='open'
          UNION SELECT user_a FROM economy_trades WHERE user_b=$1 AND status='open'

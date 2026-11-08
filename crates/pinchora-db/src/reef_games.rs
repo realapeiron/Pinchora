@@ -45,6 +45,7 @@ pub struct ReefGameStep {
     pub finished: bool,
     pub seconds: i64,
     pub join: bool,
+    pub leave: bool,
     pub answer: Option<i16>,
     pub winners: Vec<i16>,
     pub reward: i64,
@@ -181,54 +182,8 @@ impl Db {
             .fetch_one(&mut *tx)
             .await?;
         let next = step(&game, &players, now)?;
-        if next.join {
-            let side = (0_i16..32)
-                .find(|side| !players.iter().any(|p| p.side == *side))
-                .ok_or_else(|| anyhow::anyhow!("room_busy"))?;
-            sqlx::query("INSERT INTO reef_game_players(game_id,user_id,side) VALUES($1,$2,$3)")
-                .bind(id)
-                .bind(sql_id(user))
-                .bind(side)
-                .execute(&mut *tx)
-                .await?;
-        }
-        if let Some(answer) = next.answer {
-            let changed = sqlx::query(
-                "UPDATE reef_game_players SET answer=$3 WHERE game_id=$1 AND user_id=$2 AND answer IS NULL",
-            )
-            .bind(id)
-            .bind(sql_id(user))
-            .bind(answer)
-            .execute(&mut *tx)
-            .await?
-            .rows_affected();
-            anyhow::ensure!(changed == 1, "already_answered");
-        }
-        if next.finished && !game.finished && game.state["phase"] == "active" {
-            for p in &players {
-                let won = next.winners.contains(&p.side);
-                game_stat(&mut tx, p.user_id, &game.kind, won).await?;
-                let paid = if won {
-                    capped_win(
-                        &mut tx,
-                        p.user_id,
-                        &game.kind,
-                        next.reward,
-                        next.cap,
-                        &format!("{}_win", game.kind),
-                    )
-                    .await?
-                } else {
-                    0
-                };
-                sqlx::query("UPDATE reef_game_players SET paid=$3 WHERE game_id=$1 AND user_id=$2")
-                    .bind(id)
-                    .bind(p.user_id)
-                    .bind(paid)
-                    .execute(&mut *tx)
-                    .await?;
-            }
-        }
+        update_seats(&mut tx, id, user, &players, &next).await?;
+        settle_players(&mut tx, &game, &players, &next).await?;
         let updated=sqlx::query_as("UPDATE reef_games SET state=$2,finished=$3,revision=revision+1,placement_id=CASE WHEN EXISTS(SELECT 1 FROM placements WHERE id=reef_games.placement_id) THEN placement_id ELSE NULL END,deadline=CASE WHEN $4>0 THEN to_timestamp($5::double precision)+make_interval(secs=>$4) ELSE deadline END WHERE id=$1 RETURNING id,room_key,owner_id,host_id,kind,placement_id,layout_revision,state,revision,finished,deadline")
             .bind(id).bind(next.state).bind(next.finished).bind(next.seconds as f64).bind(now as f64).fetch_one(&mut *tx).await?;
         sqlx::query("INSERT INTO reef_game_actions(game_id,user_id,request_id,payload) VALUES($1,$2,$3,$4)")
@@ -241,4 +196,78 @@ impl Db {
         tx.commit().await?;
         Ok(updated)
     }
+}
+
+async fn update_seats(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+    user: u64,
+    players: &[ReefGamePlayer],
+    next: &ReefGameStep,
+) -> anyhow::Result<()> {
+    if next.join {
+        let side = (0_i16..32)
+            .find(|side| !players.iter().any(|p| p.side == *side))
+            .ok_or_else(|| anyhow::anyhow!("room_busy"))?;
+        sqlx::query("INSERT INTO reef_game_players(game_id,user_id,side) VALUES($1,$2,$3)")
+            .bind(id)
+            .bind(sql_id(user))
+            .bind(side)
+            .execute(&mut **tx)
+            .await?;
+    }
+    if next.leave {
+        sqlx::query("DELETE FROM reef_game_players WHERE game_id=$1 AND user_id=$2")
+            .bind(id)
+            .bind(sql_id(user))
+            .execute(&mut **tx)
+            .await?;
+    }
+    if let Some(answer) = next.answer {
+        let changed =
+            sqlx::query("UPDATE reef_game_players SET answer=$3 WHERE game_id=$1 AND user_id=$2 AND answer IS NULL")
+                .bind(id)
+                .bind(sql_id(user))
+                .bind(answer)
+                .execute(&mut **tx)
+                .await?
+                .rows_affected();
+        anyhow::ensure!(changed == 1, "already_answered");
+    }
+    Ok(())
+}
+
+async fn settle_players(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    game: &ReefGame,
+    players: &[ReefGamePlayer],
+    next: &ReefGameStep,
+) -> anyhow::Result<()> {
+    let id = game.id;
+    if next.finished && !game.finished && game.state["phase"] == "active" {
+        for p in players {
+            let won = next.winners.contains(&p.side);
+            game_stat(tx, p.user_id, &game.kind, won).await?;
+            let paid = if won {
+                capped_win(
+                    tx,
+                    p.user_id,
+                    &game.kind,
+                    next.reward,
+                    next.cap,
+                    &format!("{}_win", game.kind),
+                )
+                .await?
+            } else {
+                0
+            };
+            sqlx::query("UPDATE reef_game_players SET paid=$3 WHERE game_id=$1 AND user_id=$2")
+                .bind(id)
+                .bind(p.user_id)
+                .bind(paid)
+                .execute(&mut **tx)
+                .await?;
+        }
+    }
+    Ok(())
 }

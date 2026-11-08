@@ -1676,5 +1676,5 @@ async fn wave7_doorbell_retention_preserves_recent_abuse_counters() {
     assert_eq!(retained, vec![recent]);
 }
 
-#[path = "reef/wave8.rs"]
-mod wave8;
+#[path = "reef/games.rs"]
+mod games;

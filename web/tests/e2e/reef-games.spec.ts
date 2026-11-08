@@ -86,7 +86,18 @@ for (const kind of ["checkers", "chess", "trivia"] as const)
           const menu = player.getByRole("combobox", { name: "Legal moves", exact: true });
           await expect(menu).toBeEnabled();
           await expect(menu.locator(`option[value="${code}"]`)).toHaveCount(1);
-          await menu.selectOption(code);
+          if (ply === 0) {
+            const move = g.board.legal!.find((m) => m.code === code)!;
+            const source = player.locator(`[data-square="${move.from}"]`);
+            const target = player.locator(`[data-square="${move.to}"]`);
+            await source.focus();
+            await player.keyboard.press("Enter");
+            await target.focus();
+            await player.keyboard.press("Space");
+            await expect(target).toBeFocused();
+          } else {
+            await menu.selectOption(code);
+          }
           await expect.poll(async () => (await games(host, players.host))[0]!.revision).not.toBe(g.revision);
         }
       }
@@ -95,9 +106,10 @@ for (const kind of ["checkers", "chess", "trivia"] as const)
       expect(g.players.every((p) => p.paid === 0)).toBe(true);
       if (kind === "trivia") expect(g.board.correct).toBeDefined();
       if (kind === "chess") expect(g.board.winner).toBe(1);
+      await expect(host.locator("h1")).toHaveCount(1);
       expect(await overflow(host)).toBeLessThanOrEqual(1);
-      await shot(host, `reef8-${kind}-phone`);
-      await shot(guest, `reef8-${kind}-desktop`);
+      await shot(host, `reef-games-${kind}-phone`);
+      await shot(guest, `reef-games-${kind}-desktop`);
     } finally {
       await a.close();
       await b.close();
@@ -176,9 +188,10 @@ test("two browsers resume and complete the same daily Picross", async ({ browser
     }
     p = await write<Puzzle>(second, path, { mode: "daily" });
     expect(p.status).toBe("solved");
+    expect(p.paid).toBe(0);
     await expect(second.getByText(/Puzzle solved!/)).toBeVisible();
     expect(await overflow(second)).toBeLessThanOrEqual(1);
-    await shot(second, "reef8-picross-phone");
+    await shot(second, "reef-games-picross-phone");
     const resumed = await write<Puzzle>(first, path, { mode: "daily" });
     expect(resumed.grid).toBe(p.grid);
     expect(resumed.paid).toBe(p.paid);

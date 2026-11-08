@@ -7,11 +7,9 @@ import { locale } from "../../i18n";
 import { t } from "../../i18n/reef-games";
 import type { Game, Intent } from "./types";
 import "./games.css";
-const Checkers = lazy(() => import("./Checkers"));
-const Chess = lazy(() => import("./Chess"));
-const Trivia = lazy(() => import("./Trivia"));
 const Picross = lazy(() => import("./Picross"));
-const names = { checkers: "Pearl Checkers", chess: "Reef Chess", trivia: "Trivia" };
+import Match from "./Match";
+import { names } from "./types";
 export default function ActivityPanel({
   room,
   user,
@@ -29,61 +27,8 @@ export default function ActivityPanel({
   useEffect(() => {
     heading.current?.focus();
   }, []);
-  const [selected, select] = useState<string | null>(null);
-  const [picross, setPicross] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [now, setNow] = useState(Date.now);
-  const client = useQueryClient();
-  const path = `/api/reef/rooms/${encodeURIComponent(room)}/games`;
-  const query = useQuery({
-    queryKey: ["reef-games", room],
-    queryFn: () => api<{ games: Game[]; layout_revision: string }>(path),
-    refetchInterval: 2000,
-  });
-  const game = query.data?.games.find((g) => g.id === selected);
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  useEffect(() => {
-    if (game?.board.phase === "done") void refreshEconomy(client);
-  }, [client, game?.id, game?.board.phase]);
-  const run = async (f: () => Promise<Game>) => {
-    setBusy(true);
-    setError("");
-    try {
-      const g = await f();
-      select(g.id);
-      setPicross(false);
-      await query.refetch();
-    } catch {
-      setError("The board changed. Refresh and try again.");
-      await query.refetch();
-    } finally {
-      setBusy(false);
-    }
-  };
-  const send = (intent: Intent) => {
-    if (game)
-      void run(() =>
-        api<Game>(`/api/reef/games/${game.id}/actions`, "POST", {
-          request_id: crypto.randomUUID(),
-          revision: game.revision,
-          ...intent,
-        }),
-      );
-  };
-  const create = (kind: string) =>
-    void run(() =>
-      api<Game>(path, "POST", {
-        kind,
-        request_id: crypto.randomUUID(),
-        lang: locale(),
-        placement_id: placement,
-        layout_revision: placement ? query.data?.layout_revision : null,
-      }),
-    );
+  const { selected, select, picross, setPicross, busy, error, now, query, game, send, create } =
+    useActivities(room, placement);
   return (
     <aside className="reef-space-sheet reef-activities" aria-label={t("Room activities")}>
       {bubbleTarget &&
@@ -153,65 +98,67 @@ export default function ActivityPanel({
       </ul>
       <Suspense fallback={<p role="status">{t("Loading…")}</p>}>
         {picross && <Picross room={room} />}
-        {game && (
-          <section data-game-id={game.id} data-phase={game.board.phase}>
-            <h3>{t(names[game.kind])}</h3>
-            <p role="status">
-              {game.board.phase === "done"
-                ? game.board.winner === null
-                  ? t("Round finished")
-                  : t("Player {count} wins", { count: game.board.winner + 1 })
-                : game.side === null
-                  ? t("Spectating")
-                  : game.board.phase === "waiting"
-                    ? t("Waiting for players")
-                    : game.kind === "trivia"
-                      ? t("Playing")
-                      : game.board.turn === game.side
-                        ? t("Your turn")
-                        : t("Waiting for the other player")}
-            </p>
-            {game.board.phase !== "done" && (
-              <p>
-                {t("Time remaining: {count}s", {
-                  count: Math.max(0, Math.ceil((Date.parse(game.deadline) - now) / 1000)),
-                })}
-              </p>
-            )}
-            {game.board.phase === "waiting" && game.side === null && (
-              <button type="button" disabled={busy} onClick={() => send({ action: "join" })}>
-                {t("Join game")}
-              </button>
-            )}
-            {game.kind === "trivia" && game.board.phase === "waiting" && game.host_id === user && (
-              <button
-                type="button"
-                disabled={busy || game.players.length < 2}
-                onClick={() => send({ action: "start" })}
-              >
-                {t("Start round")}
-              </button>
-            )}
-            {game.side !== null && game.board.phase !== "done" && (
-              <button type="button" disabled={busy} onClick={() => send({ action: "leave" })}>
-                {t("Leave game")}
-              </button>
-            )}
-            {game.kind === "checkers" ? (
-              <Checkers key={game.id} game={game} busy={busy} send={send} />
-            ) : game.kind === "chess" ? (
-              <Chess key={game.id} game={game} busy={busy} send={send} />
-            ) : (
-              <Trivia game={game} busy={busy} send={send} />
-            )}
-            {game.board.phase === "done" && (
-              <p>
-                {t("Shells earned: {count}", { count: game.players.find((p) => p.id === user)?.paid ?? 0 })}
-              </p>
-            )}
-          </section>
-        )}
+        {game && <Match game={game} busy={busy} send={send} user={user} now={now} />}
       </Suspense>
     </aside>
   );
+}
+
+function useActivities(room: string, placement: string | null) {
+  const [selected, select] = useState<string | null>(null);
+  const [picross, setPicross] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [now, setNow] = useState(Date.now);
+  const client = useQueryClient();
+  const path = `/api/reef/rooms/${encodeURIComponent(room)}/games`;
+  const query = useQuery({
+    queryKey: ["reef-games", room],
+    queryFn: () => api<{ games: Game[]; layout_revision: string }>(path),
+    refetchInterval: 2000,
+  });
+  const game = query.data?.games.find((g) => g.id === selected);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (game?.board.phase === "done") void refreshEconomy(client);
+  }, [client, game?.id, game?.board.phase]);
+  const run = async (f: () => Promise<Game>) => {
+    setBusy(true);
+    setError("");
+    try {
+      const g = await f();
+      select(g.id);
+      setPicross(false);
+      await query.refetch();
+    } catch {
+      setError("The board changed. Refresh and try again.");
+      await query.refetch();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const send = (intent: Intent) => {
+    if (game)
+      void run(() =>
+        api<Game>(`/api/reef/games/${game.id}/actions`, "POST", {
+          request_id: crypto.randomUUID(),
+          revision: game.revision,
+          ...intent,
+        }),
+      );
+  };
+  const create = (kind: string) =>
+    void run(() =>
+      api<Game>(path, "POST", {
+        kind,
+        request_id: crypto.randomUUID(),
+        lang: locale(),
+        placement_id: placement,
+        layout_revision: placement ? query.data?.layout_revision : null,
+      }),
+    );
+  return { selected, select, picross, setPicross, busy, error, now, query, game, send, create };
 }

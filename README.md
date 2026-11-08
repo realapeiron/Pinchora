@@ -1767,11 +1767,11 @@ coverage. See [Wave 7 contracts and lead browser checks](web/src/reef/README.md#
 D8 adds no registered slash roots. Migration 0083 is the only schema change. Global shells
 are never minted or reset by server administrators. See [reward budgets and trade rules](docs/GAME_DESIGN.md#d8-player-economy-v2).
 
-### Reef room games and economy (Wave 8)
+### Reef room games and economy
 
 `Room activities` in a playable house or guild plaza opens Pearl Checkers, Reef Chess,
 Pixel Picross or Trivia. The boards reuse the bot's rules; Picross resumes the same daily/practice
-rows, and Trivia conceals its answer until reveal. Private-house multiplayer games are practice-only.
+rows, and Trivia conceals its answer until reveal. Private-house games are practice-only.
 Plaza rewards share the bot's caps, minimum moves and shell ledger. Board, Trivia and Picross settlement now
-commits stats and rewards atomically. Migration **0085** only; no new slash roots. Roll bot and web
-binaries together for the durable reward-counter cutover. See [Wave 8 contracts and browser checks](web/src/reef/README.md#room-games-and-shared-economy-r38r49).
+commits stats and rewards atomically. Migration **0085** only; no new slash roots. A ledger bridge keeps the durable reward cap consistent during rolling deployment.
+See [Room-game contracts and browser checks](web/src/reef/README.md#room-games-and-shared-economy).

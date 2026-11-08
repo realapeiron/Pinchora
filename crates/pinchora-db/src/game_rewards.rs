@@ -26,12 +26,16 @@ pub(crate) async fn capped_win(
     if amount <= 0 {
         return Ok(0);
     }
-    // Legacy deletions may have removed the ledger before migration could seed this counter.
-    // A missing counter after today's deletion stays closed until tomorrow; existing counters
-    // retain their exact remaining allowance through the ON CONFLICT branch.
-    let wins: i64 = sqlx::query_scalar("INSERT INTO game_reward_daily(user_id,day,game,wins) VALUES($1,floor(extract(epoch FROM now())/86400)::int,$2,CASE WHEN EXISTS(SELECT 1 FROM deleted_users WHERE user_id=$1 AND floor(extract(epoch FROM deleted_at)/86400)=floor(extract(epoch FROM now())/86400)) THEN $3+1 ELSE 1 END) ON CONFLICT(user_id,day,game) DO UPDATE SET wins=game_reward_daily.wins+1 RETURNING wins")
+    anyhow::ensure!(
+        matches!(game, "chess" | "checkers" | "seafleet" | "picross" | "trivia")
+            && (reason == format!("{game}_win") || (game == "trivia" && reason == "trivia")),
+        "unsupported game reward"
+    );
+    // The ledger trigger counts successful payments from both old and new bot versions.
+    // Insert an empty allowance only when no same-day deletion closed an unseeded counter.
+    let wins: i64 = sqlx::query_scalar("INSERT INTO game_reward_daily(user_id,day,game,wins) VALUES($1,floor(extract(epoch FROM now())/86400)::int,$2,CASE WHEN EXISTS(SELECT 1 FROM deleted_users WHERE user_id=$1 AND floor(extract(epoch FROM deleted_at)/86400)=floor(extract(epoch FROM now())/86400)) THEN $3 ELSE 0 END) ON CONFLICT(user_id,day,game) DO UPDATE SET wins=game_reward_daily.wins RETURNING wins")
         .bind(user).bind(game).bind(cap).fetch_one(&mut **tx).await?;
-    let paid = if wins <= cap { amount } else { 0 };
+    let paid = if wins < cap { amount } else { 0 };
     game_credit(tx, user, paid, reason).await?;
     Ok(paid)
 }

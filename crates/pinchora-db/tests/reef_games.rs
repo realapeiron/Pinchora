@@ -38,7 +38,7 @@ async fn settlement_crash_at_stats_and_ledger_rolls_back_every_stage_then_retrie
     let s = board(&db, user).await;
     // Faults happen inside PostgreSQL, after the session UPDATE and before COMMIT.
     for table in ["game_stats", "credit_ledger"] {
-        let name = format!("reef8_fault_{user}");
+        let name = format!("reef_game_fault_{user}");
         sqlx::query(sqlx::AssertSqlSafe(format!(
             "ALTER TABLE {table} ADD CONSTRAINT {name} CHECK(user_id <> {user})"
         )))
@@ -122,6 +122,7 @@ async fn bot_and_room_wins_share_cap_and_today_survives_privacy_deletion() {
             finished: true,
             seconds: 0,
             join: false,
+            leave: false,
             answer: None,
             winners: vec![0],
             reward: 30,
@@ -129,7 +130,7 @@ async fn bot_and_room_wins_share_cap_and_today_survives_privacy_deletion() {
         })
     };
     // Fail after state, ledger and stats have been written, just before the action receipt commits.
-    let fault = format!("reef8_receipt_{user}");
+    let fault = format!("reef_game_receipt_{user}");
     sqlx::query(sqlx::AssertSqlSafe(format!(
         "ALTER TABLE reef_game_actions ADD CONSTRAINT {fault} CHECK(user_id <> {user})"
     )))
@@ -168,7 +169,7 @@ async fn picross_completion_is_atomic_shared_and_cannot_be_repaid_after_deletion
     let user = id();
     let day = chrono::Utc::now().timestamp().div_euclid(86400) as i32;
     let g = db.start_picross(user, "daily", day, (0, 0), false).await.unwrap();
-    let name = format!("reef8_picross_fault_{user}");
+    let name = format!("reef_game_picross_fault_{user}");
     sqlx::query(sqlx::AssertSqlSafe(format!(
         "ALTER TABLE credit_ledger ADD CONSTRAINT {name} CHECK(user_id <> {user})"
     )))
@@ -231,7 +232,7 @@ async fn bot_trivia_settlement_is_atomic_and_late_answers_are_rejected() {
         .unwrap();
     assert!(db.add_game_answer(s.id, user, 1).await.unwrap());
     assert!(!db.add_game_answer(s.id, user, 2).await.unwrap());
-    let name = format!("reef8_trivia_fault_{user}");
+    let name = format!("reef_game_trivia_fault_{user}");
     sqlx::query(sqlx::AssertSqlSafe(format!(
         "ALTER TABLE credit_ledger ADD CONSTRAINT {name} CHECK(user_id <> {user})"
     )))
@@ -255,4 +256,134 @@ async fn bot_trivia_settlement_is_atomic_and_late_answers_are_rejected() {
     assert!(db.settle_trivia_game(&s, Some(1), 20, 5).await.unwrap().is_none());
     assert!(!db.add_game_answer(s.id, user + 1, 1).await.unwrap());
     assert_eq!(db.user(user).await.unwrap().credits, 20);
+}
+
+#[tokio::test]
+async fn deletion_of_guest_removes_the_live_session_before_it_can_settle() {
+    let Some(db) = db().await else {
+        return;
+    };
+    let host = id();
+    let guest = host + 1;
+    db.house(
+        host,
+        &pinchora_db::NewRoom {
+            room_type: "living".into(),
+            wallpaper: "sand".into(),
+            floor: "sand".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let g = db
+        .reef_create_game(NewReefGame {
+            room: &format!("house:{host}:0"),
+            owner: host,
+            host,
+            kind: "chess",
+            request: "delete-guest",
+            placement: None,
+            layout_revision: None,
+            state: json!({"phase":"waiting"}),
+        })
+        .await
+        .unwrap();
+    db.reef_game_step(g.id, guest, "join", &json!({}), None, |_, _, _| {
+        Ok(ReefGameStep {
+            state: json!({"phase":"active"}),
+            finished: false,
+            seconds: 300,
+            join: true,
+            leave: false,
+            answer: None,
+            winners: vec![],
+            reward: 0,
+            cap: 5,
+        })
+    })
+    .await
+    .unwrap();
+    db.delete_user_data(guest, chrono::Utc::now()).await.unwrap();
+    assert!(db.reef_game(g.id).await.unwrap().is_none());
+    assert!(db.reef_game_players(g.id).await.unwrap().is_empty());
+    assert!(
+        db.reef_game_step(g.id, host, "finish", &json!({}), None, |_, _, _| panic!(
+            "deleted games cannot settle"
+        ))
+        .await
+        .is_err()
+    );
+    assert!(db.game_stats(host).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn private_picross_completion_never_pays_and_cannot_replay_on_discord() {
+    let Some(db) = db().await else {
+        return;
+    };
+    let user = id();
+    let day = chrono::Utc::now().timestamp().div_euclid(86400) as i32;
+    for (mode, day) in [("daily", day), ("practice", 0)] {
+        let g = db.start_picross(user, mode, day, (0, 0), false).await.unwrap();
+        let solved = db
+            .picross_marks_with_reward(user, mode, day, &g.grid, &g.grid, true, Some(g.revision), false)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(solved.paid, 0);
+        assert!(
+            db.picross_marks(user, mode, day, &g.grid, &g.grid, true)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+    let paid: i64 = sqlx::query_scalar("SELECT count(*) FROM credit_ledger WHERE user_id=$1")
+        .bind(user as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(paid, 0);
+}
+
+#[tokio::test]
+async fn retiring_practice_uses_revision_and_never_overwrites_new_progress() {
+    let Some(db) = db().await else {
+        return;
+    };
+    let user = id();
+    let old = db.start_picross(user, "practice", 0, (0, 0), false).await.unwrap();
+    let reset = db.retire_picross(user, old.revision, 1, 0).await.unwrap().unwrap();
+    let marks = format!("#{}", ".".repeat(99));
+    db.picross_marks_at(user, "practice", 0, &reset.grid, &marks, false, Some(reset.revision))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(db.retire_picross(user, old.revision, 2, 0).await.unwrap().is_none());
+    let current = db.picross_game(user, "practice", 0).await.unwrap().unwrap();
+    assert_eq!(current.picture, 1);
+    assert_eq!(current.grid, marks);
+}
+
+#[tokio::test]
+async fn deleting_and_reopening_picross_never_reuses_a_browser_revision() {
+    let Some(db) = db().await else {
+        return;
+    };
+    let user = id();
+    let old = db.start_picross(user, "practice", 0, (0, 0), false).await.unwrap();
+    db.delete_user_data(user, chrono::Utc::now()).await.unwrap();
+    let fresh = db.start_picross(user, "practice", 0, (1, 0), false).await.unwrap();
+    assert!(fresh.revision > old.revision);
+    let marks = format!("#{}", ".".repeat(99));
+    assert!(
+        db.picross_marks_at(user, "practice", 0, &old.grid, &marks, false, Some(old.revision))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(
+        db.picross_game(user, "practice", 0).await.unwrap().unwrap().grid,
+        fresh.grid
+    );
 }

@@ -88,11 +88,23 @@ async fn open(
         && existing
             .as_ref()
             .is_some_and(|g| !g.solved() && !picross::practice_pictures(today).contains(&(g.picture as usize)));
-    let g = s
-        .app
-        .db
-        .start_picross(c.session.user_id, &body.mode, day, (picture as u8, variant), replace)
-        .await?;
+    let g = if replace {
+        s.app
+            .db
+            .retire_picross(
+                c.session.user_id,
+                existing.as_ref().ok_or_else(invalid)?.revision,
+                picture as u8,
+                variant,
+            )
+            .await?
+            .ok_or_else(invalid)?
+    } else {
+        s.app
+            .db
+            .start_picross(c.session.user_id, &body.mode, day, (picture as u8, variant), false)
+            .await?
+    };
     if existing.is_none() || replace {
         audit(&s, &c, "reef.picross.open", &g).await;
     }
@@ -132,13 +144,16 @@ async fn mark(
     {
         return Err(invalid());
     }
+    if old.revision != revision || old.grid != b.grid {
+        return Err(ApiError::new(StatusCode::CONFLICT, "stale_action", "stale_action"));
+    }
     let mut grid = Grid::decode(&b.grid).ok_or_else(invalid)?;
     grid.set(b.cell, b.filled);
     let solved = grid.solves(&Puzzle::new(old.picture as usize, old.variant as u8).clues());
     let g = s
         .app
         .db
-        .picross_marks_at(
+        .picross_marks_with_reward(
             c.session.user_id,
             &b.mode,
             day,
@@ -146,6 +161,7 @@ async fn mark(
             &grid.encode(),
             solved,
             Some(revision),
+            room.starts_with("plaza:"),
         )
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::CONFLICT, "stale_action", "stale_action"))?;

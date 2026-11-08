@@ -161,7 +161,7 @@ impl Db {
             "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, mode, day)
              DO UPDATE SET picture = EXCLUDED.picture, variant = EXCLUDED.variant, grid = EXCLUDED.grid,
-                 checks = 0, status = 'playing', started_at = now(), solved_at = NULL, paid = 0, revision = picross_games.revision + 1"
+                 checks = 0, status = 'playing', started_at = now(), solved_at = NULL, paid = 0, revision = nextval('picross_revision')"
         } else {
             "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, mode, day) DO NOTHING"
@@ -197,10 +197,32 @@ impl Db {
         picture: u8,
         variant: u8,
     ) -> anyhow::Result<Option<PicrossGame>> {
+        self.reset_picross(user, revision, picture, variant, "solved").await
+    }
+
+    /// Retiring an upcoming daily picture must not overwrite a concurrent reset or edit.
+    pub async fn retire_picross(
+        &self,
+        user: u64,
+        revision: i64,
+        picture: u8,
+        variant: u8,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        self.reset_picross(user, revision, picture, variant, "playing").await
+    }
+
+    async fn reset_picross(
+        &self,
+        user: u64,
+        revision: i64,
+        picture: u8,
+        variant: u8,
+        status: &str,
+    ) -> anyhow::Result<Option<PicrossGame>> {
         let mut tx = self.pool().begin().await?;
         crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
-        let row=sqlx::query_as(concat!("UPDATE picross_games SET picture=$3,variant=$4,grid=repeat('.',100),checks=0,status='playing',paid=0,revision=revision+1,started_at=now(),solved_at=NULL WHERE user_id=$1 AND mode='practice' AND day=0 AND status='solved' AND revision=$2 RETURNING ",picross_columns!()))
-            .bind(sql_id(user)).bind(revision).bind(i16::from(picture)).bind(i16::from(variant)).fetch_optional(&mut *tx).await?;
+        let row=sqlx::query_as(concat!("UPDATE picross_games SET picture=$3,variant=$4,grid=repeat('.',100),checks=0,status='playing',paid=0,revision=nextval('picross_revision'),started_at=now(),solved_at=NULL WHERE user_id=$1 AND mode='practice' AND day=0 AND status=$5 AND revision=$2 RETURNING ",picross_columns!()))
+            .bind(sql_id(user)).bind(revision).bind(i16::from(picture)).bind(i16::from(variant)).bind(status).fetch_optional(&mut *tx).await?;
         tx.commit().await?;
         Ok(row)
     }
@@ -232,9 +254,26 @@ impl Db {
         solved: bool,
         revision: Option<i64>,
     ) -> anyhow::Result<Option<PicrossGame>> {
+        self.picross_marks_with_reward(user, mode, day, from, to, solved, revision, true)
+            .await
+    }
+
+    /// Private-room completion shares progress but cannot mint a reward.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn picross_marks_with_reward(
+        &self,
+        user: u64,
+        mode: &str,
+        day: i32,
+        from: &str,
+        to: &str,
+        solved: bool,
+        revision: Option<i64>,
+        reward: bool,
+    ) -> anyhow::Result<Option<PicrossGame>> {
         let mut tx = self.pool().begin().await?;
         crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
-        let row=sqlx::query_as::<_,PicrossGame>(concat!("UPDATE picross_games SET grid=$5,revision=revision+1, status=CASE WHEN $6 THEN 'solved' ELSE status END,solved_at=CASE WHEN $6 THEN now() ELSE solved_at END WHERE user_id=$1 AND mode=$2 AND day=$3 AND grid=$4 AND status='playing' AND ($7::bigint IS NULL OR revision=$7) RETURNING ",picross_columns!()))
+        let row=sqlx::query_as::<_,PicrossGame>(concat!("UPDATE picross_games SET grid=$5,revision=nextval('picross_revision'), status=CASE WHEN $6 THEN 'solved' ELSE status END,solved_at=CASE WHEN $6 THEN now() ELSE solved_at END WHERE user_id=$1 AND mode=$2 AND day=$3 AND grid=$4 AND status='playing' AND ($7::bigint IS NULL OR revision=$7) RETURNING ",picross_columns!()))
             .bind(sql_id(user)).bind(mode).bind(day).bind(from).bind(to).bind(solved).bind(revision).fetch_optional(&mut *tx).await?;
         let Some(mut row) = row else {
             return Ok(None);
@@ -246,7 +285,9 @@ impl Db {
                 .await?
                 .flatten();
             crate::game_rewards::game_stat(&mut tx, sql_id(user), "picross", true).await?;
-            let paid = if mode == "daily" {
+            let paid = if !reward {
+                0
+            } else if mode == "daily" {
                 if deleted.is_some_and(|d| d >= day) {
                     0
                 } else {
@@ -299,7 +340,7 @@ impl Db {
         limit: i16,
     ) -> anyhow::Result<Option<PicrossGame>> {
         Ok(sqlx::query_as::<_, PicrossGame>(concat!(
-            "UPDATE picross_games SET checks = checks + 1, revision = revision + 1
+            "UPDATE picross_games SET checks = checks + 1, revision = nextval('picross_revision')
              WHERE user_id = $1 AND mode = $2 AND day = $3 AND status = 'playing' AND checks < $4
              RETURNING ",
             picross_columns!()

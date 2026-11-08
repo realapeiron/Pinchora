@@ -1,4 +1,7 @@
 //! HTTP and WebSocket share this adapter; no transport accepts a score or reward amount.
+mod transition;
+use transition::transition;
+
 use super::{RoomKey, socket::room_access, spaces::limit};
 use crate::{
     error::{ApiError, ApiJson, ApiResult},
@@ -33,7 +36,7 @@ fn invalid() -> ApiError {
 }
 fn map_error(e: anyhow::Error) -> ApiError {
     match e.to_string().as_str() {
-        "stale_action" | "request_conflict" => error("stale_action", StatusCode::CONFLICT),
+        "stale_action" | "request_conflict" | "game_expired" => error("stale_action", StatusCode::CONFLICT),
         "not_your_turn" | "spectator" | "access_denied" => error("access_denied", StatusCode::FORBIDDEN),
         "invalid_room" | "illegal_move" | "already_answered" | "invalid_action" | "game_finished" | "room_busy"
         | "stale_layout" => invalid(),
@@ -255,6 +258,9 @@ pub async fn action(
     if !request(&a.request_id) || a.revision.len() > 20 || matches!(&a.action,Intent::Move{code} if code.len()>64) {
         return Err(invalid());
     }
+    if matches!(a.action, Intent::Refresh) {
+        return Err(invalid());
+    }
     let revision = a.revision.parse::<i64>().map_err(|_| invalid())?;
     let g = load(s, id, user).await?;
     if room.is_some_and(|key| key.name() != g.room_key) {
@@ -270,115 +276,6 @@ pub async fn action(
         .await
         .map_err(map_error)?;
     project(s, &result, user).await
-}
-fn transition(
-    g: &ReefGame,
-    players: &[ReefGamePlayer],
-    user: u64,
-    revision: i64,
-    intent: &Intent,
-    now: i64,
-) -> anyhow::Result<ReefGameStep> {
-    let mut state: Session = serde_json::from_value(g.state.clone()).map_err(anyhow::Error::from)?;
-    let me = players.iter().find(|p| p.user_id == user as i64);
-    let mut join = false;
-    let mut answer = None;
-    let mut seconds = 0;
-    let mut winners = vec![];
-    anyhow::ensure!(!g.finished, "game_finished");
-    if now >= g.deadline.timestamp() {
-        if state.phase == "active" {
-            if let Some(turn) = state.turn() {
-                state.finish(Some(1 - turn), "timeout");
-            } else {
-                state.finish(None, "reveal");
-            }
-        } else {
-            state.finish(None, "expired");
-        }
-    } else {
-        // Answers are independently single-use: another user's answer does not stale yours.
-        if !matches!(intent, Intent::Answer { .. }) {
-            anyhow::ensure!(revision == g.revision, "stale_action");
-        }
-        match intent {
-            Intent::Join => {
-                anyhow::ensure!(state.phase == "waiting" && me.is_none(), "invalid_action");
-                let max = if g.kind == "trivia" { 32 } else { 2 };
-                anyhow::ensure!(players.len() < max, "invalid_action");
-                join = true;
-                if max == 2 {
-                    state.phase = "active".into();
-                    seconds = state.seconds();
-                }
-            }
-            Intent::Start => {
-                anyhow::ensure!(
-                    g.kind == "trivia" && state.phase == "waiting" && g.host_id == user as i64 && players.len() >= 2,
-                    "invalid_action"
-                );
-                state.phase = "active".into();
-                seconds = state.seconds();
-            }
-            Intent::Leave => {
-                let me = me.ok_or_else(|| anyhow::anyhow!("spectator"))?;
-                state.finish(
-                    if state.phase == "active" && g.kind != "trivia" {
-                        Some(1 - me.side)
-                    } else {
-                        None
-                    },
-                    "resigned",
-                );
-            }
-            Intent::Move { code } => {
-                let me = me.ok_or_else(|| anyhow::anyhow!("spectator"))?;
-                state.play(me.side, code)?;
-                seconds = state.seconds();
-            }
-            Intent::Answer { choice } => {
-                let me = me.ok_or_else(|| anyhow::anyhow!("spectator"))?;
-                anyhow::ensure!(
-                    g.kind == "trivia" && state.phase == "active" && *choice < 4 && me.answer.is_none(),
-                    "invalid_action"
-                );
-                answer = Some(i16::from(*choice));
-                if players.iter().all(|p| p.user_id == user as i64 || p.answer.is_some()) {
-                    state.finish(None, "reveal");
-                }
-            }
-            Intent::Refresh => anyhow::bail!("invalid_action"),
-        }
-    }
-    if state.phase == "done" {
-        if let Some(w) = state.winner {
-            winners.push(w);
-        }
-        if g.kind == "trivia" && state.reason.as_deref() == Some("reveal") {
-            let correct = state.question().and_then(|(q, o)| q.correct_slot(o)).map(|n| n as i16);
-            for p in players {
-                let a = if p.user_id == user as i64 {
-                    answer.or(p.answer)
-                } else {
-                    p.answer
-                };
-                if a.is_some() && a == correct {
-                    winners.push(p.side);
-                }
-            }
-        }
-    }
-    let reward = state.reward(g.room_key.starts_with("plaza:"), players.len());
-    Ok(ReefGameStep {
-        finished: state.phase == "done",
-        reward,
-        cap: state.kind().daily_cap(),
-        state: serde_json::to_value(state)?,
-        seconds,
-        join,
-        answer,
-        winners,
-    })
 }
 async fn expire(s: &WebState, g: ReefGame, user: u64) -> ApiResult<ReefGame> {
     if g.finished || g.deadline > chrono::Utc::now() {
@@ -419,18 +316,7 @@ pub async fn sweep(app: std::sync::Arc<pinchora_commands::App>) {
             continue;
         };
         for g in games {
-            let request = format!("expire-{}", g.revision);
-            let result = app
-                .db
-                .reef_game_step(
-                    g.id,
-                    g.host_id as u64,
-                    &request,
-                    &json!({"action":"expire"}),
-                    None,
-                    |row, players, now| transition(row, players, g.host_id as u64, row.revision, &Intent::Refresh, now),
-                )
-                .await;
+            let result = settle_deadline(&app.db, &g).await;
             if let Err(e) = result
                 && e.to_string() != "game_finished"
                 && e.to_string() != "game_missing"
@@ -439,6 +325,18 @@ pub async fn sweep(app: std::sync::Arc<pinchora_commands::App>) {
             }
         }
     }
+}
+
+async fn settle_deadline(db: &pinchora_db::Db, g: &ReefGame) -> anyhow::Result<ReefGame> {
+    db.reef_game_step(
+        g.id,
+        g.host_id as u64,
+        &format!("expire-{}", g.revision),
+        &json!({"action":"expire"}),
+        None,
+        |row, players, now| transition(row, players, g.host_id as u64, row.revision, &Intent::Refresh, now),
+    )
+    .await
 }
 
 #[cfg(test)]
@@ -487,10 +385,75 @@ mod tests {
                 paid: 0,
             },
         ];
-        let next = transition(&g, &p, 1, 3, &Intent::Move { code: "e2e4".into() }, 100).unwrap();
+        assert!(transition(&g, &p, 1, 3, &Intent::Move { code: "e2e4".into() }, 100).is_err());
+        assert!(transition(&g, &p, 99, 3, &Intent::Move { code: "e2e4".into() }, 100).is_err());
+        let next = transition(&g, &p, 1, 3, &Intent::Refresh, 100).unwrap();
         assert!(next.finished);
         assert_eq!(next.winners, vec![1]);
         assert_eq!(next.reward, 0);
         assert!(transition(&g, &p, 1, 2, &Intent::Move { code: "e2e4".into() }, 99).is_err());
+    }
+    #[tokio::test]
+    async fn restarted_worker_settles_abandoned_game_once_without_room_memory() {
+        let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+            return;
+        };
+        let db = pinchora_db::Db::connect(&url, 2).await.unwrap();
+        db.migrate().await.unwrap();
+        let host = rand::random_range(1..i64::MAX as u64 / 2);
+        let guest = host + 1;
+        db.house(
+            host,
+            &pinchora_db::NewRoom {
+                room_type: "living".into(),
+                wallpaper: "sand".into(),
+                floor: "sand".into(),
+            },
+        )
+        .await
+        .unwrap();
+        let waiting = db
+            .reef_create_game(NewReefGame {
+                room: &format!("house:{host}:0"),
+                owner: host,
+                host,
+                kind: "chess",
+                request: "abandoned",
+                placement: None,
+                layout_revision: None,
+                state: serde_json::to_value(Session::new("chess", Lang::En, 0).unwrap()).unwrap(),
+            })
+            .await
+            .unwrap();
+        let active = db
+            .reef_game_step(waiting.id, guest, "join", &json!({}), None, |g, p, now| {
+                transition(g, p, guest, g.revision, &Intent::Join, now)
+            })
+            .await
+            .unwrap();
+        sqlx::query("UPDATE reef_games SET deadline=now()-interval '1 second' WHERE id=$1")
+            .bind(active.id)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        db.pool().close().await;
+        let restarted = pinchora_db::Db::connect(&url, 2).await.unwrap();
+        let persisted = restarted.reef_game(active.id).await.unwrap().unwrap();
+        let done = settle_deadline(&restarted, &persisted).await.unwrap();
+        assert!(done.finished);
+        assert_eq!(done.state["reason"], "timeout");
+        assert_eq!(done.state["winner"], 1);
+        settle_deadline(&restarted, &persisted).await.unwrap();
+        for player in [host, guest] {
+            assert_eq!(restarted.game_stats(player).await.unwrap()[0].played, 1);
+        }
+        assert!(
+            restarted
+                .reef_game_players(active.id)
+                .await
+                .unwrap()
+                .iter()
+                .all(|p| p.paid == 0)
+        );
     }
 }
