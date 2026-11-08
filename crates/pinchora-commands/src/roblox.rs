@@ -283,7 +283,7 @@ fn bind_matches(bind: &RobloxBind, verified: bool, ranks: &[(u64, u8)]) -> bool 
 
 /// Only configured, safe, below-bot roles are granted; unsafe roles are skipped on every update.
 pub async fn sync(app: &App, guild: u64, user: u64) -> anyhow::Result<bool> {
-    let _lease = app
+    let lease = app
         .cache
         .verification_lease(
             &format!("roblox:user:{user}"),
@@ -291,6 +291,12 @@ pub async fn sync(app: &App, guild: u64, user: u64) -> anyhow::Result<bool> {
         )
         .await?
         .context("Roblox member update already running")?;
+    let result = sync_locked(app, guild, user).await;
+    lease.release().await?;
+    result
+}
+
+async fn sync_locked(app: &App, guild: u64, user: u64) -> anyhow::Result<bool> {
     let settings = app.db.roblox_settings(guild).await?;
     let active = settings.enabled && app.module_allowed(guild, None, Module::Roblox).await;
     if active
@@ -424,7 +430,7 @@ pub async fn sync(app: &App, guild: u64, user: u64) -> anyhow::Result<bool> {
 }
 
 /// Hold the identity lease through deletion so a concurrent sync cannot restore removed roles.
-pub(crate) async fn before_delete(app: &App, user: u64) -> anyhow::Result<impl Send> {
+pub(crate) async fn before_delete(app: &App, user: u64) -> anyhow::Result<pinchora_cache::VerificationLease> {
     let lease = app
         .cache
         .verification_lease(

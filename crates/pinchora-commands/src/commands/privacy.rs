@@ -241,14 +241,16 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 Ok(guard) => guard,
                 Err(_) => return cx.reply_ephemeral(t!(cx.lang(), "feeds.link.role-retry")).await,
             };
-            let _roblox_guard = match crate::roblox::before_delete(&cx.app, user).await {
+            let roblox_guard = match crate::roblox::before_delete(&cx.app, user).await {
                 Ok(guard) => guard,
                 Err(error) => {
                     tracing::warn!(user, %error, "Roblox role cleanup blocked data deletion");
                     return cx.reply_ephemeral(t!(cx.lang(), "roblox.cleanup-failed")).await;
                 }
             };
-            let deleted = cx.app.db.delete_user_data(user, cx.app.now()).await?;
+            let deleted = cx.app.db.delete_user_data(user, cx.app.now()).await;
+            roblox_guard.release().await?;
+            let deleted = deleted?;
             cx.app.cache.stats_forget_member(user).await?;
             tracing::info!(
                 user,

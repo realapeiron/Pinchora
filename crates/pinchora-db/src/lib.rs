@@ -63,6 +63,14 @@ mod utility;
 mod xp;
 mod xp_admin;
 
+/// Truncate an application timestamp to PostgreSQL's microsecond precision before
+/// comparing it in Rust with a stored timestamp. SQLx already does this for SQL binds.
+pub fn timestamp(at: chrono::DateTime<chrono::Utc>) -> chrono::DateTime<chrono::Utc> {
+    use chrono::Timelike;
+    at.with_nanosecond(at.nanosecond() / 1_000 * 1_000)
+        .expect("truncating nanoseconds keeps a valid timestamp")
+}
+
 use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
