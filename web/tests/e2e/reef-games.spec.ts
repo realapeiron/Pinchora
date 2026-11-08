@@ -70,6 +70,8 @@ for (const kind of ["checkers", "chess", "trivia"] as const)
         g = (await games(host, players.host))[0]!;
         expect(g.board.correct).toBeUndefined();
         await host.getByRole("button", { name: g.board.options![0]!, exact: true }).click();
+        // Reload only after the server acknowledges the answer; navigation cancels in-flight fetches.
+        await expect(host.getByText("Answer locked. Waiting for the reveal.")).toBeVisible();
         await host.reload();
         await expect(host.locator(".reef-canvas")).toHaveAttribute("data-network", "connected");
         await host.getByRole("button", { name: "Room activities", exact: true }).click();

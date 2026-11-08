@@ -1,5 +1,6 @@
 import { translate as spaTranslate } from "../i18n";
 import { useRef } from "react";
+import { flushSync } from "react-dom";
 
 import { type MessageKind, LIMITS, MESSAGES, checkMessage } from "../lib/rules";
 import { useMessagePreview } from "../lib/queries";
@@ -42,12 +43,10 @@ export function MessageField({
     const [start, end] =
       el && value !== null ? [el.selectionStart, el.selectionEnd] : [base.length, base.length];
     const next = base.slice(0, start) + placeholder + base.slice(end);
-    onChange(next);
-    requestAnimationFrame(() => {
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(start + placeholder.length, start + placeholder.length);
-    });
+    // Commit before placing the caret; a deferred focus can steal typing from the next field.
+    flushSync(() => onChange(next));
+    el?.focus();
+    el?.setSelectionRange(start + placeholder.length, start + placeholder.length);
   };
 
   return (

@@ -21,7 +21,11 @@ it.each(["en", "tr"] as const)("keeps one page title and distinct panel headings
   expect(html.match(/<h1\b/g)).toHaveLength(1);
   expect(html.match(/<h2\b/g)).toHaveLength(1);
   expect(html).toContain(`<h1 class="pixel-heading">${translate("ACHIEVEMENTS")}</h1>`);
-  expect(html).toContain(`<h2 class="pixel-title">${translate("CELEBRATIONS")}</h2>`);
+  // The panel now references the visible heading as its accessible region name.
+  const headingId = html.match(/aria-labelledby="([^"]+)"/)?.[1];
+  expect(headingId).toBeTruthy();
+  expect(html.match(/aria-labelledby=/g)).toHaveLength(1);
+  expect(html).toContain(`<h2 id="${headingId}" class="pixel-title">${translate("CELEBRATIONS")}</h2>`);
   expect(html).toContain("<button>25</button>");
   expect(html).toContain("<p>0/25</p>");
 });
@@ -32,5 +36,7 @@ it("keeps standalone panel titles outside a settings page", () => {
       <p>0/25</p>
     </Panel>,
   );
-  expect(html).toContain('<h2 class="pixel-title">ACHIEVEMENTS</h2>');
+  const headingId = html.match(/aria-labelledby="([^"]+)"/)?.[1];
+  expect(headingId).toBeTruthy();
+  expect(html).toContain(`<h2 id="${headingId}" class="pixel-title">ACHIEVEMENTS</h2>`);
 });

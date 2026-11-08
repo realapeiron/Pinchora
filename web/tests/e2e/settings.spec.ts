@@ -96,7 +96,7 @@ test("level roles refuse what the bot cannot give, and the sync runs", async ({ 
 
   // An XP multiplier for a channel, and a no-XP role.
   await page.getByLabel("Channel", { exact: true }).selectOption({ label: "#memes" });
-  await page.getByLabel("Multiplier").fill("2");
+  await page.getByLabel("Multiplier", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Set", exact: true }).click();
   const rules = page.getByRole("list", { name: "XP multipliers" });
   await expect(rules).toContainText("#memes");

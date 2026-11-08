@@ -162,6 +162,92 @@ async fn room_games_picross_cross_transport_resume_stale_and_private_projection(
     );
 }
 #[tokio::test]
+async fn picross_full_board_budget_is_separate_but_still_authenticated_and_limited() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    site.house(host).await;
+    let a = site.browser(host).await;
+    let path = format!("/api/reef/rooms/house:{host}:0/picross");
+
+    // Exhaust ordinary writes in this and the next minute, without depending on the
+    // wall clock staying in the same fixed window for the duration of this test.
+    let window = chrono::Utc::now().timestamp() / 60;
+    for minute in window..=window + 1 {
+        site.app
+            .cache
+            .incr_by(&format!("web:rl:write:{host}:{minute}"), 60, Duration::from_secs(120))
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        a.api_value(Method::POST, "/api/reef/socket-ticket", json!({})).await.0,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    let (code, mut p) = a.api_value(Method::POST, &path, json!({"mode":"daily"})).await;
+    assert_eq!(code, StatusCode::OK, "{p}");
+    for index in 0..100 {
+        let (code, next) = a
+            .api_value(
+                Method::POST,
+                &format!("{path}/marks"),
+                json!({
+                    "mode":"daily", "day":p["day"], "revision":p["revision"],
+                    "grid":p["grid"], "cell":0, "filled":index % 2 == 0,
+                }),
+            )
+            .await;
+        assert_eq!(code, StatusCode::OK, "mark {index}: {next}");
+        assert_eq!(next["grid"].as_str().unwrap().starts_with('#'), index % 2 == 0);
+        p = next;
+    }
+
+    // This route-specific budget does not bypass session or CSRF checks.
+    let client = reqwest::Client::new();
+    let url = format!("{}{path}/marks", site.url);
+    assert_eq!(
+        client.post(&url).json(&json!({})).send().await.unwrap().status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        client
+            .post(&url)
+            .header("cookie", format!("pinchora_sid={}", a.sid))
+            .json(&json!({}))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::FORBIDDEN
+    );
+
+    // The existing 180-mark limit is shared across sessions for the account.
+    let window = chrono::Utc::now().timestamp() / 60;
+    for minute in window..=window + 1 {
+        site.app
+            .cache
+            .incr_by(
+                &format!("web:rl:reef:picross-mark:{host}:{minute}"),
+                180,
+                Duration::from_secs(120),
+            )
+            .await
+            .unwrap();
+    }
+    let b = site.browser(host).await;
+    let (code, error) = b
+        .api_value(
+            Method::POST,
+            &format!("{path}/marks"),
+            json!({
+                "mode":"daily", "day":p["day"], "revision":p["revision"],
+                "grid":p["grid"], "cell":0, "filled":true,
+            }),
+        )
+        .await;
+    assert_eq!(code, StatusCode::TOO_MANY_REQUESTS, "{error}");
+}
+
+#[tokio::test]
 async fn room_games_checkers_socket_and_http_share_authority() {
     let Some(site) = Site::new().await else {
         return;

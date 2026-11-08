@@ -1,4 +1,5 @@
 import { translate as spaTranslate } from "../../i18n";
+import { flushSync } from "react-dom";
 import { type ReactNode, useRef, useState } from "react";
 
 import {
@@ -606,11 +607,10 @@ function TextProperties({
     const el = area.current;
     const [start, end] = el ? [el.selectionStart, el.selectionEnd] : [layer.text.length, layer.text.length];
     const text = (layer.text.slice(0, start) + token + layer.text.slice(end)).slice(0, CARD.text_max);
-    onChange({ ...layer, text });
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(start + token.length, start + token.length);
-    });
+    // Commit before placing the caret; a deferred focus can steal typing from the next field.
+    flushSync(() => onChange({ ...layer, text }));
+    el?.focus();
+    el?.setSelectionRange(start + token.length, start + token.length);
   };
   return (
     <>

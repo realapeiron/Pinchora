@@ -67,6 +67,8 @@ test("write a command with the bot's own preview, save it, switch it off, move i
   await page.getByLabel("Reply 1", { exact: true }).fill("Be kind, ");
   await page.getByRole("button", { name: "{user}", exact: true }).click();
   await page.getByLabel("Try it with").fill("<@5> everyone @here");
+  await expect(page.getByLabel("Try it with")).toHaveValue("<@5> everyone @here");
+  await expect(page.getByLabel("Reply 1", { exact: true })).toHaveValue("Be kind, {user}");
   const live = await previewed(page);
   await expect(live).toContainText("Be kind, @");
   await expect(live).not.toContainText("<@");

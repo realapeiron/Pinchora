@@ -1,5 +1,6 @@
 import { translate as spaTranslate } from "../i18n";
 import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { type Placeholder, LIMITS } from "../lib/tags";
 import { Field } from "./Field";
@@ -33,11 +34,10 @@ export function ResponsesEditor({
     const el = areas.current[at];
     const text = responses[at] ?? "";
     const [start, end] = el ? [el.selectionStart, el.selectionEnd] : [text.length, text.length];
-    edit(at, text.slice(0, start) + token + text.slice(end));
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(start + token.length, start + token.length);
-    });
+    // Commit before placing the caret; a deferred focus can steal typing from the next field.
+    flushSync(() => edit(at, text.slice(0, start) + token + text.slice(end)));
+    el?.focus();
+    el?.setSelectionRange(start + token.length, start + token.length);
   };
 
   return (

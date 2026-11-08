@@ -2,11 +2,11 @@
 use super::{RoomKey, games::access, spaces::limit};
 use crate::{
     error::{ApiError, ApiJson, ApiResult},
-    extract::CurrentSession,
+    extract::{CurrentSession, SessionWriteLimit},
     state::WebState,
 };
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::post,
@@ -19,6 +19,12 @@ pub fn router() -> Router<WebState> {
     Router::new()
         .route("/rooms/{room}/picross", post(open))
         .route("/rooms/{room}/picross/marks", post(mark))
+        // A 100-cell puzzle must fit within one minute. Keep the existing per-account
+        // 180-mark and 60-open limits without consuming the dashboard write allowance.
+        .route_layer(Extension(SessionWriteLimit {
+            scope: "picross-write",
+            per_minute: 240,
+        }))
 }
 fn invalid() -> ApiError {
     ApiError::new(

@@ -5,21 +5,23 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   const guild = `${Date.now()}51`;
   const user = `${Date.now()}52`;
   await devLogin(page, user, [{ id: guild, name: "Workflow Reef", owner: true, permissions: "0" }]);
+  // devLogin uses API requests, so the page is still about:blank until we navigate.
+  await page.goto(`/g/${guild}/workflows`);
   const csrf = ((await (await page.request.get("/api/me")).json()) as { csrf: string }).csrf;
   const module = await page.request.put(`/api/guilds/${guild}/modules/birthdays`, {
     data: { enabled: false },
     headers: { "x-csrf-token": csrf, origin: new URL(page.url()).origin },
   });
-  expect(module.ok()).toBeTruthy();
+  expect(module.ok(), await module.text()).toBeTruthy();
   await page.goto(`/g/${guild}/workflows`);
   await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toHaveCount(1);
   await expect(page.getByText(/Message Content is off/)).toBeVisible();
   await page.getByRole("button", { name: "New workflow", exact: true }).click();
   await page.getByLabel("Workflow name").fill("welcome");
-  await expect(page.getByLabel("Trigger", { exact: true }).locator('option[value="birthday"]')).toHaveCount(
-    0,
-  );
+  const trigger = page.getByRole("combobox", { name: "Trigger", exact: true });
+  await expect(trigger).toHaveValue("command");
+  await expect(trigger.locator('option[value="birthday"]')).toHaveCount(0);
   await page.getByLabel("Message", { exact: true }).fill("Hello {user}");
   await page.getByRole("button", { name: "Add action", exact: true }).click();
   await page.getByLabel("Message", { exact: true }).nth(1).fill("Second action");
@@ -51,16 +53,17 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   await page.getByRole("button", { name: /Action 2/ }).click();
   await expect(page.getByText("No runs in the last seven days.")).toBeVisible();
   await page.getByLabel("Variable key").fill("visits");
-  await page.getByLabel("Variable value").fill("1");
+  await page.getByLabel("Variable value", { exact: true }).fill("1");
   await page.getByRole("button", { name: "Save variable", exact: true }).click();
   await expect(page.getByText("{var.server.visits}", { exact: true })).toBeVisible();
   await page.getByLabel("Variable key").fill("visits");
-  await page.getByLabel("Variable value").fill("1");
+  await page.getByLabel("Variable value", { exact: true }).fill("1");
   await expect(page.getByRole("button", { name: "Save variable", exact: true })).toBeDisabled();
-  await page.getByLabel("Scope", { exact: true }).selectOption("member");
+  // The wrapping label includes option text; match the select's accessible name instead.
+  await page.getByRole("combobox", { name: "Scope", exact: true }).selectOption("member");
   await page.getByLabel("Subject ID (blank: you)").fill(`${user}1`);
   await page.getByLabel("Variable key").fill("visits");
-  await page.getByLabel("Variable value").fill("4");
+  await page.getByLabel("Variable value", { exact: true }).fill("4");
   await page.getByRole("button", { name: "Save variable", exact: true }).click();
   await expect(page.getByText("{var.member.visits}", { exact: true })).toBeVisible();
   const rows = (await (await page.request.get(`/api/guilds/${guild}/workflows`)).json()) as {
@@ -96,8 +99,8 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   await shot(page, "workflows-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel("Workflow name").fill("W".repeat(40));
-  await page.getByLabel("Variable value").fill("x".repeat(200));
-  await overflow(page);
+  await page.getByLabel("Variable value", { exact: true }).fill("x".repeat(200));
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "workflows-mobile");
   await page.reload();
   await page.getByRole("button", { name: "welcome", exact: true }).click();
@@ -120,5 +123,5 @@ test("Turkish workflow editor has localized controls and intent notice", async (
   await page.getByRole("button", { name: "Deneme çalıştırması", exact: true }).click();
   await expect(page.getByRole("region", { name: "Adım adım izleme" })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await overflow(page);
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
 });

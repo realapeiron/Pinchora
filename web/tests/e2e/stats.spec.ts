@@ -164,7 +164,7 @@ test("an empty server, a counter channel and the public page", async ({ page }) 
   await expect(page.getByText("No counter channels yet.")).toBeVisible();
 
   // A counter: the Lounge voice channel shows the member count.
-  await page.getByLabel("Channel").selectOption({ label: "🔊 Lounge" });
+  await page.getByLabel("Channel", { exact: true }).selectOption({ label: "🔊 Lounge" });
   await page.getByLabel("Counts").selectOption({ label: "Members" });
   await page.getByLabel("Name").fill("Crabs: {count}");
   await page.getByRole("button", { name: "Preview name" }).click();

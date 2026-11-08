@@ -1,4 +1,4 @@
-import { useContext, type ReactNode } from "react";
+import { useContext, useId, type ReactNode } from "react";
 import { locale, translate } from "../i18n";
 import { PageTitleContext } from "./PageTitleContext";
 
@@ -15,15 +15,20 @@ export function Panel({
   children: ReactNode;
 }) {
   const pageTitle = useContext(PageTitleContext);
+  const headingId = useId();
   const heading = title ? translate(title) : undefined;
   const normalize = (value: string) => value.trim().toLocaleLowerCase(locale());
   const showHeading = heading && (!pageTitle || normalize(heading) !== normalize(pageTitle));
   return (
-    <section className={`panel panel-${tone}`}>
+    <section className={`panel panel-${tone}`} aria-labelledby={showHeading ? headingId : undefined}>
       <div className="panel-body">
         {(showHeading || aside) && (
           <header className="panel-head">
-            {showHeading && <h2 className="pixel-title">{heading}</h2>}
+            {showHeading && (
+              <h2 id={headingId} className="pixel-title">
+                {heading}
+              </h2>
+            )}
             {aside}
           </header>
         )}

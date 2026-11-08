@@ -13,7 +13,7 @@ test("Messages editor saves a schedule and fits desktop and phone", async ({ pag
   await expect(page.getByText("SCHEDULED MESSAGES · 0/20 USED")).toBeVisible();
   await page.getByRole("button", { name: "Schedule a message" }).click();
   await page.getByLabel("Channel").selectOption({ label: "#general" });
-  await page.getByLabel("Message").fill("Reef cleanup starts soon.");
+  await page.getByLabel("Message", { exact: true }).fill("Reef cleanup starts soon.");
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(page.getByRole("region", { name: "Message preview" })).toContainText(
     "Reef cleanup starts soon.",
@@ -22,7 +22,7 @@ test("Messages editor saves a schedule and fits desktop and phone", async ({ pag
   await page.getByRole("button", { name: "Schedule", exact: true }).click();
   await expect(page.getByText("Reef cleanup starts soon.").first()).toBeVisible();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByLabel("Message").fill("Reef cleanup starts at noon.");
+  await page.getByLabel("Message", { exact: true }).fill("Reef cleanup starts at noon.");
   await page.getByRole("button", { name: "Save schedule" }).click();
   await expect(page.getByText("Reef cleanup starts at noon.").first()).toBeVisible();
   await shot(page, "utility-desktop", true);

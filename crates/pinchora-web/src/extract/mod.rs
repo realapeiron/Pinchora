@@ -5,3 +5,4 @@ mod session;
 
 pub use managed_guild::ManagedGuild;
 pub use session::CurrentSession;
+pub(crate) use session::SessionWriteLimit;
