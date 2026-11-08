@@ -258,7 +258,9 @@ async fn reef_wave7_upgrades_populated_tables_without_rewrites_or_live_index_bui
     sqlx::query("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text) SELECT 1,0,n,'Hello' FROM generate_series(1,1000) n").execute(&mut *tx).await.unwrap();
     let files: Vec<(String,i64)> = sqlx::query_as("SELECT relname::text,relfilenode::bigint FROM pg_class WHERE oid IN ('houses'::regclass,'reef_chat_evidence'::regclass) ORDER BY relname")
         .fetch_all(&mut *tx).await.unwrap();
-    all.run(&mut *tx).await.unwrap();
+    // Check 0082's own timeout contract before later migrations set theirs.
+    let reef = Migrator::with_migrations(all.iter().filter(|m| m.version <= 82).cloned().collect());
+    reef.run(&mut *tx).await.unwrap();
     let after: Vec<(String,i64)> = sqlx::query_as("SELECT relname::text,relfilenode::bigint FROM pg_class WHERE oid IN ('houses'::regclass,'reef_chat_evidence'::regclass) ORDER BY relname")
         .fetch_all(&mut *tx).await.unwrap();
     assert_eq!(files, after, "no rewrite of live tables");
@@ -296,5 +298,6 @@ async fn reef_wave7_upgrades_populated_tables_without_rewrites_or_live_index_bui
         .await
         .unwrap();
     assert_eq!(evidence, 1000);
+    all.run(&mut *tx).await.unwrap();
     tx.rollback().await.unwrap();
 }

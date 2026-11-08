@@ -26,6 +26,13 @@ fn concrete(path: &str) -> String {
     }
     out
 }
+fn api_path(guild: u64, path: &str) -> String {
+    if path.starts_with("/reef/") {
+        format!("/api{}", concrete(&path.replace("{guild}", &guild.to_string())))
+    } else {
+        format!("/api/guilds/{guild}{}", concrete(path).trim_end_matches('/'))
+    }
+}
 async fn clear_limit(h: &Harness, user: u64) {
     let window = chrono::Utc::now().timestamp() / 60;
     for scope in ["read", "write"] {
@@ -41,15 +48,15 @@ async fn clear_limit(h: &Harness, user: u64) {
 }
 
 #[tokio::test]
-async fn all_230_guild_routes_reject_anonymous_wrong_areas_and_missing_csrf() {
+async fn all_234_guild_routes_require_sessions_csrf_and_their_management_areas() {
     let Some(h) = Harness::new("w7_matrix").await else {
         return;
     };
     let (guild, owner_id, mut owner) = h.managed_server().await;
     let routes = inventory();
-    assert_eq!(routes.len(), 230);
+    assert_eq!(routes.len(), 234);
     for (method, path, _) in &routes {
-        let path = format!("/api/guilds/{guild}{}", concrete(path).trim_end_matches('/'));
+        let path = api_path(guild, path);
         let result = h.browser().write(method.parse().unwrap(), &path, json!({})).await;
         assert_eq!(
             result.status,
@@ -96,16 +103,32 @@ async fn all_230_guild_routes_reject_anonymous_wrong_areas_and_missing_csrf() {
             if required == area || (*required == "shell" && *method == "GET") {
                 continue;
             }
+            let reef = path.starts_with("/reef/");
+            // Reading plazas/gatherings and RSVP are member actions. Scheduling uses the
+            // community management grant; reef_spaces also exercises membership and revocation.
+            if reef && !(*method == "POST" && *path == "/reef/guilds/{guild}/gatherings") {
+                continue;
+            }
             clear_limit(&h, user).await;
-            let path = format!("/api/guilds/{guild}{}", concrete(path).trim_end_matches('/'));
-            let result = browser.write(method.parse().unwrap(), &path, json!({})).await;
+            let path = api_path(guild, path);
+            let body = if reef {
+                json!({"title":"Matrix gathering", "starts_at":chrono::Utc::now()+chrono::Duration::hours(1),
+                    "ends_at":chrono::Utc::now()+chrono::Duration::hours(2)})
+            } else {
+                json!({})
+            };
+            let result = browser.write(method.parse().unwrap(), &path, body).await;
             assert_eq!(
                 result.status,
                 StatusCode::FORBIDDEN,
                 "{area}: {method} {path}: {}",
                 result.text()
             );
-            assert_eq!(result.code(), "not_manager", "{area}: {method} {path}");
+            assert_eq!(
+                result.code(),
+                if reef { "access_denied" } else { "not_manager" },
+                "{area}: {method} {path}"
+            );
         }
     }
 }
