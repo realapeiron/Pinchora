@@ -6,7 +6,9 @@ use twilight_model::id::Id;
 pub fn route_area(path: &str) -> Option<&'static str> {
     match path.trim_matches('/').split('/').next().unwrap_or("") {
         "settings" | "modules" | "xp-rules" | "xp-admin" | "level-roles" | "rep-roles" | "jobs" | "leveling-parity"
-        | "store" | "cards" | "preview" | "branding" | "commands" | "responders" => Some("configuration"),
+        | "store" | "cards" | "message-studio" | "preview" | "branding" | "commands" | "responders" => {
+            Some("configuration")
+        }
         "roles" => Some("roles"),
         "mod-parity" | "moderation" | "logs" | "cases" | "staff-log" | "automod" | "anti_nuke" | "safety" => {
             Some("safety")

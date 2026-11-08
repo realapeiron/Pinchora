@@ -1,0 +1,10 @@
+[studio]
+boost-title = "THANK YOU!"
+boost-line = "{user} boosted {server}"
+level-title = "LEVEL UP!"
+level-line = "Keep shining in {server}"
+boost-message = "Thank you for boosting {server}, {user}!"
+test-boost = "Test boost card for {name}"
+test-level = "Test level-up card for {name}"
+level-message = "{user} reached a new level in {server}!"
+test-note = "Test for {name}; no one was pinged"

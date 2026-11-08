@@ -23,6 +23,7 @@ mod landing_assets;
 mod lang;
 mod leveling;
 mod log_audit;
+mod message_studio;
 mod responder;
 mod roles;
 pub mod routing;
@@ -89,7 +90,8 @@ pub use commands::{
 };
 pub use community_pack::{spawn_ticker as spawn_community_ticker, tick as community_tick};
 pub use custom::{
-    Rendered, Spec, def_diff, escape_markdown, mention_ids, pick as pick_random, render_message, scrub_value, templates,
+    Rendered, Spec, def_diff, embed_of, escape_markdown, mention_ids, pick as pick_random, render_message, scrub_value,
+    templates,
 };
 pub use cx::Cx;
 pub use defer::Deferral;
@@ -110,7 +112,9 @@ pub use house_view::{
     seed_at as house_seed_at,
 };
 pub use invalidations::listen as listen_for_invalidations;
+pub use leveling::open_private_channel;
 pub use log_audit::on_audit_log_entry;
+pub use message_studio::{EventMember as StudioEventMember, event_text as studio_event_text};
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use server_log::{on_message_delete, on_message_delete_bulk, on_message_update};

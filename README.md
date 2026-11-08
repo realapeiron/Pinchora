@@ -1604,6 +1604,31 @@ settings invalidation (the former global channel is retired). See [multi-pod ope
 
 Chat and movement give no rewards. See [the Reef protocol and test instructions](web/src/reef/README.md#private-house-multiplayer-r09r11).
 
+### Welcome and message studio v2 (D4)
+
+The server dashboard's **Welcome image** page now designs welcome, goodbye, boost and level-up
+pixel cards. The canvas can show a 7% safe-area guide; each image has Discord attachment alt text.
+Saving creates a durable 20-version history, and restoring an older version is itself a new audited
+version. **Send test to my DMs** opens the signed-in manager's real Discord DM and posts the current
+design without pinging anyone. Boost cards post in the configured welcome channel when a member
+starts boosting; a custom level-up card replaces the classic level-up picture in the configured mode.
+
+The **Message studio** page (`/g/:guildId/message-studio`) builds reusable kits with content, up to
+10 embeds, five rows of up to five buttons (or one select per row), random text variants, and EN/TR starter templates. JSON
+imports are capped at 32 KiB and validated by the server before entering the editor, as well as on preview and save. A saved kit can be posted to a channel or used to edit a Pinchora message
+by ID. Link buttons open HTTPS URLs; reply buttons and select options answer privately. The live
+preview uses the same content, embeds, components and active guild brand colour as the send path.
+Text-only kits can be assigned to welcome, goodbye, boost and level-up events. Event text supports
+`{user}`, `{server}`, `{level}`, `{ordinal}`, `{{if booster}}…{{else}}…{{end}}`,
+`{{if returning}}…{{else}}…{{end}}`, `{{if account_age_days>=7}}…{{else}}…{{end}}`,
+and `{{if ordinal>=100}}…{{else}}…{{end}}`. Conditions cannot nest; replacement values are literal
+and rendered content is capped at 2,000 characters. Mass pings are off by default and only
+a server owner or administrator can save a kit with them enabled. Imports clear this approval.
+Kit writes and event bindings serialize per guild, and rollback is audited even when it changes nothing.
+DM tests allow three attempts per guild and requesting user per minute, including opening the DM channel. Migration
+`0081_message_studio.sql` holds event bindings, kits, 20-version kit/card histories and member
+state used by event conditions. Existing `/setup welcome` and `/progression leveling` roots remain.
+
 ### Moderation + roles parity (D11)
 
 Urgent actions use `/ban`, `/kick`, `/timeout`, `/warn` and `/purge`; secondary actions use

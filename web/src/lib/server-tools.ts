@@ -44,6 +44,7 @@ const PAGE_AREAS: Record<string, string> = {
   branding: "configuration",
   welcome: "configuration",
   "welcome-image": "configuration",
+  "message-studio": "configuration",
   leveling: "configuration",
   points: "configuration",
   commands: "configuration",

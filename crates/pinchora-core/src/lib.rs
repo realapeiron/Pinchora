@@ -10,6 +10,7 @@ pub mod items;
 pub mod leveling;
 pub mod leveling_parity;
 pub mod logging;
+pub mod message_studio;
 pub mod moderation;
 pub mod modules;
 pub mod roles_pack;

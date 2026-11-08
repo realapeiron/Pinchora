@@ -22,6 +22,10 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("card_design_history", "actor_id"),
+    ("message_kit_history", "actor_id"),
+    ("card_boost_state", "user_id"),
+    ("card_member_visits", "user_id"),
     ("reef_aquarium", "user_id"),
     ("reef_requests", "user_id"),
     ("reef_catches", "user_id"),
@@ -333,6 +337,8 @@ pub const OTHER_TABLES: &[&str] = &[
     // The ignore list of members is cleaned (see `ID_LISTS`).
     "log_settings",
     "card_designs",
+    "message_kits",
+    "message_event_kits",
     "card_uploads",
     "guild_branding",
     // Stats: whole servers, channels and the bot, no player in them.

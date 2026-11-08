@@ -97,6 +97,10 @@ const localizedRoutes: RouteObject[] = [
         lazy: async () => ({ Component: (await import("./pages/Branding")).BrandingPage }),
       },
       { path: "welcome-image", element: <WelcomeImage /> },
+      {
+        path: "message-studio",
+        lazy: async () => ({ Component: (await import("./pages/MessageStudio")).MessageStudio }),
+      },
       { path: "leveling", element: <Leveling /> },
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },

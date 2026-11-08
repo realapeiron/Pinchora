@@ -1,15 +1,7 @@
 import { translate as spaTranslate } from "../i18n";
 import type { EmbedSpec, Preview } from "../lib/api";
+import { componentRows } from "../lib/messageStudio";
 import { RichText } from "./RichText";
-
-/** The host of a picture address, for the stand-in box (the dashboard never loads pictures from other sites). */
-function host(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
 
 function EmbedCard({ embed }: { embed: EmbedSpec }) {
   return (
@@ -41,17 +33,11 @@ function EmbedCard({ embed }: { embed: EmbedSpec }) {
             ))}
           </div>
         )}
-        {embed.image && (
-          <p className="embed-picture">
-            {spaTranslate("picture from")} {host(embed.image)}
-          </p>
-        )}
+        {embed.image && <img className="embed-picture" src={embed.image} alt={spaTranslate("Embed image")} />}
         {embed.footer && <p className="embed-footer muted">{embed.footer}</p>}
       </div>
       {embed.thumbnail && (
-        <p className="embed-thumb">
-          {spaTranslate("small picture from")} {host(embed.thumbnail)}
-        </p>
+        <img className="embed-thumb" src={embed.thumbnail} alt={spaTranslate("Embed thumbnail")} />
       )}
     </div>
   );
@@ -62,7 +48,13 @@ export function MessagePreview({
   preview,
   label = spaTranslate("Message preview"),
 }: {
-  preview: Preview;
+  preview: Preview & {
+    embeds?: EmbedSpec[];
+    components?: (
+      | { type: "button"; label: string }
+      | { type: "select"; placeholder: string; options: { label: string }[] }
+    )[];
+  };
   label?: string;
 }) {
   return (
@@ -80,8 +72,28 @@ export function MessagePreview({
           <RichText text={preview.text} />
         </p>
       )}
-      {preview.embed && <EmbedCard embed={preview.embed} />}
-      {!preview.text && !preview.embed && (
+      {(preview.embeds ?? (preview.embed ? [preview.embed] : [])).map((embed, index) => (
+        <EmbedCard key={index} embed={embed} />
+      ))}
+      {componentRows(preview.components ?? []).map((row, index) => (
+        <div className="studio-component-preview" key={index}>
+          {row.map((component, child) =>
+            component.type === "button" ? (
+              <button key={child} type="button" disabled>
+                {component.label}
+              </button>
+            ) : (
+              <select key={child} disabled aria-label={component.placeholder}>
+                <option>{component.placeholder}</option>
+                {component.options.map((option, i) => (
+                  <option key={i}>{option.label}</option>
+                ))}
+              </select>
+            ),
+          )}
+        </div>
+      ))}
+      {!preview.text && !preview.embed && !preview.embeds?.length && (
         <p className="muted">{spaTranslate("The bot would say nothing.")}</p>
       )}
     </div>

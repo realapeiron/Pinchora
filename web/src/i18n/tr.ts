@@ -52,6 +52,105 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Anyone with the link can view this board. Turning it off removes the public URL when you save.":
     "Bağlantıya sahip herkes bu sıralamayı görebilir. Kapatıp kaydettiğinizde herkese açık bağlantı kaldırılır.",
 
+  "No pings": "Bildirim yok",
+  "Everyone and roles": "Herkes ve roller",
+  "STARTER TEMPLATES": "BAŞLANGIÇ ŞABLONLARI",
+  "Choose a starting point, then customize and save it as a kit.":
+    "Bir başlangıç şablonu seç, düzenle ve kit olarak kaydet.",
+  "Template loaded. Edit it and save as a kit.": "Şablon yüklendi. Düzenleyip kit olarak kaydet.",
+  "Welcome kit": "Karşılama kiti",
+  "Announcement kit": "Duyuru kiti",
+  "FAQ kit": "Yardım kiti",
+  "{{if returning}}Welcome back, {user}!{{else}}Welcome, {user}!{{end}}":
+    "{{if returning}}Tekrar hoş geldin, {user}!{{else}}Hoş geldin, {user}!{{end}}",
+  "{{if returning}}Glad to see you again, {user}!{{else}}Glad you're here, {user}!{{end}}":
+    "{{if returning}}Seni tekrar görmek güzel, {user}!{{else}}Aramıza katılmana sevindik, {user}!{{end}}",
+  "News from {server}": "{server} sunucusundan haberler",
+  "Announcement title": "Duyuru başlığı",
+  "Write your announcement here.": "Duyurunu buraya yaz.",
+  "Need help? Use the button below.": "Yardıma mı ihtiyacın var? Aşağıdaki düğmeyi kullan.",
+  "Get help": "Yardım al",
+  "Ask a moderator for help.": "Yardım için bir moderatöre başvur.",
+  "Embed image": "Gömülü mesaj görseli",
+  "Embed thumbnail": "Gömülü mesaj küçük görseli",
+  "Hello {user}!": "Merhaba {user}!",
+  "Selected!": "Seçildi!",
+  Choose: "Seç",
+  "AUTOMATIC EVENT MESSAGES": "OTOMATİK ETKİNLİK MESAJLARI",
+  "Add button": "Düğme ekle",
+  "Add choice": "Seçenek ekle",
+  "Add content or an embed to preview.": "Önizleme için içerik veya gömülü mesaj ekle.",
+  "Add select": "Seçim menüsü ekle",
+  "Add variant": "Varyant ekle",
+  "Admin allows @everyone and role pings from this kit":
+    "Yönetici bu kitten @everyone ve rol bildirimlerine izin veriyor",
+  "Allowed mentions: {arg1}": "İzin verilen bildirimler: {arg1}",
+  "Assign a text-only kit to welcome, goodbye, boost, or level up. Random variants and member conditions are evaluated when the event happens.":
+    "Karşılama, veda, takviye veya seviye atlama için yalnız metin içeren bir kit ata. Rastgele varyantlar ve üye koşulları olay sırasında değerlendirilir.",
+  "BUTTONS AND SELECTS": "DÜĞMELER VE SEÇİM MENÜLERİ",
+  "Build, preview, save, and post Discord messages. Saved kits keep 20 versions.":
+    "Discord mesajlarını oluştur, önizle, kaydet ve gönder. Kaydedilen kitlerin son 20 sürümü tutulur.",
+  "Choose a saved kit": "Kayıtlı kit seç",
+  Content: "İçerik",
+  "Could not load message kits.": "Mesaj kitleri yüklenemedi.",
+  "Default message": "Varsayılan mesaj",
+  "Describe the picture for screen readers. Discord receives this description with the attachment.":
+    "Ekran okuyucular için görseli anlat. Bu açıklama Discord’a ek dosyayla birlikte gönderilir.",
+  "Discord did not accept the message.": "Discord mesajı kabul etmedi.",
+  "Discord message sent. Its ID is {arg1}.": "Discord mesajı gönderildi. Kimliği: {arg1}.",
+  EMBEDS: "GÖMÜLÜ MESAJLAR",
+  "Embed {arg1}": "Gömülü mesaj {arg1}",
+  "Event message could not be updated.": "Etkinlik mesajı güncellenemedi.",
+  "Event message updated.": "Etkinlik mesajı güncellendi.",
+  "Existing message ID to edit (optional)": "Düzenlenecek mesaj kimliği (isteğe bağlı)",
+  "HTTPS URL or leave blank for a reply": "HTTPS adresi veya yanıt için boş bırak",
+  "IMAGE ACCESSIBILITY": "GÖRSEL ERİŞİLEBİLİRLİĞİ",
+  "Image alt text": "Görsel alternatif metni",
+  "Import JSON": "JSON içe aktar",
+  "Invalid message kit JSON.": "Geçersiz mesaj kiti JSON’u.",
+  "JSON imported. Review and save it.": "JSON içe aktarıldı. İncele ve kaydet.",
+  "JSON must be at most 32 KiB.": "JSON en fazla 32 KiB olabilir.",
+  "Kit name": "Kit adı",
+  "Kit saved.": "Kit kaydedildi.",
+  "LIVE DISCORD PREVIEW": "CANLI DISCORD ÖNİZLEMESİ",
+  "MESSAGE STUDIO": "MESAJ STÜDYOSU",
+  "Message ID to edit (optional)": "Düzenlenecek mesaj kimliği (isteğe bağlı)",
+  "Name this kit first.": "Önce kite bir ad ver.",
+  "New kit": "Yeni kit",
+  "No saved versions yet.": "Henüz kayıtlı sürüm yok.",
+  "Option label": "Seçenek etiketi",
+  "Option value": "Seçenek değeri",
+  "POST OR EDIT IN DISCORD": "DISCORD’DA GÖNDER VEYA DÜZENLE",
+  "Pings are blocked unless an admin explicitly enables them here.":
+    "Yönetici burada açıkça izin vermedikçe bildirimler engellenir.",
+  Placeholder: "Yer tutucu",
+  "Preview another variant": "Başka varyantı önizle",
+  "Preview failed.": "Önizleme başarısız.",
+  "Private reply": "Özel yanıt",
+  "RANDOM MESSAGE GROUP": "RASTGELE MESAJ GRUBU",
+  Restore: "Geri yükle",
+  "Restore failed.": "Geri yükleme başarısız.",
+  "SAVED KITS": "KAYITLI KİTLER",
+  "SAVED VERSIONS": "KAYITLI SÜRÜMLER",
+  "Safe area": "Güvenli alan",
+  "Save failed.": "Kaydetme başarısız.",
+  "Save kit": "Kiti kaydet",
+  "Save the kit before posting. Enter a Pinchora message ID to edit it.":
+    "Göndermeden önce kiti kaydet. Düzenlemek için Pinchora mesaj kimliğini gir.",
+  "Saved kit": "Kayıtlı kit",
+  "Select menu": "Seçim menüsü",
+  "Send message": "Mesaj gönder",
+  "Send test to my DMs": "DM’lerime test gönder",
+  "Template key": "Şablon anahtarı",
+  "Test sent to your DMs.": "Test DM’lerine gönderildi.",
+  "Use {user}, {server}, {level}, {ordinal}, and if/else for booster, returning, account_age_days>=7, or ordinal>=100.":
+    "{user}, {server}, {level}, {ordinal} alanlarını; booster, returning, account_age_days>=7 veya ordinal>=100 için if/else koşullarını kullan.",
+  "Example: {{if returning}}Welcome back{{else}}Welcome{{end}}":
+    "Örnek: {{if returning}}Tekrar hoş geldin{{else}}Hoş geldin{{end}}",
+  "Variant {arg1}": "Varyant {arg1}",
+  "Version restored.": "Sürüm geri yüklendi.",
+  "When variants exist, one is chosen at random for each post.":
+    "Varyant varsa her gönderimde biri rastgele seçilir.",
   "{size} cm": "{size} cm",
   "Aquarium and garden": "Akvaryum ve bahçe",
   "{count}/6 fish at home": "Evde {count}/6 balık",
@@ -1081,8 +1180,6 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Add a field": "Alan ekle",
   Add: "Ekle",
   "Insert a placeholder": "Yer tutucu ekleme",
-  "picture from": "görsel:",
-  "small picture from": "küçük görsel:",
   "The bot would say nothing.": "Bot hiçbir şey söylemez.",
   "DRAWING…": "ÇİZİM…",
   "FIX THE FORM TO REDRAW": "YENİDEN ÇİZMEK İÇİN FORMU DÜZELTİN",
@@ -1794,8 +1891,7 @@ export const tr: { [K in keyof typeof en]: string } = {
   "FIX THIS FIRST": "İLK ÖNCE BUNU DÜZELTİN",
   "TRY IT": "DENEYİN",
   "Post a test in": "Bir test yayınlayın",
-  "With you as the member, pinging nobody. A direct message is tried out here too.":
-    "Üye olduğunuzda kimseye ping atmıyorsunuz. Burada da doğrudan mesaj deneniyor.",
+  "With you as the member, pinging nobody.": "Sen üye olarak gösterilirsin; kimseye bildirim gitmez.",
   "WHAT THE BOT POSTS": "BOT NE YAYINLIYOR",
   "Drawn by the bot with you as the member, from the design above, at most twenty times a minute for the whole server.":
     "Yukarıdaki tasarımdan üye olarak bot tarafından tüm sunucu için dakikada en fazla yirmi kez çizilir.",
@@ -2081,7 +2177,8 @@ export const tr: { [K in keyof typeof en]: string } = {
   "The classic card": "Klasik kart",
   "That would make the image too heavy to draw quickly. Shrink or hide a layer first.":
     "Bu, resmin hızlı bir şekilde çizilemeyecek kadar ağır olmasına neden olur. Önce bir katmanı küçültün veya gizleyin.",
-  "Saved. The next member who joins gets it.": "Kaydedildi. Bir sonraki katılan üye bunu alır.",
+  "Saved. The next matching event uses this design.":
+    "Kaydedildi. Bir sonraki uygun olayda bu tasarım kullanılır.",
   "The design could not be saved.": "Tasarım kaydedilemedi.",
   "The picture could not be uploaded.": "Resim yüklenemedi.",
   "The test could not be sent.": "Test gönderilemedi.",
@@ -4177,4 +4274,43 @@ export const tr: { [K in keyof typeof en]: string } = {
     "CSV uygulanan filtreleri kullanır. Sınırlar: 10.000 değişiklik, 100.000 incelenen kayıt, 8 MiB veya 10 saniye. Sınıra ulaşıldığında son satırda belirtilir.",
   "No matches in this batch. Load older changes to continue searching.":
     "Bu grupta eşleşme yok. Aramaya devam etmek için eski değişiklikleri yükleyin.",
+  "Use balanced, non-nested if/else conditions in at most 2,000 characters.":
+    "En fazla 2.000 karakterlik, iç içe geçmeyen ve kapanışları tamamlanmış if/else koşulları kullan.",
+  "Use 1 to 60 characters for the kit name.": "Kit adı 1–60 karakter olmalı.",
+  "Content and each of at most 10 random variants must fit Discord's 2,000 characters.":
+    "İçerik ve en fazla 10 rastgele varyantın her biri Discord'un 2.000 karakter sınırına uymalı.",
+  "A message has at most 10 embeds.": "Bir mesajda en fazla 10 gömülü mesaj olabilir.",
+  "All embeds together have at most 6,000 characters.":
+    "Gömülü mesajların toplamı en fazla 6.000 karakter olabilir.",
+  "Use a valid HTTPS URL without credentials.":
+    "Kullanıcı adı veya parola içermeyen geçerli bir HTTPS adresi kullan.",
+  "Add content, a random variant, or an embed.": "İçerik, rastgele varyant veya gömülü mesaj ekle.",
+  "A message has at most 5 component rows.": "Bir mesajda en fazla 5 bileşen satırı olabilir.",
+  "A button needs a label and exactly one HTTPS link or reply.":
+    "Düğmeye bir etiket ve yalnızca bir HTTPS bağlantısı ya da yanıt ekle.",
+  "Use an HTTPS link under 512 characters or a reply under 2,000 characters.":
+    "512 karakterden kısa bir HTTPS bağlantısı veya 2.000 karakterden kısa bir yanıt kullan.",
+  "A select needs 1 to 25 labeled choices with short values and replies.":
+    "Seçim menüsüne kısa değer ve yanıtları olan 1–25 etiketli seçenek ekle.",
+  "A saved kit is at most 32 KiB of JSON.": "Kaydedilen kitin JSON boyutu en fazla 32 KiB olabilir.",
+  "Choose welcome, goodbye, boost or level up.": "Karşılama, veda, takviye veya seviye atlamayı seç.",
+  "Save the kit before assigning it.": "Atamadan önce kiti kaydet.",
+  "Event text kits cannot have embeds or components.":
+    "Etkinlik metin kitleri gömülü mesaj veya bileşen içeremez.",
+  "Use a short lowercase kit key with letters, numbers, _ or -.":
+    "Harf, rakam, _ veya - içeren kısa ve küçük harfli bir kit anahtarı kullan.",
+  "A kit is at most 32 KiB of JSON.": "Kitin JSON boyutu en fazla 32 KiB olabilir.",
+  "Check the kit JSON fields and types.": "Kitin JSON alanlarını ve veri türlerini kontrol et.",
+  "A kit assigned to an event cannot have embeds or components.":
+    "Etkinliğe atanmış bir kit gömülü mesaj veya bileşen içeremez.",
+  "Only a server administrator can allow everyone and role mentions.":
+    "Herkes ve rol etiketlemelerine yalnızca sunucu yöneticisi izin verebilir.",
+  "A server can save 50 kits.": "Bir sunucuda en fazla 50 kit kaydedilebilir.",
+  "That kit version is no longer available.": "Kitin bu sürümü artık mevcut değil.",
+  "Save this kit before posting it.": "Göndermeden önce bu kiti kaydet.",
+  "Enter a message ID.": "Bir mesaj kimliği gir.",
+  "Image alt text is at most 1024 characters.": "Görselin alternatif metni en fazla 1024 karakter olabilir.",
+  "That saved version no longer exists.": "Kaydedilen bu sürüm artık mevcut değil.",
+  "Discord could not open your direct messages.": "Discord özel mesaj kanalını açamadı.",
+  "Check this kit's fields and Discord limits.": "Bu kitin alanlarını ve Discord sınırlarını kontrol et.",
 };

@@ -34,6 +34,7 @@ export const NAV: NavGroup[] = [
       { to: "stats", label: "Stats" },
       { to: "invites", label: "Invites" },
       { to: "utility", label: "Messages" },
+      { to: "message-studio", label: "Message studio" },
     ],
   },
   {

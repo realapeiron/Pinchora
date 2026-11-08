@@ -73,15 +73,19 @@ pub const MAX_UPLOADS: usize = 12;
 pub enum CardKind {
     Welcome,
     Goodbye,
+    Boost,
+    LevelUp,
 }
 
 impl CardKind {
-    pub const ALL: [Self; 2] = [Self::Welcome, Self::Goodbye];
+    pub const ALL: [Self; 4] = [Self::Welcome, Self::Goodbye, Self::Boost, Self::LevelUp];
 
     pub const fn key(self) -> &'static str {
         match self {
             Self::Welcome => "welcome",
             Self::Goodbye => "goodbye",
+            Self::Boost => "boost",
+            Self::LevelUp => "level_up",
         }
     }
 
@@ -93,8 +97,8 @@ impl CardKind {
     /// did; goodbyes stay text.
     pub const fn default_delivery(self) -> Delivery {
         match self {
-            Self::Welcome => Delivery::WithMessage,
-            Self::Goodbye => Delivery::TextOnly,
+            Self::Welcome | Self::LevelUp => Delivery::WithMessage,
+            Self::Goodbye | Self::Boost => Delivery::TextOnly,
         }
     }
 }
@@ -167,7 +171,9 @@ pub fn check_delivery(kind: CardKind, key: &str) -> Result<Delivery, FieldError>
                 CardKind::Welcome => {
                     "Send the image with the text, before it, alone, not at all, or by direct message."
                 }
-                CardKind::Goodbye => "Send the image with the text, before it, alone, or not at all.",
+                CardKind::Goodbye | CardKind::Boost | CardKind::LevelUp => {
+                    "Send the image with the text, before it, alone, or not at all."
+                }
             };
             FieldError::new("delivery", message)
         })
@@ -182,6 +188,9 @@ pub struct CardDesign {
     /// A black scrim over the background, in percent, so text stays readable over a busy picture.
     #[serde(default)]
     pub dim: u8,
+    /// Description Discord's screen readers announce for the attached image.
+    #[serde(default)]
+    pub alt_text: String,
     /// Bottom to top.
     pub layers: Vec<Layer>,
 }
@@ -517,6 +526,9 @@ pub fn check_design(mut design: CardDesign, catalog: &dyn Catalog) -> Result<Car
     }
     if design.dim > DIM_MAX {
         fail("dim", format!("The background can be darkened by at most {DIM_MAX}%."));
+    }
+    if design.alt_text.chars().count() > 1024 {
+        fail("alt_text", "Image alt text is at most 1024 characters.".to_owned());
     }
     match &mut design.background {
         Background::Transparent => {}

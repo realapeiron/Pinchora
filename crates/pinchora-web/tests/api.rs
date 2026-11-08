@@ -88,6 +88,8 @@ mod branding;
 mod events;
 #[path = "api/leveling_parity.rs"]
 mod leveling_parity;
+#[path = "api/message_studio.rs"]
+mod message_studio;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 #[path = "api/trackers.rs"]
@@ -141,6 +143,7 @@ type Account = (Value, Vec<Value>);
 /// What the mock Discord knows: users by access token, the codes it handed out, where the bot is.
 #[derive(Clone, Default)]
 struct Mock {
+    dm_opens: Arc<AtomicUsize>,
     absent_leveling_members: Arc<Mutex<HashSet<(u64, u64)>>>,
     /// Access token → the account.
     users: Arc<Mutex<HashMap<String, Account>>>,
@@ -523,6 +526,15 @@ async fn discord(
         }
         (&Method::PATCH, [.., "channels", channel, "messages", message]) => {
             server_tools::updated_message(channel, message)
+        }
+        (&Method::POST, [.., "users", "@me", "channels"]) => {
+            mock.dm_opens.fetch_add(1, Ordering::SeqCst);
+            let request: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+            let recipient = request["recipient_id"].as_str().unwrap_or("0");
+            (
+                StatusCode::OK,
+                json!({"id":recipient,"type":1,"recipients":[]}).to_string(),
+            )
         }
         (&Method::POST, [.., "channels", channel, "messages"]) => {
             let channel = channel.parse::<u64>().unwrap_or(1);

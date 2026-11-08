@@ -197,6 +197,7 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "cv" => "confess",
         "tg" => "customcommand list",
         "cm" => "customcommand",
+        "ms" => "customcommand",
         "sg" => "suggest",
         "pl" => "poll",
         "sc" => "stats",

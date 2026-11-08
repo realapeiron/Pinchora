@@ -41,13 +41,13 @@ async fn clear_limit(h: &Harness, user: u64) {
 }
 
 #[tokio::test]
-async fn all_215_guild_routes_reject_anonymous_wrong_areas_and_missing_csrf() {
+async fn all_226_guild_routes_reject_anonymous_wrong_areas_and_missing_csrf() {
     let Some(h) = Harness::new("w7_matrix").await else {
         return;
     };
     let (guild, owner_id, mut owner) = h.managed_server().await;
     let routes = inventory();
-    assert_eq!(routes.len(), 215);
+    assert_eq!(routes.len(), 226);
     for (method, path, _) in &routes {
         let path = format!("/api/guilds/{guild}{}", concrete(path).trim_end_matches('/'));
         let result = h.browser().write(method.parse().unwrap(), &path, json!({})).await;

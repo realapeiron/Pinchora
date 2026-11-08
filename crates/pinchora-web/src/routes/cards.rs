@@ -73,7 +73,7 @@ fn preview_error(error: PreviewError) -> ApiError {
 }
 
 fn kind_of(raw: &str) -> ApiResult<CardKind> {
-    CardKind::parse(raw).ok_or_else(|| ApiError::malformed("The kind is welcome or goodbye."))
+    CardKind::parse(raw).ok_or_else(|| ApiError::malformed("The kind is welcome, goodbye, boost or level_up."))
 }
 
 /// The design JSON a request sent, checked.
@@ -111,14 +111,19 @@ pub async fn cards(State(state): State<WebState>, managed: ManagedGuild) -> ApiR
     let settings = state.app.db.guild_settings(guild).await?;
     let welcome = server_card(&state.app, &settings, guild, CardKind::Welcome).await?;
     let goodbye = server_card(&state.app, &settings, guild, CardKind::Goodbye).await?;
+    let boost = server_card(&state.app, &settings, guild, CardKind::Boost).await?;
+    let level_up = server_card(&state.app, &settings, guild, CardKind::LevelUp).await?;
+    let lang = state.app.guild_lang(guild).await;
     let templates: Vec<Value> = templates::TEMPLATES
         .iter()
         .map(|(key, name)| {
             json!({
                 "key": key,
                 "name": name,
-                "welcome": templates::template(key, CardKind::Welcome),
-                "goodbye": templates::template(key, CardKind::Goodbye),
+                "welcome": templates::template_in(key, CardKind::Welcome, lang),
+                "goodbye": templates::template_in(key, CardKind::Goodbye, lang),
+                "boost": templates::template_in(key, CardKind::Boost, lang),
+                "level_up": templates::template_in(key, CardKind::LevelUp, lang),
             })
         })
         .collect();
@@ -133,6 +138,8 @@ pub async fn cards(State(state): State<WebState>, managed: ManagedGuild) -> ApiR
     Ok(Json(json!({
         "welcome": card_json(CardKind::Welcome, &welcome),
         "goodbye": card_json(CardKind::Goodbye, &goodbye),
+        "boost": card_json(CardKind::Boost, &boost),
+        "level_up": card_json(CardKind::LevelUp, &level_up),
         "templates": templates,
         "uploads": uploads,
     })))
@@ -180,7 +187,13 @@ pub async fn put_card(
         .map(serde_json::to_string)
         .transpose()
         .map_err(anyhow::Error::from)?;
-    db.put_card_design(guild, kind, json.as_deref(), delivery).await?;
+    if before.design != design.clone().unwrap_or_else(|| before.design.clone())
+        || before.delivery != delivery
+        || before.custom != design.is_some()
+    {
+        db.save_card_revision(guild, kind, json.as_deref(), delivery, managed.current.session.user_id)
+            .await?;
+    }
     let after = server_card(&state.app, &settings, guild, kind).await?;
     let (old, new) = (audit_json(&before), audit_json(&after));
     if old != new {
@@ -198,6 +211,74 @@ pub async fn put_card(
         )
         .await;
     }
+    Ok(Json(card_json(kind, &after)))
+}
+
+/// Durable saved versions of one event image, newest first.
+pub async fn history(
+    State(state): State<WebState>,
+    managed: ManagedGuild,
+    Path((_, kind)): Path<(String, String)>,
+) -> ApiResult<Json<Value>> {
+    let kind = kind_of(&kind)?;
+    let rows = state.app.db.card_history(managed.id, kind).await?;
+    Ok(Json(json!(
+        rows.iter()
+            .map(|r| json!({
+                "id": r.id, "design": r.design.as_ref().and_then(|v| serde_json::from_str::<Value>(v).ok()),
+                "delivery": r.delivery, "actor_id": r.actor_id.to_string(), "created_at": r.created_at,
+            }))
+            .collect::<Vec<_>>()
+    )))
+}
+
+/// Restores a saved version as a new revision, preserving the full audit trail.
+pub async fn rollback(
+    State(state): State<WebState>,
+    managed: ManagedGuild,
+    Path((_, kind, revision)): Path<(String, String, i64)>,
+) -> ApiResult<Json<Value>> {
+    let kind = kind_of(&kind)?;
+    let guild = managed.id;
+    let row = state
+        .app
+        .db
+        .card_revision(guild, kind, revision)
+        .await?
+        .ok_or_else(|| ApiError::malformed("That saved version no longer exists."))?;
+    let delivery = card_design::check_delivery(kind, &row.delivery)?;
+    if let Some(raw) = &row.design {
+        let value: Value = serde_json::from_str(raw).map_err(anyhow::Error::from)?;
+        let design = design_of(&value)?;
+        check_upload(&state, guild, &design).await?;
+    }
+    let settings = state.app.db.guild_settings(guild).await?;
+    let before = server_card(&state.app, &settings, guild, kind).await?;
+    state
+        .app
+        .db
+        .save_card_revision(
+            guild,
+            kind,
+            row.design.as_deref(),
+            delivery,
+            managed.current.session.user_id,
+        )
+        .await?;
+    let after = server_card(&state.app, &settings, guild, kind).await?;
+    audit::finish(
+        &state,
+        &managed.current.session,
+        Change {
+            guild,
+            action: "card.rollback",
+            target: Some(kind.key()),
+            before: audit_json(&before),
+            after: audit_json(&after),
+        },
+        Some(Invalidation::Guild(guild)),
+    )
+    .await;
     Ok(Json(card_json(kind, &after)))
 }
 
@@ -273,11 +354,13 @@ fn png_response(png: Vec<u8>, cache: &'static str) -> Response {
 pub struct TestBody {
     design: Value,
     delivery: String,
-    channel_id: String,
+    channel_id: Option<String>,
+    #[serde(default)]
+    dm: bool,
 }
 
-/// `POST /cards/{kind}/test`: posts the image and text, as `delivery` would, to a channel the requester
-/// picks, with the requester as the member. A direct message delivery is tried out in the channel too.
+/// `POST /cards/{kind}/test`: posts the image and text with the requester as the member,
+/// either to a selected server channel or to the requester's real DM channel.
 pub async fn test(
     State(state): State<WebState>,
     managed: ManagedGuild,
@@ -289,10 +372,7 @@ pub async fn test(
     let delivery = card_design::check_delivery(kind, &body.delivery)?;
     let design = design_of(&body.design)?;
     check_upload(&state, guild, &design).await?;
-    let channel = parse_id(&body.channel_id).ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
-    let info = guild_info::get_with(&state, guild, |info| info.channel(channel).is_some()).await?;
-    info.check_post_channel("channel_id", channel)?;
-    ratelimit::check(
+    ratelimit::check_strict(
         &state.app.cache,
         "card-test",
         &guild.to_string(),
@@ -300,11 +380,54 @@ pub async fn test(
         Duration::from_secs(60),
     )
     .await?;
+    ratelimit::check_strict(
+        &state.app.cache,
+        "card-test-user",
+        &managed.current.session.user_id.to_string(),
+        TESTS_PER_MINUTE,
+        Duration::from_secs(60),
+    )
+    .await?;
+    let channel = if body.dm {
+        pinchora_commands::open_private_channel(&state.app, managed.current.session.user_id)
+            .await
+            .ok_or_else(|| ApiError::malformed("Discord could not open your direct messages."))?
+    } else {
+        let channel = parse_id(body.channel_id.as_deref().unwrap_or_default())
+            .ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
+        let info = guild_info::get_with(&state, guild, |info| info.channel(channel).is_some()).await?;
+        info.check_post_channel("channel_id", channel)?;
+        Id::new(channel)
+    };
     let session = &managed.current.session;
     let subject = sample_subject(session, &managed.guild.name);
     let settings = state.app.db.guild_settings(guild).await?;
     // The test note goes into the channel, so it speaks the server's language like its other open messages.
-    let text = test_text(kind, &settings, &subject, state.app.guild_lang(guild).await);
+    let lang = state.app.guild_lang(guild).await;
+    let mut text = test_text(kind, &settings, &subject, lang);
+    if let Some((chosen, _)) = pinchora_commands::studio_event_text(
+        &state.app,
+        guild,
+        kind,
+        pinchora_commands::StudioEventMember {
+            user_id: subject.user.get(),
+            user: &subject.name,
+            server: &subject.server,
+            level: Some(5),
+            booster: false,
+            returning: state.app.db.card_was_returning(guild, subject.user.get()).await?,
+            ordinal: subject.members,
+        },
+    )
+    .await?
+    {
+        let note = format!("\n-# {}", t!(lang, "studio.test-note", name = subject.name));
+        let content: String = chosen
+            .chars()
+            .take(2000usize.saturating_sub(note.chars().count()))
+            .collect();
+        text = format!("{content}{note}");
+    }
     let image = if delivery.has_image() {
         let png = preview_png(&state.app, guild, &design, &subject)
             .await
@@ -320,24 +443,19 @@ pub async fn test(
     };
     // A test pings nobody, the requester included.
     let mentions = AllowedMentions::default();
-    let image = image.as_ref().map(|(name, png)| (name.as_str(), png.clone()));
-    deliver(&state.app, Id::new(channel), delivery, &text, image, &mentions)
+    let image = image
+        .as_ref()
+        .map(|(name, png)| (name.as_str(), png.clone(), design.alt_text.as_str()));
+    deliver(&state.app, channel, delivery, &text, image, &mentions)
         .await
         .map_err(|error| {
-            tracing::info!(guild, channel, %error, "card test not posted");
+            tracing::info!(guild, channel = channel.get(), %error, "card test not posted");
             ApiError::new(
                 axum::http::StatusCode::BAD_GATEWAY,
                 "discord",
                 "Discord did not take the test message. Check that the bot can send messages and attach files there.",
             )
         })?;
-    tracing::info!(
-        guild,
-        channel,
-        user_id = session.user_id,
-        kind = kind.key(),
-        "card test posted"
-    );
     audit::finish(
         &state,
         session,
@@ -346,11 +464,18 @@ pub async fn test(
             action: "cards.test",
             target: Some(kind.key()),
             before: Value::Null,
-            after: json!({"channel_id": channel.to_string()}),
+            after: json!({"dm": body.dm, "channel_id": channel.get().to_string()}),
         },
         None,
     )
     .await;
+    tracing::info!(
+        guild,
+        channel = channel.get(),
+        user_id = session.user_id,
+        kind = kind.key(),
+        "card test posted"
+    );
     Ok(Json(json!({ "posted": true })))
 }
 
@@ -380,10 +505,24 @@ fn test_text(kind: CardKind, settings: &pinchora_db::GuildSettings, subject: &Ca
                 ],
             )
         }
+        CardKind::Boost => t!(
+            lang,
+            "studio.boost-message",
+            user = subject.name,
+            server = subject.server
+        ),
+        CardKind::LevelUp => t!(
+            lang,
+            "studio.level-message",
+            user = subject.name,
+            server = subject.server
+        ),
     };
     let key = match kind {
         CardKind::Welcome => "welcome.test-welcome",
         CardKind::Goodbye => "welcome.test-goodbye",
+        CardKind::Boost => "studio.test-boost",
+        CardKind::LevelUp => "studio.test-level",
     };
     format!("{message}\n-# {}", t!(lang, key, name = subject.name))
 }

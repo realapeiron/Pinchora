@@ -23,6 +23,7 @@ mod invites;
 mod leveling;
 mod leveling_parity;
 mod me;
+mod message_studio;
 mod mod_parity;
 mod moderation;
 mod modules;
@@ -61,7 +62,7 @@ use axum::{
 use crate::{auth::oauth, error::ApiError, ratelimit, state::WebState};
 
 /// Scripts, styles and data only from this origin; avatars and server icons from Discord's CDN.
-const CSP: &str = "default-src 'self'; img-src 'self' data: blob: https://cdn.discordapp.com; style-src 'self'; \
+const CSP: &str = "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; \
                    script-src 'self'; worker-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; \
                    form-action 'self'";
 
@@ -189,7 +190,7 @@ mod csp_tests {
             let policy = policy.to_str().unwrap();
             assert!(policy.contains(&format!("connect-src 'self' {socket};")));
             assert!(policy.contains("worker-src 'self';"));
-            assert!(policy.contains("img-src 'self' data: blob: https://cdn.discordapp.com;"));
+            assert!(policy.contains("img-src 'self' data: blob: https:;"));
             assert!(policy.contains("script-src 'self';"));
             assert!(!policy.contains("unsafe-") && !policy.contains('*'));
         }

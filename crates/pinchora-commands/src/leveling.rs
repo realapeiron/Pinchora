@@ -3,11 +3,11 @@
 
 use std::sync::Arc;
 
-use pinchora_core::{leveling::LevelUpMode, modules::Module, settings::MessageKind, t};
+use pinchora_core::{card_design::CardKind, leveling::LevelUpMode, modules::Module, settings::MessageKind, t};
 use pinchora_db::GuildSettings;
 use pinchora_render::{LevelUpCard, Theme, placeholder_avatar};
 use twilight_model::{
-    channel::message::AllowedMentions,
+    channel::message::{AllowedMentions, MentionType},
     http::attachment::Attachment,
     id::{Id, marker::ChannelMarker},
     user::User,
@@ -115,7 +115,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
         Some(role) => format!("<@&{role}>"),
         None => String::new(),
     };
-    let text = fill(
+    let mut text = fill(
         template,
         &[
             ("user", &mention(user)),
@@ -124,10 +124,72 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
             ("role", &role),
         ],
     );
-    let mentions = AllowedMentions {
+    let mut mentions = AllowedMentions {
         users: vec![Id::new(user.max(1))],
         ..Default::default()
     };
+    let card_server = if server.is_empty() {
+        match app.http.guild(Id::new(guild.max(1))).await {
+            Ok(response) => response
+                .model()
+                .await
+                .map_or_else(|_| t!(lang, "events.the-server"), |g| g.name),
+            Err(_) => t!(lang, "events.the-server"),
+        }
+    } else {
+        server.clone()
+    };
+    let booster = match app.http.guild_member(Id::new(guild.max(1)), Id::new(user.max(1))).await {
+        Ok(response) => response
+            .model()
+            .await
+            .is_ok_and(|member| member.premium_since.is_some()),
+        Err(_) => false,
+    };
+    if let Some((chosen, mass)) = crate::message_studio::event_text(
+        app,
+        guild,
+        CardKind::LevelUp,
+        crate::message_studio::EventMember {
+            user_id: user,
+            user: &mention(user),
+            server: &card_server,
+            level: Some(after),
+            booster,
+            returning: app.db.card_was_returning(guild, user).await?,
+            ordinal: None,
+        },
+    )
+    .await?
+    {
+        text = chosen;
+        if mass {
+            mentions.parse = vec![MentionType::Everyone, MentionType::Roles];
+        }
+    }
+    let studio = crate::card_images::server_card(app, settings, guild, CardKind::LevelUp).await?;
+    if studio.custom || studio.delivery != CardKind::LevelUp.default_delivery() {
+        let subject = crate::card_images::CardSubject {
+            user: Id::new(user.max(1)),
+            avatar: author.and_then(|u| u.avatar),
+            name: author.map_or_else(|| t!(lang, "interact.someone"), |u| display_name(u, nick)),
+            username: author.map_or_else(|| user.to_string(), |u| u.name.clone()),
+            server: card_server,
+            members: None,
+        };
+        let image = if studio.delivery.has_image() {
+            Some((
+                "levelup.png",
+                crate::card_images::card_png(app, guild, &studio.design, &subject).await?,
+                studio.design.alt_text.as_str(),
+            ))
+        } else {
+            None
+        };
+        crate::card_images::deliver(app, channel, studio.delivery, &text, image, &mentions).await?;
+        customize::announce_in(app, channel, user, lang).await;
+        return Ok(());
+    }
     let name = author.map_or_else(|| t!(lang, "interact.someone"), |u| display_name(u, nick));
     let avatar = match author {
         Some(u) => app.avatar(u, LevelUpCard::AVATAR_SIZE, Some(34)).await,
@@ -146,12 +208,16 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
             })
         })
         .await?;
+    let mut attachment = Attachment::from_bytes("levelup.png".to_owned(), png, 1);
+    if !studio.design.alt_text.is_empty() {
+        attachment.description(studio.design.alt_text);
+    }
     let sent = app
         .http
         .create_message(channel)
         .content(&text)
         .allowed_mentions(Some(&mentions))
-        .attachments(&[Attachment::from_bytes("levelup.png".to_owned(), png, 1)])
+        .attachments(&[attachment])
         .await;
     match sent {
         Ok(_) => {}
@@ -184,7 +250,7 @@ pub(crate) async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMa
 /// The direct message channel with `user`, whatever they chose about servers' messages: for what the
 /// player asked for themselves (`/remind`), which is not a server's to switch off. `None` when Discord
 /// will not open one.
-pub(crate) async fn open_private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
+pub async fn open_private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
     let opened = async {
         anyhow::Ok(
             app.http

@@ -25,6 +25,15 @@ describe("dashboard delegation", () => {
     const row = { role_id: "123", areas: ["roles"], name: "Read-only", full: true };
     expect(canonicalGrants([row])).toEqual([{ role_id: "123", areas: ["roles"] }]);
   });
+  it("opens Message Studio only for configuration delegates or full managers", () => {
+    const configuration = { access: { full: false, areas: ["configuration"] } } as AccessOverview;
+    for (const path of ["message-studio", "message-studio/greeting"]) {
+      expect(canOpenPage(configuration, path)).toBe(true);
+      expect(canOpenPage(access, path)).toBe(false);
+      expect(canOpenPage({ access: { full: true, areas: null } } as AccessOverview, path)).toBe(true);
+    }
+    expect(canOpenPage(configuration, "message-studio-extra")).toBe(false);
+  });
   it("compares grants without ordering noise and keeps snowflakes as strings", () => {
     const id = "999999999999999999";
     expect(canonicalGrants([{ role_id: id, areas: ["roles", "audit", "roles"] }])).toEqual([

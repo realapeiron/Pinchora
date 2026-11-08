@@ -45,6 +45,7 @@ import { cardsKey, useAtlasIndex, useCards, useDiscord, useMe } from "../lib/que
 import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
+import { studioError } from "../lib/messageStudio";
 import "../styles/card-editor.css";
 
 /** One image in the editor: its design, how it is sent, and whether it is the server's own design. */
@@ -59,6 +60,8 @@ type Draft = Record<CardKind, Side>;
 const KINDS: { kind: CardKind; label: string }[] = [
   { kind: "welcome", label: "Welcome" },
   { kind: "goodbye", label: "Goodbye" },
+  { kind: "boost", label: "Boost" },
+  { kind: "level_up", label: "Level up" },
 ];
 
 /** The member number the canvas shows, as the bot's preview does. */
@@ -142,6 +145,8 @@ function Editor({
   const [saved, setSaved] = useState<Draft>(() => ({
     welcome: sideOf(cards.welcome),
     goodbye: sideOf(cards.goodbye),
+    boost: sideOf(cards.boost),
+    level_up: sideOf(cards.level_up),
   }));
   const [hist, setHist] = useState<History<Draft>>(() => history(saved));
   const [kind, setKind] = useState<CardKind>("welcome");
@@ -149,6 +154,10 @@ function Editor({
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [fitZoom, setFitZoom] = useState(0.5);
   const [snapping, setSnapping] = useState(true);
+  const [safeArea, setSafeArea] = useState(false);
+  const [revisions, setRevisions] = useState<
+    { id: number; created_at: string; actor_id: string; design: CardDesign | null }[]
+  >([]);
   const [dialog, setDialog] = useState<null | "templates" | "sticker" | "swap-sticker">(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -159,6 +168,16 @@ function Editor({
   const [showBot, setShowBot] = useState(false);
   const lastEdit = useRef<{ key: string; at: number } | null>(null);
   const clearToast = useCallback(() => setToast(null), []);
+  const refreshRevisions = useCallback(
+    async (selected: CardKind) => {
+      const rows = await api<typeof revisions>(`/api/guilds/${guild}/cards/${selected}/history`);
+      setRevisions(rows);
+    },
+    [guild],
+  );
+  useEffect(() => {
+    void refreshRevisions(kind).catch(() => setRevisions([]));
+  }, [kind, refreshRevisions]);
   const viewport = useRef<HTMLDivElement>(null);
 
   const draft = hist.present;
@@ -345,7 +364,8 @@ function Editor({
         old ? { ...old, ...Object.fromEntries(views.map((v) => [v.kind, v])) } : old,
       );
       await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
-      setToast(spaTranslate("Saved. The next member who joins gets it."));
+      await refreshRevisions(kind);
+      setToast(spaTranslate("Saved. The next matching event uses this design."));
     } catch (error) {
       setErrors(
         error instanceof ApiError
@@ -380,17 +400,22 @@ function Editor({
     }
   };
 
-  const sendTest = async () => {
-    if (!testChannel) return;
+  const sendTest = async (dm = false) => {
+    if (!dm && !testChannel) return;
     setTesting(true);
     try {
       await api(`/api/guilds/${guild}/cards/${kind}/test`, "POST", {
         design,
         delivery: side.delivery,
         channel_id: testChannel,
+        dm,
       });
       const name = discord.data?.channels.find((c) => c.id === testChannel)?.name;
-      setToast(spaTranslate("Test posted{arg1}.", { arg1: name ? ` in #${name}` : "" }));
+      setToast(
+        dm
+          ? spaTranslate("Test sent to your DMs.")
+          : spaTranslate("Test posted{arg1}.", { arg1: name ? ` in #${name}` : "" }),
+      );
     } catch (error) {
       setErrors(error instanceof ApiError ? [error.message] : [spaTranslate("The test could not be sent.")]);
     } finally {
@@ -524,6 +549,14 @@ function Editor({
               />{" "}
               {spaTranslate("Snap")}{" "}
             </label>
+            <label className="card-snap">
+              <input
+                type="checkbox"
+                checked={safeArea}
+                onChange={(event) => setSafeArea(event.target.checked)}
+              />{" "}
+              {spaTranslate("Safe area")}
+            </label>
             <span className="muted fine card-size">
               {design.width}×{design.height}
             </span>
@@ -534,6 +567,7 @@ function Editor({
               zoom={scale}
               selected={selected}
               snapping={snapping}
+              safeArea={safeArea}
               fill={fill}
               avatarUrl={me.user.avatar_url}
               uploads={uploadUrls}
@@ -701,6 +735,57 @@ function Editor({
         </div>
       </div>
 
+      <Panel title={spaTranslate("IMAGE ACCESSIBILITY")}>
+        <Field
+          label={spaTranslate("Image alt text")}
+          htmlFor="card-alt-text"
+          hint={spaTranslate(
+            "Describe the picture for screen readers. Discord receives this description with the attachment.",
+          )}
+        >
+          <textarea
+            id="card-alt-text"
+            className="pixel-input"
+            maxLength={1024}
+            value={design.alt_text ?? ""}
+            onChange={(event) => setDesign({ ...design, alt_text: event.target.value }, "alt-text")}
+          />
+          <span className="counter">{(design.alt_text ?? "").length}/1024</span>
+        </Field>
+      </Panel>
+
+      <Panel title={spaTranslate("SAVED VERSIONS")}>
+        <div className="card-test">
+          {revisions.map((revision) => (
+            <div key={revision.id} className="card-revision">
+              <span>{new Date(revision.created_at).toLocaleString()}</span>
+              <PixelButton
+                variant="secondary"
+                className="button-small"
+                onClick={async () => {
+                  try {
+                    const view = await api<CardView>(
+                      `/api/guilds/${guild}/cards/${kind}/history/${revision.id}/rollback`,
+                      "POST",
+                    );
+                    const next = { ...saved, [kind]: sideOf(view) };
+                    setSaved(next);
+                    setHist(history(next));
+                    await refreshRevisions(kind);
+                    setToast(spaTranslate("Version restored."));
+                  } catch (error) {
+                    setErrors([studioError(error, spaTranslate("Restore failed."))]);
+                  }
+                }}
+              >
+                {spaTranslate("Restore")}
+              </PixelButton>
+            </div>
+          ))}
+          {revisions.length === 0 && <p className="muted">{spaTranslate("No saved versions yet.")}</p>}
+        </div>
+      </Panel>
+
       {(errors.length > 0 || local.length > 0) && (
         <Panel title={spaTranslate("FIX THIS FIRST")} tone="accent">
           <ul className="card-errors" role="alert">
@@ -729,9 +814,7 @@ function Editor({
           <Field
             label={spaTranslate("Post a test in")}
             htmlFor="card-test-channel"
-            hint={spaTranslate(
-              "With you as the member, pinging nobody. A direct message is tried out here too.",
-            )}
+            hint={spaTranslate("With you as the member, pinging nobody.")}
           >
             <ChannelPicker
               id="card-test-channel"
@@ -740,8 +823,18 @@ function Editor({
               onChange={setTestChannel}
             />
           </Field>
-          <PixelButton onClick={sendTest} disabled={!testChannel || testing || local.length > 0}>
+          <PixelButton
+            onClick={() => void sendTest(false)}
+            disabled={!testChannel || testing || local.length > 0}
+          >
             {testing ? spaTranslate("Sending…") : spaTranslate("Send test")}
+          </PixelButton>
+          <PixelButton
+            variant="secondary"
+            onClick={() => void sendTest(true)}
+            disabled={testing || local.length > 0}
+          >
+            {spaTranslate("Send test to my DMs")}
           </PixelButton>
         </div>
         {showBot && (

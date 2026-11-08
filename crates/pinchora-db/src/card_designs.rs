@@ -31,7 +31,119 @@ pub struct CardUploadRow {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct CardHistoryRow {
+    pub id: i64,
+    pub design: Option<String>,
+    pub delivery: String,
+    pub actor_id: i64,
+    pub created_at: DateTime<Utc>,
+}
+
 impl Db {
+    /// Record the visit before welcome text is evaluated; true on a return visit.
+    pub async fn card_member_returning(&self, guild: u64, user: u64) -> anyhow::Result<bool> {
+        let (visits,): (i32,) = sqlx::query_as(
+            "INSERT INTO card_member_visits (guild_id,user_id,visits)
+            VALUES ($1,$2,1) ON CONFLICT (guild_id,user_id) DO UPDATE
+            SET visits=LEAST(card_member_visits.visits+1,2147483647) RETURNING visits",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .fetch_one(self.pool())
+        .await?;
+        Ok(visits > 1)
+    }
+
+    pub async fn card_was_returning(&self, guild: u64, user: u64) -> anyhow::Result<bool> {
+        let visits: Option<(i32,)> =
+            sqlx::query_as("SELECT visits FROM card_member_visits WHERE guild_id=$1 AND user_id=$2")
+                .bind(sql_id(guild))
+                .bind(sql_id(user))
+                .fetch_optional(self.pool())
+                .await?;
+        Ok(visits.is_some_and(|(n,)| n > 1))
+    }
+    /// Returns true once for each new observed boost; a loss clears the marker.
+    pub async fn observe_card_boost(&self, guild: u64, user: u64, boosting: bool) -> anyhow::Result<bool> {
+        if !boosting {
+            sqlx::query("DELETE FROM card_boost_state WHERE guild_id=$1 AND user_id=$2")
+                .bind(sql_id(guild))
+                .bind(sql_id(user))
+                .execute(self.pool())
+                .await?;
+            return Ok(false);
+        }
+        Ok(sqlx::query(
+            "INSERT INTO card_boost_state (guild_id,user_id) VALUES ($1,$2)
+            ON CONFLICT DO NOTHING",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .execute(self.pool())
+        .await?
+        .rows_affected()
+            > 0)
+    }
+    /// Save a card and a durable revision together. Keep the latest 20 revisions for this event.
+    pub async fn save_card_revision(
+        &self,
+        guild: u64,
+        kind: CardKind,
+        design: Option<&str>,
+        delivery: Delivery,
+        actor: u64,
+    ) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("INSERT INTO card_designs (guild_id, kind, design, delivery) VALUES ($1,$2,$3::jsonb,$4)
+            ON CONFLICT (guild_id,kind) DO UPDATE SET design=EXCLUDED.design, delivery=EXCLUDED.delivery, updated_at=now()")
+            .bind(sql_id(guild)).bind(kind.key()).bind(design).bind(delivery.key())
+            .execute(&mut *tx).await?;
+        sqlx::query(
+            "INSERT INTO card_design_history (guild_id,kind,design,delivery,actor_id)
+            VALUES ($1,$2,$3::jsonb,$4,$5)",
+        )
+        .bind(sql_id(guild))
+        .bind(kind.key())
+        .bind(design)
+        .bind(delivery.key())
+        .bind(sql_id(actor))
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query(
+            "DELETE FROM card_design_history WHERE guild_id=$1 AND kind=$2 AND id NOT IN
+            (SELECT id FROM card_design_history WHERE guild_id=$1 AND kind=$2 ORDER BY id DESC LIMIT 20)",
+        )
+        .bind(sql_id(guild))
+        .bind(kind.key())
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn card_history(&self, guild: u64, kind: CardKind) -> anyhow::Result<Vec<CardHistoryRow>> {
+        Ok(sqlx::query_as::<_, CardHistoryRow>(
+            "SELECT id, design::text AS design, delivery, actor_id, created_at
+            FROM card_design_history WHERE guild_id=$1 AND kind=$2 ORDER BY id DESC LIMIT 20",
+        )
+        .bind(sql_id(guild))
+        .bind(kind.key())
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    pub async fn card_revision(&self, guild: u64, kind: CardKind, id: i64) -> anyhow::Result<Option<CardHistoryRow>> {
+        Ok(sqlx::query_as::<_, CardHistoryRow>(
+            "SELECT id, design::text AS design, delivery, actor_id, created_at
+            FROM card_design_history WHERE guild_id=$1 AND kind=$2 AND id=$3",
+        )
+        .bind(sql_id(guild))
+        .bind(kind.key())
+        .bind(id)
+        .fetch_optional(self.pool())
+        .await?)
+    }
     pub async fn card_design(&self, guild: u64, kind: CardKind) -> anyhow::Result<Option<CardDesignRow>> {
         Ok(sqlx::query_as::<_, CardDesignRow>(
             "SELECT design::TEXT AS design, delivery, updated_at FROM card_designs WHERE guild_id = $1 AND kind = $2",
@@ -102,6 +214,8 @@ impl Db {
              WHERE guild_id = $1
                AND id NOT IN (SELECT id FROM card_uploads WHERE guild_id = $1 ORDER BY created_at DESC, id LIMIT $2)
                AND id NOT IN (SELECT design #>> '{background,id}' FROM card_designs
+                              WHERE guild_id = $1 AND design #>> '{background,type}' = 'upload')
+               AND id NOT IN (SELECT design #>> '{background,id}' FROM card_design_history
                               WHERE guild_id = $1 AND design #>> '{background,type}' = 'upload')
                AND NOT EXISTS (SELECT 1 FROM guild_branding b WHERE b.guild_id = $1
                    AND card_uploads.id IN (b.avatar_upload_id, b.banner_upload_id,

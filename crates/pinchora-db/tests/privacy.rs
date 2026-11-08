@@ -457,6 +457,10 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          VALUES($1,$1,$1,'closed',now(),$1)",
         "INSERT INTO modmail_blocks(guild_id,user_id) VALUES($1,$1)",
         "INSERT INTO modmail_pending(user_id,body) VALUES($1,'Private text')",
+        "INSERT INTO card_design_history(guild_id,kind,design,delivery,actor_id) VALUES($2,'welcome',NULL,'text_only',$1)",
+        "INSERT INTO message_kit_history(guild_id,key,name,payload,version,actor_id) VALUES($2,'privacy','Privacy','{}',1,$1)",
+        "INSERT INTO card_boost_state(guild_id,user_id) VALUES($2,$1)",
+        "INSERT INTO card_member_visits(guild_id,user_id,visits) VALUES($2,$1,1)",
 
     ];
     for sql in [

@@ -214,3 +214,14 @@ PATCH	/utility/scheduled/{id}	community
 PUT	/utility/scheduled/{id}	community
 GET	/utility/scheduled/{id}/preview	community
 PUT	/utility/timezone	community
+GET	/cards/{kind}/history	configuration
+POST	/cards/{kind}/history/{revision}/rollback	configuration
+GET	/message-studio	configuration
+GET	/message-studio/events	configuration
+PUT	/message-studio/events/{kind}	configuration
+POST	/message-studio/preview	configuration
+POST	/message-studio/validate	configuration
+POST	/message-studio/send	configuration
+PUT	/message-studio/{key}	configuration
+GET	/message-studio/{key}/history	configuration
+POST	/message-studio/{key}/rollback/{version}	configuration
