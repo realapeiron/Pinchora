@@ -29,6 +29,13 @@ pub fn release_ids(manifest: &serde_json::Value) -> Vec<String> {
         .flatten()
         .filter(|item| item["type"] == "release")
         .filter_map(|item| item["id"].as_str())
+        .filter(|id| {
+            !id.is_empty()
+                && id.len() <= 64
+                && id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_'))
+        })
         .take(20)
         .map(str::to_owned)
         .collect()
@@ -41,7 +48,7 @@ pub fn decode_favicon(value: &str) -> Option<Vec<u8>> {
         return None;
     }
     let mut out = Vec::with_capacity(encoded.len() / 4 * 3);
-    for chunk in encoded.as_bytes().as_chunks::<4>().0 {
+    for (index, chunk) in encoded.as_bytes().as_chunks::<4>().0.iter().enumerate() {
         let mut n = 0u32;
         let mut padding = 0;
         for (i, &byte) in chunk.iter().enumerate() {
@@ -62,6 +69,9 @@ pub fn decode_favicon(value: &str) -> Option<Vec<u8>> {
             }
             n = (n << 6) | u32::from(digit);
         }
+        if padding > 0 && index + 1 != encoded.len() / 4 {
+            return None;
+        }
         out.push((n >> 16) as u8);
         if padding < 2 {
             out.push((n >> 8) as u8);
@@ -70,7 +80,15 @@ pub fn decode_favicon(value: &str) -> Option<Vec<u8>> {
             out.push(n as u8);
         }
     }
-    (out.len() <= 36_000).then_some(out)
+    // Check PNG dimensions before handing bytes to an image decoder: compressed
+    // payload size alone does not bound decoded allocations. SLP icons are 64×64.
+    (out.len() >= 24
+        && out.starts_with(b"\x89PNG\r\n\x1a\n")
+        && out[8..12] == 13u32.to_be_bytes()
+        && &out[12..16] == b"IHDR"
+        && out[16..20] == 64u32.to_be_bytes()
+        && out[20..24] == 64u32.to_be_bytes())
+    .then_some(out)
 }
 
 pub fn parse_host(input: &str) -> anyhow::Result<(String, u16)> {
@@ -115,13 +133,14 @@ pub fn public_ip(ip: IpAddr) -> bool {
                 || (a[0] == 203 && a[1] == 0 && a[2] == 113))
         }
         IpAddr::V6(ip) => {
-            let a = ip.octets();
-            !(ip.is_loopback()
-                || ip.is_unspecified()
-                || ip.is_multicast()
-                || (a[0] & 0xfe) == 0xfc
-                || (a[0] == 0xfe && (a[1] & 0xc0) == 0x80)
-                || ip.to_ipv4().is_some_and(|ip| !public_ip(IpAddr::V4(ip))))
+            let a = ip.segments();
+            // Only native global unicast. Reject transition/translation ranges,
+            // including mapped IPv4, 6to4, Teredo, documentation and site-local.
+            (a[0] & 0xe000) == 0x2000
+                && !(a[0] == 0x2001 && a[1] < 0x200)
+                && !(a[0] == 0x2001 && a[1] == 0xdb8)
+                && a[0] != 0x2002
+                && !(a[0] == 0x3fff && a[1] < 0x1000)
         }
     }
 }
@@ -134,7 +153,7 @@ fn varint(mut n: u32, out: &mut Vec<u8>) {
     out.push(n as u8);
 }
 
-async fn read_varint(stream: &mut TcpStream) -> anyhow::Result<usize> {
+async fn read_varint(stream: &mut (impl tokio::io::AsyncRead + Unpin)) -> anyhow::Result<usize> {
     let mut value = 0usize;
     for shift in (0..35).step_by(7) {
         let byte = stream.read_u8().await?;
@@ -169,7 +188,7 @@ pub fn parse_status(value: &[u8]) -> anyhow::Result<McStatus> {
     Ok(McStatus {
         version: v["version"]["name"]
             .as_str()
-            .unwrap_or("Unknown")
+            .unwrap_or_default()
             .chars()
             .take(80)
             .collect(),
@@ -198,16 +217,14 @@ async fn modern(mut stream: TcpStream, host: &str, port: u16) -> anyhow::Result<
     stream.write_all(&frame).await?;
     let packet_len = read_varint(&mut stream).await?;
     ensure!(packet_len > 0 && packet_len <= MAX_PACKET, "status packet size invalid");
-    let packet_id = read_varint(&mut stream).await?;
+    let mut packet = vec![0; packet_len];
+    stream.read_exact(&mut packet).await?;
+    let mut payload = packet.as_slice();
+    let packet_id = read_varint(&mut payload).await?;
     ensure!(packet_id == 0, "unexpected packet");
-    let json_len = read_varint(&mut stream).await?;
-    ensure!(
-        json_len <= MAX_PACKET && json_len <= packet_len,
-        "status JSON size invalid"
-    );
-    let mut json = vec![0; json_len];
-    stream.read_exact(&mut json).await?;
-    parse_status(&json)
+    let json_len = read_varint(&mut payload).await?;
+    ensure!(json_len == payload.len(), "status JSON size invalid");
+    parse_status(payload)
 }
 
 fn parse_legacy(bytes: &[u8]) -> anyhow::Result<McStatus> {
@@ -257,6 +274,7 @@ async fn legacy(mut stream: TcpStream) -> anyhow::Result<McStatus> {
 
 /// Resolve every address before connecting and reject the whole host if any answer is non-public.
 /// Connect to the vetted address, never to the hostname again, to avoid DNS rebinding.
+/// SRV is deliberately not followed: no alternate DNS target can bypass these checks.
 pub async fn ping(input: &str) -> anyhow::Result<McStatus> {
     let (host, port) = parse_host(input)?;
     timeout(DEADLINE, async {
@@ -300,10 +318,83 @@ mod tests {
     }
     #[test]
     fn favicon_data_url_is_bounded() {
-        assert_eq!(decode_favicon("data:image/png;base64,AQID"), Some(vec![1, 2, 3]));
+        assert!(decode_favicon("data:image/png;base64,AQID").is_none());
         assert!(decode_favicon("data:image/jpeg;base64,AQID").is_none());
         assert!(decode_favicon(&format!("data:image/png;base64,{}", "A".repeat(48_004))).is_none());
     }
+    #[test]
+    fn ipv6_special_ranges_are_not_connection_targets() {
+        for ip in [
+            "fc00::1",
+            "fd00::1",
+            "fe80::1",
+            "fec0::1",
+            "::ffff:8.8.8.8",
+            "64:ff9b::127.0.0.1",
+            "2002:7f00:1::",
+            "2001::1",
+            "2001:db8::1",
+            "3fff::1",
+        ] {
+            assert!(!public_ip(ip.parse().unwrap()), "{ip}");
+        }
+        assert!(public_ip("2606:4700:4700::1111".parse().unwrap()));
+    }
+
+    #[tokio::test]
+    async fn status_frame_rejects_length_mismatch_and_slow_loris() {
+        use tokio::net::TcpListener;
+        for frame in [
+            vec![1, 0, 2, b'{', b'}'],
+            vec![3, 0, 0, 1],
+            vec![0xff; 6],
+            vec![0x80, 0x80, 4],
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = tokio::spawn(async move {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut request = [0; 128];
+                let _ = stream.read(&mut request).await;
+                let _ = stream.write_all(&frame).await;
+            });
+            assert!(
+                modern(TcpStream::connect(address).await.unwrap(), "example.com", 25565)
+                    .await
+                    .is_err()
+            );
+            server.await.unwrap();
+        }
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            loop {
+                if stream.write_all(&[0x80]).await.is_err() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(40)).await;
+            }
+        });
+        assert!(
+            timeout(
+                Duration::from_millis(100),
+                modern(TcpStream::connect(address).await.unwrap(), "example.com", 25565)
+            )
+            .await
+            .is_err()
+        );
+        server.abort();
+    }
+
+    #[test]
+    fn favicon_rejects_compressed_dimension_bombs_and_interior_padding() {
+        // PNG signature + IHDR with 64×64 dimensions, then a huge width.
+        assert!(decode_favicon("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABA").is_some());
+        assert!(decode_favicon("data:image/png;base64,iVBORw0KGgoAAAANSUhEUv///wAAAABA").is_none());
+        assert!(decode_favicon("data:image/png;base64,AA==AAAA").is_none());
+    }
+
     #[test]
     fn legacy_fixture() {
         let value = ["§1", "127", "1.21", "Hello", "2", "10"].join("\0");
@@ -341,6 +432,17 @@ mod tests {
             (4, 12, "Legacy MOTD")
         );
     }
+    #[test]
+    fn malformed_release_ids_are_not_announcements() {
+        let value = serde_json::json!({"versions":[
+            {"id":"<script>patch</script>","type":"release"},
+            {"id":"x".repeat(1000),"type":"release"},
+            {"id":"1.21.5","type":"release"}
+        ]});
+        assert_eq!(release_ids(&value), ["1.21.5"]);
+        assert!(release_ids(&serde_json::json!({"versions":null})).is_empty());
+    }
+
     #[test]
     fn release_manifest_diff() {
         let old = serde_json::json!({"versions":[{"id":"1.20","type":"release"}]});

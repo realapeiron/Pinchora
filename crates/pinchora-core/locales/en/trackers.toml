@@ -1,4 +1,5 @@
 [trackers]
+unknown = "Unknown"
 no-riot-key = "League profiles are unavailable: this bot has no Riot API key configured."
 bad-riot-id = "Use a Riot ID like Player#EUW."
 riot-unavailable = "Riot could not load that profile right now. Please try again later."

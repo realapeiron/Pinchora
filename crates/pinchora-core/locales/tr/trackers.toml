@@ -1,4 +1,5 @@
 [trackers]
+unknown = "Bilinmiyor"
 no-riot-key = "League profilleri kullanılamıyor: botta Riot API anahtarı ayarlanmamış."
 bad-riot-id = "Player#EUW gibi bir Riot kimliği kullanın."
 riot-unavailable = "Riot şu anda bu profili yükleyemedi. Lütfen sonra tekrar deneyin."

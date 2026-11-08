@@ -337,15 +337,12 @@ async fn dragon(cx: &Cx) -> anyhow::Result<(String, Value)> {
     let version = if let Some(value) = cx.app.db.tracker_cached("dragon:version", 86400).await? {
         value.as_str().unwrap_or_default().to_owned()
     } else {
-        let versions: Value = cx
-            .app
-            .web
+        let response = crate::trackers::http_client()?
             .get("https://ddragon.leagueoflegends.com/api/versions.json")
             .send()
             .await?
-            .error_for_status()?
-            .json()
-            .await?;
+            .error_for_status()?;
+        let versions: Value = serde_json::from_slice(&crate::trackers::bounded_body(response, 1024 * 1024).await?)?;
         let latest = versions[0]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("missing Data Dragon version"))?
@@ -357,20 +354,34 @@ async fn dragon(cx: &Cx) -> anyhow::Result<(String, Value)> {
     if let Some(data) = cx.app.db.tracker_cached(&cache_key, 86400).await? {
         return Ok((version, data));
     }
-    let data: Value = cx
-        .app
-        .web
+    let response = crate::trackers::http_client()?
         .get(format!(
             "https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
         ))
         .send()
         .await?
-        .error_for_status()?
-        .json()
-        .await?;
+        .error_for_status()?;
+    let data: Value = serde_json::from_slice(&crate::trackers::bounded_body(response, 2 * 1024 * 1024).await?)?;
     cx.app.db.tracker_cache_put(&cache_key, &data).await?;
     Ok((version, data))
 }
+/// Bound PNG pixel and metadata allocations before decoding an untrusted icon.
+fn tracker_icon(bytes: &[u8]) -> anyhow::Result<Vec<u8>> {
+    let mut reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), image::ImageFormat::Png);
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(256);
+    limits.max_image_height = Some(256);
+    limits.max_alloc = Some(1024 * 1024);
+    reader.limits(limits);
+    let icon = reader
+        .decode()?
+        .resize_exact(40, 40, image::imageops::FilterType::Triangle)
+        .resize_exact(160, 160, image::imageops::FilterType::Nearest);
+    let mut output = std::io::Cursor::new(Vec::new());
+    icon.write_to(&mut output, image::ImageFormat::Png)?;
+    Ok(output.into_inner())
+}
+
 fn row(label: String, value: impl Into<String>) -> InfoRow {
     InfoRow {
         label,
@@ -397,16 +408,9 @@ impl std::fmt::Display for RiotRateLimited {
 impl std::error::Error for RiotRateLimited {}
 
 async fn riot(cx: &Cx, key: &str, region: &str, path: &[&str]) -> anyhow::Result<Value> {
-    let cache_key = format!("riot:{region}:{}", path.join(":"));
-    if let Some(value) = cx.app.db.tracker_cached(&cache_key, 300).await? {
-        return Ok(value);
-    }
     anyhow::ensure!(cx.app.cache.reserve_riot(region).await?, "rate_limited");
-    let mut url = url::Url::parse(&format!("https://{region}.api.riotgames.com/"))?;
-    url.path_segments_mut()
-        .map_err(|_| anyhow::anyhow!("invalid URL"))?
-        .extend(path);
-    let value = match riot_http_get(&cx.app.web, url, key).await {
+    let url = riot_url(region, path)?;
+    let value = match riot_http_get(&crate::trackers::http_client()?, url, key).await {
         Ok(value) => value,
         Err(error) => {
             if let Some(limit) = error.downcast_ref::<RiotRateLimited>() {
@@ -415,39 +419,91 @@ async fn riot(cx: &Cx, key: &str, region: &str, path: &[&str]) -> anyhow::Result
             return Err(error);
         }
     };
-    cx.app.db.tracker_cache_put(&cache_key, &value).await?;
     Ok(value)
 }
 
+fn riot_url(region: &str, path: &[&str]) -> anyhow::Result<url::Url> {
+    let mut url = url::Url::parse(&format!("https://{region}.api.riotgames.com/"))?;
+    url.path_segments_mut()
+        .map_err(|_| anyhow::anyhow!("invalid URL"))?
+        .extend(path);
+    Ok(url)
+}
+
+fn league_path(puuid: &str) -> [&str; 6] {
+    ["lol", "league", "v4", "entries", "by-puuid", puuid]
+}
+
 async fn riot_http_get(client: &reqwest::Client, url: url::Url, key: &str) -> anyhow::Result<Value> {
-    let response = client.get(url).header("X-Riot-Token", key).send().await?;
+    let mut token =
+        reqwest::header::HeaderValue::from_str(key).map_err(|_| anyhow::anyhow!("invalid Riot credentials"))?;
+    token.set_sensitive(true);
+    let response = client
+        .get(url)
+        .header("X-Riot-Token", token)
+        .send()
+        .await
+        .map_err(|_| anyhow::anyhow!("Riot transport failed"))?;
     if response.status().as_u16() == 429 {
         let seconds = response
             .headers()
             .get("retry-after")
             .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok())
+            .map(retry_after)
             .unwrap_or(60);
-        return Err(RiotRateLimited(seconds.clamp(1, 120)).into());
+        return Err(RiotRateLimited(seconds.max(1)).into());
     }
     anyhow::ensure!(
         response.status().is_success(),
         "riot_status_{}",
         response.status().as_u16()
     );
-    Ok(response.json().await?)
+    let bytes = crate::trackers::bounded_body(response, 1024 * 1024)
+        .await
+        .map_err(|_| anyhow::anyhow!("invalid Riot response"))?;
+    serde_json::from_slice(&bytes).map_err(|_| anyhow::anyhow!("invalid Riot JSON"))
+}
+
+fn retry_after(value: &str) -> u64 {
+    value
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .or_else(|| {
+            chrono::DateTime::parse_from_rfc2822(value)
+                .ok()
+                .map(|until| (until.timestamp() - chrono::Utc::now().timestamp()).max(1) as u64)
+        })
+        .unwrap_or(60)
+        .max(1)
+}
+
+fn riot_id(value: &str) -> Option<(&str, &str)> {
+    if value.chars().any(char::is_control) {
+        return None;
+    }
+    let (name, tag) = value.trim().split_once('#')?;
+    let name = name.trim();
+    let tag = tag.trim();
+    (!name.is_empty()
+        && !tag.is_empty()
+        && name.chars().count() <= 64
+        && tag.chars().count() <= 16
+        && !tag.contains('#')
+        && !name
+            .chars()
+            .chain(tag.chars())
+            .any(|c| c.is_control() || matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')))
+    .then_some((name, tag))
 }
 
 async fn lol_profile(cx: &Cx, input: LolProfile, save: bool) -> anyhow::Result<()> {
     let Some(key) = riot_key() else {
         return cx.reply_ephemeral(t!(cx.lang(), "trackers.no-riot-key")).await;
     };
-    let Some((name, tag)) = input.name.split_once('#') else {
+    let Some((name, tag)) = riot_id(&input.name) else {
         return cx.reply_ephemeral(t!(cx.lang(), "trackers.bad-riot-id")).await;
     };
-    if name.is_empty() || tag.is_empty() {
-        return cx.reply_ephemeral(t!(cx.lang(), "trackers.bad-riot-id")).await;
-    }
     let region = input.region;
     let result = async {
         let account = riot(
@@ -460,23 +516,7 @@ async fn lol_profile(cx: &Cx, input: LolProfile, save: bool) -> anyhow::Result<(
         let puuid = account["puuid"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("missing puuid"))?;
-        let summoner = riot(
-            cx,
-            &key,
-            region.platform(),
-            &["lol", "summoner", "v4", "summoners", "by-puuid", puuid],
-        )
-        .await?;
-        let id = summoner["id"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("missing summoner id"))?;
-        let rank = riot(
-            cx,
-            &key,
-            region.platform(),
-            &["lol", "league", "v4", "entries", "by-summoner", id],
-        )
-        .await?;
+        let rank = riot(cx, &key, region.platform(), &league_path(puuid)).await?;
         let mastery = riot(
             cx,
             &key,
@@ -497,8 +537,8 @@ async fn lol_profile(cx: &Cx, input: LolProfile, save: bool) -> anyhow::Result<(
     .await;
     let (puuid, rank, mastery) = match result {
         Ok(result) => result,
-        Err(error) => {
-            tracing::warn!(%error, "Riot lookup failed");
+        Err(_) => {
+            tracing::warn!("Riot lookup failed");
             return cx.reply_ephemeral(t!(cx.lang(), "trackers.riot-unavailable")).await;
         }
     };
@@ -540,10 +580,11 @@ async fn lol_profile(cx: &Cx, input: LolProfile, save: bool) -> anyhow::Result<(
     let mut icon = None;
     for (i, entry) in mastery.as_array().into_iter().flatten().take(3).enumerate() {
         let id = entry["championId"].as_i64().unwrap_or(0);
+        let unknown = t!(cx.lang(), "trackers.unknown");
         let (name, file) = dragon
             .as_ref()
             .and_then(|(_, data)| champion(data, id))
-            .unwrap_or(("Unknown", ""));
+            .unwrap_or((&unknown, ""));
         mastery_rows.push(row(
             format!("{} {}", t!(cx.lang(), "trackers.mastery"), i + 1),
             format!("{name} · {}", entry["championPoints"].as_i64().unwrap_or(0)),
@@ -553,16 +594,11 @@ async fn lol_profile(cx: &Cx, input: LolProfile, save: bool) -> anyhow::Result<(
                 "https://ddragon.leagueoflegends.com/cdn/{}/img/champion/{file}",
                 dragon.as_ref().unwrap().0
             );
-            if let Ok(response) = cx.app.web.get(url).send().await
+            if let Ok(response) = crate::trackers::http_client()?.get(url).send().await
                 && let Ok(response) = response.error_for_status()
-                && let Ok(bytes) = response.bytes().await
-                && bytes.len() < 1024 * 1024
+                && let Ok(bytes) = crate::trackers::bounded_body(response, 1024 * 1024).await
             {
-                icon = cx
-                    .app
-                    .render(move |_| pinchora_render::prepare_avatar(&bytes, 160, Some(40)))
-                    .await
-                    .ok();
+                icon = cx.app.render(move |_| tracker_icon(&bytes)).await.ok();
             }
         }
     }
@@ -575,7 +611,8 @@ async fn lol_profile(cx: &Cx, input: LolProfile, save: bool) -> anyhow::Result<(
     };
     cx.app
         .db
-        .tracker_cache_put(
+        .tracker_user_cache_put(
+            cx.author()?.id.get(),
             &format!("riot:card:{token}"),
             &json!({
                 "title":title,
@@ -627,13 +664,10 @@ impl GameCommand {
                 ))
                 .await
             }
-            Self::Mc(Mc::Status(input)) => match trackers::ping(&input.host).await {
+            Self::Mc(Mc::Status(input)) => match crate::trackers::mc_status(&cx.app, &input.host).await {
                 Ok(status) => {
                     let image = if let Some(bytes) = status.favicon.as_deref().and_then(trackers::decode_favicon) {
-                        cx.app
-                            .render(move |_| pinchora_render::prepare_avatar(&bytes, 160, Some(40)))
-                            .await
-                            .ok()
+                        cx.app.render(move |_| tracker_icon(&bytes)).await.ok()
                     } else {
                         None
                     };
@@ -642,7 +676,14 @@ impl GameCommand {
                         input.host,
                         t!(cx.lang(), "trackers.minecraft"),
                         vec![
-                            row(t!(cx.lang(), "trackers.version"), status.version),
+                            row(
+                                t!(cx.lang(), "trackers.version"),
+                                if status.version.is_empty() {
+                                    t!(cx.lang(), "trackers.unknown")
+                                } else {
+                                    status.version
+                                },
+                            ),
                             row(
                                 t!(cx.lang(), "trackers.players"),
                                 format!("{} / {}", status.online, status.max),
@@ -693,6 +734,14 @@ impl GameCommand {
         }
     }
 }
+fn posting_channel(guild: u64, channel: &twilight_model::channel::Channel) -> bool {
+    channel.guild_id.map(|id| id.get()) == Some(guild)
+        && matches!(
+            channel.kind,
+            twilight_model::channel::ChannelType::GuildText | twilight_model::channel::ChannelType::GuildAnnouncement
+        )
+}
+
 impl TrackersAdmin {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
@@ -700,6 +749,18 @@ impl TrackersAdmin {
         };
         if !cx.can_manage_guild() {
             return cx.reply_ephemeral(t!(cx.lang(), "error.needs-manage-server")).await;
+        }
+        let target = match &self {
+            Self::PatchAdd(c) => Some(c.channel.id),
+            Self::McWatch(c) => Some(c.channel.id),
+            Self::McNewsChannel(c) if !c.clear.unwrap_or(false) => c.channel.as_ref().map(|c| c.id),
+            _ => None,
+        };
+        if let Some(target) = target {
+            let channel = cx.app.http.channel(target).await?.model().await?;
+            if !posting_channel(guild, &channel) {
+                return cx.reply_ephemeral(t!(cx.lang(), "trackers.invalid-channel")).await;
+            }
         }
         let mut settings: TrackerSettings = cx.app.db.tracker_settings(guild).await?;
         match self {
@@ -719,18 +780,24 @@ impl TrackersAdmin {
                     .await;
             }
             Self::McWatch(c) => {
-                let (host, port) = trackers::parse_host(&c.host)?;
+                let Ok((host, port)) = trackers::parse_host(&c.host) else {
+                    return cx.reply_ephemeral(t!(cx.lang(), "trackers.invalid-host")).await;
+                };
                 let host = format!("{host}:{port}");
                 let watches = settings
                     .mc_watch
                     .as_array_mut()
                     .ok_or_else(|| anyhow::anyhow!("invalid watch list"))?;
                 watches.retain(|v| v["host"] != host);
-                anyhow::ensure!(watches.len() < 20, "watch limit");
+                if watches.len() >= 20 {
+                    return cx.reply_ephemeral(t!(cx.lang(), "trackers.invalid-settings")).await;
+                }
                 watches.push(json!({"host": host, "channel_id": c.channel.id.get().to_string()}));
             }
             Self::McUnwatch(c) => {
-                let (host, port) = trackers::parse_host(&c.host)?;
+                let Ok((host, port)) = trackers::parse_host(&c.host) else {
+                    return cx.reply_ephemeral(t!(cx.lang(), "trackers.invalid-host")).await;
+                };
                 let host = format!("{host}:{port}");
                 settings
                     .mc_watch
@@ -754,6 +821,44 @@ impl TrackersAdmin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn tracker_icons_bound_pixels_and_compressed_metadata() {
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::RgbaImage::new(64, 64)
+            .write_to(&mut png, image::ImageFormat::Png)
+            .unwrap();
+        assert!(tracker_icon(png.get_ref()).is_ok());
+        let mut oversized = std::io::Cursor::new(Vec::new());
+        image::RgbaImage::new(512, 512)
+            .write_to(&mut oversized, image::ImageFormat::Png)
+            .unwrap();
+        assert!(tracker_icon(oversized.get_ref()).is_err());
+        // Text metadata is never expanded by the pixel decoder and is discarded on
+        // re-encoding; the resulting card attachment cannot carry the compressed bomb.
+        let safe = tracker_icon(include_bytes!("../../tests/fixtures/tracker-icon-metadata-bomb.png")).unwrap();
+        assert!(safe.len() < 16_384);
+        assert!(
+            !safe
+                .windows(4)
+                .any(|chunk| matches!(chunk, b"zTXt" | b"iTXt" | b"iCCP"))
+        );
+    }
+
+    #[test]
+    fn tracker_destinations_must_be_text_channels_in_the_invoking_guild() {
+        for (guild, kind, expected) in [
+            (123, 0, true),
+            (123, 5, true),
+            (456, 0, false),
+            (123, 1, false),
+            (123, 11, false),
+        ] {
+            let channel =
+                serde_json::from_value(json!({"id":"789", "guild_id":guild.to_string(), "type":kind})).unwrap();
+            assert_eq!(posting_channel(123, &channel), expected);
+        }
+    }
+
     #[tokio::test]
     async fn riot_request_uses_header_and_mock_http() {
         use axum::{Router, http::HeaderMap, routing::get};
@@ -761,6 +866,12 @@ mod tests {
             .route(
                 "/limit",
                 get(|| async { ([("retry-after", "7")], axum::http::StatusCode::TOO_MANY_REQUESTS) }),
+            )
+            .route(
+                "/lol/league/v4/entries/by-puuid/mock-puuid",
+                get(|| async {
+                    axum::Json(json!([{"queueType":"RANKED_SOLO_5x5","tier":"GOLD","rank":"II","leaguePoints":45}]))
+                }),
             )
             .route(
                 "/riot/account/v1/accounts/by-riot-id/A/B",
@@ -775,10 +886,20 @@ mod tests {
             axum::serve(listener, app).await.unwrap();
         });
         let url = url::Url::parse(&format!("http://{address}/riot/account/v1/accounts/by-riot-id/A/B")).unwrap();
-        let value = riot_http_get(&reqwest::Client::new(), url, "test-key").await.unwrap();
+        let value = riot_http_get(&crate::trackers::http_client().unwrap(), url, "test-key")
+            .await
+            .unwrap();
         assert_eq!(value["puuid"], "mock-puuid");
+        let mut url = riot_url("euw1", &league_path("mock-puuid")).unwrap();
+        url.set_scheme("http").unwrap();
+        url.set_host(Some("127.0.0.1")).unwrap();
+        url.set_port(Some(address.port())).unwrap();
+        let rank = riot_http_get(&crate::trackers::http_client().unwrap(), url, "test-key")
+            .await
+            .unwrap();
+        assert_eq!(rank[0]["tier"], "GOLD");
         let limited = riot_http_get(
-            &reqwest::Client::new(),
+            &crate::trackers::http_client().unwrap(),
             url::Url::parse(&format!("http://{address}/limit")).unwrap(),
             "test-key",
         )
@@ -786,6 +907,67 @@ mod tests {
         .unwrap_err();
         assert_eq!(limited.downcast_ref::<RiotRateLimited>().unwrap().0, 7);
     }
+    #[test]
+    fn riot_ids_retry_after_and_regions() {
+        assert_eq!(riot_id("  Çağrı 猫 # TR1  "), Some(("Çağrı 猫", "TR1")));
+        for id in ["a#b#c", "a#", "#b", "a\n#b", "a#b\u{202e}"] {
+            assert!(riot_id(id).is_none(), "{id}");
+        }
+        assert_eq!(retry_after("600"), 600);
+        assert_eq!(retry_after("0"), 1);
+        assert_eq!(retry_after("invalid"), 60);
+        let later = (chrono::Utc::now() + chrono::Duration::seconds(600)).to_rfc2822();
+        assert!((599..=600).contains(&retry_after(&later)));
+        let url = riot_url(
+            "europe",
+            &["riot", "account", "v1", "accounts", "by-riot-id", "Çağrı/猫", "TR#1"],
+        )
+        .unwrap();
+        assert!(url.path().ends_with("%C3%87a%C4%9Fr%C4%B1%2F%E7%8C%AB/TR%231"));
+        assert!(url.query().is_none() && url.fragment().is_none());
+        assert_eq!(LolRegion::Tr1.routing(), "europe");
+        assert_eq!(LolRegion::Br1.routing(), "americas");
+        assert_eq!(LolRegion::Jp1.routing(), "asia");
+    }
+
+    #[tokio::test]
+    async fn riot_errors_never_include_credentials_or_follow_redirects() {
+        use axum::{Router, routing::get};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let app = Router::new()
+            .route(
+                "/redirect",
+                get(|| async { (axum::http::StatusCode::FOUND, [("location", "/leak")]) }),
+            )
+            .route(
+                "/leak",
+                get(|| async {
+                    panic!("token redirect followed");
+                    #[allow(unreachable_code)]
+                    ""
+                }),
+            )
+            .route(
+                "/error",
+                get(|| async { (axum::http::StatusCode::BAD_REQUEST, "secret-key") }),
+            );
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        for path in ["redirect", "error"] {
+            let error = riot_http_get(
+                &crate::trackers::http_client().unwrap(),
+                url::Url::parse(&format!("http://{addr}/{path}")).unwrap(),
+                "secret-key",
+            )
+            .await
+            .unwrap_err();
+            assert!(!format!("{error:?}").contains("secret-key"));
+        }
+        server.abort();
+    }
+
     #[test]
     fn data_dragon_maps_champion_id() {
         let data = json!({"data":{"Ahri":{"key":"103","name":"Ahri","image":{"full":"Ahri.png"}}}});

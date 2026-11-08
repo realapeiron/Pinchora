@@ -1039,6 +1039,8 @@ and `mc-news-channel`. The Trackers dashboard page has the same settings. A five
 updates watch messages and posts newly discovered official patch links, Minecraft releases and launcher news.
 Settings and cached source data use migration 0075; Riot links participate in `/privacy` deletion.
 
+Personal tracker export: authenticated `GET /api/me/trackers` returns only the caller's Riot links and cached cards. Unlink and account deletion also remove owned card data. Minecraft watch probes share a five-minute cache across guilds and pods; SRV redirects are not followed. Patch dispatch uses persistent per-destination claims for at-most-once delivery: an ambiguous send failure or crash can skip a post instead of duplicating it.
+
 ### Info commands
 
 `/info user [user]`, `/info server`, `/info avatar [user] [server]`, `/info banner [user]`,

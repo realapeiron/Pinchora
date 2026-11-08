@@ -61,7 +61,11 @@ impl Cache {
 
     pub async fn block_riot(&self, region: &str, secs: u64) -> anyhow::Result<()> {
         let key = format!("{}:riot:{}:blocked", self.namespace, region);
-        let _: () = self.conn().set_ex(key, 1, secs.clamp(1, 120)).await?;
+        // Concurrent 429s must never shorten an existing shared backoff.
+        let millis = secs.max(1).saturating_mul(1000).min(i64::MAX as u64 / 2);
+        let _: i64 = redis::Script::new(
+            "local old=redis.call('PTTL',KEYS[1]); if old<tonumber(ARGV[1]) then redis.call('PSETEX',KEYS[1],ARGV[1],1) end; return redis.call('PTTL',KEYS[1])",
+        ).key(key).arg(millis).invoke_async(&mut self.conn()).await?;
         Ok(())
     }
     pub async fn connect(url: &str) -> anyhow::Result<Self> {

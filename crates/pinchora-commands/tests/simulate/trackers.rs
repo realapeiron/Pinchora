@@ -112,3 +112,75 @@ async fn league_card_tabs_use_short_lived_cached_data() {
     let forged = sim.component(user, "gt:short:rank", &[], &tab).await;
     assert!(forged.ephemeral && forged.content().contains("expired"), "{forged}");
 }
+
+#[tokio::test]
+async fn minecraft_cached_status_is_shared_and_failed_probes_are_not_repeated() {
+    let Some(mut sim) = Sim::new("minecraft_cached_status_is_shared_and_failed_probes_are_not_repeated").await else {
+        return;
+    };
+    let host = format!("f17-{}.example", unique());
+    let key = format!("minecraft:status:{host}:25565");
+    sim.app
+        .db
+        .tracker_cache_put(
+            &key,
+            &json!({
+                "version":"1.21", "online":4,"max":20,"motd":"<script> @everyone שלום", "favicon":null
+            }),
+        )
+        .await
+        .unwrap();
+    let fetched: String = sqlx::query_scalar("SELECT fetched_at::text FROM tracker_cache WHERE key=$1")
+        .bind(&key)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    for _ in 0..2 {
+        let user = unique();
+        let card = sim
+            .command(
+                user,
+                "game",
+                json!([group(
+                    "mc",
+                    sub(
+                        "status",
+                        vec![text_option("host", &format!("{}.:25565", host.to_uppercase()))]
+                    )
+                )]),
+            )
+            .await;
+        assert_eq!(card.files.len(), 1, "cached server rendered: {card}");
+    }
+    let unchanged: String = sqlx::query_scalar("SELECT fetched_at::text FROM tracker_cache WHERE key=$1")
+        .bind(&key)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    assert_eq!(fetched, unchanged, "a shared host must not be probed for every viewer");
+    sim.app
+        .db
+        .tracker_cache_put(&key, &serde_json::Value::Null)
+        .await
+        .unwrap();
+    let failed_at: String = sqlx::query_scalar("SELECT fetched_at::text FROM tracker_cache WHERE key=$1")
+        .bind(&key)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    let user = unique();
+    let failed = sim
+        .command(
+            user,
+            "game",
+            json!([group("mc", sub("status", vec![text_option("host", &host)]))]),
+        )
+        .await;
+    assert!(failed.ephemeral, "{failed}");
+    let unchanged: String = sqlx::query_scalar("SELECT fetched_at::text FROM tracker_cache WHERE key=$1")
+        .bind(&key)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    assert_eq!(failed_at, unchanged, "negative cache must suppress repeated probes too");
+}

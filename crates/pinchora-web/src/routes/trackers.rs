@@ -11,13 +11,18 @@ use serde_json::{Value, json};
 use crate::{
     audit::{self, Change},
     error::{ApiError, ApiJson, ApiResult},
-    extract::ManagedGuild,
+    extract::{CurrentSession, ManagedGuild},
     guild_info,
     state::WebState,
 };
 
 pub fn router() -> Router<WebState> {
     Router::new().route("/", get(show).put(save))
+}
+
+/// Authenticated personal export, independent of guild management permissions.
+pub async fn export(State(state): State<WebState>, current: CurrentSession) -> ApiResult<Json<Value>> {
+    Ok(Json(state.app.db.tracker_user_data(current.session.user_id).await?))
 }
 
 fn view(settings: &TrackerSettings, lang: pinchora_core::i18n::Lang) -> Value {
@@ -38,8 +43,8 @@ async fn show(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult
 struct Watch {
     host: String,
     channel_id: String,
-    #[serde(default)]
-    message_id: Option<String>,
+    #[serde(default, rename = "message_id")]
+    _message_id: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -86,6 +91,7 @@ async fn save(
     {
         info.check_post_channel("channel_id", channel(id, lang)?)?;
     }
+    let before = state.app.db.tracker_settings(guild).await?;
     let mut watches = Vec::new();
     for watch in body.mc_watch {
         let (host, port) =
@@ -94,9 +100,15 @@ async fn save(
         if watches.iter().any(|v: &Value| v["host"] == host) {
             return Err(ApiError::malformed(t!(lang, "trackers.invalid-settings")));
         }
-        watches.push(json!({"host":host,"channel_id":watch.channel_id,"message_id":watch.message_id}));
+        let previous = before
+            .mc_watch
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|old| old["host"] == host && old["channel_id"] == watch.channel_id)
+            .and_then(|old| old["message_id"].as_str());
+        watches.push(json!({"host":host,"channel_id":watch.channel_id,"message_id":previous}));
     }
-    let before = state.app.db.tracker_settings(guild).await?;
     let settings = TrackerSettings {
         guild_id: guild as i64,
         patch_channels: json!(body.patch_channels),
@@ -108,6 +120,8 @@ async fn save(
             .transpose()?,
     };
     state.app.db.save_tracker_settings(guild, &settings).await?;
+    // Return the authoritative message IDs, including a poller update racing this save.
+    let settings = state.app.db.tracker_settings(guild).await?;
     audit::finish(&state,&managed.current.session,Change {guild,action:"trackers.set",target:None,
         before:json!({"patch_channels":before.patch_channels,"mc_watch":before.mc_watch,"mc_news_channel_id":before.mc_news_channel_id}),
         after:json!({"patch_channels":settings.patch_channels,"mc_watch":settings.mc_watch,"mc_news_channel_id":settings.mc_news_channel_id})},

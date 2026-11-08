@@ -62,6 +62,13 @@ async fn count(db: &Db, table: &str, column: &str, user: u64) -> i64 {
 /// Fills every table that can name `user` (with `other` on the far side of the ones that name two
 /// players), deletes `user`, and checks nothing is left. Returns the columns it filled.
 async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'static str, &'static str)> {
+    db.tracker_user_cache_put(
+        user,
+        &format!("riot:privacy:{user}"),
+        &serde_json::json!({"title":"Private#TR"}),
+    )
+    .await
+    .unwrap();
     db.guild_settings(user).await.unwrap();
     db.save_riot_link(
         user,
@@ -1705,4 +1712,74 @@ async fn claims_spread_over_a_delete_pay_nothing_and_never_fail() {
         "claims that came in during a delete were paid again"
     );
     assert!(errors.is_empty(), "claims failed: {errors:#?}");
+}
+
+#[tokio::test]
+async fn tracker_unlink_erases_owned_cards_and_patch_claims_are_atomic() {
+    let Some(db) = db().await else { return };
+    let [user, other, guild] = ids();
+    let key = format!("riot:card:{user}");
+    let other_key = format!("riot:card:{other}");
+    db.tracker_user_cache_put(user, &key, &serde_json::json!({"title":"Private#TR"}))
+        .await
+        .unwrap();
+    db.tracker_user_cache_put(other, &other_key, &serde_json::json!({"title":"Other#TR"}))
+        .await
+        .unwrap();
+    db.save_riot_link(
+        user,
+        "lol",
+        &RiotLink {
+            puuid: "private".into(),
+            game_name: "Private".into(),
+            tag_line: "TR".into(),
+            region: "tr1".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let exported = db.tracker_user_data(user).await.unwrap();
+    assert_eq!(exported["riot_links"].as_array().unwrap().len(), 1);
+    assert_eq!(exported["cards"], serde_json::json!([{"title":"Private#TR"}]));
+    assert!(db.delete_riot_link(user, "lol").await.unwrap());
+    assert_eq!(
+        db.tracker_user_data(user).await.unwrap(),
+        serde_json::json!({"riot_links":[],"cards":[]})
+    );
+    assert!(db.riot_link(user, "lol").await.unwrap().is_none());
+    assert!(db.tracker_cached(&key, 300).await.unwrap().is_none());
+    assert!(db.tracker_cached(&other_key, 300).await.unwrap().is_some());
+    let destination = format!("lol:{guild}:123");
+    let (first, second) = tokio::join!(
+        db.patch_mark_seen(&destination, "release"),
+        db.patch_mark_seen(&destination, "release")
+    );
+    assert_ne!(first.unwrap(), second.unwrap());
+    assert!(!db.patch_mark_seen(&destination, "release").await.unwrap());
+    assert!(
+        db.patch_mark_seen(&format!("lol:{guild}:456"), "release")
+            .await
+            .unwrap()
+    );
+    let mut settings = db.tracker_settings(guild).await.unwrap();
+    settings.mc_watch = serde_json::json!([{"host":"example.com:25565","channel_id":"123"}]);
+    db.save_tracker_settings(guild, &settings).await.unwrap();
+    db.tracker_watch_message(guild, "example.com:25565", 456, 789)
+        .await
+        .unwrap();
+    assert!(db.tracker_settings(guild).await.unwrap().mc_watch[0]["message_id"].is_null());
+    db.tracker_watch_message(guild, "example.com:25565", 123, 789)
+        .await
+        .unwrap();
+    db.save_tracker_settings(guild, &settings).await.unwrap();
+    assert_eq!(
+        db.tracker_settings(guild).await.unwrap().mc_watch[0]["message_id"],
+        "789"
+    );
+    settings.mc_watch[0]["channel_id"] = serde_json::json!("456");
+    settings.mc_watch[0]["message_id"] = serde_json::json!("123456");
+    db.save_tracker_settings(guild, &settings).await.unwrap();
+    assert!(db.tracker_settings(guild).await.unwrap().mc_watch[0]["message_id"].is_null());
+    settings.mc_watch = serde_json::json!((0..21).map(|_| serde_json::json!({})).collect::<Vec<_>>());
+    assert!(db.save_tracker_settings(guild, &settings).await.is_err());
 }

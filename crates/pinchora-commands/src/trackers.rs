@@ -9,12 +9,72 @@ use crate::App;
 const MANIFEST: &str = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 const LAUNCHER_NEWS: &str = "https://launchercontent.mojang.com/v2/news.json";
 
+/// No redirects or ambient proxies, particularly when carrying Riot credentials.
+pub(crate) fn http_client() -> anyhow::Result<reqwest::Client> {
+    Ok(reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .timeout(Duration::from_secs(5))
+        .build()?)
+}
+
+pub(crate) async fn bounded_body(mut response: reqwest::Response, cap: usize) -> anyhow::Result<Vec<u8>> {
+    anyhow::ensure!(
+        response.content_length().is_none_or(|n| n <= cap as u64),
+        "response too large"
+    );
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        anyhow::ensure!(chunk.len() <= cap - bytes.len(), "response too large");
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
+}
+
+pub(crate) async fn mc_status(app: &App, input: &str) -> anyhow::Result<trackers::McStatus> {
+    let (host, port) = trackers::parse_host(input)?;
+    let key = format!("minecraft:status:{host}:{port}");
+    if let Some(value) = app.db.tracker_cached(&key, 300).await? {
+        return serde_json::from_value(value).map_err(Into::into);
+    }
+    // Cache failures too; one unreachable host watched by many guilds gets one probe.
+    anyhow::ensure!(
+        app.cache.try_cooldown(&key, Duration::from_secs(300)).await?.is_none(),
+        "ping pending"
+    );
+    let result = trackers::ping(input).await;
+    let value = result
+        .as_ref()
+        .ok()
+        .map(serde_json::to_value)
+        .transpose()?
+        .unwrap_or(serde_json::Value::Null);
+    app.db.tracker_cache_put(&key, &value).await?;
+    result
+}
+
+fn plain_text(input: &str, limit: usize) -> String {
+    input
+        .chars()
+        .filter(|c| {
+            (!c.is_control() || *c == '\n')
+                && !matches!(c,
+        '<' | '>' | '&' | '[' | ']' | '(' | ')' | '*' | '_' | '~' | '`' | '@' | '\\'
+        | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+        })
+        .take(limit)
+        .collect()
+}
+
 pub async fn manifest(app: &App) -> anyhow::Result<serde_json::Value> {
     if let Some(cached) = app.db.tracker_cached("minecraft:manifest", 300).await? {
         return Ok(cached);
     }
-    let bytes = app.web.get(MANIFEST).send().await?.error_for_status()?.bytes().await?;
-    anyhow::ensure!(bytes.len() <= 1024 * 1024, "manifest too large");
+    let bytes = bounded_body(
+        http_client()?.get(MANIFEST).send().await?.error_for_status()?,
+        1024 * 1024,
+    )
+    .await?;
     let value = serde_json::from_slice(&bytes)?;
     app.db.tracker_cache_put("minecraft:manifest", &value).await?;
     Ok(value)
@@ -24,15 +84,11 @@ pub async fn launcher_news(app: &App) -> anyhow::Result<serde_json::Value> {
     if let Some(cached) = app.db.tracker_cached("minecraft:news", 300).await? {
         return Ok(cached);
     }
-    let bytes = app
-        .web
-        .get(LAUNCHER_NEWS)
-        .send()
-        .await?
-        .error_for_status()?
-        .bytes()
-        .await?;
-    anyhow::ensure!(bytes.len() <= 1024 * 1024, "launcher news too large");
+    let bytes = bounded_body(
+        http_client()?.get(LAUNCHER_NEWS).send().await?.error_for_status()?,
+        1024 * 1024,
+    )
+    .await?;
     let value = serde_json::from_slice(&bytes)?;
     app.db.tracker_cache_put("minecraft:news", &value).await?;
     Ok(value)
@@ -49,11 +105,16 @@ pub fn java_news(value: &serde_json::Value) -> Vec<(String, String)> {
                 .is_some_and(|tags| tags.iter().any(|tag| tag == "Java"))
         })
         .filter_map(|entry| {
-            let title = entry["title"].as_str()?.chars().take(90).collect::<String>();
+            let title = plain_text(entry["title"].as_str()?, 90);
             let link = entry["readMoreLink"].as_str()?;
             let url = reqwest::Url::parse(link).ok()?;
-            (url.scheme() == "https" && matches!(url.host_str(), Some("www.minecraft.net" | "minecraft.net")))
-                .then_some((title, link.to_owned()))
+            (url.scheme() == "https"
+                && url.username().is_empty()
+                && url.password().is_none()
+                && url.port().is_none()
+                && link.len() <= 2048
+                && matches!(url.host_str(), Some("www.minecraft.net" | "minecraft.net")))
+            .then_some((title, link.to_owned()))
         })
         .take(3)
         .collect()
@@ -68,15 +129,13 @@ pub fn patch_link(html: &str, domain: &str) -> Option<String> {
         } else {
             href
         };
-        if path.starts_with("/en-us/news/game-updates/")
-            && path.contains("patch")
-            && path
-                .trim_end_matches('/')
-                .rsplit('/')
-                .next()
-                .is_some_and(|slug| !slug.is_empty() && slug.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
-            && !path.contains(['?', '#', '<', '>'])
-        {
+        if path.strip_prefix("/en-us/news/game-updates/").is_some_and(|slug| {
+            let slug = slug.trim_end_matches('/');
+            !slug.is_empty()
+                && slug.len() <= 180
+                && slug.contains("patch")
+                && slug.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        }) {
             return Some(format!("https://{domain}{path}"));
         }
     }
@@ -91,20 +150,27 @@ async fn post(
     url: Option<&str>,
     previous: Option<u64>,
 ) -> anyhow::Result<Option<u64>> {
-    let mut embed = serde_json::json!({"title":title,"description":description,"color":0x53c7c0});
+    let mut embed = serde_json::json!({"title":plain_text(title, 256),"description":plain_text(description, 4096),"color":0x53c7c0});
     if let Some(url) = url {
         embed["url"] = serde_json::json!(url);
     }
     let body = serde_json::to_vec(&serde_json::json!({"embeds":[embed],"allowed_mentions":{"parse":[]}}))?;
-    if let Some(message) = previous
-        && app
+    if let Some(message) = previous {
+        match app
             .http
             .update_message(Id::new(channel), Id::new(message))
             .payload_json(&body)
             .await
-            .is_ok()
-    {
-        return Ok(None);
+        {
+            Ok(_) => return Ok(None),
+            Err(error) => {
+                // A timeout/403/429 is not evidence that the old message is gone.
+                if !matches!(error.kind(), twilight_http::error::ErrorType::Response { status, .. } if status.get() == 404)
+                {
+                    return Err(error.into());
+                }
+            }
+        }
     }
     let response = app.http.create_message(Id::new(channel)).payload_json(&body).await?;
     Ok(Some(response.model().await?.id.get()))
@@ -113,12 +179,17 @@ async fn post(
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     if app
         .cache
-        .try_cooldown("trackers:poll", Duration::from_secs(290))
+        .try_cooldown("trackers:poll", Duration::from_secs(300))
         .await?
         .is_some()
     {
         return Ok(0);
     }
+    // A stalled pass cannot outlive its shared lease and overlap the next pod.
+    tokio::time::timeout(Duration::from_secs(240), tick_leased(app)).await?
+}
+
+async fn tick_leased(app: &Arc<App>) -> anyhow::Result<usize> {
     let settings = app.db.tracker_settings_all().await?;
     app.db.tracker_prune().await?;
     let mut done = 0;
@@ -134,7 +205,7 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
             ) else {
                 continue;
             };
-            let status = match trackers::ping(host).await {
+            let status = match mc_status(app, host).await {
                 Ok(status) => status,
                 Err(error) => {
                     tracing::debug!(%error,host,"Minecraft watch ping failed");
@@ -155,7 +226,9 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
             let previous = item["message_id"].as_str().and_then(|s| s.parse().ok());
             match post(app, channel, &title, &detail, None, previous).await {
                 Ok(Some(message)) => {
-                    app.db.tracker_watch_message(*guild as u64, host, message).await?;
+                    app.db
+                        .tracker_watch_message(*guild as u64, host, channel, message)
+                        .await?;
                     done += 1;
                 }
                 Ok(None) => done += 1,
@@ -187,11 +260,11 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
                     .find(|entry| entry["readMoreLink"].as_str() == Some(url.as_str()))?["id"]
                     .as_str()?
                     .to_owned();
-                Some((id, title, url))
+                (id.len() <= 256 && !id.is_empty()).then_some((id, title, url))
             }),
         ),
-        ("lol", official_patch(app, "www.leagueoflegends.com").await),
-        ("valorant", official_patch(app, "playvalorant.com").await),
+        ("lol", official_patch("www.leagueoflegends.com").await),
+        ("valorant", official_patch("playvalorant.com").await),
     ] {
         let Some((id, title, url)) = item else {
             continue;
@@ -199,7 +272,6 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
         if app.db.patch_is_seen(game, &id).await? {
             continue;
         }
-        let mut any = false;
         for config in &settings {
             let guild = &config.guild_id;
             if !app.module_allowed(*guild as u64, None, Module::GameTrackers).await {
@@ -213,38 +285,38 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
             let Some(channel) = channel else {
                 continue;
             };
+            // Persist each destination before dispatch. Discord has no durable idempotency
+            // key: after an ambiguous send/crash we prefer a missed post to duplicate spam.
+            if !app
+                .db
+                .patch_mark_seen(&format!("{game}:{guild}:{channel}"), &id)
+                .await?
+            {
+                continue;
+            }
             let lang = app.guild_lang(*guild as u64).await;
             match post(app, channel, &title, &t!(lang, "trackers.new-patch"), Some(&url), None).await {
                 Ok(_) => {
-                    any = true;
                     done += 1;
                 }
                 Err(error) => tracing::warn!(%error,guild,game,"patch post failed"),
             }
         }
-        if any {
-            app.db.patch_mark_seen(game, &id).await?;
-        }
     }
     Ok(done)
 }
 
-async fn official_patch(app: &App, domain: &str) -> Option<(String, String, String)> {
+async fn official_patch(domain: &str) -> Option<(String, String, String)> {
     let url = format!("https://{domain}/en-us/news/tags/patch-notes/");
-    let bytes = app
-        .web
+    let response = http_client()
+        .ok()?
         .get(url)
         .send()
         .await
         .ok()?
         .error_for_status()
-        .ok()?
-        .bytes()
-        .await
         .ok()?;
-    if bytes.len() > 2 * 1024 * 1024 {
-        return None;
-    }
+    let bytes = bounded_body(response, 2 * 1024 * 1024).await.ok()?;
     let link = patch_link(std::str::from_utf8(&bytes).ok()?, domain)?;
     let slug = link.trim_end_matches('/').rsplit('/').next()?.to_owned();
     Some((slug.clone(), slug.replace('-', " "), link))
@@ -266,6 +338,99 @@ pub fn spawn_ticker(app: Arc<App>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn patch_links_and_embed_text_reject_injected_markup() {
+        for path in [
+            "/en-us/news/game-updates/../evil/patch-notes",
+            "/en-us/news/game-updates/<svg>/patch-notes",
+            "/en-us/news/game-updates/patch-notes?x",
+            "/en-us/news/game-updates/patch-notes#x",
+        ] {
+            assert!(patch_link(&format!("<a href=\"{path}\">"), "playvalorant.com").is_none());
+        }
+        let text = plain_text("<img> [click](https://evil.test) @everyone\u{202e}", 256);
+        assert!(!text.contains(['<', '>', '[', ']', '@', '\u{202e}']));
+        assert_eq!(plain_text(&"猫".repeat(1000), 256).chars().count(), 256);
+    }
+
+    #[tokio::test]
+    async fn http_bodies_are_capped_before_buffering() {
+        use axum::{Router, routing::get};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, Router::new().route("/", get(|| async { "x".repeat(2048) })))
+                .await
+                .unwrap();
+        });
+        let response = http_client()
+            .unwrap()
+            .get(format!("http://{addr}/"))
+            .send()
+            .await
+            .unwrap();
+        assert!(bounded_body(response, 100).await.is_err());
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn watch_update_permission_failures_do_not_create_duplicate_messages() {
+        use axum::{
+            Router,
+            extract::Request,
+            http::{Method, StatusCode},
+        };
+        use std::sync::atomic::{AtomicU16, AtomicUsize, Ordering};
+        let (Ok(database), Ok(redis)) = (
+            std::env::var("PINCHORA_TEST_DATABASE_URL"),
+            std::env::var("PINCHORA_TEST_REDIS_URL"),
+        ) else {
+            return;
+        };
+        let db = pinchora_db::Db::connect_waiting(&database, 2, Duration::from_secs(10))
+            .await
+            .unwrap();
+        let cache = pinchora_cache::Cache::connect(&redis).await.unwrap();
+        let status = Arc::new(AtomicU16::new(403));
+        let creates = Arc::new(AtomicUsize::new(0));
+        let router = Router::new().fallback({
+            let status = status.clone();
+            let creates = creates.clone();
+            move |request: Request| {
+                let status = status.clone();
+                let creates = creates.clone();
+                async move {
+                    if request.method() == Method::POST {
+                        creates.fetch_add(1, Ordering::SeqCst);
+                    }
+                    (
+                        StatusCode::from_u16(status.load(Ordering::SeqCst)).unwrap(),
+                        axum::Json(serde_json::json!({"code":10008,"message":"test error"})),
+                    )
+                }
+            }
+        });
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router).await.unwrap();
+        });
+        let http = Arc::new(
+            twilight_http::Client::builder()
+                .token("Bot test".into())
+                .proxy(address.to_string(), true)
+                .ratelimiter(None)
+                .build(),
+        );
+        let app = App::new(http.clone(), http, Id::new(1), db, cache, "tracker-test".into());
+        assert!(post(&app, 123, "status", "online", None, Some(456)).await.is_err());
+        assert_eq!(creates.load(Ordering::SeqCst), 0, "403 is not a deleted message");
+        status.store(404, Ordering::SeqCst);
+        assert!(post(&app, 123, "status", "online", None, Some(456)).await.is_err());
+        assert_eq!(creates.load(Ordering::SeqCst), 1, "only 404 allows replacement");
+        server.abort();
+    }
+
     #[test]
     fn patch_link_ignores_external_hosts() {
         let html = "<a href=\"https://evil.test/en-us/news/game-updates/fake-patch/\">x</a><a href=\"/en-us/news/game-updates/league-patch-26-21-notes\">real</a>";

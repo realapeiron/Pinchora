@@ -15,6 +15,35 @@ fn unique() -> String {
 }
 
 #[tokio::test]
+async fn riot_retry_after_is_not_capped_or_shortened() {
+    let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
+        return;
+    };
+    let scope = format!(
+        "riot_backoff_{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    let cache = Cache::connect_scoped(&url, &scope).await.unwrap();
+    let other = Cache::connect_scoped(&url, &scope).await.unwrap();
+    cache.block_riot("europe", 600).await.unwrap();
+    other.block_riot("europe", 1).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(1100)).await;
+    assert!(!other.reserve_riot("europe").await.unwrap());
+    let client = redis::Client::open(url).unwrap();
+    let mut conn = client.get_multiplexed_async_connection().await.unwrap();
+    let db = client.get_connection_info().redis_settings().db();
+    let ttl: i64 = redis::cmd("TTL")
+        .arg(format!("pinchora:{scope}:db{db}:riot:europe:blocked"))
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert!(ttl > 590, "{ttl}");
+}
+
+#[tokio::test]
 async fn riot_windows_are_atomic_across_cache_clones() {
     let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
         return;

@@ -20,6 +20,11 @@ pub struct RiotLink {
 }
 
 impl Db {
+    /// Export only the caller's tracker records; API credentials are never stored here.
+    pub async fn tracker_user_data(&self, user: u64) -> anyhow::Result<Value> {
+        Ok(sqlx::query_scalar("SELECT jsonb_build_object('riot_links', COALESCE((SELECT jsonb_agg(to_jsonb(r)) FROM riot_links r WHERE user_id=$1), '[]'::jsonb), 'cards', COALESCE((SELECT jsonb_agg(payload) FROM tracker_cache WHERE user_id=$1), '[]'::jsonb))")
+            .bind(sql_id(user)).fetch_one(self.pool()).await?)
+    }
     pub async fn tracker_prune(&self) -> anyhow::Result<()> {
         sqlx::query("DELETE FROM tracker_cache WHERE fetched_at < now() - interval '1 day'")
             .execute(self.pool())
@@ -33,9 +38,15 @@ impl Db {
                 .await?,
         )
     }
-    pub async fn tracker_watch_message(&self, guild: u64, host: &str, message_id: u64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE tracker_settings SET mc_watch=(SELECT coalesce(jsonb_agg(CASE WHEN item->>'host'=$2 THEN jsonb_set(item,'{message_id}',to_jsonb($3::text)) ELSE item END ORDER BY ordinal), '[]'::jsonb) FROM jsonb_array_elements(mc_watch) WITH ORDINALITY AS x(item,ordinal)) WHERE guild_id=$1")
-            .bind(sql_id(guild)).bind(host).bind(message_id.to_string()).execute(self.pool()).await?;
+    pub async fn tracker_watch_message(
+        &self,
+        guild: u64,
+        host: &str,
+        channel: u64,
+        message_id: u64,
+    ) -> anyhow::Result<()> {
+        sqlx::query("UPDATE tracker_settings SET mc_watch=(SELECT coalesce(jsonb_agg(CASE WHEN item->>'host'=$2 AND item->>'channel_id'=$4 THEN jsonb_set(item,'{message_id}',to_jsonb($3::text)) ELSE item END ORDER BY ordinal), '[]'::jsonb) FROM jsonb_array_elements(mc_watch) WITH ORDINALITY AS x(item,ordinal)) WHERE guild_id=$1")
+            .bind(sql_id(guild)).bind(host).bind(message_id.to_string()).bind(channel.to_string()).execute(self.pool()).await?;
         Ok(())
     }
     pub async fn tracker_settings(&self, guild: u64) -> anyhow::Result<TrackerSettings> {
@@ -53,7 +64,13 @@ impl Db {
         }))
     }
     pub async fn save_tracker_settings(&self, guild: u64, settings: &TrackerSettings) -> anyhow::Result<()> {
-        sqlx::query("INSERT INTO tracker_settings(guild_id,patch_channels,mc_watch,mc_news_channel_id) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id) DO UPDATE SET patch_channels=$2,mc_watch=$3,mc_news_channel_id=$4")
+        anyhow::ensure!(
+            settings.mc_watch.as_array().is_some_and(|w| w.len() <= 20),
+            "watch limit"
+        );
+        // Message ownership is server-side, including bot commands. Repeating a watch
+        // or racing a settings edit must not discard the poller's persisted message ID.
+        sqlx::query("INSERT INTO tracker_settings(guild_id,patch_channels,mc_watch,mc_news_channel_id) VALUES($1,$2,(SELECT coalesce(jsonb_agg(item-'message_id'),'[]'::jsonb) FROM jsonb_array_elements($3::jsonb) item),$4) ON CONFLICT(guild_id) DO UPDATE SET patch_channels=$2,mc_watch=(SELECT coalesce(jsonb_agg((item-'message_id') || jsonb_build_object('message_id',(SELECT old->'message_id' FROM jsonb_array_elements(tracker_settings.mc_watch) old WHERE old->>'host'=item->>'host' AND old->>'channel_id'=item->>'channel_id' LIMIT 1))),'[]'::jsonb) FROM jsonb_array_elements($3::jsonb) item),mc_news_channel_id=$4")
             .bind(sql_id(guild)).bind(&settings.patch_channels).bind(&settings.mc_watch).bind(settings.mc_news_channel_id)
             .execute(self.pool()).await?;
         Ok(())
@@ -74,13 +91,25 @@ impl Db {
         Ok(())
     }
     pub async fn delete_riot_link(&self, user: u64, game: &str) -> anyhow::Result<bool> {
-        Ok(sqlx::query("DELETE FROM riot_links WHERE user_id=$1 AND game=$2")
+        let mut tx = self.pool().begin().await?;
+        let deleted = sqlx::query("DELETE FROM riot_links WHERE user_id=$1 AND game=$2")
             .bind(sql_id(user))
             .bind(game)
-            .execute(self.pool())
+            .execute(&mut *tx)
             .await?
             .rows_affected()
-            > 0)
+            > 0;
+        sqlx::query("DELETE FROM tracker_cache WHERE user_id=$1")
+            .bind(sql_id(user))
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(deleted)
+    }
+    pub async fn tracker_user_cache_put(&self, user: u64, key: &str, value: &Value) -> anyhow::Result<()> {
+        sqlx::query("INSERT INTO tracker_cache(key,user_id,payload) VALUES($1,$2,$3) ON CONFLICT(key) DO UPDATE SET user_id=$2,payload=$3,fetched_at=now()")
+            .bind(key).bind(sql_id(user)).bind(value).execute(self.pool()).await?;
+        Ok(())
     }
     pub async fn tracker_cached(&self, key: &str, max_age_secs: i64) -> anyhow::Result<Option<Value>> {
         Ok(sqlx::query_scalar(
