@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY assets/sprites/atlas.png assets/sprites/atlas.json /src/assets/sprites/
 COPY assets/reef/looks/ /src/assets/reef/looks/
 COPY crates/pinchora-render/src/character/palette.rs /src/crates/pinchora-render/src/character/
-COPY content/accessories.json /src/content/
+COPY content/ /src/content/
 COPY web/ ./
 RUN npm run build
 
