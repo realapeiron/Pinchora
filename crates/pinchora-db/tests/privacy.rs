@@ -26,12 +26,35 @@ async fn db() -> Option<Db> {
 /// Ids unique per run, and larger than any earlier run's, so the suite can run repeatedly
 /// against one database.
 fn ids<const N: usize>() -> [u64; N] {
-    let base = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as u64
-        >> 4;
+    use std::sync::{
+        LazyLock,
+        atomic::{AtomicU64, Ordering},
+    };
+    static NEXT: LazyLock<AtomicU64> = LazyLock::new(|| {
+        AtomicU64::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64
+                >> 4,
+        )
+    });
+    let base = NEXT.fetch_add(N as u64, Ordering::Relaxed);
     std::array::from_fn(|i| base + i as u64)
+}
+
+#[test]
+fn fixture_id_batches_never_overlap() {
+    let first: [u64; 1000] = ids();
+    let second: [u64; 1000] = ids();
+    assert_eq!(
+        first
+            .into_iter()
+            .chain(second)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        2000
+    );
 }
 
 /// Postgres keeps microseconds, so a time that is compared with one it stored is cut to them.
@@ -94,6 +117,18 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         .await
         .unwrap();
     db.guild_settings(guild).await.unwrap();
+    sqlx::query("INSERT INTO member_voice_levels (guild_id,user_id,xp) VALUES ($1,$2,1)")
+        .bind(guild as i64)
+        .bind(user as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    db.add_reaction_xp(guild, user, user, 5, NaiveDate::from_ymd_opt(2026, 1, 5).unwrap())
+        .await
+        .unwrap();
+    db.schedule_level_reset(guild, user, Utc::now() + Duration::minutes(5))
+        .await
+        .unwrap();
     db.set_birthday(
         user,
         &pinchora_db::BirthdayInput {

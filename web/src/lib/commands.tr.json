@@ -25,10 +25,15 @@
               "description": "Kimin sırası (varsayılan: sen)",
               "name": "user",
               "required": false
+            },
+            {
+              "description": "Yazı seviyesi yerine ayrı ses seviyesini göster",
+              "name": "voice",
+              "required": false
             }
           ],
           "path": "rank",
-          "usage": "/rank [user]"
+          "usage": "/rank [user] [voice]"
         },
         {
           "aliases": [],
@@ -40,6 +45,7 @@
                 "Bu sunucu (XP)",
                 "Bu sunucu (puan)",
                 "Haftalık XP",
+                "Ses XP'si",
                 "Haftalık av",
                 "Dünya (XP)",
                 "Dünya (kabuk)"
@@ -6779,6 +6785,37 @@
         },
         {
           "aliases": [
+            "config xp curve"
+          ],
+          "description": "Seviye XP eğrisini seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "classic, linear, mee6 ya da custom",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Seviye başına temel XP",
+              "name": "base",
+              "required": false
+            },
+            {
+              "description": "Doğrusal XP katsayısı",
+              "name": "linear",
+              "required": false
+            },
+            {
+              "description": "Karesel XP katsayısı",
+              "name": "quadratic",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-curve",
+          "usage": "/progression leveling xp-curve <kind> [base] [linear] [quadratic]"
+        },
+        {
+          "aliases": [
             "config xp multiplier"
           ],
           "description": "Bir kanalın ya da rolün kazandığı XP ve puanı ölçekle",
@@ -6805,6 +6842,27 @@
         },
         {
           "aliases": [
+            "config xp public"
+          ],
+          "description": "Haftalık özet kanalını ve liderlik bağlantısını ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Haftalık özet kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Herkese açık bağlantı yolu; kaldırmak için off",
+              "name": "slug",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-public",
+          "usage": "/progression leveling xp-public [channel] [slug]"
+        },
+        {
+          "aliases": [
             "config xp show"
           ],
           "description": "Çarpanları ve ses XP'si ayarlarını gösterir",
@@ -6812,6 +6870,93 @@
           "options": [],
           "path": "progression leveling xp-show",
           "usage": "/progression leveling xp-show"
+        },
+        {
+          "aliases": [
+            "config xp sources"
+          ],
+          "description": "XP kaynaklarını ve ayrılınca sıfırlamayı ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesajlardan XP kazan",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Tepkilerden XP kazan",
+              "name": "reactions",
+              "required": false
+            },
+            {
+              "description": "Uygun ses süresinden XP kazan",
+              "name": "voice",
+              "required": false
+            },
+            {
+              "description": "Uzun veya ekli mesajlara bonus ver",
+              "name": "effort",
+              "required": false
+            },
+            {
+              "description": "Desteklenen oylamalara XP ver",
+              "name": "votes",
+              "required": false
+            },
+            {
+              "description": "Ayrı bir ses seviyesi tut",
+              "name": "separate_voice_level",
+              "required": false
+            },
+            {
+              "description": "Üye ayrılınca sunucu XP'sini sıfırla",
+              "name": "reset_on_leave",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-sources",
+          "usage": "/progression leveling xp-sources [messages] [reactions] [voice] [effort] [votes] [separate_voice_level] [reset_on_leave]"
+        },
+        {
+          "aliases": [
+            "config xp tuning"
+          ],
+          "description": "XP miktarlarını ve mesaj bekleme süresini ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj başına en az XP",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "Mesaj başına en çok XP",
+              "name": "max",
+              "required": false
+            },
+            {
+              "description": "XP veren mesajlar arasındaki saniye",
+              "name": "cooldown",
+              "required": false
+            },
+            {
+              "description": "Tepki başına XP",
+              "name": "reaction",
+              "required": false
+            },
+            {
+              "description": "Çaba bonusu XP",
+              "name": "effort",
+              "required": false
+            },
+            {
+              "description": "Desteklenen oy başına XP",
+              "name": "vote",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-tuning",
+          "usage": "/progression leveling xp-tuning [min] [max] [cooldown] [reaction] [effort] [vote]"
         },
         {
           "aliases": [
@@ -6833,6 +6978,53 @@
           ],
           "path": "progression leveling xp-voice",
           "usage": "/progression leveling xp-voice [enabled] [amount]"
+        },
+        {
+          "aliases": [
+            "config xp voice-role-add"
+          ],
+          "description": "Ses seviyesinde rol ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Rolü kazandıran ses seviyesi",
+              "name": "level",
+              "required": true
+            },
+            {
+              "description": "Verilecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "progression leveling xp-voice-role-add",
+          "usage": "/progression leveling xp-voice-role-add <level> <role>"
+        },
+        {
+          "aliases": [
+            "config xp voice-role-list"
+          ],
+          "description": "Ses seviyesi rollerini listele",
+          "manager": true,
+          "options": [],
+          "path": "progression leveling xp-voice-role-list",
+          "usage": "/progression leveling xp-voice-role-list"
+        },
+        {
+          "aliases": [
+            "config xp voice-role-remove"
+          ],
+          "description": "Ses seviyesi rolünü kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kaldırılacak rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "progression leveling xp-voice-role-remove",
+          "usage": "/progression leveling xp-voice-role-remove <role>"
         },
         {
           "aliases": [
@@ -7320,5 +7512,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 381
+  "count": 388
 }

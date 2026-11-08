@@ -19,6 +19,7 @@ mod guilds;
 mod house;
 mod invites;
 mod leveling;
+mod leveling_parity;
 mod me;
 mod mod_parity;
 mod moderation;
@@ -74,6 +75,7 @@ pub fn router(state: WebState) -> Router {
     let public = Router::new()
         .route("/api/public/landing", get(site::landing))
         .route("/api/public/status", get(site::status))
+        .route("/api/public/leaderboard/{slug}", get(leveling_parity::public_board))
         .nest("/api/public/stats", stats::public_router())
         .route_layer(middleware::from_fn_with_state(
             state.clone(),

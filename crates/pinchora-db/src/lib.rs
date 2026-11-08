@@ -23,6 +23,7 @@ mod house_read;
 mod interactions;
 mod invites;
 mod language;
+mod leveling_parity;
 mod locks;
 mod logs;
 mod members;
@@ -95,6 +96,7 @@ pub use house::{
 };
 pub use interactions::Tally;
 pub use invites::{GuildInvite, InviteJoin, InviteObservation, InviteScore, InviteSettings, JoinCredit};
+pub use leveling_parity::VoiceLevelRole;
 pub use locks::conflict_retries;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use moderation::{

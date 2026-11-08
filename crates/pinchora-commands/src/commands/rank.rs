@@ -1,4 +1,7 @@
-use pinchora_core::{leveling, t};
+use pinchora_core::{
+    leveling::{self, LevelReward},
+    t,
+};
 use pinchora_game::Content;
 use pinchora_render::{NextRole, RankCard};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -18,6 +21,8 @@ use crate::{
 pub struct Rank {
     /// Whose rank to show (default: you)
     user: Option<ResolvedUser>,
+    /// Show the separate voice level instead of chat level
+    voice: Option<bool>,
 }
 
 impl Rank {
@@ -36,12 +41,31 @@ impl Rank {
             return Ok(());
         }
         let db = &cx.app.db;
-        let (xp, rank) = match db.member_rank(guild, user.id.get()).await? {
-            Some(m) => (m.xp, m.rank),
-            None => (0, db.guild_member_count(guild).await? + 1),
+        let voice = self.voice.unwrap_or(false);
+        let (xp, rank) = if voice {
+            db.voice_level_rank(guild, user.id.get()).await?
+        } else {
+            match db.member_rank(guild, user.id.get()).await? {
+                Some(m) => (m.xp, m.rank),
+                None => (0, db.guild_member_count(guild).await? + 1),
+            }
         };
-        let progress = leveling::progress(xp);
-        let next_role = roles::next_role(&cx.app, guild, progress.level).await?;
+        let progress = db.leveling_parity(guild).await?.progress(xp);
+        let next_role = if voice {
+            let rewards: Vec<LevelReward> = db
+                .voice_level_roles(guild)
+                .await?
+                .into_iter()
+                .map(|r| LevelReward {
+                    level: r.level as u32,
+                    role_id: r.role_id as u64,
+                })
+                .collect();
+            leveling::next_reward(&rewards, progress.level)
+                .map(|reward| (format!("<@&{}>", reward.role_id), reward.level))
+        } else {
+            roles::next_role(&cx.app, guild, progress.level).await?
+        };
         let avatar = cx.app.avatar(&user, RankCard::AVATAR_SIZE, Some(50)).await;
         let row = db.user(user.id.get()).await?;
         let background = row.background.as_deref().and_then(|id| Content::get().background(id));
@@ -69,6 +93,7 @@ impl Rank {
                 })
             })
             .await?;
-        cx.reply_png("rank.png", png).await
+        cx.reply_png(if voice { "voice-rank.png" } else { "rank.png" }, png)
+            .await
     }
 }

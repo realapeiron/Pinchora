@@ -108,13 +108,35 @@ impl Db {
         grants: &[(u64, i64)],
         week: NaiveDate,
     ) -> anyhow::Result<Vec<(u64, XpGain)>> {
+        self.add_voice_xp_mode(guild_id, grants, week, false).await
+    }
+
+    /// Voice XP with its own level ledger, leaving message level XP untouched.
+    pub async fn add_separate_voice_xp(
+        &self,
+        guild_id: u64,
+        grants: &[(u64, i64)],
+        week: NaiveDate,
+    ) -> anyhow::Result<Vec<(u64, XpGain)>> {
+        self.add_voice_xp_mode(guild_id, grants, week, true).await
+    }
+
+    async fn add_voice_xp_mode(
+        &self,
+        guild_id: u64,
+        grants: &[(u64, i64)],
+        week: NaiveDate,
+        separate: bool,
+    ) -> anyhow::Result<Vec<(u64, XpGain)>> {
         if grants.is_empty() {
             return Ok(Vec::new());
         }
+        // Voice levels reference the guild row; direct grants may arrive before settings are read.
+        self.guild_settings(guild_id).await?;
         let users: Vec<i64> = grants.iter().map(|(user, _)| sql_id(*user)).collect();
         let amounts: Vec<i64> = grants.iter().map(|(_, xp)| *xp).collect();
         let rows = retry("add_voice_xp", || {
-            self.add_voice_xp_once(guild_id, &users, &amounts, week)
+            self.add_voice_xp_once(guild_id, &users, &amounts, week, (true, separate), None)
         })
         .await?;
         Ok(rows
@@ -131,6 +153,44 @@ impl Db {
             .collect())
     }
 
+    /// Grants event XP without counting a message, global XP, or voice time.
+    pub async fn add_event_xp(&self, guild: u64, user: u64, amount: i64, week: NaiveDate) -> anyhow::Result<XpGain> {
+        anyhow::ensure!((1..=25_000).contains(&amount), "event XP out of range");
+        let users = [sql_id(user)];
+        let amounts = [amount];
+        let rows = retry("add_event_xp", || {
+            self.add_voice_xp_once(guild, &users, &amounts, week, (false, false), None)
+        })
+        .await?;
+        let (_, new_xp, _) = rows.into_iter().next().expect("one positive grant");
+        Ok(XpGain {
+            old_xp: new_xp - amount,
+            new_xp,
+        })
+    }
+
+    /// Award a reaction once per member/message, atomically with its durable receipt.
+    pub async fn add_reaction_xp(
+        &self,
+        guild: u64,
+        user: u64,
+        message: u64,
+        amount: i64,
+        week: NaiveDate,
+    ) -> anyhow::Result<Option<XpGain>> {
+        anyhow::ensure!((1..=25_000).contains(&amount), "event XP out of range");
+        let users = [sql_id(user)];
+        let amounts = [amount];
+        let rows = retry("add_reaction_xp", || {
+            self.add_voice_xp_once(guild, &users, &amounts, week, (false, false), Some(message))
+        })
+        .await?;
+        Ok(rows.first().map(|(_, xp, amount)| XpGain {
+            old_xp: xp - amount,
+            new_xp: *xp,
+        }))
+    }
+
     /// One attempt of [`Db::add_voice_xp`]: (user, XP now, XP added) per member.
     async fn add_voice_xp_once(
         &self,
@@ -138,15 +198,31 @@ impl Db {
         users: &[i64],
         amounts: &[i64],
         week: NaiveDate,
+        mode: (bool, bool),
+        reaction: Option<u64>,
     ) -> anyhow::Result<Vec<(i64, i64, i64)>> {
+        let (voice, separate) = mode;
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, users).await?;
+        sqlx::query("INSERT INTO users (id) SELECT UNNEST($1::BIGINT[]) ON CONFLICT DO NOTHING")
+            .bind(users)
+            .execute(&mut *tx)
+            .await?;
+        if let Some(message) = reaction {
+            let claimed = sqlx::query("INSERT INTO leveling_reaction_awards (guild_id, user_id, message_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING")
+                .bind(sql_id(guild_id)).bind(users[0]).bind(sql_id(message))
+                .execute(&mut *tx).await?.rows_affected();
+            if claimed == 0 {
+                tx.commit().await?;
+                return Ok(Vec::new());
+            }
+        }
         let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
             "WITH g AS (
                  SELECT * FROM UNNEST($2::BIGINT[], $3::BIGINT[]) AS t(user_id, amount) WHERE amount > 0
              ), m AS (
                  INSERT INTO members (guild_id, user_id, xp, last_xp_at)
-                 SELECT $1, user_id, amount, now() FROM g
+                 SELECT $1, user_id, amount, now() FROM g WHERE NOT $6::BOOLEAN
                  ON CONFLICT (guild_id, user_id) DO UPDATE
                  SET xp = members.xp + EXCLUDED.xp, last_xp_at = now()
                  RETURNING user_id, xp
@@ -158,13 +234,21 @@ impl Db {
                  INSERT INTO activity_monthly (user_id, month, xp)
                  SELECT user_id, date_trunc('month', now() AT TIME ZONE 'UTC')::date, amount FROM g
                  ON CONFLICT (user_id, month) DO UPDATE SET xp = activity_monthly.xp + EXCLUDED.xp
+             ), v AS (
+                 INSERT INTO member_voice_levels (guild_id, user_id, xp)
+                 SELECT $1, user_id, amount FROM g WHERE $5::BOOLEAN
+                 ON CONFLICT (guild_id, user_id) DO UPDATE SET xp = member_voice_levels.xp + EXCLUDED.xp
+                 RETURNING user_id, xp
              )
-             SELECT m.user_id, m.xp, g.amount FROM m JOIN g USING (user_id)",
+             SELECT g.user_id, CASE WHEN $6 THEN v.xp ELSE m.xp END, g.amount
+             FROM g LEFT JOIN m USING (user_id) LEFT JOIN v USING (user_id)",
         )
         .bind(sql_id(guild_id))
         .bind(users)
         .bind(amounts)
         .bind(week)
+        .bind(voice)
+        .bind(separate)
         .fetch_all(&mut *tx)
         .await?;
         tx.commit().await?;

@@ -80,6 +80,8 @@ mod birthdays;
 mod branding;
 #[path = "api/events.rs"]
 mod events;
+#[path = "api/leveling_parity.rs"]
+mod leveling_parity;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 #[path = "api/trackers.rs"]
@@ -133,6 +135,7 @@ type Account = (Value, Vec<Value>);
 /// What the mock Discord knows: users by access token, the codes it handed out, where the bot is.
 #[derive(Clone, Default)]
 struct Mock {
+    absent_leveling_members: Arc<Mutex<HashSet<(u64, u64)>>>,
     /// Access token → the account.
     users: Arc<Mutex<HashMap<String, Account>>>,
     /// Authorization code → (access token, the PKCE challenge it was issued for).
@@ -458,8 +461,19 @@ async fn discord(
             }
             (StatusCode::OK, roles.to_string())
         }
-        (&Method::GET, [.., "guilds", _, "members", user]) => {
+        (&Method::GET, [.., "guilds", guild, "members", user]) => {
             let user = user.parse::<u64>().unwrap_or(0);
+            if mock
+                .absent_leveling_members
+                .lock()
+                .unwrap()
+                .contains(&(guild.parse().unwrap(), user))
+            {
+                return (
+                    StatusCode::NOT_FOUND,
+                    json!({"message":"Unknown Member","code":10007}).to_string(),
+                );
+            }
             let roles = if user == APPLICATION_ID {
                 vec![BOT_ROLE]
             } else {

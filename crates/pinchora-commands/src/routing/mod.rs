@@ -12,7 +12,7 @@ use twilight_model::{
     guild::Permissions,
 };
 
-pub const COMPLETED_SLICE: u8 = 19;
+pub const COMPLETED_SLICE: u8 = 20;
 pub const PROJECTED_ROOTS: usize = 73;
 pub const FUTURE_ROOT_RESERVE: usize = 3;
 

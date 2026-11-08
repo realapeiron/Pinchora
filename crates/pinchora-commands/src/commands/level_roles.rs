@@ -1,10 +1,6 @@
 use std::time::{Duration, Instant};
 
-use pinchora_core::{
-    i18n::Lang,
-    leveling::{LevelReward, level_of},
-    settings, t,
-};
+use pinchora_core::{i18n::Lang, leveling::LevelReward, settings, t};
 use pinchora_db::MAX_LEVEL_ROLES;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -343,8 +339,16 @@ async fn sync_with(
                 continue;
             }
         };
-        let (added, removed) =
-            roles::apply_level_roles(app, guild, user, level_of(member.value), &current, rewards, stack).await;
+        let (added, removed) = roles::apply_level_roles(
+            app,
+            guild,
+            user,
+            app.db.leveling_parity(guild).await?.level_of(member.value),
+            &current,
+            rewards,
+            stack,
+        )
+        .await;
         if added.len() + removed > 0 {
             report.updated += 1;
         }

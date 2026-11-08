@@ -1,6 +1,6 @@
 //! `/info`: Discord objects on compact pixel cards.
 
-use pinchora_core::{leveling, t};
+use pinchora_core::t;
 use pinchora_render::{InfoCard, InfoRow, Theme};
 use serde_json::Value;
 use std::{sync::LazyLock, time::Duration};
@@ -367,7 +367,10 @@ async fn user_card(cx: &Cx, guild: u64, user: User, member: Value, page: usize, 
     } else {
         let xp = cx.app.db.member_rank(guild, id).await?.map_or(0, |r| r.xp);
         let profile = cx.app.db.user(id).await?;
-        rows.push(row(t!(cx.lang(), "info.level"), leveling::level_of(xp).to_string()));
+        rows.push(row(
+            t!(cx.lang(), "info.level"),
+            cx.app.leveling_parity(guild).await?.level_of(xp).to_string(),
+        ));
         rows.push(row(
             t!(cx.lang(), "info.badges"),
             customize::worn_badges(&cx.app, id, &profile).await?.len().to_string(),

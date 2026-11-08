@@ -14,6 +14,7 @@ use pinchora_cache::Cache;
 use pinchora_core::{
     automod::Config as AutoModConfig,
     leveling::XpRules,
+    leveling_parity::LevelingParity,
     modules::{Access, GuildModules, Module},
 };
 use pinchora_db::{Db, GuildSettings};
@@ -415,6 +416,11 @@ impl App {
             .try_get_with(guild_id, async { self.db.xp_rules(guild_id).await.map(Arc::new) })
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Read the authoritative policy so curve changes are consistent across pods.
+    pub async fn leveling_parity(&self, guild_id: u64) -> anyhow::Result<Arc<LevelingParity>> {
+        self.db.leveling_parity(guild_id).await.map(Arc::new)
     }
 
     pub async fn forget_xp_rules(&self, guild_id: u64) {

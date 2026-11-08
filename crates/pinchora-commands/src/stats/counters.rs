@@ -6,7 +6,6 @@
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use pinchora_core::{
-    leveling::level_of,
     modules::Module,
     server_stats::{CounterKind, MEMBER_LIST_MAX, counter_name, rename_due},
 };
@@ -242,10 +241,13 @@ pub(crate) async fn values(
             CounterKind::Fish => app.db.guild_fish(guild).await.map_or(Value::Unknown, Value::Number),
             CounterKind::LevelAvg => match app.db.guild_xp(guild).await {
                 Ok(xp) if xp.is_empty() => Value::Number(0),
-                Ok(xp) => {
-                    let total: f64 = xp.iter().map(|x| f64::from(level_of(*x))).sum();
-                    Value::Number((total / xp.len() as f64).round() as i64)
-                }
+                Ok(xp) => match app.leveling_parity(guild).await {
+                    Ok(policy) => {
+                        let total: f64 = xp.iter().map(|x| f64::from(policy.level_of(*x))).sum();
+                        Value::Number((total / xp.len() as f64).round() as i64)
+                    }
+                    Err(_) => Value::Unknown,
+                },
                 Err(_) => Value::Unknown,
             },
         };

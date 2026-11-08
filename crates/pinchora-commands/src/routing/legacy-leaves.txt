@@ -99,9 +99,16 @@ config warn-ladder
 config welcome
 config welcome-card
 config xp clear
+config xp curve
 config xp multiplier
+config xp public
 config xp show
+config xp sources
+config xp tuning
 config xp voice
+config xp voice-role-add
+config xp voice-role-list
+config xp voice-role-remove
 counters add
 counters list
 counters remove

@@ -133,7 +133,7 @@ The rejected payload's item 59 was `/setup`: **25,276** characters. `/mod` was *
 | `/safety` | moderation, automod, verification, antinuke |
 | `/community` | tickets, starboard, events, birthdays, utility (including voice), server (suggestions/plaza) |
 | `/integrations` | feeds, stats, invites |
-| `/progression` | leveling, economy, achievements |
+| `/progression` | leveling (23 actions including curve, sources, tuning, voice roles and public board), economy, achievements |
 
 All 330 actions remain reachable. Old 95-root slash registrations are handled by the e814163
 runtime: `commands::dispatch` retains every legacy typed model and `routing::adapt` passes old

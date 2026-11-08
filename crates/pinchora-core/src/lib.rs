@@ -8,6 +8,7 @@ pub mod feeds;
 pub mod i18n;
 pub mod items;
 pub mod leveling;
+pub mod leveling_parity;
 pub mod logging;
 pub mod moderation;
 pub mod modules;

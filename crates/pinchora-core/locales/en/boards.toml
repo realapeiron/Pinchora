@@ -2,6 +2,7 @@
 # Card labels are drawn in capitals in a pixel font: keep them short.
 
 [leaderboard]
+voice = "Voice XP"
 server = "Server leaderboard"
 weekly = "Weekly XP"
 catch = "Weekly catch"

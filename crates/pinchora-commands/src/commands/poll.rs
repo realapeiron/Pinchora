@@ -256,6 +256,24 @@ async fn vote(cx: &Cx, poll: &PollRow, choice: usize) -> anyhow::Result<()> {
     };
     let user = cx.author()?.id.get();
     let outcome = cx.app.db.vote_poll(poll.id, user, choice, cx.app.now()).await?;
+    if outcome == PollVote::Cast {
+        let held: Vec<u64> = cx
+            .interaction
+            .member
+            .as_ref()
+            .map(|m| m.roles.iter().map(|r| r.get()).collect())
+            .unwrap_or_default();
+        crate::leveling_parity::award_vote(
+            &cx.app,
+            poll.guild_id as u64,
+            user,
+            poll.channel_id as u64,
+            &held,
+            "poll",
+            poll.id,
+        )
+        .await;
+    }
     tell(
         cx,
         match outcome {

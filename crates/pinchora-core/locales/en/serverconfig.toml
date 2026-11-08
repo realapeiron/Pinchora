@@ -55,7 +55,7 @@ log-current = "Server log: {summary}"
 [xp]
 no-xp = "{subject} · **no XP**"
 multiplied = "{subject} · **×{multiplier}**"
-voice-summary = "**{state}** · {amount} XP a minute with company, not while muted and deafened or in the AFK channel"
+voice-summary = "**{state}** · {amount} XP a minute with company, not while muted or deafened or in the AFK channel"
 voice-leveling-off = "\n> Leveling is off, so nobody earns XP. Turn it on with `/progression leveling settings`."
 pick-one = "Pick a channel **or** a role to set the multiplier for."
 normal-again = "{subject} earns normal XP and points again."

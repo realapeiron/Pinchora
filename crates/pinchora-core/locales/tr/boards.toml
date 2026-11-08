@@ -2,6 +2,7 @@
 # Card labels are drawn in capitals in a pixel font: keep them short.
 
 [leaderboard]
+voice = "Ses XP'si"
 server = "Sunucu sıralaması"
 weekly = "Haftalık XP"
 catch = "Haftalık av"

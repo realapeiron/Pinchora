@@ -134,6 +134,11 @@ impl Db {
             .bind(sql_id(role_id))
             .execute(&mut *tx)
             .await?;
+        sqlx::query("DELETE FROM voice_level_roles WHERE guild_id = $1 AND role_id = $2")
+            .bind(sql_id(guild_id))
+            .bind(sql_id(role_id))
+            .execute(&mut *tx)
+            .await?;
         sqlx::query("DELETE FROM rep_roles WHERE guild_id = $1 AND role_id = $2")
             .bind(sql_id(guild_id))
             .bind(sql_id(role_id))

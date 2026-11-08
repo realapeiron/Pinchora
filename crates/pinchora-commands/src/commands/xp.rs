@@ -1,17 +1,19 @@
 //! `/config xp`: multipliers and no-XP channels and roles, and voice XP.
 
+use pinchora_core::leveling_parity::{Curve, LevelingParity};
 use pinchora_core::{i18n::Lang, settings, t};
-use pinchora_db::{GuildSettings, MAX_XP_RULES, XpTarget};
+use pinchora_db::{GuildSettings, MAX_LEVEL_ROLES, MAX_XP_RULES, XpTarget};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     application::interaction::InteractionChannel,
     channel::message::MessageFlags,
+    guild::Role,
     http::interaction::InteractionResponseData,
     id::{Id, marker::RoleMarker},
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 
-use crate::{Cx, util::BRAND};
+use crate::{Cx, roles, util::BRAND};
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "xp", desc = "XP multipliers, no-XP channels and roles, and voice XP")]
@@ -25,6 +27,20 @@ pub enum ConfigXp {
     Show(XpShow),
     #[command(name = "voice")]
     Voice(XpVoice),
+    #[command(name = "curve")]
+    Curve(XpCurve),
+    #[command(name = "sources")]
+    Sources(XpSources),
+    #[command(name = "tuning")]
+    Tuning(XpTuning),
+    #[command(name = "public")]
+    Public(XpPublic),
+    #[command(name = "voice-role-add")]
+    VoiceRoleAdd(XpVoiceRoleAdd),
+    #[command(name = "voice-role-remove")]
+    VoiceRoleRemove(XpVoiceRoleRemove),
+    #[command(name = "voice-role-list")]
+    VoiceRoleList(XpVoiceRoleList),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -61,6 +77,88 @@ pub struct XpVoice {
     #[command(min_value = 1, max_value = 100)]
     amount: Option<i64>,
 }
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "curve", desc = "Choose the level XP curve")]
+pub struct XpCurve {
+    /// classic, linear, mee6 or custom
+    kind: String,
+    /// Base XP per level
+    #[command(min_value = 10, max_value = 100000)]
+    base: Option<i64>,
+    /// Linear XP coefficient
+    #[command(min_value = 0, max_value = 10000)]
+    linear: Option<i64>,
+    /// Quadratic XP coefficient
+    #[command(min_value = 0, max_value = 1000)]
+    quadratic: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "sources", desc = "Switch XP sources and leave reset")]
+pub struct XpSources {
+    /// Award XP for messages
+    messages: Option<bool>,
+    /// Award XP for reactions
+    reactions: Option<bool>,
+    /// Award XP for eligible voice time
+    voice: Option<bool>,
+    /// Bonus for long or attached messages
+    effort: Option<bool>,
+    /// Award XP for votes where supported
+    votes: Option<bool>,
+    /// Track a separate voice level
+    separate_voice_level: Option<bool>,
+    /// Reset server XP when a member leaves
+    reset_on_leave: Option<bool>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "tuning", desc = "Set XP amounts and message cooldown")]
+pub struct XpTuning {
+    /// Minimum XP per message
+    min: Option<i64>,
+    /// Maximum XP per message
+    max: Option<i64>,
+    /// Seconds between XP messages
+    cooldown: Option<i64>,
+    /// XP per reaction
+    reaction: Option<i64>,
+    /// Bonus XP for effort
+    effort: Option<i64>,
+    /// XP per supported vote
+    vote: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "public", desc = "Set highlights channel and leaderboard URL")]
+pub struct XpPublic {
+    /// Channel for weekly highlights
+    channel: Option<InteractionChannel>,
+    /// Lowercase path for the public leaderboard; off to remove
+    slug: Option<String>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "voice-role-add", desc = "Give a role at a voice level")]
+pub struct XpVoiceRoleAdd {
+    /// Voice level that earns the role
+    #[command(min_value = 1, max_value = 1000)]
+    level: i64,
+    /// Role to give
+    role: Role,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "voice-role-remove", desc = "Remove a voice level role")]
+pub struct XpVoiceRoleRemove {
+    /// Role to remove
+    role: Id<RoleMarker>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "voice-role-list", desc = "List voice level roles")]
+pub struct XpVoiceRoleList;
 
 /// What a channel or role is called in a reply.
 fn subject(target: XpTarget, id: u64) -> String {
@@ -106,8 +204,159 @@ impl ConfigXp {
             Self::Clear(c) => clear(cx, guild, c).await,
             Self::Show(_) => show(cx, guild).await,
             Self::Voice(c) => voice(cx, guild, c).await,
+            Self::Curve(c) => {
+                parity_change(cx, guild, move |p| {
+                    p.curve = match c.kind.as_str() {
+                        "classic" => Curve::Classic,
+                        "mee6" => Curve::Mee6,
+                        "linear" => Curve::Linear {
+                            base: c.base.unwrap_or(100) as u64,
+                            per_level: c.linear.unwrap_or(50) as u64,
+                        },
+                        "custom" => Curve::Polynomial {
+                            base: c.base.unwrap_or(100) as u64,
+                            linear: c.linear.unwrap_or(50) as u64,
+                            quadratic: c.quadratic.unwrap_or(5) as u64,
+                        },
+                        _ => return Err("Choose classic, linear, mee6 or custom."),
+                    };
+                    Ok(())
+                })
+                .await
+            }
+            Self::Sources(c) => {
+                parity_change(cx, guild, move |p| {
+                    if let Some(v) = c.messages {
+                        p.messages = v;
+                    }
+                    if let Some(v) = c.reactions {
+                        p.reactions = v;
+                    }
+                    if let Some(v) = c.voice {
+                        p.voice = v;
+                    }
+                    if let Some(v) = c.effort {
+                        p.effort = v;
+                    }
+                    if let Some(v) = c.votes {
+                        p.votes = v;
+                    }
+                    if let Some(v) = c.separate_voice_level {
+                        p.separate_voice_level = v;
+                    }
+                    if let Some(v) = c.reset_on_leave {
+                        p.reset_on_leave = v;
+                    }
+                    Ok(())
+                })
+                .await
+            }
+            Self::Tuning(c) => {
+                parity_change(cx, guild, move |p| {
+                    if let Some(v) = c.min {
+                        p.message_min = v;
+                    }
+                    if let Some(v) = c.max {
+                        p.message_max = v;
+                    }
+                    if let Some(v) = c.cooldown {
+                        p.message_cooldown_secs = v as u64;
+                    }
+                    if let Some(v) = c.reaction {
+                        p.reaction_xp = v;
+                    }
+                    if let Some(v) = c.effort {
+                        p.effort_bonus = v;
+                    }
+                    if let Some(v) = c.vote {
+                        p.vote_xp = v;
+                    }
+                    Ok(())
+                })
+                .await
+            }
+            Self::Public(c) => {
+                if c.channel.as_ref().is_some_and(|channel| {
+                    !matches!(
+                        channel.kind,
+                        twilight_model::channel::ChannelType::GuildText
+                            | twilight_model::channel::ChannelType::GuildAnnouncement
+                    )
+                }) {
+                    return cx.reply_ephemeral(t!(cx.lang(), "xp.parity-invalid")).await;
+                }
+                parity_change(cx, guild, move |p| {
+                    if let Some(channel) = c.channel {
+                        p.highlights_channel_id = Some(channel.id.get().to_string());
+                    }
+                    if let Some(slug) = c.slug {
+                        p.vanity_slug = (slug != "off").then_some(slug);
+                    }
+                    Ok(())
+                })
+                .await
+            }
+            Self::VoiceRoleAdd(c) => {
+                let level = match settings::check_level(c.level) {
+                    Ok(level) => level,
+                    Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
+                };
+                if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
+                    return cx.reply_ephemeral(why).await;
+                }
+                if !cx.app.db.add_voice_level_role(guild, c.role.id.get(), level).await? {
+                    return cx
+                        .reply_ephemeral(t!(cx.lang(), "level-roles.full", max = MAX_LEVEL_ROLES))
+                        .await;
+                }
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    "xp.voice-role-added",
+                    level = level,
+                    role = c.role.id.get()
+                ))
+                .await
+            }
+            Self::VoiceRoleRemove(c) => {
+                let removed = cx.app.db.remove_voice_level_role(guild, c.role.get()).await?;
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    if removed {
+                        "xp.voice-role-removed"
+                    } else {
+                        "xp.voice-role-missing"
+                    },
+                    role = c.role.get()
+                ))
+                .await
+            }
+            Self::VoiceRoleList(_) => {
+                let rows = cx.app.db.voice_level_roles(guild).await?;
+                let text = if rows.is_empty() {
+                    t!(cx.lang(), "xp.voice-roles-empty")
+                } else {
+                    rows.iter()
+                        .map(|r| t!(cx.lang(), "xp.voice-role-row", level = r.level, role = r.role_id))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                };
+                cx.reply_ephemeral(text).await
+            }
         }
     }
+}
+
+async fn parity_change(
+    cx: &Cx,
+    guild: u64,
+    change: impl FnOnce(&mut LevelingParity) -> Result<(), &'static str>,
+) -> anyhow::Result<()> {
+    let mut policy = cx.app.db.leveling_parity(guild).await?;
+    if change(&mut policy).and_then(|()| policy.validate()).is_err() {
+        return cx.reply_ephemeral(t!(cx.lang(), "xp.parity-invalid")).await;
+    }
+    cx.app.db.save_leveling_parity(guild, &policy).await?;
+    cx.reply_ephemeral(t!(cx.lang(), "xp.parity-saved")).await
 }
 
 async fn multiplier(cx: &Cx, guild: u64, c: XpMultiplier) -> anyhow::Result<()> {
