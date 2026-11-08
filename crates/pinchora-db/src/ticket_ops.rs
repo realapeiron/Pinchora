@@ -254,7 +254,9 @@ impl Db {
             "INSERT INTO ticket_operation_settings (guild_id, support_timezone, support_hours, out_of_hours_message,
                     status_channel_id, status_message_id, close_timeout_hours) VALUES ($1,$2,$3,$4,$5,$6,$7)
              ON CONFLICT (guild_id) DO UPDATE SET support_timezone=$2, support_hours=$3,
-                    out_of_hours_message=$4, status_channel_id=$5, status_message_id=$6,
+                    out_of_hours_message=$4, status_channel_id=$5,
+                    status_message_id=CASE WHEN ticket_operation_settings.status_channel_id IS NOT DISTINCT FROM $5
+                        THEN ticket_operation_settings.status_message_id ELSE NULL END,
                     close_timeout_hours=$7, updated_at=now()",
         )
         .bind(sql_id(guild))
@@ -365,18 +367,6 @@ impl Db {
         Ok(done.rows_affected() == 1)
     }
 
-    pub async fn mark_ticket_force_opened(&self, ticket: i64, by: u64) -> anyhow::Result<()> {
-        sqlx::query(
-            "INSERT INTO ticket_operations(ticket_id,force_opened_by) VALUES($1,$2)
-            ON CONFLICT(ticket_id) DO UPDATE SET force_opened_by=$2,updated_at=now()",
-        )
-        .bind(ticket)
-        .bind(sql_id(by))
-        .execute(self.pool())
-        .await?;
-        Ok(())
-    }
-
     pub async fn transfer_ticket(&self, ticket: i64, user: Option<u64>, role: Option<u64>) -> anyhow::Result<bool> {
         let mut tx = self.pool().begin().await?;
         if let Some(user) = user {
@@ -444,13 +434,19 @@ impl Db {
     }
 
     pub async fn cancel_ticket_close_request(&self, ticket: i64) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT id FROM tickets WHERE id=$1 FOR UPDATE")
+            .bind(ticket)
+            .execute(&mut *tx)
+            .await?;
         let done = sqlx::query(
             "UPDATE ticket_operations SET close_requested_by=NULL, close_requested_at=NULL,
             close_request_expires_at=NULL WHERE ticket_id=$1 AND close_request_expires_at IS NOT NULL",
         )
         .bind(ticket)
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(done.rows_affected() == 1)
     }
 
@@ -547,6 +543,40 @@ impl Db {
         .execute(self.pool())
         .await?;
         Ok(())
+    }
+
+    /// Compare-and-swap makes each form page single-use, including the final page.
+    pub async fn advance_ticket_form_draft(
+        &self,
+        guild: u64,
+        user: u64,
+        panel: i64,
+        topic: i32,
+        answers: &serde_json::Value,
+        expected: i32,
+    ) -> anyhow::Result<bool> {
+        let parsed: Vec<pinchora_core::tickets::Answer> = serde_json::from_value(answers.clone())?;
+        anyhow::ensure!(
+            parsed.len() <= pinchora_core::tickets::MAX_QUESTIONS
+                && parsed
+                    .iter()
+                    .all(|a| a.answer.chars().count() <= usize::from(pinchora_core::tickets::ANSWER_MAX)),
+            "invalid ticket answers"
+        );
+        let done = sqlx::query(
+            "UPDATE ticket_form_drafts SET answers=$5,step=step+1
+            WHERE guild_id=$1 AND user_id=$2 AND panel_id=$3 AND topic_index=$4
+            AND step=$6 AND expires_at>now()",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .bind(panel)
+        .bind(topic)
+        .bind(answers)
+        .bind(expected)
+        .execute(self.pool())
+        .await?;
+        Ok(done.rows_affected() == 1)
     }
 
     pub async fn ticket_form_draft(

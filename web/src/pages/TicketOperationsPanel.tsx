@@ -2,26 +2,23 @@ import { useState } from "react";
 import { translate as spaTranslate } from "../i18n";
 import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
-import { useTicketNotes, useTicketOperationAction, useTicketOperations } from "../lib/tickets-v2";
+import { useTicketNotes, useTicketOperationAction, useTicketOperations } from "../lib/ticket-operations";
 import { type Ticket, when } from "../lib/tickets";
 import { Problem } from "./States";
 
 export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket: Ticket }) {
   const [replyText, setReplyText] = useState("");
-  const [noteText, setNoteText] = useState("");
   const claim = useTicketOperationAction(guild, ticket.id, "claim");
   const unclaim = useTicketOperationAction(guild, ticket.id, "unclaim");
   const reply = useTicketOperationAction(guild, ticket.id, "reply");
-  const note = useTicketOperationAction(guild, ticket.id, "notes");
-  const notes = useTicketNotes(guild, ticket.id);
   const ops = useTicketOperations(guild, ticket.id);
   const active = ticket.state !== "closed";
-  const failure = claim.error ?? unclaim.error ?? reply.error ?? note.error;
+  const failure = claim.error ?? unclaim.error ?? reply.error ?? ops.error;
 
   return (
     <Panel title={spaTranslate("STAFF OPERATIONS")}>
       {failure && <Problem error={failure} />}
-      <div className="tk-v2-state">
+      <div className="tk-operations-state">
         <span>
           {spaTranslate("Priority")}: <strong>{spaTranslate(ops.data?.priority ?? "normal")}</strong>
         </span>
@@ -45,7 +42,7 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
         )}
       </div>
       {active && (
-        <div className="tk-v2-actions">
+        <div className="tk-operations-actions">
           {ticket.claimed_by ? (
             <PixelButton
               variant="secondary"
@@ -67,7 +64,7 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
       )}
       {active && (
         <form
-          className="tk-v2-form"
+          className="tk-operations-form"
           onSubmit={(event) => {
             event.preventDefault();
             reply.mutate(replyText.trim(), { onSuccess: () => setReplyText("") });
@@ -87,8 +84,21 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
           </PixelButton>
         </form>
       )}
+      <PrivateNotes guild={guild} ticket={ticket.id} />
+    </Panel>
+  );
+}
+
+function PrivateNotes({ guild, ticket }: { guild: string; ticket: string }) {
+  const [noteText, setNoteText] = useState("");
+  const note = useTicketOperationAction(guild, ticket, "notes");
+  const notes = useTicketNotes(guild, ticket);
+  if (notes.error) return <Problem error={notes.error} />;
+  return (
+    <>
+      {note.error && <Problem error={note.error} />}
       <form
-        className="tk-v2-form"
+        className="tk-operations-form"
         onSubmit={(event) => {
           event.preventDefault();
           note.mutate(noteText.trim(), { onSuccess: () => setNoteText("") });
@@ -111,7 +121,7 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
         </PixelButton>
       </form>
       {notes.data && notes.data.items.length > 0 && (
-        <ol className="tk-v2-notes">
+        <ol className="tk-operations-notes">
           {notes.data.items.map((item) => (
             <li key={item.id}>
               <span className="muted">
@@ -122,6 +132,6 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
           ))}
         </ol>
       )}
-    </Panel>
+    </>
   );
 }

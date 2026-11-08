@@ -37,7 +37,7 @@ use crate::{
     state::WebState,
 };
 
-mod v2;
+mod operations;
 
 /// Tickets one page of the list holds.
 const PAGE: i64 = 50;
@@ -46,7 +46,7 @@ const CATEGORY: u8 = 4;
 
 pub fn router() -> Router<WebState> {
     Router::new()
-        .nest("/v2", v2::router())
+        .nest("/operations", operations::router())
         .route("/", get(overview))
         .route("/settings", put(put_settings))
         .route("/panels", post(create_panel))

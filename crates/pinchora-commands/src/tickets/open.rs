@@ -1,6 +1,10 @@
 //! Opening a ticket: a panel's button or menu (`tk:`), its form (`tf:`) when it has one, then the
 //! ticket's channel or private thread, the welcome message inside and the log line.
 
+mod forms;
+use forms::ask;
+pub(crate) use forms::on_form;
+
 use std::{str::Split, time::Duration};
 
 use chrono::{Datelike, Timelike, Utc};
@@ -174,79 +178,106 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>, values: &[Strin
     };
     let ops = cx.app.db.ticket_panel_operations(panel.id).await?;
     if !matches!(action, Some("c" | "f" | "n")) && !ops.faq.is_empty() {
-        let Some(faq) = ops.faq.get(faq_page) else {
-            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
-        };
-        let mut text = t!(cx.lang(), "tickets.v2.faq-intro");
-        text.push_str(&format!(
-            "\n\n{}\n**{}**\n{}",
-            t!(
-                cx.lang(),
-                "tickets.v2.faq-position",
-                current = faq_page + 1,
-                total = ops.faq.len()
-            ),
-            scrub_value(&faq.question),
-            scrub_value(&faq.answer)
-        ));
-        let page_id = |page: usize| {
-            source.map_or_else(
-                || format!("tk:v:{}:{index}:{page}", panel.id),
-                |(channel, message)| format!("tk:v:{}:{index}:{page}:{channel}:{message}", panel.id),
-            )
-        };
-        let mut buttons = Vec::new();
-        if faq_page > 0 {
-            buttons.push(button(
-                page_id(faq_page - 1),
-                &t!(cx.lang(), "tickets.v2.faq-previous"),
-                None,
-                ButtonStyle::Secondary,
-                false,
-            ));
-        }
-        if faq_page + 1 < ops.faq.len() {
-            buttons.push(button(
-                page_id(faq_page + 1),
-                &t!(cx.lang(), "tickets.v2.faq-next"),
-                None,
-                ButtonStyle::Secondary,
-                false,
-            ));
-        }
-        buttons.push(button(
-            source.map_or_else(
-                || format!("tk:c:{}:{index}", panel.id),
-                |(channel, message)| format!("tk:n:{}:{index}:{channel}:{message}", panel.id),
-            ),
-            &t!(cx.lang(), "tickets.v2.continue"),
-            None,
-            ButtonStyle::Primary,
-            false,
-        ));
-        return cx.reply(private(text, vec![row(buttons)])).await;
+        return show_faq(cx, &panel, index, &ops, faq_page, source).await;
     }
     if let Some(blocked) = eligibility(cx, &ops).await? {
         return tell(cx, blocked).await;
     }
-    if action == Some("f") {
-        let Some(guild) = cx.guild_id() else {
-            return Ok(());
-        };
-        let Some((_, step)) = cx
+    if !panel.questions.is_empty() {
+        let guild = cx
+            .guild_id()
+            .ok_or_else(|| anyhow::anyhow!("ticket form outside guild"))?;
+        let saved = cx
             .app
             .db
             .ticket_form_draft(guild, cx.author()?.id.get(), panel.id, index as i32)
-            .await?
-        else {
+            .await?;
+        if action == Some("f") && saved.is_none() {
             return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+        }
+        let step = match saved {
+            Some((_, step)) if (step as usize) * 5 < panel.questions.len() => step as usize,
+            _ => {
+                cx.app
+                    .db
+                    .save_ticket_form_draft(
+                        guild,
+                        cx.author()?.id.get(),
+                        panel.id,
+                        index as i32,
+                        &serde_json::json!([]),
+                        0,
+                    )
+                    .await?;
+                0
+            }
         };
-        return ask(cx, &panel, index, &panel.questions, step as usize, source).await;
-    }
-    if !panel.questions.is_empty() {
-        return ask(cx, &panel, index, &panel.questions, 0, source).await;
+        return ask(cx, &panel, index, &panel.questions, step, source).await;
     }
     open(cx, &panel, topic, with_source(cx, Vec::new(), source)).await
+}
+
+async fn show_faq(
+    cx: &Cx,
+    panel: &TicketPanel,
+    index: usize,
+    ops: &TicketPanelOperations,
+    faq_page: usize,
+    source: Option<(u64, u64)>,
+) -> anyhow::Result<()> {
+    let faq_page = faq_page.min(ops.faq.len().saturating_sub(1));
+    let Some(faq) = ops.faq.get(faq_page) else {
+        return tell(cx, t!(cx.lang(), "tickets.expired")).await;
+    };
+    let mut text = t!(cx.lang(), "tickets.v2.faq-intro");
+    text.push_str(&format!(
+        "\n\n{}\n**{}**\n{}",
+        t!(
+            cx.lang(),
+            "tickets.v2.faq-position",
+            current = faq_page + 1,
+            total = ops.faq.len()
+        ),
+        scrub_value(&faq.question),
+        scrub_value(&faq.answer)
+    ));
+    let page_id = |page: usize| {
+        source.map_or_else(
+            || format!("tk:v:{}:{index}:{page}", panel.id),
+            |(channel, message)| format!("tk:v:{}:{index}:{page}:{channel}:{message}", panel.id),
+        )
+    };
+    let mut buttons = Vec::new();
+    if faq_page > 0 {
+        buttons.push(button(
+            page_id(faq_page - 1),
+            &t!(cx.lang(), "tickets.v2.faq-previous"),
+            None,
+            ButtonStyle::Secondary,
+            false,
+        ));
+    }
+    if faq_page + 1 < ops.faq.len() {
+        buttons.push(button(
+            page_id(faq_page + 1),
+            &t!(cx.lang(), "tickets.v2.faq-next"),
+            None,
+            ButtonStyle::Secondary,
+            false,
+        ));
+    }
+    buttons.push(button(
+        source.map_or_else(
+            || format!("tk:c:{}:{index}", panel.id),
+            |(channel, message)| format!("tk:n:{}:{index}:{channel}:{message}", panel.id),
+        ),
+        &t!(cx.lang(), "tickets.v2.continue"),
+        None,
+        ButtonStyle::Primary,
+        false,
+    ));
+    let text = text.chars().take(2000).collect::<String>();
+    cx.reply(private(text, vec![row(buttons)])).await
 }
 
 fn parse_panel_topic<'a>(parts: &mut impl Iterator<Item = &'a str>) -> Option<(i64, usize)> {
@@ -271,110 +302,6 @@ fn with_source(cx: &Cx, mut answers: Vec<Answer>, source: Option<(u64, u64)>) ->
         });
     }
     answers
-}
-
-/// The form a panel asks before a ticket opens, as `tf:<panel>:<topic>`.
-pub(crate) async fn on_form(cx: &Cx, mut parts: Split<'_, char>, fields: &[(String, String)]) -> anyhow::Result<()> {
-    let picked = parts
-        .next()
-        .and_then(|p| p.parse::<i64>().ok())
-        .zip(parts.next().and_then(|t| t.parse::<usize>().ok()));
-    let step = parts.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-    let source = parse_source(&mut parts);
-    let Some((panel, topic)) = picked else {
-        return tell(cx, t!(cx.lang(), "tickets.expired")).await;
-    };
-    let Some((panel, topic)) = usable(cx, panel, topic).await? else {
-        return Ok(());
-    };
-    let ops = cx.app.db.ticket_panel_operations(panel.id).await?;
-    if let Some(blocked) = eligibility(cx, &ops).await? {
-        return tell(cx, blocked).await;
-    }
-    let start = step * 5;
-    let answers: Vec<Answer> = panel
-        .questions
-        .iter()
-        .skip(start)
-        .take(5)
-        .enumerate()
-        .filter_map(|(n, question)| {
-            let answer = fields
-                .iter()
-                .find(|(id, _)| *id == question_id(n))
-                .map(|(_, value)| value.trim().chars().take(ANSWER_MAX as usize).collect::<String>())?;
-            (!answer.is_empty()).then(|| Answer {
-                question: question.label.clone(),
-                answer,
-            })
-        })
-        .collect();
-    let guild = cx
-        .guild_id()
-        .ok_or_else(|| anyhow::anyhow!("ticket form outside guild"))?;
-    let user = cx.author()?.id.get();
-    let mut all = if step == 0 {
-        Vec::new()
-    } else {
-        let Some((saved, expected)) = cx
-            .app
-            .db
-            .ticket_form_draft(
-                guild,
-                user,
-                panel.id,
-                panel.topics.iter().position(|t| t == &topic).unwrap_or_default() as i32,
-            )
-            .await?
-        else {
-            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
-        };
-        if expected != step as i32 {
-            return tell(cx, t!(cx.lang(), "tickets.expired")).await;
-        }
-        serde_json::from_value::<Vec<Answer>>(saved)?
-    };
-    all.extend(answers);
-    let index = panel.topics.iter().position(|t| t == &topic).unwrap_or_default();
-    if start + 5 < panel.questions.len() {
-        let next = step + 1;
-        cx.app
-            .db
-            .save_ticket_form_draft(
-                guild,
-                user,
-                panel.id,
-                index as i32,
-                &serde_json::to_value(&all)?,
-                next as i32,
-            )
-            .await?;
-        return cx
-            .reply(private(
-                t!(
-                    cx.lang(),
-                    "tickets.v2.next-step",
-                    current = next,
-                    total = panel.questions.len().div_ceil(5)
-                ),
-                vec![row(vec![button(
-                    source.map_or_else(
-                        || format!("tk:f:{}:{index}", panel.id),
-                        |(channel, message)| format!("tk:f:{}:{index}:{channel}:{message}", panel.id),
-                    ),
-                    &t!(cx.lang(), "tickets.v2.continue"),
-                    None,
-                    ButtonStyle::Primary,
-                    false,
-                )])],
-            ))
-            .await;
-    }
-    cx.app
-        .db
-        .delete_ticket_form_draft(guild, user, panel.id, index as i32)
-        .await?;
-    open(cx, &panel, topic, with_source(cx, all, source)).await
 }
 
 async fn eligibility(cx: &Cx, ops: &TicketPanelOperations) -> anyhow::Result<Option<String>> {
@@ -433,93 +360,6 @@ async fn usable(cx: &Cx, panel: i64, topic: usize) -> anyhow::Result<Option<(Tic
         return Ok(None);
     };
     Ok(Some((panel, topic)))
-}
-
-#[allow(deprecated)] // TextInput::label: the Label around it carries the label now
-async fn ask(
-    cx: &Cx,
-    panel: &TicketPanel,
-    topic: usize,
-    questions: &[Question],
-    step: usize,
-    source: Option<(u64, u64)>,
-) -> anyhow::Result<()> {
-    let fields = questions
-        .iter()
-        .skip(step * 5)
-        .take(5)
-        .enumerate()
-        .map(|(n, question)| {
-            let input = if question.upload {
-                Component::FileUpload(FileUpload {
-                    custom_id: question_id(n),
-                    id: None,
-                    max_values: Some(1),
-                    min_values: Some(u8::from(question.required)),
-                    required: Some(question.required),
-                    file_types: None,
-                })
-            } else if !question.choices.is_empty() {
-                Component::SelectMenu(SelectMenu {
-                    channel_types: None,
-                    custom_id: question_id(n),
-                    default_values: None,
-                    disabled: false,
-                    id: None,
-                    kind: SelectMenuType::Text,
-                    max_values: Some(1),
-                    min_values: Some(u8::from(question.required)),
-                    options: Some(
-                        question
-                            .choices
-                            .iter()
-                            .map(|choice| SelectMenuOption {
-                                default: false,
-                                description: None,
-                                emoji: None,
-                                label: choice.clone(),
-                                value: choice.clone(),
-                            })
-                            .collect(),
-                    ),
-                    placeholder: Some(question.placeholder.clone()).filter(|s| !s.is_empty()),
-                    required: Some(question.required),
-                })
-            } else {
-                Component::TextInput(TextInput {
-                    custom_id: question_id(n),
-                    id: None,
-                    label: None,
-                    max_length: Some(ANSWER_MAX),
-                    min_length: question.required.then_some(1),
-                    placeholder: Some(question.placeholder.clone()).filter(|p| !p.trim().is_empty()),
-                    required: Some(question.required),
-                    style: if question.long {
-                        TextInputStyle::Paragraph
-                    } else {
-                        TextInputStyle::Short
-                    },
-                    value: None,
-                })
-            };
-            Component::Label(Label {
-                component: Box::new(input),
-                description: None,
-                id: None,
-                label: question
-                    .label
-                    .chars()
-                    .take(pinchora_core::tickets::QUESTION_MAX)
-                    .collect(),
-            })
-        })
-        .collect();
-    let title: String = single_line(&panel.title).chars().take(45).collect();
-    let id = source.map_or_else(
-        || format!("tf:{}:{topic}:{step}", panel.id),
-        |(channel, message)| format!("tf:{}:{topic}:{step}:{channel}:{message}", panel.id),
-    );
-    cx.modal(id, &title, fields).await
 }
 
 /// The Redis key of a member's wait between two tickets of one server.
@@ -641,6 +481,7 @@ async fn create(
     }
     let ticket = match opened {
         TicketOpen::Opened(ticket) => *ticket,
+        TicketOpen::Cooldown { seconds } => return Ok(Err(t!(lang, "tickets.wait", secs = seconds))),
         TicketOpen::TooMany { open } => {
             let ops = app.db.ticket_panel_operations(panel.id).await?;
             return Ok(Err(if ops.overflow_message.is_empty() {
@@ -902,4 +743,40 @@ pub(crate) fn welcome_embed(ticket: &Ticket, text: &str, answers: &[Answer], lan
 /// A log entry: a coloured embed with a title and a line or two.
 pub(crate) fn log_embed(color: u32, title: String, text: String) -> Embed {
     EmbedBuilder::new().color(color).title(title).description(text).build()
+}
+
+#[cfg(test)]
+mod support_hours_tests {
+    use super::*;
+    #[test]
+    fn support_hours_follow_local_weekdays_and_both_dst_transitions() {
+        let settings = pinchora_db::TicketOperationSettings {
+            support_timezone: "America/New_York".into(),
+            support_hours: vec![pinchora_db::SupportWindow {
+                day: 7,
+                start: 60,
+                end: 120,
+            }],
+            ..Default::default()
+        };
+        for utc in ["2026-11-01T05:30:00Z", "2026-11-01T06:30:00Z", "2026-03-08T06:30:00Z"] {
+            assert!(!outside_support_hours(&settings, utc.parse().unwrap()), "{utc}");
+        }
+        for utc in ["2026-11-01T07:00:00Z", "2026-03-08T07:00:00Z", "2026-11-02T06:30:00Z"] {
+            assert!(outside_support_hours(&settings, utc.parse().unwrap()), "{utc}");
+        }
+        let settings = pinchora_db::TicketOperationSettings {
+            support_timezone: "Europe/Istanbul".into(),
+            support_hours: vec![pinchora_db::SupportWindow {
+                day: 1,
+                start: 0,
+                end: 60,
+            }],
+            ..settings
+        };
+        assert!(!outside_support_hours(
+            &settings,
+            "2026-11-08T21:30:00Z".parse().unwrap()
+        ));
+    }
 }

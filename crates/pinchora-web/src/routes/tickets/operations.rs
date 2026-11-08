@@ -1,4 +1,4 @@
-//! V2 ticket operations. The guild router maps every path here to W7's community area.
+//! Ticket operations protected by the community dashboard area and live ticket staff permissions.
 
 use axum::{
     Json, Router,
@@ -43,14 +43,76 @@ fn bad(message: impl Into<String>) -> ApiError {
     ApiError::malformed(message.into())
 }
 
-async fn owned_ticket(state: &WebState, guild: u64, id: i64) -> ApiResult<Ticket> {
-    state
+async fn owned_ticket(state: &WebState, managed: &ManagedGuild, id: i64) -> ApiResult<Ticket> {
+    let guild = managed.id;
+    let ticket = state
         .app
         .db
         .ticket(id)
         .await?
         .filter(|ticket| ticket.guild_id as u64 == guild)
-        .ok_or_else(ApiError::not_found)
+        .ok_or_else(ApiError::not_found)?;
+    require_staff(state, managed, &ticket).await?;
+    Ok(ticket)
+}
+
+async fn require_staff(state: &WebState, managed: &ManagedGuild, ticket: &Ticket) -> ApiResult<()> {
+    use twilight_model::guild::Permissions;
+    let actor = Id::new(managed.current.session.user_id);
+    let guild = Id::new(managed.id);
+    let member = state
+        .app
+        .http
+        .guild_member(guild, actor)
+        .await
+        .map_err(|_| ApiError::not_manager())?
+        .model()
+        .await
+        .map_err(|_| ApiError::not_manager())?;
+    let roles = state
+        .app
+        .http
+        .roles(guild)
+        .await
+        .map_err(|_| ApiError::not_manager())?
+        .models()
+        .await
+        .map_err(|_| ApiError::not_manager())?;
+    let support = match ticket.panel_id {
+        Some(id) => state
+            .app
+            .db
+            .ticket_panel(id)
+            .await?
+            .map(|p| p.support_roles)
+            .unwrap_or_default(),
+        None => Vec::new(),
+    };
+    let staff = roles.iter().any(|role| {
+        (role.id.get() == managed.id || member.roles.contains(&role.id))
+            && (role
+                .permissions
+                .intersects(Permissions::ADMINISTRATOR | Permissions::MANAGE_GUILD | Permissions::MANAGE_CHANNELS)
+                || support.contains(&(role.id.get() as i64)))
+    });
+    if staff {
+        return Ok(());
+    }
+    let owner = state
+        .app
+        .http
+        .guild(guild)
+        .await
+        .map_err(|_| ApiError::not_manager())?
+        .model()
+        .await
+        .map_err(|_| ApiError::not_manager())?
+        .owner_id;
+    if actor == owner {
+        Ok(())
+    } else {
+        Err(ApiError::not_manager())
+    }
 }
 
 async fn owned_panel(state: &WebState, guild: u64, id: i64) -> ApiResult<()> {
@@ -365,7 +427,7 @@ async fn operations(
     managed: ManagedGuild,
     Path(RouteId { id, .. }): Path<RouteId>,
 ) -> ApiResult<Json<Value>> {
-    owned_ticket(&state, managed.id, id).await?;
+    owned_ticket(&state, &managed, id).await?;
     let ops = state.app.db.ticket_operations(id).await?;
     Ok(Json(json!({
         "priority": ops.priority,
@@ -385,7 +447,10 @@ async fn notes(
     managed: ManagedGuild,
     Path(RouteId { id, .. }): Path<RouteId>,
 ) -> ApiResult<Json<Value>> {
-    owned_ticket(&state, managed.id, id).await?;
+    let ticket = owned_ticket(&state, &managed, id).await?;
+    if ticket.opener_id as u64 == managed.current.session.user_id {
+        return Err(ApiError::not_manager());
+    }
     let notes = state.app.db.ticket_staff_notes(id).await?;
     Ok(Json(json!({ "items": notes.into_iter().map(|note| json!({
         "id": note.id.to_string(), "author_id": note.author_id.to_string(),
@@ -405,7 +470,10 @@ async fn add_note(
     Path(RouteId { id, .. }): Path<RouteId>,
     ApiJson(body): ApiJson<TextBody>,
 ) -> ApiResult<Json<Value>> {
-    owned_ticket(&state, managed.id, id).await?;
+    let ticket = owned_ticket(&state, &managed, id).await?;
+    if ticket.opener_id as u64 == managed.current.session.user_id {
+        return Err(ApiError::not_manager());
+    }
     let text = body.text.trim();
     if text.is_empty() || text.chars().count() > 2000 {
         return Err(bad("Note must be 1–2000 characters."));
@@ -436,7 +504,7 @@ async fn claim(
     managed: ManagedGuild,
     Path(RouteId { id, .. }): Path<RouteId>,
 ) -> ApiResult<Json<Value>> {
-    owned_ticket(&state, managed.id, id).await?;
+    owned_ticket(&state, &managed, id).await?;
     let actor = managed.current.session.user_id;
     if !state.app.db.claim_ticket(id, actor).await? {
         return Err(ApiError::new(
@@ -462,7 +530,7 @@ async fn unclaim(
     managed: ManagedGuild,
     Path(RouteId { id, .. }): Path<RouteId>,
 ) -> ApiResult<Json<Value>> {
-    owned_ticket(&state, managed.id, id).await?;
+    owned_ticket(&state, &managed, id).await?;
     let actor = managed.current.session.user_id;
     if !state.app.db.unclaim_ticket_by(id, actor).await? {
         return Err(ApiError::new(
@@ -489,7 +557,7 @@ async fn reply(
     Path(RouteId { id, .. }): Path<RouteId>,
     ApiJson(body): ApiJson<TextBody>,
 ) -> ApiResult<Json<Value>> {
-    let ticket = owned_ticket(&state, managed.id, id).await?;
+    let ticket = owned_ticket(&state, &managed, id).await?;
     if !ticket.is_open() {
         return Err(ApiError::new(
             StatusCode::CONFLICT,

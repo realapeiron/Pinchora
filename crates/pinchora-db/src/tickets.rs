@@ -227,7 +227,12 @@ pub enum TicketOpen {
     /// The ticket has its number; its channel comes next ([`Db::set_ticket_place`]).
     Opened(Box<Ticket>),
     /// The member already has `open` tickets open, the most the server allows.
-    TooMany { open: i64 },
+    TooMany {
+        open: i64,
+    },
+    Cooldown {
+        seconds: i64,
+    },
 }
 
 /// Which tickets a list shows.
@@ -510,45 +515,8 @@ impl Db {
         if open >= i64::from(new.max_open) {
             return Ok(TicketOpen::TooMany { open });
         }
-        if let Some(panel) = new.panel_id {
-            let limits: Option<(i32, i32, Option<i64>)> = sqlx::query_as(
-                "SELECT COALESCE(o.max_open_per_panel, 0), COALESCE(o.max_open_per_category, 0),
-                    COALESCE(p.open_category_id, s.open_category_id)
-                 FROM ticket_panels p LEFT JOIN ticket_panel_operations o ON o.panel_id=p.id
-                 LEFT JOIN ticket_settings s ON s.guild_id=p.guild_id WHERE p.id=$1",
-            )
-            .bind(panel)
-            .fetch_optional(&mut *tx)
-            .await?;
-            if let Some((panel_max, category_max, category)) = limits {
-                if panel_max > 0 {
-                    let count: i64 =
-                        sqlx::query_scalar("SELECT count(*) FROM tickets WHERE panel_id=$1 AND status='open'")
-                            .bind(panel)
-                            .fetch_one(&mut *tx)
-                            .await?;
-                    if count >= i64::from(panel_max) {
-                        return Ok(TicketOpen::TooMany { open: count });
-                    }
-                }
-                if category_max > 0
-                    && let Some(category) = category
-                {
-                    let count: i64 = sqlx::query_scalar(
-                        "SELECT count(*) FROM tickets t JOIN ticket_panels p ON p.id=t.panel_id
-                         LEFT JOIN ticket_settings s ON s.guild_id=t.guild_id
-                         WHERE t.guild_id=$1 AND t.status='open'
-                         AND COALESCE(p.open_category_id, s.open_category_id)=$2",
-                    )
-                    .bind(guild)
-                    .bind(category)
-                    .fetch_one(&mut *tx)
-                    .await?;
-                    if count >= i64::from(category_max) {
-                        return Ok(TicketOpen::TooMany { open: count });
-                    }
-                }
-            }
+        if let Some(refusal) = super::ticket_limits::check_open_limits(&mut tx, new).await? {
+            return Ok(refusal);
         }
         let (number,): (i32,) = sqlx::query_as(
             "INSERT INTO ticket_counters (guild_id, next) VALUES ($1, 2)
@@ -697,34 +665,87 @@ impl Db {
         at: DateTime<Utc>,
         idle_before: Option<DateTime<Utc>>,
     ) -> anyhow::Result<Option<Ticket>> {
+        self.close_ticket_guarded(id, by, reason, at, idle_before, false).await
+    }
+
+    /// The deadline is checked again under the ticket row lock; stale ticker work cannot close
+    /// a reopened ticket or a cancelled request.
+    pub async fn close_requested_ticket(
+        &self,
+        id: i64,
+        reason: &str,
+        at: DateTime<Utc>,
+    ) -> anyhow::Result<Option<Ticket>> {
+        self.close_ticket_guarded(id, None, Some(reason), at, None, true).await
+    }
+
+    async fn close_ticket_guarded(
+        &self,
+        id: i64,
+        by: Option<u64>,
+        reason: Option<&str>,
+        at: DateTime<Utc>,
+        idle_before: Option<DateTime<Utc>>,
+        require_request: bool,
+    ) -> anyhow::Result<Option<Ticket>> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT id FROM tickets WHERE id=$1 FOR UPDATE")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        if require_request {
+            let due: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM ticket_operations
+                WHERE ticket_id=$1 AND close_request_expires_at <= $2)",
+            )
+            .bind(id)
+            .bind(at)
+            .fetch_one(&mut *tx)
+            .await?;
+            if !due {
+                return Ok(None);
+            }
+        }
         let sql = format!(
             "UPDATE tickets t SET status = 'closed', closed_by = $2, close_reason = $3, closed_at = $4, locked = FALSE
              WHERE t.id = $1 AND t.status = 'open' AND ($5::timestamptz IS NULL OR t.last_activity_at < $5)
              RETURNING {TICKET_COLUMNS}"
         );
-        Ok(sqlx::query_as::<_, Ticket>(sqlx::AssertSqlSafe(sql))
+        let closed = sqlx::query_as::<_, Ticket>(sqlx::AssertSqlSafe(sql))
             .bind(id)
             .bind(by.map(sql_id))
             .bind(reason)
             .bind(at)
             .bind(idle_before)
-            .fetch_optional(self.pool())
-            .await?)
+            .fetch_optional(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(closed)
     }
 
     /// Opens a closed ticket again, unclaimed, its transcript and rating forgotten (a new one is kept when
     /// it closes again).
     pub async fn reopen_ticket(&self, id: i64, at: DateTime<Utc>) -> anyhow::Result<Option<Ticket>> {
-        retry("reopen_ticket", || self.reopen_ticket_once(id, at)).await
+        retry("reopen_ticket", || self.reopen_ticket_once(id, at, None)).await
     }
 
-    async fn reopen_ticket_once(&self, id: i64, at: DateTime<Utc>) -> anyhow::Result<Option<Ticket>> {
-        let ids: Vec<i64> = sqlx::query_scalar(
+    pub async fn force_reopen_ticket(&self, id: i64, at: DateTime<Utc>, staff: u64) -> anyhow::Result<Option<Ticket>> {
+        retry("force_reopen_ticket", || self.reopen_ticket_once(id, at, Some(staff))).await
+    }
+
+    async fn reopen_ticket_once(
+        &self,
+        id: i64,
+        at: DateTime<Utc>,
+        staff: Option<u64>,
+    ) -> anyhow::Result<Option<Ticket>> {
+        let mut ids: Vec<i64> = sqlx::query_scalar(
             "SELECT opener_id FROM tickets WHERE id = $1 UNION SELECT user_id FROM ticket_transcript_authors WHERE ticket_id = $1",
         )
         .bind(id)
         .fetch_all(self.pool())
         .await?;
+        ids.extend(staff.map(sql_id));
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &ids).await?;
         let sql = format!(
@@ -738,6 +759,16 @@ impl Db {
             .fetch_optional(&mut *tx)
             .await?;
         if ticket.is_some() {
+            if let Some(staff) = staff {
+                sqlx::query(
+                    "INSERT INTO ticket_operations(ticket_id,force_opened_by) VALUES($1,$2)
+                    ON CONFLICT(ticket_id) DO UPDATE SET force_opened_by=$2,updated_at=now()",
+                )
+                .bind(id)
+                .bind(sql_id(staff))
+                .execute(&mut *tx)
+                .await?;
+            }
             sqlx::query(
                 "UPDATE ticket_operations SET close_requested_by=NULL,
                 close_requested_at=NULL, close_request_expires_at=NULL WHERE ticket_id=$1",

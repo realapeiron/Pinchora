@@ -54,6 +54,7 @@ mod stats;
 mod suggestions;
 mod tags;
 mod temp_voice;
+mod ticket_limits;
 mod ticket_ops;
 mod tickets;
 mod trackers;

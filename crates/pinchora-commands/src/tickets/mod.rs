@@ -32,6 +32,9 @@ pub(crate) async fn on_guild_message(app: &Arc<App>, msg: &Message) -> crate::ho
     let Some(guild) = msg.guild_id.map(Id::get) else {
         return crate::hooks::Verdict::Continue;
     };
+    if !module_on(app, guild, Some(msg.channel_id.get())).await {
+        return crate::hooks::Verdict::Continue;
+    }
     let Some(ticket) = (match app.db.ticket_at(guild, msg.channel_id.get()).await {
         Ok(ticket) => ticket,
         Err(error) => {
@@ -154,14 +157,26 @@ pub async fn close_from_web(app: &Arc<App>, ticket: Ticket, by: u64, name: Strin
 /// Create or edit the configured status message. The ticker also calls this after missed events.
 pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
     let mut lock = app.db.pool().begin().await?;
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('ticket-status:' || $1::text, 0))")
-        .bind(guild as i64)
-        .execute(&mut *lock)
-        .await?;
+    let acquired: bool =
+        sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('ticket-status:' || $1::text, 0))")
+            .bind(guild as i64)
+            .fetch_one(&mut *lock)
+            .await?;
+    if !acquired {
+        return Ok(());
+    }
     let settings = app.db.ticket_operation_settings(guild).await?;
     let Some(channel) = settings.status_channel_id.map(|id| id as u64) else {
         return Ok(());
     };
+    if app
+        .cache
+        .try_cooldown(&format!("ticket-status:{guild}"), Duration::from_secs(30))
+        .await?
+        .is_some()
+    {
+        return Ok(());
+    }
     let (open, claimed, closed_today) = app.db.ticket_status_counts(guild).await?;
     let lang = app.guild_lang(guild).await;
     let embed = twilight_util::builder::embed::EmbedBuilder::new()
@@ -183,8 +198,10 @@ pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<
             .embeds(Some(&embeds))
             .allowed_mentions(Some(&mentions))
             .await;
-        if edited.is_ok() {
-            return Ok(());
+        match edited {
+            Ok(_) => return Ok(()),
+            Err(error) if crate::roles::error_code(&error) == Some(10008) => {}
+            Err(error) => return Err(error.into()),
         }
     }
     let sent = app
@@ -195,7 +212,9 @@ pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<
         .await?
         .model()
         .await?;
-    app.db.set_ticket_status_message(guild, channel, sent.id.get()).await?;
+    if !app.db.set_ticket_status_message(guild, channel, sent.id.get()).await? {
+        app.http.delete_message(Id::new(channel), sent.id).await?;
+    }
     lock.commit().await?;
     Ok(())
 }

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 
-const base = (guild: string) => `/api/guilds/${guild}/tickets/v2`;
+const base = (guild: string) => `/api/guilds/${guild}/tickets/operations`;
 
 export interface SupportWindow {
   day: number;
@@ -152,4 +152,24 @@ export function useDeleteTicketSnippet(guild: string) {
     mutationFn: (id: number) => api<void>(`${base(guild)}/snippets/${id}`, "DELETE"),
     onSuccess: () => client.invalidateQueries({ queryKey: [base(guild), "snippets"] }),
   });
+}
+
+export function snippetChanged(items: Snippet[], name: string, body: string): boolean {
+  const cleanName = name.trim();
+  const cleanBody = body.trim();
+  return (
+    !!cleanName && !!cleanBody && !items.some((item) => item.name === cleanName && item.body === cleanBody)
+  );
+}
+
+export function operationSettingsBody(
+  settings: OperationSettings,
+): Omit<OperationSettings, "status_message_id"> {
+  return {
+    support_timezone: settings.support_timezone,
+    support_hours: settings.support_hours,
+    out_of_hours_message: settings.out_of_hours_message,
+    status_channel_id: settings.status_channel_id,
+    close_timeout_hours: settings.close_timeout_hours,
+  };
 }

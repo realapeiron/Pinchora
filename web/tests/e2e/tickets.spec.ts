@@ -167,6 +167,7 @@ test("tickets opened on the panel show in the table and one shows its transcript
 test("ticket operation settings and panel FAQ save on desktop and phone", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/tickets`);
+  await expect(page.locator("h1")).toHaveCount(1);
   const operations = page.getByRole("region", { name: "SUPPORT HOURS & SAVED REPLIES" });
   await operations.getByLabel("Support timezone").fill("Europe/Istanbul");
   await operations.getByRole("button", { name: "Add window" }).click();
@@ -174,7 +175,11 @@ test("ticket operation settings and panel FAQ save on desktop and phone", async 
   await operations.getByLabel("Starts").fill("09:00");
   await operations.getByLabel("Ends").fill("17:00");
   await operations.getByLabel("Outside-hours message").fill("We return tomorrow.");
+  const saveRequest = page.waitForRequest(
+    (request) => request.method() === "PUT" && request.url().endsWith("/tickets/operations/settings"),
+  );
   await operations.getByRole("button", { name: "Save operations" }).click();
+  expect((await saveRequest).postDataJSON()).not.toHaveProperty("status_message_id");
   await expect(operations.getByRole("button", { name: "Save operations" })).toBeDisabled();
   const panel = page.getByRole("region", { name: "PANEL OPERATIONS" });
   await panel.getByLabel("Claim mode").selectOption("exclusive");
@@ -184,10 +189,10 @@ test("ticket operation settings and panel FAQ save on desktop and phone", async 
   await panel.getByLabel("Answer", { exact: true }).fill("Weekdays, 9 to 5.");
   await panel.getByRole("button", { name: "Save panel operations" }).click();
   await expect(panel.getByRole("button", { name: "Save panel operations" })).toBeDisabled();
-  await shot(page, "tickets-v2-operations", true);
+  await shot(page, "ticket-operations-operations", true);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await overflow(page)).toBeLessThanOrEqual(0);
-  await shot(page, "tickets-v2-operations-phone", true);
+  await shot(page, "ticket-operations-operations-phone", true);
 });
 
 test("the tickets pages fit a phone", async ({ page }) => {
