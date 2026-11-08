@@ -17,6 +17,13 @@ from day one. Background research lives in [`research/`](research/).
 
 ## Processes
 
+The **`web`** role serves the React dashboard and JSON API independently of the gateway and
+interactions roles. It shares PostgreSQL for player and server state and Redis for OAuth state,
+sessions, cooldowns and coordination. Player writes call the same Db transactions and game
+functions used by bot commands. Server dashboard writes use the managed-guild extractor and
+record audit entries. The web process is stateless apart from those shared stores, so replicas
+can receive any request. See [WEB.md](WEB.md) for routes, configuration and the development loop.
+
 One binary, `pinchora`, with roles chosen by subcommand:
 
 ```

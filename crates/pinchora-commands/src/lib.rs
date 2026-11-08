@@ -62,6 +62,7 @@ pub use commands::invites::{
     refresh_deleted_snapshot as refresh_deleted_invite_snapshot, refresh_snapshot as refresh_invite_snapshot,
     spawn_reward_ticker as spawn_invite_reward_ticker,
 };
+pub use commands::pet::{current_needs as player_pet_needs, is_asleep as player_pet_asleep, pet_png as player_pet_png};
 pub use commands::role_panels::{check_emoji, rules_problem as role_rules_problem};
 pub use commands::roles_pack::{
     ColorRoleReport, ColorStop, PaletteColor, PostRefusal, PostedPanel, color_stop_text, create_palette_roles,

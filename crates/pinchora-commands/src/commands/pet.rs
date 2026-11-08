@@ -111,7 +111,7 @@ impl PetCommand {
 
 /// A pet's needs as of `now`. They drift from `needs_at`; a pet on a trip has its `needs_at` in
 /// the future, so they stay as they were when it left.
-fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
+pub fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
     let hours = (now - pet.needs_at).num_seconds().max(0) as f32 / 3600.0;
     Needs {
         hunger: pet.hunger,
@@ -124,7 +124,7 @@ fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
 
 /// Whether the pet fell asleep: nobody looked after it from the day its hunger, fun and hygiene
 /// all ran out until a day later. Worked out from the stored needs, so no job has to watch for it.
-pub(crate) fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
+pub fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
     if pet.is_away(now) {
         return false;
     }
@@ -250,7 +250,7 @@ fn scaled_sprite(sprites: &Sprites, species: &str, bx: u32, by: u32) -> anyhow::
 }
 
 /// The pet's status card.
-async fn pet_png(app: &App, lang: Lang, pet: &PetRow) -> anyhow::Result<Vec<u8>> {
+pub async fn pet_png(app: &App, lang: Lang, pet: &PetRow) -> anyhow::Result<Vec<u8>> {
     let content = Content::get();
     let species = content.pet(&pet.species);
     let now = app.now();

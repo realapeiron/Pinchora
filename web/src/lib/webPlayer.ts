@@ -56,6 +56,8 @@ export interface HomeData {
   pets: (Choice & { species: string })[];
   house: { name: string; room: number } | null;
   discord_url: string;
+  birthday: { month: number; day: number; year: number | null; tz: string; public: boolean } | null;
+  roblox: { name: string; id: string; method: string } | null;
 }
 export interface WalletData {
   shells: number;
@@ -86,7 +88,7 @@ export function usePlayer<T>(path: string) {
   const language = useLocale();
   return useQuery({
     queryKey: ["player", path, language],
-    queryFn: () => api<T>(`/api/me/${path}?lang=${language}`),
+    queryFn: () => api<T>(`/api/me/${path}${path.includes("?") ? "&" : "?"}lang=${language}`),
     placeholderData: (previous) => previous,
   });
 }

@@ -93,7 +93,7 @@ pub async fn load(cache: &Cache, sid: &str, now: i64) -> anyhow::Result<Option<S
     let Some(session) = read(cache, sid).await? else {
         return Ok(None);
     };
-    if now - session.created_at > LIFETIME_SECS {
+    if expired(session.created_at, now) {
         cache.forget(&key(sid)).await?;
         return Ok(None);
     }
@@ -101,6 +101,10 @@ pub async fn load(cache: &Cache, sid: &str, now: i64) -> anyhow::Result<Option<S
         cache.extend(&key(sid), IDLE).await?;
     }
     Ok(Some(session))
+}
+
+fn expired(created_at: i64, now: i64) -> bool {
+    created_at > now || now.saturating_sub(created_at) >= LIFETIME_SECS
 }
 
 /// The session behind `sid` as stored, without touching it. A session that no longer parses is
@@ -185,5 +189,12 @@ mod tests {
                 .unwrap()
                 .contains("Secure")
         );
+    }
+
+    #[test]
+    fn absolute_lifetime_has_an_exact_boundary() {
+        assert!(!expired(100, 100 + LIFETIME_SECS - 1));
+        assert!(expired(100, 100 + LIFETIME_SECS));
+        assert!(expired(101, 100));
     }
 }

@@ -11,6 +11,7 @@ import { RequireLogin } from "../RequireLogin";
 import { Loading, Problem } from "../States";
 import { ProfileStudio } from "./ProfileStudio";
 import { CharacterStudio } from "./CharacterStudio";
+import { Friends, Guestbook, FishBook, Inventory, Pets, Quests, Stall } from "./Depth";
 import "../../styles/web-player.css";
 
 export function PlayerRoutes() {
@@ -24,6 +25,13 @@ export function PlayerRoutes() {
             <Route path="profile" element={<ProfileStudio />} />
             <Route path="character" element={<CharacterStudio />} />
             <Route path="wallet" element={<Wallet />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="pets" element={<Pets />} />
+            <Route path="stall" element={<Stall />} />
+            <Route path="fishbook" element={<FishBook />} />
+            <Route path="quests" element={<Quests />} />
+            <Route path="guestbook" element={<Guestbook />} />
+            <Route path="friends" element={<Friends />} />
           </Routes>
         </PlayerShell>
       )}
@@ -43,6 +51,13 @@ function PlayerShell({ me, children }: { me: Me; children: ReactNode }) {
           <NavLink to="/me/character">{t("Character")}</NavLink>
           <NavLink to="/me/wallet">{t("Wallet")}</NavLink>
           <NavLink to="/me/house">{t("My house")}</NavLink>
+          <NavLink to="/me/inventory">{t("Inventory")}</NavLink>
+          <NavLink to="/me/pets">{t("Pets")}</NavLink>
+          <NavLink to="/me/stall">{t("Stall")}</NavLink>
+          <NavLink to="/me/fishbook">{t("Fish book")}</NavLink>
+          <NavLink to="/me/quests">{t("Quests")}</NavLink>
+          <NavLink to="/me/guestbook">{t("Guestbook")}</NavLink>
+          <NavLink to="/me/friends">{t("Friends")}</NavLink>
         </nav>
         {children}
       </main>
@@ -52,6 +67,7 @@ function PlayerShell({ me, children }: { me: Me; children: ReactNode }) {
 function PlayerHome() {
   const language = useLocale();
   const query = usePlayer<HomeData>("home");
+  const quests = usePlayer<{ items: { progress: number; target: number; claimed: boolean }[] }>("quests");
   return (
     <>
       <PageHead title={t("My world")} lead={t("Your corner of Pinchora. Make yourself at home.")} />
@@ -105,8 +121,44 @@ function PlayerHome() {
               <PixelLink href="/me/wallet" variant="secondary">
                 {t("Open wallet")}
               </PixelLink>
+              {quests.data && (
+                <p className="muted">
+                  {t("{count} quests ready", {
+                    count: quests.data.items.filter((q) => q.progress >= q.target && !q.claimed).length,
+                  })}
+                </p>
+              )}
+              <PixelLink href="/me/quests" variant="secondary">
+                {t("Open quests")}
+              </PixelLink>
             </Panel>
           </div>
+          {(query.data.birthday || query.data.roblox) && (
+            <div className="player-home-grid">
+              {query.data.birthday && (
+                <Panel title={t("Birthday")}>
+                  <p>
+                    {query.data.birthday.day}/{query.data.birthday.month}
+                    {query.data.birthday.year ? `/${query.data.birthday.year}` : ""} ·{" "}
+                    {query.data.birthday.tz}
+                  </p>
+                  <p className="muted">
+                    {query.data.birthday.public ? t("Visible in servers") : t("Private")}
+                  </p>
+                </Panel>
+              )}
+              {query.data.roblox && (
+                <Panel title={t("Roblox link")}>
+                  <p>{query.data.roblox.name}</p>
+                  <p className="muted">
+                    {query.data.roblox.method === "oauth"
+                      ? t("Connected with Roblox")
+                      : t("Verified with profile code")}
+                  </p>
+                </Panel>
+              )}
+            </div>
+          )}
           <div className="player-home-grid">
             <Panel title={t("My house")}>
               {query.data.house ? (
@@ -133,9 +185,14 @@ function PlayerHome() {
                 <p className="muted">{t("No pets yet. Meet your first companion with /pet in Discord.")}</p>
               )}
               <p>{t("Collect daily rewards and check your quests in Discord.")}</p>
-              <PixelLink href={query.data.discord_url} variant="secondary">
-                {t("Open in Discord")}
-              </PixelLink>
+              <div className="player-actions">
+                <PixelLink href="/me/pets" variant="secondary">
+                  {t("Open pets")}
+                </PixelLink>
+                <PixelLink href={query.data.discord_url} variant="secondary">
+                  {t("Open in Discord")}
+                </PixelLink>
+              </div>
             </Panel>
           </div>
         </>
