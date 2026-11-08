@@ -73,8 +73,8 @@ test("switch a part off, keep another to one channel, and see it on the overview
   await page.goto(`/g/${guild}/audit`);
   await expect(page.getByText(/limited Fishing to 1 channel/)).toBeVisible();
   await page.getByText(/limited Fishing to 1 channel/).click();
-  await expect(page.locator(".diff")).toContainText("#general");
-  await expect(page.locator(".diff")).not.toContainText("7001");
+  await expect(page.locator(".audit-diff")).toContainText("#general");
+  await expect(page.locator(".audit-diff")).not.toContainText("7001");
   await shot(page, "audit-modules");
 
   // Back to all channels: the badge and the row go back to normal.

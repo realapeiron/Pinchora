@@ -197,11 +197,11 @@ function AuditRow({ entry, names }: { entry: AuditEntry; names: Names }) {
               <dd>
                 <div>
                   <span className="pixel-label muted">{t("Before")}</span>
-                  <pre className="diff-before">{diffText(line.before)}</pre>
+                  <pre className="diff-before">{diffText(line.before, line.path, names)}</pre>
                 </div>
                 <div>
                   <span className="pixel-label muted">{t("After")}</span>
-                  <pre className="diff-after">{diffText(line.after)}</pre>
+                  <pre className="diff-after">{diffText(line.after, line.path, names)}</pre>
                 </div>
               </dd>
             </div>

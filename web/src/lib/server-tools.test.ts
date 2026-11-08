@@ -4,6 +4,7 @@ import {
   auditParams,
   canOpenPage,
   canonicalGrants,
+  diffText,
   EMPTY_FILTERS,
   type AccessOverview,
 } from "./server-tools";
@@ -42,6 +43,33 @@ describe("dashboard delegation", () => {
   });
 });
 describe("audit filters and nested diffs", () => {
+  const names = {
+    channel: (id: string) => (id === "7001" ? "#general" : `channel ${id}`),
+    role: (id: string) => (id === "9001" ? "@Regulars" : `role ${id}`),
+    module: (key: string) => key,
+  };
+  it("resolves Discord IDs in changed fields, including nested settings", () => {
+    const lines = auditDiff(
+      { channels: [], settings: { welcome_channel_id: null } },
+      { channels: ["7001"], settings: { welcome_channel_id: "7001" } },
+    );
+    expect(lines.map((line) => diffText(line.after, line.path, names))).toEqual(["#general", "#general"]);
+    expect(diffText("9001", "join_role_id", names)).toBe("@Regulars");
+    expect(diffText(["9001"], "allow_roles", names)).toBe("@Regulars");
+    expect(diffText(["7001"], "deny_channels", names)).toBe("#general");
+    expect(diffText("only", "channel_mode", names)).toBe("only some channels");
+    expect(diffText(false, "enabled", names)).toBe("off");
+  });
+  it("retains structured details, missing values and unknown Discord IDs", () => {
+    const grants = [{ role_id: "9001", areas: ["roles"] }];
+    expect(diffText(grants, "roles", names)).toBe(JSON.stringify(grants, null, 2));
+    expect(diffText({ title: "Hello" }, "embed", names)).toContain('"title": "Hello"');
+    expect(diffText(undefined, "channels", names)).toBe("—");
+    expect(diffText(null, "channel_id", names)).toBe("—");
+    expect(diffText([], "channels", names)).toBe("none");
+    expect(diffText("7777", "channel_id", names)).toBe("channel 7777");
+    expect(diffText("7001", "message", names)).toBe("7001");
+  });
   it("includes the last calendar day across month and year boundaries in UTC", () => {
     const params = auditParams({
       ...EMPTY_FILTERS,

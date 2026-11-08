@@ -113,7 +113,7 @@ test("level roles refuse what the bot cannot give, and the sync runs", async ({ 
   await expect(page.getByText("synced the level roles")).toBeVisible();
   await expect(page.getByText("set a level role")).toBeVisible();
   await page.getByText("set a level role").click();
-  await expect(page.locator(".diff")).toContainText("level");
+  await expect(page.locator(".audit-diff")).toContainText("level");
   await shot(page, "audit-log-open");
 });
 

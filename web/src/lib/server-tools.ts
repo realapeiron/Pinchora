@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type AuditEntry, type Overview } from "./api";
 import { translate as t } from "../i18n";
+import { type Names, plainNames, showValue } from "./text";
 
 export const AREA_LABELS: Record<string, string> = {
   configuration: "Configuration",
@@ -146,7 +147,20 @@ export function auditDiff(before: unknown, after: unknown, path = ""): DiffLine[
   }
   return [{ path: path || t("Value"), before, after }];
 }
-export function diffText(value: unknown) {
+export function diffText(value: unknown, path = "", names: Names = plainNames) {
+  const field = path.split(".").at(-1) ?? "";
+  // Keep structured changes inspectable, but preserve the log's readable Discord names.
+  // Arrays of objects (for example access grants) must not be summarized as ID lists.
+  if (
+    typeof value === "boolean" ||
+    (typeof value === "string" &&
+      (field.endsWith("channel_id") || field.endsWith("role_id") || field === "channel_mode")) ||
+    (Array.isArray(value) &&
+      value.every((id) => typeof id === "string") &&
+      (field === "channels" || field.endsWith("_channels") || field.endsWith("_roles")))
+  ) {
+    return showValue(field, value, names);
+  }
   return value === undefined || value === null
     ? "—"
     : typeof value === "string"

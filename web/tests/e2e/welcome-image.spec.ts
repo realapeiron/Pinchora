@@ -98,6 +98,8 @@ test("drag the avatar, edit the text, save: the bot draws what the editor showed
   await shot(page, "editor-classic", true);
 
   // Drag the avatar to the left with the mouse.
+  // Opening the bot preview scrolls away from the canvas; mouse coordinates are viewport-relative.
+  await avatar.scrollIntoViewIfNeeded();
   const box = (await avatar.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -207,7 +209,7 @@ test("templates, stickers, the layer list, uploads, a test message and goodbyes"
   // Sent as the image first, then the text; a test goes to #welcome.
   await page.getByLabel("How the image is sent").selectOption("before_message");
   await page.getByLabel("Post a test in").selectOption({ label: "#welcome" });
-  await page.getByRole("button", { name: "Send test" }).click();
+  await page.getByRole("button", { name: "Send test", exact: true }).click();
   // The bot draws the image first; on a busy machine that takes a while.
   await expect(page.getByRole("status").filter({ hasText: "Test posted in #welcome" })).toBeVisible({
     timeout: 30_000,
@@ -321,7 +323,7 @@ test("laptop and desktop widths keep the canvas and the panels in view together"
   await page.keyboard.press("ArrowRight");
   await expect(page.getByText("1 unsaved change")).toBeVisible();
   await page.getByLabel("Post a test in").selectOption({ label: "#welcome" });
-  await page.getByRole("button", { name: "Send test" }).click();
+  await page.getByRole("button", { name: "Send test", exact: true }).click();
   const toast = page.getByRole("status").filter({ hasText: "Test posted in #welcome" });
   await expect(toast).toBeVisible({ timeout: 30_000 });
   const [t, bar] = [await toast.boundingBox(), await page.locator(".save-bar-inner").boundingBox()];
