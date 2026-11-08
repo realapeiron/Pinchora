@@ -245,3 +245,61 @@ async fn branding_covers_wave3_forms_moderation_logs_and_roblox_embeds() {
         }
     }
 }
+
+#[tokio::test]
+async fn branding_covers_long_moderation_batch_preview_and_result_embeds() {
+    let Some(mut sim) = Sim::new("branding_moderation_batch_embeds").await else {
+        return;
+    };
+    let manager = unique();
+    sim.permissions = MANAGE_GUILD | twilight_model::guild::Permissions::BAN_MEMBERS.bits();
+    sim.own_server(manager);
+    assert!(
+        sim.app
+            .db
+            .claim_branding_apply(sim.guild, Some(0x31b8d4))
+            .await
+            .unwrap()
+    );
+    sim.app.db.set_mod_settings(sim.guild, None, Some(false)).await.unwrap();
+    sim.mock.bans_refused.store(true, Ordering::SeqCst);
+    let ids = (9_000_000_000_000_000_000_u64..9_000_000_000_000_000_100)
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    for locale in ["en-US", "tr"] {
+        sim.locale = locale;
+        let preview = sim
+            .command(
+                manager,
+                "modtools",
+                json!([sub(
+                    "mass",
+                    vec![text_option("action", "ban"), text_option("ids", &ids)]
+                )]),
+            )
+            .await;
+        assert_eq!(preview.embeds.len(), 1, "long preview: {preview}");
+        assert_eq!(preview.embeds[0].color, Some(0x31b8d4));
+        let description = preview.embeds[0].description.as_ref().unwrap();
+        let token = description.split("confirm:").last().unwrap().trim();
+        let result = sim
+            .command(
+                manager,
+                "modtools",
+                json!([sub(
+                    "mass",
+                    vec![text_option("action", "ban"), text_option("confirm", token)]
+                )]),
+            )
+            .await;
+        assert_eq!(result.embeds.len(), 1, "long result: {result}");
+        assert_eq!(result.embeds[0].color, Some(0x31b8d4));
+        assert!(sim.mock.bans.lock().unwrap().is_empty());
+        sim.app
+            .cache
+            .release_cooldown(&format!("modparity:batch:{}", sim.guild))
+            .await
+            .unwrap();
+    }
+}
