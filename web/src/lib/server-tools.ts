@@ -82,7 +82,8 @@ const PAGE_AREAS: Record<string, string> = {
   audit: "audit",
 };
 export function canOpenPage(data: AccessOverview | undefined, path: string): boolean {
-  if (!data?.access || data.access.full) return true;
+  if (!data?.access) return false;
+  if (data.access.full) return true;
   if (!path) return true;
   const area = PAGE_AREAS[path.split("/")[0] ?? ""];
   return !!area && !!data.access.areas?.includes(area);

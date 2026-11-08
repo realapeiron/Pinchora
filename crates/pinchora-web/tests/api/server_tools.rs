@@ -143,7 +143,7 @@ async fn delegated_roles_are_live_scoped_discoverable_and_never_grant_discord_po
             .write(Method::POST, &format!("{path}/roles/panels"), unsafe_panel)
             .await
             .status,
-        StatusCode::UNPROCESSABLE_ENTITY
+        StatusCode::FORBIDDEN
     );
     let safe_panel =
         json!({"title":"Web delegate", "style":"buttons", "roles":[{"role_id":FAN.to_string(),"label":"Fan"}]});
@@ -186,7 +186,7 @@ async fn delegated_roles_are_live_scoped_discoverable_and_never_grant_discord_po
             )
             .await
             .status,
-        StatusCode::UNPROCESSABLE_ENTITY
+        StatusCode::FORBIDDEN
     );
 
     h.mock
@@ -314,5 +314,19 @@ async fn csv_stream_stops_at_row_and_byte_budgets() {
     assert_eq!(csv.status, StatusCode::OK);
     assert!(csv.text().len() < 8 * 1024 * 1024);
     assert_eq!(csv.text().lines().count(), 2);
-    assert!(csv.text().contains("EXPORT_LIMIT"));
+    assert!(csv.text().contains("truncated"));
+}
+
+#[tokio::test]
+async fn csv_escaped_output_obeys_byte_cap_even_with_many_valid_diff_values() {
+    let Some(h) = Harness::new("w7_csv_bytes").await else {
+        return;
+    };
+    let (guild, actor, mut browser) = h.managed_server().await;
+    sqlx::query("INSERT INTO dashboard_audit(guild_id,actor_id,actor_name,source,action,after) SELECT $1,$2,'Actor','web','roles.large',jsonb_build_object('value',repeat('x',60000)) FROM generate_series(1,200)")
+        .bind(guild as i64).bind(actor as i64).execute(h.state.app.db.pool()).await.unwrap();
+    let csv = browser.get(&format!("/api/guilds/{guild}/audit-tools/export")).await;
+    assert_eq!(csv.status, StatusCode::OK);
+    assert!(csv.body.len() <= 8 * 1024 * 1024);
+    assert!(csv.text().lines().last().unwrap().starts_with("\"EXPORT_LIMIT\""));
 }

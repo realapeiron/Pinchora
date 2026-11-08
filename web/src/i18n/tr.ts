@@ -4,8 +4,8 @@ export const tr: { [K in keyof typeof en]: string } = {
     "En fazla 25 farklı sunucu rolü seçin (everyone ve entegrasyon rolleri hariç); her role en az bir geçerli alan verin.",
   "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.":
     "Pozitif kullanıcı ve kayıt kimlikleri, geçerli bir alan, ileriye doğru bir tarih aralığı ve en fazla 200 arama karakteri kullanın.",
-  "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes.":
-    "Dışa aktarma 10.000 değişiklik veya 8 MiB sınırında durdu. Kalan değişiklikler için filtreleri daraltın.",
+  "Export stopped at 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds. Narrow the filters to export the remaining changes.":
+    "Dışa aktarım 10.000 değişiklik, 100.000 incelenen kayıt, 8 MiB veya 10 saniye sınırında durdu. Kalan değişiklikler için filtreleri daraltın.",
 
   ACCESS: "ERİŞİM",
   Access: "Erişim",
@@ -47,8 +47,6 @@ export const tr: { [K in keyof typeof en]: string } = {
     "Kullanıcı, işlem, hedef ve önceki/sonraki değerlerde arayın.",
   "Apply filters": "Filtreleri uygula",
   "Clear filters": "Filtreleri temizle",
-  "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.":
-    "CSV, uygulanan filtreleri kullanır. Sınır 10.000 değişiklik veya 8 MiB; sınıra ulaşılırsa son satırda belirtilir.",
   "No changes match these filters.": "Bu filtrelerle eşleşen değişiklik yok.",
   "Public leaderboard": "Herkese açık sıralama",
   "Anyone with the link can view this board. Turning it off removes the public URL when you save.":
@@ -4175,4 +4173,8 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Block author": "Yazarı engelle",
   "Unblock author": "Yazarın engelini kaldır",
   Reports: "Bildirimler",
+  "CSV uses applied filters. Limited to 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds; a final row marks a reached limit.":
+    "CSV uygulanan filtreleri kullanır. Sınırlar: 10.000 değişiklik, 100.000 incelenen kayıt, 8 MiB veya 10 saniye. Sınıra ulaşıldığında son satırda belirtilir.",
+  "No matches in this batch. Load older changes to continue searching.":
+    "Bu grupta eşleşme yok. Aramaya devam etmek için eski değişiklikleri yükleyin.",
 };

@@ -222,7 +222,8 @@ pub struct AuditView {
 }
 
 impl From<AuditRow> for AuditView {
-    fn from(row: AuditRow) -> Self {
+    fn from(mut row: AuditRow) -> Self {
+        row.redact();
         let parse = |raw: Option<String>| raw.and_then(|r| serde_json::from_str(&r).ok()).unwrap_or(Value::Null);
         Self {
             id: row.id.to_string(),

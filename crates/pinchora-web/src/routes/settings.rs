@@ -232,6 +232,15 @@ pub async fn patch(
         return Ok(Json(current.into()));
     }
     check_discord(&state, &managed, &current, &next).await?;
+    if next.leveling_enabled && !current.leveling_enabled
+        || next.voice_xp_enabled && !current.voice_xp_enabled
+        || next.level_roles_stack != current.level_roles_stack
+    {
+        crate::dashboard_access::check_module_roles(&state, &managed, pinchora_core::modules::Module::Leveling).await?;
+    }
+    if next.welcome_enabled && !current.welcome_enabled {
+        crate::dashboard_access::check_module_roles(&state, &managed, pinchora_core::modules::Module::Welcome).await?;
+    }
     let updated = match db.patch_guild_settings(guild, &patch).await {
         Ok(updated) => updated,
         // Another save moved the other end of the points range between the check and the write.

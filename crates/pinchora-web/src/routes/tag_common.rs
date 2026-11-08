@@ -140,6 +140,12 @@ impl Refs {
 /// is checked against the manager, though, new or not: nobody edits a command (say, who may run it) that
 /// hands out a role they could not put on it themselves.
 pub async fn check_refs(state: &WebState, managed: &ManagedGuild, now: &Refs, old: Option<&Refs>) -> ApiResult<()> {
+    crate::dashboard_access::check_role_access(
+        state,
+        managed,
+        &now.action_roles.iter().map(|id| *id as i64).collect::<Vec<_>>(),
+    )
+    .await?;
     let guild = managed.id;
     let empty = Refs::default();
     let new = now.new_since(old.unwrap_or(&empty));

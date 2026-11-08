@@ -5,9 +5,9 @@ import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
 import { translate as t } from "../i18n";
 import type { AuditEntry, Overview } from "../lib/api";
-import { useNames } from "../lib/queries";
+import { useDiscord } from "../lib/queries";
 import { EMPTY_FILTERS, auditDiff, auditParams, diffText, useFilteredAudit } from "../lib/server-tools";
-import { type Names, describeChange, targetLabel, timeAgo } from "../lib/text";
+import { type Names, describeChange, targetLabel, timeAgo, plainNames } from "../lib/text";
 import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/server-tools.css";
@@ -17,7 +17,18 @@ export function AuditLog() {
   const [draft, setDraft] = useState(EMPTY_FILTERS);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const audit = useFilteredAudit(data.guild.id, filters);
-  const names = useNames(data.guild.id);
+  const discord = useDiscord(data.guild.id).data;
+  const names: Names = {
+    channel: (id) => {
+      const channel = discord?.channels.find((c) => c.id === id);
+      return channel ? `#${channel.name}` : plainNames.channel(id);
+    },
+    role: (id) => {
+      const role = discord?.roles.find((r) => r.id === id);
+      return role ? `@${role.name}` : plainNames.role(id);
+    },
+    module: (key) => data.modules?.find((m) => m.key === key)?.label ?? plainNames.module(key),
+  };
   const rows = audit.data?.pages.flatMap((p) => p.items) ?? [];
   const invalid = !!draft.from && !!draft.until && draft.from > draft.until;
   return (
@@ -116,7 +127,7 @@ export function AuditLog() {
         </form>
         <p className="muted fine">
           {t(
-            "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.",
+            "CSV uses applied filters. Limited to 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds; a final row marks a reached limit.",
           )}
         </p>
       </Panel>
@@ -125,9 +136,11 @@ export function AuditLog() {
         {audit.isError && <Problem error={audit.error} />}
         {audit.isSuccess && rows.length === 0 && (
           <p className="empty-row muted">
-            {Object.values(filters).some(Boolean)
-              ? t("No changes match these filters.")
-              : t("No changes yet. What you save on the dashboard shows up here.")}
+            {audit.hasNextPage
+              ? t("No matches in this batch. Load older changes to continue searching.")
+              : Object.values(filters).some(Boolean)
+                ? t("No changes match these filters.")
+                : t("No changes yet. What you save on the dashboard shows up here.")}
           </p>
         )}
         {rows.length > 0 && (

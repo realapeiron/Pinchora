@@ -395,8 +395,7 @@ impl Db {
     ) -> anyhow::Result<Vec<FeedSourceRow>> {
         let guilds: Option<Vec<i64>> = guilds.map(|g| g.iter().copied().map(sql_id).collect());
         Ok(sqlx::query_as::<_, FeedSourceRow>(concat!(
-            "UPDATE feed_sources SET lease_until = now() + make_interval(secs => $3)
-             WHERE (kind, source) IN (
+            "WITH due(kind_key, source_key) AS MATERIALIZED (
                  SELECT kind, source FROM feed_sources s
                  WHERE subscribers > 0 AND next_poll_at <= $1 AND (lease_until IS NULL OR lease_until < now())
                    AND ($4::bigint[] IS NULL OR EXISTS (
@@ -404,6 +403,8 @@ impl Db {
                  ORDER BY next_poll_at LIMIT $2
                  FOR UPDATE SKIP LOCKED
              )
+             UPDATE feed_sources SET lease_until = now() + make_interval(secs => $3)
+             FROM due WHERE kind = due.kind_key AND source = due.source_key
              RETURNING ",
             source_columns!()
         ))
@@ -548,14 +549,15 @@ impl Db {
     pub async fn claim_feed_posts(&self, limit: i64, guilds: Option<&[u64]>) -> anyhow::Result<Vec<FeedPost>> {
         let guilds: Option<Vec<i64>> = guilds.map(|g| g.iter().copied().map(sql_id).collect());
         let rows: Vec<(i64, String, String, i32)> = sqlx::query_as(
-            "UPDATE feed_outbox SET lease_until = now() + make_interval(secs => $2), attempts = attempts + 1
-             WHERE (feed_id, item_id) IN (
+            "WITH due(feed_key, item_key) AS MATERIALIZED (
                  SELECT feed_id, item_id FROM feed_outbox
                  WHERE (lease_until IS NULL OR lease_until < now())
                    AND ($3::bigint[] IS NULL OR feed_id IN (SELECT id FROM feeds WHERE guild_id = ANY($3)))
                  ORDER BY created_at, feed_id, item_id LIMIT $1
                  FOR UPDATE SKIP LOCKED
              )
+             UPDATE feed_outbox SET lease_until = now() + make_interval(secs => $2), attempts = attempts + 1
+             FROM due WHERE feed_id = due.feed_key AND item_id = due.item_key
              RETURNING feed_id, item_id, item::text, attempts",
         )
         .bind(limit)

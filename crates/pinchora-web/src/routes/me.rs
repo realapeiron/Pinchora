@@ -85,7 +85,7 @@ struct GuildEntry {
 
 /// `GET /api/me/guilds`: the servers the user manages, the ones with the bot first.
 pub async fn guilds(State(state): State<WebState>, mut current: CurrentSession) -> ApiResult<Json<Value>> {
-    let list = discord::user_guilds(&state, &mut current, false).await?;
+    let list = discord::user_guilds(&state, &mut current, true).await?;
     Ok(Json(
         json!({ "items": entries(&state, list, current.session.user_id).await? }),
     ))

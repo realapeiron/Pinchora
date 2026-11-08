@@ -283,36 +283,47 @@ pub struct Preview {
 /// Keep the subscription recoverable, but require fresh credentials before it can run again.
 pub fn redact_feed_credentials(backup: &mut Backup) {
     for row in backup.sections.get_mut("feeds").into_iter().flatten() {
-        let Some(source) = row["source"].as_str() else { continue };
-        let Ok(mut url) = url::Url::parse(source) else { continue };
-        let mut sensitive = !url.username().is_empty() || url.password().is_some();
-        let query: Vec<(String, String)> = url
-            .query_pairs()
-            .map(|(key, value)| {
-                let name = key.to_ascii_lowercase().replace('-', "_");
-                let secret = name.contains("token")
-                    || name.contains("secret")
-                    || name.contains("password")
-                    || matches!(
-                        name.as_str(),
-                        "key" | "api_key" | "apikey" | "auth" | "authorization" | "signature" | "sig"
-                    );
-                sensitive |= secret;
-                (
-                    key.into_owned(),
-                    if secret { "REDACTED".into() } else { value.into_owned() },
-                )
-            })
-            .collect();
-        if sensitive {
-            let _ = url.set_username("");
-            let _ = url.set_password(None);
-            if url.query().is_some() {
-                url.query_pairs_mut().clear().extend_pairs(query);
-            }
-            row["source"] = Value::String(url.into());
-            row["enabled"] = Value::Bool(false);
+        let Some(source) = row["source"].as_str().and_then(redact_url_credentials) else {
+            continue;
+        };
+        row["source"] = Value::String(source);
+        row["enabled"] = Value::Bool(false);
+    }
+}
+
+/// A sanitized URL when it contains credentials; shared by backup export and audit redaction.
+pub fn redact_url_credentials(source: &str) -> Option<String> {
+    let Ok(mut url) = url::Url::parse(source) else {
+        return None;
+    };
+    let mut sensitive = !url.username().is_empty() || url.password().is_some();
+    let query: Vec<(String, String)> = url
+        .query_pairs()
+        .map(|(key, value)| {
+            let name = key.to_ascii_lowercase().replace('-', "_");
+            let secret = name.contains("token")
+                || name.contains("secret")
+                || name.contains("password")
+                || matches!(
+                    name.as_str(),
+                    "key" | "api_key" | "apikey" | "auth" | "authorization" | "signature" | "sig"
+                );
+            sensitive |= secret;
+            (
+                key.into_owned(),
+                if secret { "REDACTED".into() } else { value.into_owned() },
+            )
+        })
+        .collect();
+    if sensitive {
+        let _ = url.set_username("");
+        let _ = url.set_password(None);
+        if url.query().is_some() {
+            url.query_pairs_mut().clear().extend_pairs(query);
         }
+        Some(url.into())
+    } else {
+        None
     }
 }
 

@@ -3,8 +3,8 @@ export const en = {
     "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.",
   "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.":
     "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.",
-  "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes.":
-    "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes.",
+  "Export stopped at 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds. Narrow the filters to export the remaining changes.":
+    "Export stopped at 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds. Narrow the filters to export the remaining changes.",
 
   ACCESS: "ACCESS",
   Access: "Access",
@@ -46,8 +46,6 @@ export const en = {
     "Search actors, actions, targets and before/after values.",
   "Apply filters": "Apply filters",
   "Clear filters": "Clear filters",
-  "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.":
-    "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.",
   "No changes match these filters.": "No changes match these filters.",
   "Public leaderboard": "Public leaderboard",
   "Anyone with the link can view this board. Turning it off removes the public URL when you save.":
@@ -4143,4 +4141,8 @@ export const en = {
   "Block author": "Block author",
   "Unblock author": "Unblock author",
   Reports: "Reports",
+  "CSV uses applied filters. Limited to 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds; a final row marks a reached limit.":
+    "CSV uses applied filters. Limited to 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds; a final row marks a reached limit.",
+  "No matches in this batch. Load older changes to continue searching.":
+    "No matches in this batch. Load older changes to continue searching.",
 } as const;

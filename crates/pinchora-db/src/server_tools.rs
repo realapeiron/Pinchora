@@ -116,6 +116,13 @@ pub struct AuditFilter {
     pub text: Option<String>,
 }
 
+/// A bounded scan page. `next` advances past inspected rows, including non-matches.
+pub struct FilteredAuditPage {
+    pub items: Vec<AuditRow>,
+    pub next: Option<i64>,
+    pub scanned: usize,
+}
+
 impl Db {
     pub async fn filtered_audit_page(
         &self,
@@ -123,17 +130,65 @@ impl Db {
         before: Option<i64>,
         limit: i64,
         filter: &AuditFilter,
-    ) -> anyhow::Result<Vec<AuditRow>> {
-        Ok(sqlx::query_as(
-            "SELECT id, guild_id, actor_id, actor_name, source, action, target, before::text AS before, after::text AS after, created_at
-             FROM dashboard_audit WHERE guild_id=$1 AND ($2::bigint IS NULL OR id<$2)
-             AND ($3::bigint IS NULL OR actor_id=$3)
-             AND ($4::text IS NULL OR split_part(action,'.',1)=$4)
-             AND ($5::timestamptz IS NULL OR created_at >= $5)
-             AND ($6::timestamptz IS NULL OR created_at < $6)
-             AND ($7::text IS NULL OR position(lower($7) in lower(concat_ws(' ',actor_name,action,target,before::text,after::text))) > 0)
-             ORDER BY id DESC LIMIT $8")
-            .bind(sql_id(guild)).bind(before).bind(filter.actor).bind(&filter.area).bind(filter.from).bind(filter.until).bind(&filter.text)
-            .bind(limit.clamp(1, 501)).fetch_all(self.pool()).await?)
+    ) -> anyhow::Result<FilteredAuditPage> {
+        // The existing (guild_id, id DESC) index bounds work BEFORE arbitrary filters.
+        // No search can force a scan of a guild's entire history or another guild's rows.
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SET LOCAL statement_timeout = '2s'")
+            .execute(&mut *tx)
+            .await?;
+        let rows: Vec<AuditRow> = sqlx::query_as(
+            "SELECT id, guild_id, actor_id, actor_name, source, action, target,
+             CASE WHEN octet_length(before::text) <= 65536 THEN before::text ELSE '{\"truncated\":true}' END AS before,
+             CASE WHEN octet_length(after::text) <= 65536 THEN after::text ELSE '{\"truncated\":true}' END AS after,
+             created_at FROM dashboard_audit WHERE guild_id=$1 AND id<$2 ORDER BY id DESC LIMIT 500",
+        )
+        .bind(sql_id(guild))
+        .bind(before.unwrap_or(i64::MAX))
+        .fetch_all(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        let count = rows.len();
+        let mut page = FilteredAuditPage {
+            items: Vec::new(),
+            next: None,
+            scanned: 0,
+        };
+        let text = filter.text.as_ref().map(|s| s.to_lowercase());
+        for mut row in rows {
+            page.scanned += 1;
+            page.next = Some(row.id);
+            row.redact();
+            if filter.actor.is_some_and(|a| a != row.actor_id)
+                || filter
+                    .area
+                    .as_ref()
+                    .is_some_and(|a| row.action.split('.').next() != Some(a.as_str()))
+                || filter.from.is_some_and(|d| row.created_at < d)
+                || filter.until.is_some_and(|d| row.created_at >= d)
+                || text.as_ref().is_some_and(|text| {
+                    !format!(
+                        "{} {} {} {} {}",
+                        row.actor_name,
+                        row.action,
+                        row.target.as_deref().unwrap_or_default(),
+                        row.before.as_deref().unwrap_or_default(),
+                        row.after.as_deref().unwrap_or_default()
+                    )
+                    .to_lowercase()
+                    .contains(text)
+                })
+            {
+                continue;
+            }
+            page.items.push(row);
+            if page.items.len() >= limit.clamp(1, 500) as usize {
+                break;
+            }
+        }
+        if page.scanned == count && count < 500 {
+            page.next = None;
+        }
+        Ok(page)
     }
 }

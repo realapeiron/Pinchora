@@ -19,10 +19,13 @@ use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{AuditFilter, AuditRow};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{collections::VecDeque, io};
+use std::{collections::VecDeque, io, time::Duration};
+use tokio::time::Instant;
 
 const PAGE: i64 = 50;
 const EXPORT_ROWS: usize = 10_000;
+const EXPORT_TIME: Duration = Duration::from_secs(10);
+const EXPORT_SCANNED: usize = 100_000;
 const EXPORT_BYTES: usize = 8 * 1024 * 1024;
 const HEADER: &str = "id,actor_id,actor_name,source,area,action,target,before,after,created_at\r\n";
 
@@ -97,18 +100,17 @@ async fn page(
     let rows = state
         .app
         .db
-        .filtered_audit_page(managed.id, before, PAGE + 1, &filter)
+        .filtered_audit_page(managed.id, before, PAGE, &filter)
         .await?;
-    let more = rows.len() as i64 > PAGE;
-    let items: Vec<_> = rows.into_iter().take(PAGE as usize).map(AuditView::from).collect();
-    let next = if more { items.last().map(|r| r.id.clone()) } else { None };
+    let next = rows.next.map(|id| id.to_string());
+    let items: Vec<_> = rows.items.into_iter().map(AuditView::from).collect();
     Ok(Json(json!({"items": items, "next": next})))
 }
 
 /// Quote every cell and neutralise formulas, including whitespace-prefixed formula payloads.
 fn cell(value: &str) -> String {
     let unsafe_start = value
-        .trim_start_matches(|c: char| c.is_whitespace() || c.is_control())
+        .trim_start_matches(|c: char| c.is_whitespace() || c.is_control() || c == '\u{feff}')
         .starts_with(['=', '+', '-', '@']);
     format!(
         "\"{}{}\"",
@@ -116,7 +118,8 @@ fn cell(value: &str) -> String {
         value.replace('"', "\"\"")
     )
 }
-fn csv(row: AuditRow) -> String {
+fn csv(mut row: AuditRow) -> String {
+    row.redact();
     [
         row.id.to_string(),
         row.actor_id.to_string(),
@@ -145,6 +148,8 @@ struct Export {
     bytes: usize,
     done: bool,
     notice: String,
+    deadline: Instant,
+    scanned: usize,
 }
 impl Export {
     fn limit(&mut self) -> String {
@@ -155,20 +160,36 @@ impl Export {
         if self.done {
             return Ok(None);
         }
-        if self.pending.is_empty() {
-            self.pending = self
+        if Instant::now() >= self.deadline || self.scanned >= EXPORT_SCANNED {
+            let notice = self.limit();
+            return Ok(Some((notice, self)));
+        }
+        while self.pending.is_empty() {
+            let Some(cursor) = self.before else {
+                return Ok(None);
+            };
+            let query = self
                 .state
                 .app
                 .db
-                .filtered_audit_page(self.guild, self.before, PAGE, &self.filter)
-                .await
-                .map_err(io::Error::other)?
-                .into();
+                .filtered_audit_page(self.guild, Some(cursor), PAGE, &self.filter);
+            let page = match tokio::time::timeout_at(self.deadline, query).await {
+                Ok(Ok(page)) => page,
+                Ok(Err(error)) => return Err(io::Error::other(error)),
+                Err(_) => {
+                    let notice = self.limit();
+                    return Ok(Some((notice, self)));
+                }
+            };
+            self.before = page.next;
+            self.scanned += page.scanned;
+            self.pending = page.items.into();
+            if self.scanned >= EXPORT_SCANNED {
+                let notice = self.limit();
+                return Ok(Some((notice, self)));
+            }
         }
-        let Some(row) = self.pending.pop_front() else {
-            return Ok(None);
-        };
-        self.before = Some(row.id);
+        let row = self.pending.pop_front().expect("nonempty page");
         let line = csv(row);
         let chunk = if self.rows >= EXPORT_ROWS || self.bytes + line.len() + self.notice.len() > EXPORT_BYTES {
             self.limit()
@@ -191,11 +212,13 @@ async fn export(
         .await
         .unwrap_or(state.app.guild_lang(managed.id).await);
     let (before, filter) = query.parse(lang)?;
-    let pending = state
-        .app
-        .db
-        .filtered_audit_page(managed.id, before, PAGE, &filter)
-        .await?;
+    let deadline = Instant::now() + EXPORT_TIME;
+    let pending = tokio::time::timeout_at(
+        deadline,
+        state.app.db.filtered_audit_page(managed.id, before, PAGE, &filter),
+    )
+    .await
+    .map_err(|error| ApiError::internal(anyhow::Error::from(error)))??;
     let notice = format!(
         "{},{},,,,,,,,\r\n",
         cell("EXPORT_LIMIT"),
@@ -205,8 +228,10 @@ async fn export(
         state,
         guild: managed.id,
         filter,
-        before,
-        pending: pending.into(),
+        before: pending.next,
+        scanned: pending.scanned,
+        pending: pending.items.into(),
+        deadline,
         rows: 0,
         bytes: HEADER.len(),
         done: false,
@@ -230,7 +255,16 @@ mod tests {
     use super::*;
     #[test]
     fn csv_quotes_and_neutralises_spreadsheet_formulas() {
-        for raw in ["=cmd()", " +SUM(1)", "\t@evil", "\n-2"] {
+        for raw in [
+            "=cmd()",
+            "+SUM(1)",
+            "-2",
+            "@evil",
+            " +SUM(1)",
+            "\t@evil",
+            "\n-2",
+            "\u{feff}=cmd()",
+        ] {
             assert!(cell(raw).starts_with("\"'"));
         }
         assert_eq!(cell("hello,\"reef\"\nworld"), "\"hello,\"\"reef\"\"\nworld\"");

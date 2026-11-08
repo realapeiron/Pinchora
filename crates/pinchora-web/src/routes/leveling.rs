@@ -446,6 +446,7 @@ async fn save_job(state: &WebState, job: &Job) {
 /// `POST /level-roles/sync`: gives members who are already past a level the roles they earned, in
 /// the background like `/config level-roles sync`. 202 with the job to poll.
 pub async fn sync_level_roles(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Response> {
+    crate::dashboard_access::check_level_rewards(&state, &managed).await?;
     let guild = managed.id;
     if state.app.db.level_roles(guild).await?.is_empty() {
         return Err(ApiError::new(

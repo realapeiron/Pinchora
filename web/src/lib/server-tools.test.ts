@@ -9,6 +9,10 @@ import {
 } from "./server-tools";
 
 describe("dashboard delegation", () => {
+  it("fails closed until the server supplies current access metadata", () => {
+    expect(canOpenPage(undefined, "roles")).toBe(false);
+    expect(canOpenPage({} as AccessOverview, "access")).toBe(false);
+  });
   const access = { access: { full: false, areas: ["roles"] } } as AccessOverview;
   it("keeps the shell and granted area, denies unknown, adjacent and privileged pages", () => {
     expect(canOpenPage(access, "")).toBe(true);
@@ -16,6 +20,10 @@ describe("dashboard delegation", () => {
     for (const page of ["access", "backup", "command-control", "role", "audit", "new-feature", "leveling"])
       expect(canOpenPage(access, page)).toBe(false);
     expect(canOpenPage({ access: { full: true, areas: null } } as AccessOverview, "access")).toBe(true);
+  });
+  it("strips read-only properties from access payloads", () => {
+    const row = { role_id: "123", areas: ["roles"], name: "Read-only", full: true };
+    expect(canonicalGrants([row])).toEqual([{ role_id: "123", areas: ["roles"] }]);
   });
   it("compares grants without ordering noise and keeps snowflakes as strings", () => {
     const id = "999999999999999999";

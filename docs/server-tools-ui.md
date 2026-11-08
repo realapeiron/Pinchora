@@ -36,7 +36,7 @@ The shared art-pixel unit is `--px: 4px`; panels use it for outlines and notches
 - **Access:** drafts are keyed to the guild. Canonical sorting/deduplication prevents ordering-only dirty states. Adding rejects duplicate, managed and everyone roles and observes the API-provided maximum. Every grant requires an area before saving.
 - **Access safeguards:** preview explicitly describes unsaved grants; saved state changes after a successful response. Pending saves disable grant edits. Shared `SaveBar` supplies reset/save, navigation blocking and tab-close warnings for unsaved changes; success uses `Toast`.
 - **Delegated navigation:** `ServerToolsOutlet` checks the route before rendering its form. Denied routes retain the shared page heading and an Overview link; delegated Overview lists permitted pages.
-- **Audit:** filters apply on form submission; Clear resets draft and applied filters. Dates use UTC and include the selected final day. CSV uses applied filters and discloses its 10,000-change/8 MiB limits.
+- **Audit:** filters apply on form submission; Clear resets draft and applied filters. Dates use UTC and include the selected final day. CSV uses applied filters and discloses its 10,000-change/100,000-inspected-row/8 MiB/10-second limits. A search inspects at most 500 indexed rows per request and preserves an older-page cursor even if that batch has no matches.
 - **Audit details:** keyboard-operable summary buttons expose expansion state and reveal field-level Before/After values. Preserve loading, error, empty-result and older-page states.
 - **Public leaderboard:** enabled means `vanity_slug !== null`. Turning off preserves the last draft slug for re-enabling; an empty enabled slug remains editable and invalid. Valid slugs are 3–32 lowercase letters/digits/hyphens with alphanumeric ends. Changes require Save XP options; the displayed public link uses the saved slug.
 
@@ -44,4 +44,8 @@ The shared art-pixel unit is `--px: 4px`; panels use it for outlines and notches
 
 - Keep `pages/Access.tsx`, `AuditLog.tsx`, `ServerToolsOutlet.tsx`, `LevelingParity.tsx`, `styles/server-tools.css` and `lib/server-tools.ts` aligned with the shared components.
 - Preserve EN/TR wording, role safety explanations, localized area names and permission-denied behavior; client gating complements server authorization.
-- Static review resolved the denied-screen heading, editable empty slug and guild-keyed access draft issues. Rendered desktop/mobile verification, including 390px and screenshots, remains pending with the lead.
+- Review verification: native Chrome against the isolated local test server confirmed Access saving/dirty-state behavior on desktop. At 390px, Access, Audit Log and Leveling each had one h1 and zero document horizontal overflow in EN/TR; access controls, audit filters and expanded before/after values were visually inspected. The three Playwright browser cases could not launch Chromium under the execution sandbox, so native Chrome supplied the rendered checks.
+
+## Access regression coverage
+
+`docs/w7-guild-route-matrix.tsv` inventories all 215 explicit guild method/path pairs. A router-source comparison fails when an endpoint is added without review. The matrix checks all seven single-area grants, anonymous requests, and CSRF on all 145 writes. Integration regressions also cover revoked Discord permissions/membership, grant escalation (including saved command/responder/module activation and XP reward sync), current role hierarchy, guild isolation, secret redaction, indexed bounded scans, export limits and private-content-free audit events. Invalid audit JSON still aborts transactional writes before redaction.

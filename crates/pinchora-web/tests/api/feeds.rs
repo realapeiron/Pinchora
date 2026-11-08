@@ -225,6 +225,7 @@ async fn feeds_are_checked_saved_previewed_tested_and_removed() {
         actions,
         [
             ("feeds.remove", owner as i64),
+            ("feeds.test", owner as i64),
             ("feeds.edit", owner as i64),
             ("feeds.add", owner as i64)
         ]

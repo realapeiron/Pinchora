@@ -19,6 +19,7 @@ const WRITES_PER_MINUTE: i64 = 60;
 
 /// The logged-in user. Rejects with 401 without a live session, with 403 `csrf` on a write that
 /// fails the CSRF check, and with 429 past the session's rate limit.
+#[derive(Clone)]
 pub struct CurrentSession {
     pub sid: String,
     pub session: Session,
