@@ -602,7 +602,7 @@ impl Module {
             "cr" => Self::ColorRoles,
             "pt" | "fd" | "hg" => Self::Social,
             "gw" => Self::Giveaways,
-            "tg" | "cm" => Self::CustomCommands,
+            "tg" | "cm" | "ms" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
             "sc" => Self::Stats,
@@ -954,6 +954,7 @@ mod tests {
         );
         assert_eq!(Module::of_component_prefix("tg"), Some(Module::CustomCommands));
         assert_eq!(Module::of_component_prefix("cm"), Some(Module::CustomCommands));
+        assert_eq!(Module::of_component_prefix("ms"), Some(Module::CustomCommands));
         assert_eq!(Module::of_component_prefix("zz"), None);
     }
 

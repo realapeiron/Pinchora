@@ -1988,18 +1988,21 @@ input[type="number"].pixel-input {
 }
 .embed-picture,
 .embed-thumb {
-  padding: 18px 10px;
-  font-size: 12px;
-  text-align: center;
-  color: #949ba4;
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
   background: #1e1f22;
+}
+.embed-picture {
+  max-height: 300px;
 }
 .embed-thumb {
   flex: none;
   align-self: start;
   width: 76px;
-  padding: 14px 6px;
-  overflow-wrap: anywhere;
+  height: 76px;
+  object-fit: cover;
 }
 .embed-footer {
   font-size: 12px;

@@ -7,6 +7,57 @@ use pinchora_render::templates;
 
 use super::*;
 
+#[tokio::test]
+async fn event_kits_choose_member_conditions_in_english_and_turkish() {
+    for (language, expected_first, expected_again) in [
+        (pinchora_core::i18n::Lang::En, "Welcome", "Welcome back"),
+        (pinchora_core::i18n::Lang::Tr, "Hoş geldin", "Yeniden hoş geldin"),
+    ] {
+        let Some(sim) = Sim::new(if language == pinchora_core::i18n::Lang::En {
+            "event_kit_english"
+        } else {
+            "event_kit_turkish"
+        })
+        .await
+        else {
+            return;
+        };
+        let channel = unique();
+        sim.app
+            .db
+            .update_welcome(sim.guild, Some(true), Some(channel), None)
+            .await
+            .unwrap();
+        sim.app.set_guild_lang(sim.guild, Some(language)).await.unwrap();
+        sim.app.forget_guild_settings(sim.guild).await;
+        let content = if language == pinchora_core::i18n::Lang::En {
+            "{{if returning}}Welcome back{{else}}Welcome{{end}} {user}"
+        } else {
+            "{{if returning}}Yeniden hoş geldin{{else}}Hoş geldin{{end}} {user}"
+        };
+        sqlx::query("INSERT INTO message_kits (guild_id,key,name,payload) VALUES ($1,'greet','Greeting',$2)")
+            .bind(sim.guild as i64)
+            .bind(json!({"name":"Greeting","content":content,"variants":[],
+                "embeds":[],"components":[],"allow_mass_mentions":false}))
+            .execute(sim.app.db.pool())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO message_event_kits (guild_id,kind,kit_key) VALUES ($1,'welcome','greet')")
+            .bind(sim.guild as i64)
+            .execute(sim.app.db.pool())
+            .await
+            .unwrap();
+        let user = unique();
+        sim.join(user, "Ada", false, None).await;
+        let first = sim.posts();
+        assert!(first[0].content().starts_with(expected_first));
+        assert_eq!(first[0].body["allowed_mentions"]["parse"], json!([]));
+        sim.join(user, "Ada", false, None).await;
+        let second = sim.posts();
+        assert!(second[0].content().starts_with(expected_again));
+    }
+}
+
 /// The size of the one picture a post carries.
 fn picture(post: &Post) -> (u32, u32) {
     let [(name, bytes)] = &post.files[..] else {

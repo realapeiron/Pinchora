@@ -84,6 +84,8 @@ mod branding;
 mod events;
 #[path = "api/leveling_parity.rs"]
 mod leveling_parity;
+#[path = "api/message_studio.rs"]
+mod message_studio;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 #[path = "api/trackers.rs"]
@@ -516,6 +518,14 @@ async fn discord(
                 let gone = json!({ "message": "Unknown Guild", "code": 10004 });
                 (StatusCode::NOT_FOUND, gone.to_string())
             }
+        }
+        (&Method::POST, [.., "users", "@me", "channels"]) => {
+            let request: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+            let recipient = request["recipient_id"].as_str().unwrap_or("0");
+            (
+                StatusCode::OK,
+                json!({"id":recipient,"type":1,"recipients":[]}).to_string(),
+            )
         }
         (&Method::POST, [.., "channels", channel, "messages"]) => {
             let channel = channel.parse::<u64>().unwrap_or(1);

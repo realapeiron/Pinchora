@@ -9,7 +9,8 @@ use pinchora_core::{
 use pinchora_db::GuildSettings;
 use pinchora_render::{CardFill, DesignedCard, Renderer, character::atlas, templates};
 use twilight_model::{
-    channel::message::AllowedMentions,
+    channel::message::{AllowedMentions, MentionType},
+    gateway::payload::incoming::MemberUpdate,
     http::attachment::Attachment,
     id::{
         Id,
@@ -50,6 +51,7 @@ pub fn classic_card(settings: &GuildSettings, kind: CardKind, lang: Lang) -> Car
     let title = match kind {
         CardKind::Welcome => settings.welcome_title.as_deref(),
         CardKind::Goodbye => None,
+        CardKind::Boost | CardKind::LevelUp => None,
     };
     templates::classic(kind, theme, title, settings.welcome_accent.map(|c| c as u32), lang)
 }
@@ -154,12 +156,18 @@ pub async fn deliver(
     channel: Id<ChannelMarker>,
     delivery: Delivery,
     text: &str,
-    image: Option<(&str, Vec<u8>)>,
+    image: Option<(&str, Vec<u8>, &str)>,
     mentions: &AllowedMentions,
 ) -> anyhow::Result<()> {
     let text = Some(text).filter(|t| !t.trim().is_empty() && delivery.has_text());
     let image = image.filter(|_| delivery.has_image());
-    let attach = |(name, png): (&str, Vec<u8>)| [Attachment::from_bytes(name.to_owned(), png, 1)];
+    let attach = |(name, png, alt): (&str, Vec<u8>, &str)| {
+        let mut attachment = Attachment::from_bytes(name.to_owned(), png, 1);
+        if !alt.is_empty() {
+            attachment.description(alt.to_owned());
+        }
+        [attachment]
+    };
     match (delivery, text, image) {
         (_, None, None) => {}
         (Delivery::BeforeMessage, Some(text), Some(image)) => {
@@ -183,4 +191,76 @@ pub async fn deliver(
         }
     }
     Ok(())
+}
+
+/// A new Nitro boost gets the server's designed boost image in its welcome channel.
+pub(crate) async fn on_member_update(app: &App, event: &MemberUpdate) {
+    let guild = event.guild_id.get();
+    let user = event.user.id.get();
+    let result = async {
+        if !app
+            .db
+            .observe_card_boost(guild, user, event.premium_since.is_some())
+            .await?
+        {
+            return anyhow::Ok(());
+        }
+        let settings = app.guild_settings(guild).await?;
+        let Some(channel) = settings.welcome_channel_id else {
+            return Ok(());
+        };
+        let card = server_card(app, &settings, guild, CardKind::Boost).await?;
+        let server = app.http.guild(Id::new(guild)).await?.model().await?.name;
+        let lang = app.guild_lang(guild).await;
+        let chosen = crate::message_studio::event_text(
+            app,
+            guild,
+            CardKind::Boost,
+            crate::message_studio::EventMember {
+                user_id: user,
+                user: &event.user.name,
+                server: &server,
+                level: None,
+                booster: true,
+                returning: app.db.card_was_returning(guild, user).await?,
+                ordinal: None,
+            },
+        )
+        .await?;
+        if !card.custom && chosen.is_none() && card.delivery == Delivery::TextOnly {
+            return Ok(());
+        }
+        let (text, mass) = chosen.unwrap_or_else(|| {
+            (
+                pinchora_core::t!(lang, "studio.boost-message", user = event.user.name, server = server),
+                false,
+            )
+        });
+        let mut mentions = AllowedMentions::default();
+        if mass {
+            mentions.parse = vec![MentionType::Everyone, MentionType::Roles];
+        }
+        let subject = CardSubject {
+            user: event.user.id,
+            avatar: event.user.avatar,
+            name: event.nick.clone().unwrap_or_else(|| event.user.name.clone()),
+            username: event.user.name.clone(),
+            server,
+            members: None,
+        };
+        let image = if card.delivery.has_image() {
+            Some((
+                "boost.png",
+                card_png(app, guild, &card.design, &subject).await?,
+                card.design.alt_text.as_str(),
+            ))
+        } else {
+            None
+        };
+        deliver(app, Id::new(channel as u64), card.delivery, &text, image, &mentions).await
+    }
+    .await;
+    if let Err(error) = result {
+        tracing::warn!(guild, user, %error, "boost card failed");
+    }
 }

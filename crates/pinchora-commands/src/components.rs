@@ -19,6 +19,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("ms") => crate::message_studio::on_component(cx, parts, values).await,
         Some("rx") => crate::commands::roblox::on_component(cx, parts).await,
         Some("ah") => crate::commands::achievements::on_component(cx, parts).await,
         Some("kc") => crate::commands::command_control::on_control_component(cx).await,

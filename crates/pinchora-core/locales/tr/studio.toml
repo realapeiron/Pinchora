@@ -1,0 +1,10 @@
+[studio]
+boost-title = "TEŞEKKÜRLER!"
+boost-line = "{user}, {server} sunucusunu takviye etti"
+level-title = "SEVİYE ATLADI!"
+level-line = "{server} sunucusunda parlamaya devam et"
+boost-message = "{user}, {server} sunucusuna takviye verdiğin için teşekkürler!"
+test-boost = "{name} için takviye kartı testi"
+test-level = "{name} için seviye atlama kartı testi"
+level-message = "{user}, {server} sunucusunda yeni bir seviyeye ulaştı!"
+test-note = "{name} için test; kimseye bildirim gitmedi"

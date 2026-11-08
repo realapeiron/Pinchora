@@ -30,17 +30,40 @@ const TITLE_MAX: usize = 18;
 
 /// The template `key` for `kind`, if there is one.
 pub fn template(key: &str, kind: CardKind) -> Option<CardDesign> {
+    template_in(key, kind, Lang::En)
+}
+
+/// A gallery template in the server's language.
+pub fn template_in(key: &str, kind: CardKind, lang: Lang) -> Option<CardDesign> {
     if let Some(theme) = key.strip_prefix("classic-") {
         return Theme::PRESETS
             .contains(&theme)
-            .then(|| classic(kind, theme, None, None, Lang::En));
+            .then(|| classic(kind, theme, None, None, lang));
     }
-    match key {
+    let mut design = match key {
         "starlit-banner" => Some(starlit_banner(kind)),
         "clean-card" => Some(clean_card(kind)),
         "pet-party" => Some(pet_party(kind)),
         _ => None,
+    }?;
+    if lang == Lang::Tr && matches!(kind, CardKind::Boost | CardKind::LevelUp) {
+        for layer in &mut design.layers {
+            if let Content::Text { text, .. } = &mut layer.content {
+                if layer.id == "title" {
+                    *text = match kind {
+                        CardKind::Boost => t!(lang, "studio.boost-title"),
+                        _ => t!(lang, "studio.level-title"),
+                    };
+                } else if layer.id == "line" {
+                    *text = match kind {
+                        CardKind::Boost => t!(lang, "studio.boost-line", user = "{user}", server = "{server}"),
+                        _ => t!(lang, "studio.level-line", server = "{server}"),
+                    };
+                }
+            }
+        }
     }
+    Some(design)
 }
 
 /// The classic card: the night-sea gradient of `theme`, a stage floor with two crabs, the pixelated
@@ -53,6 +76,8 @@ pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<
         || match kind {
             CardKind::Welcome => t!(lang, "events.default-welcome-title"),
             CardKind::Goodbye => t!(lang, "card.goodbye.title"),
+            CardKind::Boost => t!(lang, "studio.boost-title"),
+            CardKind::LevelUp => t!(lang, "studio.level-title"),
         },
         str::to_owned,
     );
@@ -65,6 +90,8 @@ pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<
             number = "{members}"
         ),
         CardKind::Goodbye => t!(lang, "card.goodbye.line", server = "{server}", members = "{members}"),
+        CardKind::Boost => t!(lang, "studio.boost-line", server = "{server}"),
+        CardKind::LevelUp => t!(lang, "studio.level-line", server = "{server}"),
     };
     CardDesign {
         version: DESIGN_VERSION,
@@ -77,6 +104,7 @@ pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<
             pixel: true,
         },
         dim: 0,
+        alt_text: String::new(),
         layers: vec![
             shape("floor", ShapeKind::Rect, (0, 440, 1100, 60), &t.panel, 55),
             shape("floor-edge", ShapeKind::Dashes, (0, 440, 1100, 8), &t.panel_edge, 60),
@@ -103,6 +131,8 @@ fn starlit_banner(kind: CardKind) -> CardDesign {
     let (title, line) = match kind {
         CardKind::Welcome => ("WELCOME", "You are our {ordinal} member!"),
         CardKind::Goodbye => ("SEE YOU", "{server} has {members} members now"),
+        CardKind::Boost => ("THANK YOU", "{user} boosted {server}!"),
+        CardKind::LevelUp => ("LEVEL UP", "{user} leveled up!"),
     };
     let mut headline = text("title", title, Font::Pixel, false, 56, "#ffd166", (370, 104, 760));
     let mut name = text("name", "{user}", Font::Sans, true, 48, "#fff1e8", (370, 172, 760));
@@ -126,6 +156,7 @@ fn starlit_banner(kind: CardKind) -> CardDesign {
             id: "bg_starlit_jetty".to_owned(),
         },
         dim: 25,
+        alt_text: String::new(),
         layers: vec![
             shape("plate", ShapeKind::Rounded, (340, 84, 800, 232), "#0b1029", 60),
             avatar("avatar", AvatarShape::Circle, (70, 80, 240), 8, "#ffd166", false),
@@ -141,6 +172,8 @@ fn clean_card(kind: CardKind) -> CardDesign {
     let line = match kind {
         CardKind::Welcome => "just joined {server}",
         CardKind::Goodbye => "has left {server}",
+        CardKind::Boost => "boosted {server}",
+        CardKind::LevelUp => "leveled up in {server}",
     };
     let mut panel = shape("panel", ShapeKind::Rounded, (0, 0, 1000, 360), "#141b3d", 92);
     if let Content::Shape {
@@ -158,6 +191,7 @@ fn clean_card(kind: CardKind) -> CardDesign {
         height: 360,
         background: Background::Transparent,
         dim: 0,
+        alt_text: String::new(),
         layers: vec![
             panel,
             avatar("avatar", AvatarShape::Circle, (410, 34, 180), 6, "#8fd3ff", false),
@@ -172,6 +206,8 @@ fn pet_party(kind: CardKind) -> CardDesign {
     let (title, line) = match kind {
         CardKind::Welcome => ("WELCOME!", "member #{members} of {server}"),
         CardKind::Goodbye => ("BYE BYE!", "{server} will miss you"),
+        CardKind::Boost => ("BOOST!", "Thanks for boosting {server}"),
+        CardKind::LevelUp => ("LEVEL UP!", "Keep shining in {server}"),
     };
     let mut plate = shape("plate", ShapeKind::Notched, (250, 256, 600, 210), "#4a2f66", 88);
     if let Content::Shape {
@@ -195,6 +231,7 @@ fn pet_party(kind: CardKind) -> CardDesign {
             id: "bg_cherryfoam_garden".to_owned(),
         },
         dim: 15,
+        alt_text: String::new(),
         layers: vec![
             plate,
             glyph("heart", "heart", (232, 64, 42, 36), "#ff4d6d"),
@@ -292,4 +329,23 @@ fn text(id: &str, body: &str, font: Font, bold: bool, size: u32, color: &str, (x
             outline_width: 0,
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn boost_and_level_cards_have_turkish_text() {
+        for kind in [CardKind::Boost, CardKind::LevelUp] {
+            let english = template_in("starlit-banner", kind, Lang::En).unwrap();
+            let turkish = template_in("starlit-banner", kind, Lang::Tr).unwrap();
+            assert_ne!(english.layers, turkish.layers);
+            assert!(
+                turkish
+                    .layers
+                    .iter()
+                    .any(|layer| matches!(&layer.content, Content::Text { text, .. } if text.contains("{server}")))
+            );
+        }
+    }
 }

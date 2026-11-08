@@ -11,6 +11,13 @@
   align-items: center;
   gap: 10px 12px;
 }
+.card-safe-area {
+  position: absolute;
+  border: 2px dashed #ffd166;
+  box-shadow: 0 0 0 9999px #0b102930;
+  pointer-events: none;
+  z-index: 1;
+}
 
 .card-toolbar-gap {
   flex: 1;

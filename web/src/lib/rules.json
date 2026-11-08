@@ -55,7 +55,19 @@
     "background_prefix": "bg_",
     "border_max": 40,
     "deliveries": {
+      "boost": [
+        "with_message",
+        "before_message",
+        "image_only",
+        "text_only"
+      ],
       "goodbye": [
+        "with_message",
+        "before_message",
+        "image_only",
+        "text_only"
+      ],
+      "level_up": [
         "with_message",
         "before_message",
         "image_only",

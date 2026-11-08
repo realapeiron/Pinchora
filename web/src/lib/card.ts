@@ -8,7 +8,7 @@ import { locale, number } from "../i18n";
 
 export const CARD = rules.card;
 
-export type CardKind = "welcome" | "goodbye";
+export type CardKind = "welcome" | "goodbye" | "boost" | "level_up";
 export type Delivery = "with_message" | "before_message" | "image_only" | "text_only" | "dm";
 
 export type Background =
@@ -81,6 +81,7 @@ export interface CardDesign {
   background: Background;
   /** A black scrim over the background, in percent. */
   dim: number;
+  alt_text?: string;
   /** Bottom to top. */
   layers: Layer[];
 }
@@ -100,6 +101,8 @@ export interface CardTemplate {
   name: string;
   welcome: CardDesign;
   goodbye: CardDesign;
+  boost: CardDesign;
+  level_up: CardDesign;
 }
 
 export interface CardUpload {
@@ -112,6 +115,8 @@ export interface CardUpload {
 export interface Cards {
   welcome: CardView;
   goodbye: CardView;
+  boost: CardView;
+  level_up: CardView;
   templates: CardTemplate[];
   uploads: CardUpload[];
 }

@@ -377,7 +377,7 @@ pub(crate) fn to_discord(rendered: &Rendered, guild: u64, subject: u64) -> (Stri
 }
 
 /// An embed spec as a Discord embed.
-pub(crate) fn embed_of(spec: &EmbedSpec) -> Embed {
+pub fn embed_of(spec: &EmbedSpec) -> Embed {
     let mut builder = EmbedBuilder::new().color(spec.color_value().unwrap_or(BRAND));
     if let Some(title) = &spec.title {
         builder = builder.title(title);

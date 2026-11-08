@@ -53,6 +53,7 @@ export function CardCanvas({
   zoom,
   selected,
   snapping,
+  safeArea,
   fill,
   avatarUrl,
   uploads,
@@ -65,6 +66,7 @@ export function CardCanvas({
   zoom: number;
   selected: string | null;
   snapping: boolean;
+  safeArea?: boolean;
   fill: Fill;
   avatarUrl: string;
   uploads: Record<string, string>;
@@ -156,6 +158,15 @@ export function CardCanvas({
         className="card-svg"
       />
       <div className="card-overlay">
+        {safeArea && (
+          <div
+            className="card-safe-area"
+            aria-hidden="true"
+            style={{
+              inset: `${Math.round(design.height * zoom * 0.07)}px ${Math.round(design.width * zoom * 0.07)}px`,
+            }}
+          />
+        )}
         {design.layers.map((layer) =>
           layer.hidden ? null : (
             <div
