@@ -21,6 +21,7 @@ pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
 pub(crate) mod economy_v2;
+pub(crate) mod workflows;
 pub use economy::{wallet_card_for, wallet_preview_for};
 pub(crate) mod events;
 pub(crate) mod feeds;
@@ -144,6 +145,7 @@ macro_rules! commands {
 }
 
 commands!(
+    workflows::Workflow,
     moderation::parity::Parity,
     community_pack::CommunityAdmin,
     community_v2::HighlightCommand,

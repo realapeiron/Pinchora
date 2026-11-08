@@ -3482,6 +3482,48 @@
           "usage": "/setup commands custom-list"
         },
         {
+          "aliases": [
+            "workflow list"
+          ],
+          "description": "Listele",
+          "manager": true,
+          "options": [],
+          "path": "setup workflows list",
+          "usage": "/setup workflows list"
+        },
+        {
+          "aliases": [
+            "workflow runs"
+          ],
+          "description": "Son çalışmalar",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ad",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup workflows runs",
+          "usage": "/setup workflows runs <name>"
+        },
+        {
+          "aliases": [
+            "workflow toggle"
+          ],
+          "description": "Aç veya kapat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ad",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup workflows toggle",
+          "usage": "/setup workflows toggle <name>"
+        },
+        {
           "aliases": [],
           "description": "Odana yeni kimsenin girmesini engelle",
           "manager": false,
@@ -8546,5 +8588,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 451
+  "count": 454
 }

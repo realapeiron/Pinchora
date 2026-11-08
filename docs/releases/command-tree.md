@@ -5,6 +5,7 @@ D12 extends `/ticket` with seven staff leaves (`priority`, `escalate`, `transfer
 limit. No slash root is added. Migration **0086** adds ticket operation state, panel and support
 settings, private notes, snippets and form drafts. Dashboard routes remain beneath `/tickets`
 and map to W7's community access area. Claim and close use database compare-and-set updates.
+F13 adds `/setup workflows list|toggle|runs` and `/tag wf:<name>` autocomplete. Editing and button posting are web-only. Registration has **78 slash roots plus Report and Open ticket (80)**, `/setup` now has **7** groups, and each root remains within **6,800 characters**. Migration **0087** only.
 
 D6 collection depth extends the existing `/dex` panel and `/critterdrop` interactions; it adds no slash root or child. The `/me/collection` and `/me/wishlist` player pages share the same database state. Migration **0084** only. No registration or deployment is performed here.
 

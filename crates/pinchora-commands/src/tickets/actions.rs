@@ -864,6 +864,7 @@ async fn finish_close(
     reason: Option<String>,
 ) -> anyhow::Result<Option<Ticket>> {
     let guild = closed.guild_id as u64;
+    crate::workflows::triggers::simple(app, guild, closed.opener_id as u64, "ticket_closed", closed.place());
     let lang = guild_lang(app, guild).await;
     let settings = app.db.ticket_settings(guild).await?;
     let captured = match transcript::capture(app, &closed).await {
@@ -1107,6 +1108,7 @@ async fn reopen(cx: &Cx, ticket: &Ticket, panel: Option<&TicketPanel>, force: bo
         return Ok(false);
     };
     let guild = ticket.guild_id as u64;
+    crate::workflows::triggers::simple(app, guild, opened.opener_id as u64, "ticket_opened", opened.place());
     let settings = app.db.ticket_settings(guild).await?;
     if let Some(place) = place_of(&opened) {
         let opener = Id::<UserMarker>::new(opened.opener_id as u64);

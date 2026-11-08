@@ -28,6 +28,9 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("reef_games", "owner_id"),
     ("ticket_form_drafts", "user_id"),
     ("ticket_staff_notes", "author_id"),
+    ("workflow_vars", "subject_id"),
+    ("workflow_runs", "user_id"),
+    ("workflow_role_changes", "user_id"),
     ("reef_edit_receipts", "actor_id"),
     ("reef_edit_receipts", "owner_id"),
     ("reef_space_preferences", "user_id"),
@@ -289,6 +292,7 @@ pub const DELETED_NAME: &str = "Deleted user";
 /// the player: the record stays (a server's custom commands outlive the manager who wrote them) and
 /// the id becomes 0.
 pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
+    ("workflows", "created_by"),
     ("reef_sanctions", "actor_id"),
     ("custom_commands", "created_by"),
     ("custom_responders", "created_by"),
@@ -302,6 +306,8 @@ pub const OTHER_TABLES: &[&str] = &[
     // Its ticket parent cascades on deletion; player references are cleared above.
     "ticket_operations",
     "ticket_snippets",
+    "workflow_schedules",
+    "workflow_run_budget",
     // No user IDs; both foreign keys cascade with their registered personal-data parents.
     "reef_guestbook_evidence",
     "economy_settings",

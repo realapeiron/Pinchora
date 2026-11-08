@@ -9,6 +9,7 @@ pub fn route_area(path: &str) -> Option<&'static str> {
         | "store" | "cards" | "message-studio" | "preview" | "branding" | "commands" | "responders" => {
             Some("configuration")
         }
+        "workflows" => Some("configuration"),
         "economy" => Some("economy"),
         "roles" => Some("roles"),
         "mod-parity" | "moderation" | "logs" | "cases" | "staff-log" | "automod" | "anti_nuke" | "safety" => {
@@ -191,6 +192,25 @@ pub async fn check_module_roles(
     let guild = managed.id;
     let mut roles = Vec::new();
     match module {
+        Module::Workflows => {
+            fn roles_in(actions: &[pinchora_core::workflows::StepAction], roles: &mut Vec<i64>) {
+                use pinchora_core::workflows::StepAction;
+                for action in actions {
+                    match action {
+                        StepAction::Tag { action } => roles.extend(action.role().map(|id| id as i64)),
+                        StepAction::RandomBranch { branches } => {
+                            for branch in branches {
+                                roles_in(branch, roles);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            for row in db.workflows(guild).await? {
+                roles_in(&row.definition()?.actions, &mut roles);
+            }
+        }
         Module::CustomCommands => {
             for row in db.custom_commands(guild).await? {
                 roles.extend(row.def.actions.iter().filter_map(|a| a.role()).map(|r| r as i64));

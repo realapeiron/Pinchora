@@ -151,11 +151,12 @@ pub enum Module {
     Roblox,
     Branding,
     GameTrackers,
+    Workflows,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 55] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -210,6 +211,7 @@ impl Module {
         Self::Roblox,
         Self::Branding,
         Self::GameTrackers,
+        Self::Workflows,
     ];
 
     /// The key stored in the database and used in the API.
@@ -227,6 +229,7 @@ impl Module {
             Self::Polls => "polls",
             Self::Giveaways => "giveaways",
             Self::CustomCommands => "custom_commands",
+            Self::Workflows => "workflows",
             Self::Profile => "profile",
             Self::Economy => "economy",
             Self::Shop => "shop",
@@ -290,6 +293,7 @@ impl Module {
             Self::Polls => "Polls",
             Self::Giveaways => "Giveaways",
             Self::CustomCommands => "Custom commands",
+            Self::Workflows => "Workflows",
             Self::Profile => "Profiles and ranks",
             Self::Economy => "Shell economy",
             Self::Shop => "Shops and gifts",
@@ -361,6 +365,7 @@ impl Module {
             Self::Suggestions => "/suggest and its voting buttons.",
             Self::Polls => "/poll and its voting buttons.",
             Self::Giveaways => "/giveaway and its entry button.",
+            Self::Workflows => "Trigger, conditions and bounded actions",
             Self::CustomCommands => {
                 "/tag and /setup commands, and the auto-responders (joins, level-ups, roles, keywords)."
             }
@@ -433,6 +438,7 @@ impl Module {
             | Self::Polls
             | Self::Giveaways
             | Self::CustomCommands
+            | Self::Workflows
             | Self::TextCommands => Group::Server,
             Self::Profile | Self::Economy | Self::Shop | Self::Quests | Self::Social => Group::Players,
             Self::House | Self::Plaza | Self::Pets | Self::Fishing => Group::Home,
@@ -473,6 +479,7 @@ impl Module {
                 Scope::Server
             }
             Self::AutoMod => Scope::Server,
+            Self::Workflows => Scope::Server,
             Self::AntiNuke => Scope::Server,
             Self::Feeds => Scope::Server,
             Self::GameTrackers => Scope::Server,
@@ -524,6 +531,7 @@ impl Module {
             "partner" | "friends" | "hug" | "pat" | "wave" | "highfive" => Self::Social,
             "giveaway" => Self::Giveaways,
             "tag" | "customcommand" => Self::CustomCommands,
+            "workflow" => Self::Workflows,
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
             "feeds" => Self::Feeds,
@@ -606,6 +614,7 @@ impl Module {
             "pt" | "fd" | "hg" => Self::Social,
             "gw" => Self::Giveaways,
             "tg" | "cm" | "ms" => Self::CustomCommands,
+            "wf" | "wk" => Self::Workflows,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
             "sc" => Self::Stats,

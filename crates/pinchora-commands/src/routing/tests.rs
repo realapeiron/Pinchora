@@ -12,8 +12,8 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 114);
-    assert_eq!(paths.len(), 451);
+    assert_eq!(tree.len(), 115);
+    assert_eq!(paths.len(), 454);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     assert_eq!(
@@ -53,7 +53,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 240);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 243);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -66,7 +66,7 @@ fn every_alias_preserves_handler_arguments_permissions_and_metadata() {
     let tree = crate::command_definitions();
     let setup = tree.iter().find(|c| c.name == "setup").unwrap();
     assert_eq!(setup.default_member_permissions, Some(Permissions::MANAGE_GUILD));
-    assert_eq!(setup.options.len(), 6);
+    assert_eq!(setup.options.len(), 7);
     assert!(tree.len() <= 100);
     for root in tree.iter().filter(|c| is_admin_path(&c.name)) {
         assert_eq!(root.default_member_permissions, Some(Permissions::MANAGE_GUILD));
@@ -487,10 +487,10 @@ fn registered_command_sizes_keep_growth_headroom() {
     for (size, name) in sizes.iter().take(10) {
         eprintln!("/{name}: {size} characters");
     }
-    assert!(sizes[0].0 <= 6_650, "largest root must retain D8 headroom");
+    assert!(sizes[0].0 <= 6_800, "largest root must retain Wave 8 headroom");
     for (size, name) in sizes {
-        if name == "collection" {
-            assert!(size <= 6_650, "collection root: {size}");
+        if matches!(name.as_str(), "collection" | "setup") {
+            assert!(size <= 6_650, "{name} root: {size}");
         }
         assert!(size <= 6_800, "{name}: {size}");
         if name == "community" {

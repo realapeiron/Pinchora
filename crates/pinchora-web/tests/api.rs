@@ -143,6 +143,7 @@ type Account = (Value, Vec<Value>);
 /// What the mock Discord knows: users by access token, the codes it handed out, where the bot is.
 #[derive(Clone, Default)]
 struct Mock {
+    workflow_http_writes: Arc<AtomicUsize>,
     dm_opens: Arc<AtomicUsize>,
     absent_leveling_members: Arc<Mutex<HashSet<(u64, u64)>>>,
     /// Access token → the account.
@@ -406,6 +407,9 @@ async fn discord(
     headers: HeaderMap,
     body: Bytes,
 ) -> (StatusCode, String) {
+    if !method.is_safe() {
+        mock.workflow_http_writes.fetch_add(1, Ordering::SeqCst);
+    }
     let path = uri.path().to_owned();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let bearer = headers
@@ -4030,3 +4034,6 @@ mod web_player;
 mod economy_v2;
 #[path = "api/reef_spaces.rs"]
 mod reef_spaces;
+
+#[path = "api/workflows.rs"]
+mod workflows;

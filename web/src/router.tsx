@@ -172,6 +172,7 @@ const localizedRoutes: RouteObject[] = [
         path: "backup",
         lazy: async () => ({ Component: (await import("./pages/ConfigBackup")).ConfigBackup }),
       },
+      { path: "workflows", lazy: async () => ({ Component: (await import("./pages/Workflows")).Workflows }) },
       { path: "automod", lazy: async () => ({ Component: (await import("./pages/AutoMod")).AutoMod }) },
       { path: "cases", lazy: async () => ({ Component: (await import("./pages/Cases")).Cases }) },
       { path: "staff-log", lazy: async () => ({ Component: (await import("./pages/StaffLog")).StaffLog }) },

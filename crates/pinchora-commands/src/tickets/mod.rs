@@ -454,3 +454,11 @@ fn missing_keys(cx: &Cx, need: Need) -> Vec<&'static str> {
         .map(|(_, name)| *name)
         .collect()
 }
+
+pub(crate) use open::overwrites as workflow_overwrites;
+
+pub(crate) use actions::controls as workflow_controls;
+pub(crate) use open::welcome_embed as workflow_welcome_embed;
+pub(crate) use server_name as workflow_server_name;
+
+pub(crate) use open::eligibility_refusal;

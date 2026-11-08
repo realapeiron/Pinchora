@@ -1021,7 +1021,13 @@ alters them). A feed's `created_by` becomes 0 when its author deletes their data
 
 ### Workflows
 
-<!-- F13: the Workflows package replaces this heading's section; keep it one `###` section. -->
+Build workflows at `/g/:guild/workflows`: choose a trigger, up to five conditions and ten actions, edit server/member variables, test with a fake event without effects, and inspect seven days of per-step playback. Editing is web-only. `/setup workflows list|toggle <name>|runs <name>` provides private Manage Server administration; members invoke command workflows with `/tag wf:<name>` (autocomplete) or a button posted from the editor (`wf:b:<id>:0`). No slash root is added.
+
+Triggers cover member joins/leaves, levels, roles, reactions, keywords, timezone-aware daily/weekly/interval schedules, voice joins, birthdays, achievements, tickets, starboards and feeds. Triggers disappear when their source module is disabled. Keyword workflows require Message Content; the editor explains an unavailable intent and refuses activation until it is enabled.
+
+Limits are enforced on the server: 25 workflows, 100 distinct variable keys per guild (32-character keys, 200-character values), 100 run reservations per rolling minute per guild across processes, depth one, and five worst-case Discord writes per run. Workflow role changes are durably marked before execution, including delayed gateway callbacks, so they cannot start another workflow. Messages and DMs use `allowed_mentions: none`; points share tags' 1,000-per-member daily award cap, and workflows never move shells. Random branches cannot nest; `wait`, workflow calls and LLM actions are not supported. Ticket actions reuse the ticket store and permission overwrites; panels requiring a form are refused rather than bypassed.
+
+Migration **0087** creates `workflows`, `workflow_vars`, `workflow_runs`, `workflow_schedules`, `workflow_run_budget` and `workflow_role_changes`. Budget reservations survive workflow deletion. Playback stores step status without message or variable content. Run retention is seven days; privacy deletion removes member variables and runs and anonymizes workflow authors. All `/api/guilds/:guild/workflows` endpoints use Session/ManagedGuild, CSRF for writes, and the W7 **configuration** access area. Definition, variable and button-post changes are audited.
 
 ### Branding
 

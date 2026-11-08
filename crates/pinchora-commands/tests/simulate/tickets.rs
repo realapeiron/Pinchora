@@ -1579,3 +1579,236 @@ async fn ticket_claim_mode_message_guard_respects_the_module_switch() {
         );
     }
 }
+
+#[tokio::test]
+async fn workflows_open_ticket_does_not_trigger_ticket_opened_workflows() {
+    use pinchora_core::workflows::{Definition, Event};
+    let Some((sim, world)) = ticket_sim("workflows_ticket_depth").await else {
+        return;
+    };
+    let user = unique();
+    let panel = save_panel(&sim, "Workflow", sim.channel, &[Topic::new("Help")], &[], &[]).await;
+    let next: Definition = serde_json::from_value(json!({"name":"next","enabled":true,"trigger":{"kind":"ticket_opened"},"conditions":[],"actions":[{"kind":"set_var","scope":"server","key":"chained","value":"yes"}]})).unwrap();
+    let next = sim.app.db.save_workflow(sim.guild, None, &next, user).await.unwrap();
+    let first: Definition = serde_json::from_value(json!({"name":"open","enabled":true,"trigger":{"kind":"button"},"conditions":[],"actions":[{"kind":"open_ticket","panel_id":panel,"topic":0}]})).unwrap();
+    let first = sim.app.db.save_workflow(sim.guild, None, &first, user).await.unwrap();
+    let result = pinchora_commands::workflows::engine::run(
+        &sim.app,
+        &first,
+        Event {
+            kind: "button".into(),
+            user_id: user.to_string(),
+            channel_id: sim.channel.to_string(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(result.outcome, "completed");
+    sim.app.drain(std::time::Duration::from_secs(2)).await;
+    assert_eq!(world.made.lock().unwrap().len(), 1);
+    assert!(sim.app.db.workflow_runs(sim.guild, next.id).await.unwrap().is_empty());
+    assert!(sim.app.db.workflow_vars(sim.guild, user).await.unwrap().is_empty());
+    let posts = take_posts(&sim);
+    assert_eq!(posts.len(), 1);
+    assert_eq!(posts[0].body["allowed_mentions"]["parse"], json!([]));
+    assert!(world.made.lock().unwrap().len() + posts.len() <= 5);
+}
+
+async fn workflow_ticket_counts(sim: &Sim, observers: &[i64], expected: [usize; 2]) {
+    sim.app.drain(std::time::Duration::from_secs(5)).await;
+    for (&id, count) in observers.iter().zip(expected) {
+        let runs = sim.app.db.workflow_runs(sim.guild, id).await.unwrap();
+        assert_eq!(runs.len(), count, "each committed ticket transition emits once");
+        assert!(runs.iter().all(|run| run.outcome == "completed"));
+    }
+}
+
+async fn workflow_open_result(sim: &Sim, row: &pinchora_db::WorkflowRow, user: u64) -> String {
+    pinchora_commands::workflows::engine::run(
+        &sim.app,
+        row,
+        pinchora_core::workflows::Event {
+            kind: "button".into(),
+            user_id: user.to_string(),
+            channel_id: sim.channel.to_string(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap()
+    .outcome
+}
+
+#[tokio::test]
+async fn workflows_open_ticket_obeys_panel_category_user_cooldown_and_eligibility_limits() {
+    use pinchora_core::workflows::Definition;
+    let Some((sim, world)) = ticket_sim("workflows_ticket_limits").await else {
+        return;
+    };
+    let (user, other, category, bypass) = (unique(), unique(), unique(), unique());
+    let panel = save_panel(&sim, "Limits", sim.channel, &[Topic::new("Help")], &[], &[]).await;
+    sqlx::query("UPDATE ticket_panels SET open_category_id=$2 WHERE id=$1")
+        .bind(panel)
+        .bind(category as i64)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    let mut ops = pinchora_db::TicketPanelOperations {
+        cooldown_seconds: 0,
+        max_open_per_panel: 1,
+        max_open_per_category: 1,
+        ..Default::default()
+    };
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    let definition: Definition = serde_json::from_value(json!({
+        "name":"limited", "enabled":true, "trigger":{"kind":"button"}, "conditions":[],
+        "actions":[{"kind":"open_ticket", "panel_id":panel, "topic":0}]
+    }))
+    .unwrap();
+    let row = sim
+        .app
+        .db
+        .save_workflow(sim.guild, None, &definition, user)
+        .await
+        .unwrap();
+    assert_eq!(workflow_open_result(&sim, &row, user).await, "completed");
+    assert_eq!(workflow_open_result(&sim, &row, other).await, "failed", "panel limit");
+    ops.max_open_per_panel = 0;
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    assert_eq!(
+        workflow_open_result(&sim, &row, other).await,
+        "failed",
+        "category limit"
+    );
+    ops.max_open_per_category = 0;
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    assert_eq!(workflow_open_result(&sim, &row, user).await, "failed", "opener limit");
+    assert_eq!(world.made.lock().unwrap().len(), 1);
+
+    sqlx::query("INSERT INTO ticket_settings(guild_id,max_open_per_user) VALUES($1,2) ON CONFLICT(guild_id) DO UPDATE SET max_open_per_user=2")
+        .bind(sim.guild as i64).execute(sim.app.db.pool()).await.unwrap();
+    assert_eq!(
+        workflow_open_result(&sim, &row, user).await,
+        "completed",
+        "zero cooldown permits an immediate second ticket"
+    );
+    for ticket in sim.app.db.open_tickets_for_user(sim.guild, user).await.unwrap() {
+        sim.app
+            .db
+            .close_ticket(ticket.id, None, None, sim.app.now(), None)
+            .await
+            .unwrap();
+    }
+    ops.cooldown_seconds = 600;
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    sim.app.shift_clock(chrono::Duration::seconds(61));
+    assert_eq!(
+        workflow_open_result(&sim, &row, user).await,
+        "failed",
+        "configured cooldown exceeds the former fixed minute"
+    );
+    assert_eq!(world.made.lock().unwrap().len(), 2);
+
+    ops.cooldown_seconds = 0;
+    ops.minimum_account_age_days = 30;
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    let young = snowflake_at(sim.app.now());
+    assert_eq!(workflow_open_result(&sim, &row, young).await, "failed", "account age");
+    ops.minimum_account_age_days = 0;
+    ops.minimum_membership_days = 3650;
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    assert_eq!(
+        workflow_open_result(&sim, &row, other).await,
+        "failed",
+        "membership age"
+    );
+    assert_eq!(world.made.lock().unwrap().len(), 2);
+    ops.minimum_account_age_days = 30;
+    ops.bypass_roles = vec![bypass as i64];
+    sim.app.db.save_ticket_panel_operations(panel, &ops).await.unwrap();
+    sim.mock.member_roles.lock().unwrap().insert(young, vec![bypass]);
+    assert_eq!(
+        workflow_open_result(&sim, &row, young).await,
+        "completed",
+        "configured eligibility bypass"
+    );
+    assert_eq!(world.made.lock().unwrap().len(), 3);
+}
+
+#[tokio::test]
+async fn workflows_observe_confirmed_timeout_web_closes_and_force_open_exactly_once() {
+    use pinchora_commands::close_ticket_from_web;
+    use pinchora_core::workflows::Definition;
+    let _ticker = TICKET_TICK_LOCK.lock().await;
+    let Some((mut sim, world)) = ticket_sim("workflows_ticket_transitions").await else {
+        return;
+    };
+    let (staff, member, channel) = (unique(), unique(), unique());
+    let mut observers = Vec::new();
+    for kind in ["ticket_opened", "ticket_closed"] {
+        let definition: Definition = serde_json::from_value(json!({
+            "name": kind, "enabled": true, "trigger": {"kind": kind}, "conditions": [],
+            "actions": [{"kind":"set_var", "scope":"server", "key":kind, "value":"observed"}]
+        }))
+        .unwrap();
+        observers.push(
+            sim.app
+                .db
+                .save_workflow(sim.guild, None, &definition, staff)
+                .await
+                .unwrap()
+                .id,
+        );
+    }
+    save_panel(&sim, "Transitions", channel, &[Topic::new("Help")], &[], &[]).await;
+    let panel = posted_panel(&mut sim, staff, "Transitions", channel).await;
+    sim.click(member, &panel, "Help").await;
+    sim.channel = world.made.lock().unwrap()[0].0;
+    let ticket = sim.app.db.ticket_at(sim.guild, sim.channel).await.unwrap().unwrap();
+    workflow_ticket_counts(&sim, &observers, [1, 0]).await;
+
+    sim.permissions = MANAGE_GUILD;
+    sim.command(staff, "ticket", json!([sub("request-close", vec![])]))
+        .await;
+    let posts = take_posts(&sim);
+    let confirmation = posted_reply(
+        posts
+            .iter()
+            .find(|p| p.body.to_string().contains("Confirm close"))
+            .unwrap(),
+    );
+    sim.permissions = 0;
+    sim.click(member, &confirmation, "Confirm close").await;
+    sim.click(member, &confirmation, "Confirm close").await;
+    workflow_ticket_counts(&sim, &observers, [1, 1]).await;
+
+    sim.permissions = MANAGE_GUILD;
+    for _ in 0..2 {
+        sim.command(staff, "ticket", json!([sub("force-open", vec![])])).await;
+    }
+    workflow_ticket_counts(&sim, &observers, [2, 1]).await;
+    sim.command(staff, "ticket", json!([sub("request-close", vec![])]))
+        .await;
+    sqlx::query("UPDATE ticket_operations SET close_request_expires_at=now()-interval '1 second' WHERE ticket_id=$1")
+        .bind(ticket.id)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    tickets_tick(&sim.app).await.unwrap();
+    tickets_tick(&sim.app).await.unwrap();
+    workflow_ticket_counts(&sim, &observers, [2, 2]).await;
+
+    sim.command(staff, "ticket", json!([sub("force-open", vec![])])).await;
+    workflow_ticket_counts(&sim, &observers, [3, 2]).await;
+    let first = sim.app.db.ticket(ticket.id).await.unwrap().unwrap();
+    let second = sim.app.db.ticket(ticket.id).await.unwrap().unwrap();
+    let (a, b) = tokio::join!(
+        close_ticket_from_web(&sim.app, first, staff, "Staff".into()),
+        close_ticket_from_web(&sim.app, second, staff, "Staff".into()),
+    );
+    assert_eq!(usize::from(a.unwrap().is_some()) + usize::from(b.unwrap().is_some()), 1);
+    workflow_ticket_counts(&sim, &observers, [3, 3]).await;
+    sim.command(staff, "ticket", json!([sub("reopen", vec![])])).await;
+    workflow_ticket_counts(&sim, &observers, [4, 3]).await;
+}

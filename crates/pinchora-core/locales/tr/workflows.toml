@@ -1,0 +1,18 @@
+[workflows]
+on = "Etkin"
+off = "Kapalı"
+empty = "Henüz iş akışı veya çalıştırma yok."
+unavailable = "Bu iş akışı veya tetikleyicisi kullanılamıyor. Panelden modülünü ve Mesaj İçeriği yetkisini kontrol edin."
+completed = "İş akışı tamamlandı."
+filtered = "Olay koşulları sağlamadı."
+failed = "İş akışı tamamlanamadı. Panelden geçmişini ve sınırlarını kontrol edin."
+running = "Çalışıyor"
+invalid = "İş akışı alanlarını ve sınırlarını kontrol edin."
+save_failed = "Kaydedilemedi: adı, 25 iş akışı sınırını ve iş akışının hâlâ var olduğunu kontrol edin."
+content = "Mesaj İçeriği kapalı. Anahtar sözcük iş akışlarını etkinleştirmeden önce bot yöneticisinden bu yetkiyi açmasını isteyin."
+
+[module]
+workflows = "İş akışları"
+
+[module-blurb]
+workflows = "Tetikleyiciler, koşullar ve sınırlı eylemler."

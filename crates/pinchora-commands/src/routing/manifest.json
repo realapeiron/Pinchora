@@ -2220,6 +2220,21 @@
     "slice": 10
   },
   {
+    "legacy": "workflow list",
+    "canonical": "setup workflows list",
+    "slice": 20
+  },
+  {
+    "legacy": "workflow runs",
+    "canonical": "setup workflows runs",
+    "slice": 20
+  },
+  {
+    "legacy": "workflow toggle",
+    "canonical": "setup workflows toggle",
+    "slice": 20
+  },
+  {
     "legacy": "wrapped",
     "canonical": "info wrapped",
     "slice": 10

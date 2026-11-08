@@ -442,6 +442,9 @@ warn
 warnings
 wave
 weekly
+workflow list
+workflow runs
+workflow toggle
 wrapped
 xp add
 xp import mee6

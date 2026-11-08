@@ -308,34 +308,42 @@ async fn eligibility(cx: &Cx, ops: &TicketPanelOperations) -> anyhow::Result<Opt
     let Some(member) = cx.interaction.member.as_ref() else {
         return Ok(None);
     };
-    if member
-        .roles
-        .iter()
-        .any(|role| ops.bypass_roles.contains(&(role.get() as i64)))
-    {
-        return Ok(None);
+    Ok(eligibility_refusal(
+        ops,
+        cx.author()?.id.get(),
+        member.roles.iter().map(|role| role.get()),
+        member.joined_at.map(|joined| joined.as_secs()),
+        cx.app.now(),
+        cx.lang(),
+    ))
+}
+
+/// Shared admission policy for member interactions and workflow-created tickets.
+pub(crate) fn eligibility_refusal(
+    ops: &TicketPanelOperations,
+    user: u64,
+    mut roles: impl Iterator<Item = u64>,
+    joined_at: Option<i64>,
+    now: chrono::DateTime<Utc>,
+    lang: pinchora_core::i18n::Lang,
+) -> Option<String> {
+    if roles.any(|role| ops.bypass_roles.contains(&(role as i64))) {
+        return None;
     }
-    let now = cx.app.now();
-    let created = pinchora_core::snowflake::timestamp(cx.author()?.id.get());
+    let created = pinchora_core::snowflake::timestamp(user);
     if (now - created).num_days() < i64::from(ops.minimum_account_age_days) {
-        return Ok(Some(t!(
-            cx.lang(),
-            "tickets.v2.account-age",
-            days = ops.minimum_account_age_days
-        )));
+        return Some(t!(lang, "tickets.v2.account-age", days = ops.minimum_account_age_days));
     }
     if ops.minimum_membership_days > 0
-        && member
-            .joined_at
-            .is_none_or(|joined| now.timestamp() - joined.as_secs() < i64::from(ops.minimum_membership_days) * 86400)
+        && joined_at.is_none_or(|joined| now.timestamp() - joined < i64::from(ops.minimum_membership_days) * 86400)
     {
-        return Ok(Some(t!(
-            cx.lang(),
+        return Some(t!(
+            lang,
             "tickets.v2.membership-age",
             days = ops.minimum_membership_days
-        )));
+        ));
     }
-    Ok(None)
+    None
 }
 
 /// The panel and topic a click names, if both still exist and the panel takes tickets; otherwise the
@@ -403,6 +411,7 @@ async fn open(cx: &Cx, panel: &TicketPanel, topic: Topic, answers: Vec<Answer>) 
             return Err(error);
         }
     };
+    crate::workflows::triggers::simple(app, guild, opener, "ticket_opened", opened.place());
     let place = opened.place().unwrap_or_default();
     let server_lang = guild_lang(app, guild).await;
     welcome(cx, &opened, panel, &topic, &answers, server_lang).await;
