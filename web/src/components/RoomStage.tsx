@@ -1,5 +1,5 @@
 import { translate as spaTranslate } from "../i18n";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import type { Rendered } from "../iso/render";
 import { PixelButton } from "./PixelButton";
@@ -22,6 +22,7 @@ export function RoomStage({
   onHover,
   label,
   botPicture = null,
+  editor,
 }: {
   rendered: Rendered;
   hover: number | null;
@@ -29,9 +30,19 @@ export function RoomStage({
   label: string;
   /** The bot's own picture of the room, laid over this one while comparing. */
   botPicture?: string | null;
+  editor?: {
+    overlay: ReactNode;
+    point: (x: number, y: number) => void;
+    down: (item: number | null) => void;
+    up: () => void;
+    cancel: () => void;
+  };
 }) {
   const { image, hit } = rendered;
   const [zoom, setZoom] = useState(MIN_ZOOM);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const pixelRatio = Math.round(dpr) / dpr;
+  const scale = zoom * pixelRatio;
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const outline = useRef<HTMLCanvasElement>(null);
@@ -42,16 +53,18 @@ export function RoomStage({
   const fit = useCallback(() => {
     const el = stage.current;
     if (!el) return MIN_ZOOM;
-    return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.floor(el.clientWidth / image.width)));
-  }, [image.width]);
+    return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.floor(el.clientWidth / (image.width * pixelRatio))));
+  }, [image.width, pixelRatio]);
 
   // The first picture of a page opens at the largest zoom that fits the stage.
   useEffect(() => {
     if (!fitted.current) {
       fitted.current = true;
       setZoom(fit());
+      const el = stage.current;
+      if (el) el.scrollLeft = (image.width * fit() * pixelRatio - el.clientWidth) / 2;
     }
-  }, [fit]);
+  }, [fit, image.width, pixelRatio]);
 
   useEffect(() => {
     const ctx = canvas.current?.getContext("2d");
@@ -82,7 +95,16 @@ export function RoomStage({
           hit[at - image.width] !== tag ||
           hit[at + image.width] !== tag;
         if (!edge) continue;
-        lines.data.set([0xff, 0xd1, 0x66, 255], at * 4);
+        for (let dy = -2; dy <= 2; dy++)
+          for (let dx = -2; dx <= 2; dx++) {
+            const px = x + dx,
+              py = y + dy;
+            if (px < 0 || py < 0 || px >= image.width || py >= image.height) continue;
+            lines.data.set(
+              Math.abs(dx) === 2 || Math.abs(dy) === 2 ? [27, 29, 43, 255] : [255, 209, 102, 255],
+              (py * image.width + px) * 4,
+            );
+          }
       }
     }
     ctx.putImageData(lines, 0, 0);
@@ -94,13 +116,13 @@ export function RoomStage({
       const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
       if (el && clamped !== zoom) {
         centre.current = [
-          (el.scrollLeft + el.clientWidth / 2) / zoom,
-          (el.scrollTop + el.clientHeight / 2) / zoom,
+          (el.scrollLeft + el.clientWidth / 2) / scale,
+          (el.scrollTop + el.clientHeight / 2) / scale,
         ];
       }
       setZoom(clamped);
     },
-    [zoom],
+    [zoom, scale],
   );
 
   // Keeps the middle of the view on the same pixel of the room when the zoom changes.
@@ -109,9 +131,9 @@ export function RoomStage({
     const c = centre.current;
     if (!el || !c) return;
     centre.current = null;
-    el.scrollLeft = c[0] * zoom - el.clientWidth / 2;
-    el.scrollTop = c[1] * zoom - el.clientHeight / 2;
-  }, [zoom]);
+    el.scrollLeft = c[0] * scale - el.clientWidth / 2;
+    el.scrollTop = c[1] * scale - el.clientHeight / 2;
+  }, [scale]);
 
   // Ctrl or Cmd + wheel zooms; a plain wheel keeps scrolling the page.
   useEffect(() => {
@@ -129,8 +151,8 @@ export function RoomStage({
   const pick = (clientX: number, clientY: number) => {
     const rect = canvas.current?.getBoundingClientRect();
     if (!rect) return null;
-    const x = Math.floor((clientX - rect.left) / zoom);
-    const y = Math.floor((clientY - rect.top) / zoom);
+    const x = Math.floor((clientX - rect.left) / scale);
+    const y = Math.floor((clientY - rect.top) / scale);
     if (x < 0 || y < 0 || x >= image.width || y >= image.height) return null;
     const tag = hit[y * image.width + x] ?? 0;
     return tag > 0 ? tag - 1 : null;
@@ -166,8 +188,18 @@ export function RoomStage({
       <div
         ref={stage}
         className="room-viewport"
+        tabIndex={editor ? 0 : undefined}
         onPointerDown={(event) => {
-          if (event.pointerType !== "mouse" || event.button !== 0) return;
+          if (event.button !== 0) return;
+          if (editor && !event.altKey) {
+            event.currentTarget.focus({ preventScroll: true });
+            const rect = canvas.current?.getBoundingClientRect();
+            if (rect) editor.point((event.clientX - rect.left) / scale, (event.clientY - rect.top) / scale);
+            editor.down(pick(event.clientX, event.clientY));
+            event.currentTarget.setPointerCapture(event.pointerId);
+            return;
+          }
+          if (event.pointerType !== "mouse") return;
           const el = stage.current;
           if (!el) return;
           drag.current = { x: event.clientX, y: event.clientY, left: el.scrollLeft, top: el.scrollTop };
@@ -182,16 +214,25 @@ export function RoomStage({
             el.scrollTop = d.top - (event.clientY - d.y);
             return;
           }
+          if (editor) {
+            const rect = canvas.current?.getBoundingClientRect();
+            if (rect) editor.point((event.clientX - rect.left) / scale, (event.clientY - rect.top) / scale);
+          }
           onHover(pick(event.clientX, event.clientY));
         }}
         onPointerUp={(event) => {
+          if (editor && !drag.current) editor.up();
           drag.current = null;
           stage.current?.classList.remove("is-panning");
           if (event.pointerType !== "mouse") onHover(pick(event.clientX, event.clientY));
         }}
+        onPointerCancel={() => {
+          drag.current = null;
+          editor?.cancel();
+        }}
         onPointerLeave={() => onHover(null)}
       >
-        <div className="room-sheet" style={{ width: image.width * zoom, height: image.height * zoom }}>
+        <div className="room-sheet" style={{ width: image.width * scale, height: image.height * scale }}>
           <canvas
             ref={canvas}
             className="room-canvas"
@@ -207,6 +248,7 @@ export function RoomStage({
             height={image.height}
             aria-hidden="true"
           />
+          {editor?.overlay}
           {botPicture && (
             <img
               className="room-bot"

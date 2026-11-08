@@ -62,3 +62,53 @@ export function surfaceLift(content: Content, placed: Placed[], x: number, y: nu
   }
   return lift;
 }
+
+/** Same refusal sentences and layer rules as pinchora_game::house::can_place. */
+export function canPlace(
+  content: Content,
+  width: number,
+  depth: number,
+  placed: Placed[],
+  itemId: string,
+  x: number,
+  y: number,
+  flipped: boolean,
+): string | null {
+  const fp = footprint(content, itemId, x, y, flipped);
+  if (!fp) return "unknown item";
+  const { layer, rect } = fp;
+  if (layer === "wall") {
+    if (x < 0 || y < 0 || x + rect.w > (flipped ? depth : width) || y + rect.d > 3)
+      return "it does not fit on the wall there";
+    return placed.some(
+      (p) =>
+        p.flipped === flipped &&
+        (() => {
+          const f = footprint(content, p.item_id, p.x, p.y, p.flipped);
+          return f?.layer === "wall" && overlaps(f.rect, rect);
+        })(),
+    )
+      ? "something already hangs there"
+      : null;
+  }
+  if (x < 0 || y < 0 || x + rect.w > width || y + rect.d > depth)
+    return "it does not fit inside the room there";
+  const others = placed.flatMap((p) => {
+    const f = footprint(content, p.item_id, p.x, p.y, p.flipped);
+    return f ? [{ ...f, holds: content.item(p.item_id)?.base.tags.includes("surface") }] : [];
+  });
+  if (layer === "rug" && others.some((o) => o.layer === "rug" && overlaps(o.rect, rect)))
+    return "another rug is already there";
+  if (layer === "floor" && others.some((o) => o.layer === "floor" && overlaps(o.rect, rect)))
+    return "something is already in that spot";
+  if (layer === "surface") {
+    if (others.some((o) => o.layer === "surface" && overlaps(o.rect, rect)))
+      return "there is already something on that spot";
+    if (
+      others.some((o) => o.layer === "floor" && !o.holds && overlaps(o.rect, rect)) &&
+      !others.some((o) => o.layer === "floor" && o.holds && contains(o.rect, rect))
+    )
+      return "small items need a free tile or a table/shelf top";
+  }
+  return null;
+}

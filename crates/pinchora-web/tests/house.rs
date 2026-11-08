@@ -690,8 +690,16 @@ async fn seed_demo_house() {
     site.app.db.set_house_locked(locked, true).await.expect("lock");
     site.app.db.remember_name(locked, "Shy Shrimp").await.expect("a name");
     site.move_in(empty, 1, &[]).await;
+    site.app
+        .db
+        .grant_item(empty, "plainwhorl_chair__sand", 3)
+        .await
+        .expect("editor stock");
 }
 
 const DEMO_HOST: u64 = 770_000_000_000_000_001;
 const DEMO_LOCKED: u64 = 770_000_000_000_000_002;
 const DEMO_EMPTY: u64 = 770_000_000_000_000_003;
+
+#[path = "house_edit/mod.rs"]
+mod house_edit;

@@ -1,3 +1,4 @@
+import { locale } from "../i18n";
 // The catalogue the browser draws with, as `GET /api/house/content` hands it out, and the lookups the
 // bot's `Content` does: an item id like `sofa__mint~bound` resolves to a base design and a palette variant.
 
@@ -7,6 +8,9 @@ export interface Furniture {
   id: string;
   name: string;
   category: string;
+  category_name?: string;
+  category_name_tr?: string;
+  rarity_name_tr?: string;
   layer: Layer;
   /** Tiles along x and along y when facing the front; wall items: tiles along the wall and levels. */
   footprint: [number, number];
@@ -33,6 +37,7 @@ export interface Tier {
 export type Ramp = [number, number, number][];
 
 export interface Catalog {
+  names_tr?: Record<string, string>;
   furniture: Furniture[];
   wallpapers: Named[];
   floors: Named[];
@@ -74,6 +79,8 @@ export class Content {
 
   /** The name of an item as the bot says it: `Sofa (Mint)`. */
   itemName(item: Item): string {
+    const id = item.base.id + (item.variant ? `__${item.variant}` : "");
+    if (locale() === "tr" && this.catalog.names_tr?.[id]) return this.catalog.names_tr[id]!;
     if (item.variant === null) return item.base.name;
     const first = item.variant.charAt(0).toUpperCase();
     return `${item.base.name} (${first}${item.variant.slice(1)})`;

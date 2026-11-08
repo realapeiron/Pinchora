@@ -17,6 +17,7 @@ mod feed_webhooks;
 mod feeds;
 mod guilds;
 mod house;
+mod house_edit;
 mod invites;
 mod leveling;
 mod me;

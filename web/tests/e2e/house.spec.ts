@@ -95,7 +95,7 @@ test("my house: rooms, hover names, the grid, and identical to the bot's own pic
   await page.getByRole("button", { name: "Compare with Discord" }).click();
   await expect(page.getByRole("status").filter({ hasText: "identical to this view" })).toBeVisible();
   await shot(page, "house-compare");
-  await page.getByRole("button", { name: "Back to this view" }).click();
+  await page.getByRole("button", { name: "Back to room" }).click();
 
   // The second room.
   await tabs.nth(1).click();

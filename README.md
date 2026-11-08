@@ -1377,7 +1377,7 @@ landing page come from the registered command tree and the content files, in `we
 `cargo test -p pinchora-web commands_catalog -- --ignored write_site_data` rewrites them. A new command needs an area in
 `/help`'s `AREAS`, and then shows on the site by itself.
 
-### House viewer (read-only)
+### House viewer and browser editor
 
 Players open **My house** (`/me/house`, in the top bar) to look at their rooms, and any player's unlocked
 house at `/house/<player id>` (a locked or hidden house answers with the same sentence `/house visit` does, hidden
@@ -1386,6 +1386,24 @@ zoom in whole steps, hover or tap a piece to see its name, switch the tile grid 
 with Discord** to lay the bot's own picture of the room over the browser's and see how many pixels differ
 (none). Looking never moves anyone in: no house means a 404 telling the player to run `/house`, and nothing
 is paid for visiting from the web.
+
+Desktop players can choose **Decorate house** for inventory search, category/rarity filters, sprite previews,
+click or drag placement, move, turn/flip, store, clear, and shared Discord undo. Ctrl/Cmd+Z undoes;
+Shift+Ctrl/Cmd+Z re-applies the last locally undone operation. R turns, Delete stores, arrows move the
+cursor, and W cycles floor/right/left wall. Buttons provide the same actions. Changes save immediately;
+a stale fingerprint reloads the authoritative room with a conflict message. Visible tabs refresh every
+10 seconds. Phone screens open a centered, pannable view with zoom buttons.
+
+`POST /api/house/rooms/{idx}/ops {expected, op}` is the single mutation endpoint used by the page.
+It accepts place, move, flip, pickup, clear, undo, surface, upgrade and lock. The editor uses the bot's
+placement rules, atomic inventory transactions and ten-step Redis history. `?scope=partner` resolves the
+current partnership and consumes the editor's inventory; `?scope=plaza&guild=<id>` requires Manage Server
+and the Plaza module and writes an audit entry. Surface purchases, upgrades and locks remain owner-only,
+matching Discord. Permanent surfaces are bought once, with an explicit price confirmation. Extra read
+endpoints expose `/inventory`, `/surfaces`, `/guestbook`, and an ETagged `/thumbnail.png`.
+
+No migration or new command root is needed. Tests live in `tests/house_edit/mod.rs`, simulator
+`web_house_edit.rs`, `web/src/lib/houseEdit.test.ts`, and `web/tests/e2e/house-edit.spec.ts`.
 
 The browser draws the room itself, in `web/src/iso`: a TypeScript port of `pinchora-render/src/room.rs`
 (projection, walls, floor, rugs, shadows, wall hangings, painter's order, pets, characters) on plain pixel

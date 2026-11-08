@@ -188,3 +188,156 @@
     max-height: 70vh;
   }
 }
+
+.house-tabs {
+  scrollbar-width: auto;
+  scrollbar-color: var(--gold) var(--panel);
+  scroll-snap-type: x proximity;
+}
+.house-tabs > button {
+  flex-shrink: 0;
+  scroll-snap-align: start;
+}
+.house-editor {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.house-inventory {
+  background: var(--panel);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  position: sticky;
+  top: 16px;
+}
+.house-inventory h2 {
+  margin: 0 0 8px;
+  font: 700 18px var(--font-pixel);
+  color: var(--gold);
+}
+.house-editor label,
+.house-options label {
+  display: grid;
+  gap: 6px;
+}
+.house-editor input,
+.house-editor select,
+.house-options input,
+.house-options select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  background: var(--bg-bottom);
+  color: var(--ink);
+  border: 2px solid var(--panel-edge);
+  padding: 8px;
+  font: inherit;
+}
+.house-options input {
+  max-width: 220px;
+}
+.house-stock {
+  max-height: 62vh;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+}
+.house-stock button {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 10px;
+  border: 2px solid var(--panel-edge);
+  background: var(--bg-bottom);
+  color: var(--ink);
+  padding: 8px;
+  cursor: grab;
+  font: inherit;
+}
+.house-stock button:hover,
+.house-stock button[aria-pressed="true"] {
+  border-color: var(--gold);
+}
+.house-stock button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.house-stock canvas {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.house-stock small {
+  display: block;
+  color: var(--gold);
+  margin-top: 4px;
+}
+.house-workbench {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+.house-editor :focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+.house-editor .room-viewport {
+  touch-action: none;
+}
+.room-ghost {
+  pointer-events: none;
+}
+.house-surfaces {
+  padding: 16px;
+  background: var(--panel);
+}
+.house-surfaces summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.house-surfaces label {
+  margin-block: 12px;
+}
+.house-confirm {
+  padding: 20px;
+  background: var(--panel);
+  border: 2px solid var(--gold);
+}
+.house-confirm button {
+  margin-right: 12px;
+}
+.room-viewport {
+  background: linear-gradient(#2a2c48, #121420);
+}
+@media (max-width: 1023px) {
+  .house-editor {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+@media (max-width: 767px) {
+  .house-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .house-inventory {
+    position: static;
+  }
+}
+.house-stock button > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.house-stock canvas {
+  flex-shrink: 0;
+}
+.house-options label {
+  min-width: 0;
+  max-width: 100%;
+}
+.house-options select {
+  max-width: 320px;
+}

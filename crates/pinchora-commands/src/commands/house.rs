@@ -566,16 +566,16 @@ impl CursorMode {
 /// the same player (or the server, for the plaza); a partner decorating has the pieces come out of
 /// their own inventory and go into the owner's house, where they belong to the owner.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Who {
-    pub(crate) owner: u64,
-    pub(crate) stock: u64,
+pub struct Who {
+    pub owner: u64,
+    pub stock: u64,
     /// For a partner, when their partnership began (Unix microseconds; 0 otherwise): an undo
     /// history belongs to one partnership.
-    pub(crate) bond: i64,
+    pub bond: i64,
 }
 
 impl Who {
-    pub(crate) fn own(id: u64) -> Self {
+    pub fn own(id: u64) -> Self {
         Self {
             owner: id,
             stock: id,
@@ -584,7 +584,7 @@ impl Who {
     }
 
     /// `editor` decorating the house of their partner (`pair`).
-    fn partner_of(editor: u64, pair: pinchora_db::PartnerRow) -> Self {
+    pub fn partner_of(editor: u64, pair: pinchora_db::PartnerRow) -> Self {
         Self {
             owner: pair.partner_id,
             stock: editor,
@@ -900,7 +900,11 @@ fn spot_hint(
 }
 
 /// Surface pieces standing on a placed holder; they go back to the inventory with it.
-fn standing_on<'a>(content: &Content, placements: &'a [PlacementRow], holder: &PlacementRow) -> Vec<&'a PlacementRow> {
+pub fn standing_on<'a>(
+    content: &Content,
+    placements: &'a [PlacementRow],
+    holder: &PlacementRow,
+) -> Vec<&'a PlacementRow> {
     let Some((Layer::Floor, base)) = house::footprint(
         content,
         &holder.item_id,
@@ -940,7 +944,7 @@ async fn take_back(
 }
 
 /// Whether an undo change still fits the room as it stands (`current`).
-fn undo_fits(
+pub fn undo_fits(
     content: &Content,
     (width, depth): (u32, u32),
     current: &[PlacementRow],

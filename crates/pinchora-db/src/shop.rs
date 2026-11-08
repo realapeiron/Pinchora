@@ -72,6 +72,21 @@ impl Db {
             .bind(id)
             .execute(&mut *tx)
             .await?;
+        // Surfaces are permanent unlocks. Recheck while holding the user lock so two
+        // Discord/web first-use requests never charge for the same unlock twice.
+        if quantity == 1 && (item_id.starts_with("wp:") || item_id.starts_with("fl:")) {
+            let (owned,): (bool,) =
+                sqlx::query_as("SELECT EXISTS(SELECT 1 FROM inventory WHERE user_id=$1 AND item_id=$2 AND quantity>0)")
+                    .bind(id)
+                    .bind(item_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
+            if owned {
+                return Ok(BuyOutcome::Bought {
+                    balance: balance_of(&mut tx, id, currency).await?,
+                });
+            }
+        }
         let Some(balance) = charge(&mut tx, id, total, currency).await? else {
             let balance = balance_of(&mut tx, id, currency).await?;
             return Ok(BuyOutcome::Insufficient { balance });
