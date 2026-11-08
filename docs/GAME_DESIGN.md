@@ -353,3 +353,76 @@ retains daily counters for 35 days, requests for two days and results for 366 da
 pearls are original procedural pixel motifs in `pinchora-render/src/cards/reef_loop.rs`;
 no external art, new atlas sheets or owner-supplied placeholder assets are required. Both
 EN/TR cards include translated instructions, costs, results and deadlines in the embed.
+
+## D8 player economy v2
+
+All additions use global shells, the existing inventory and `credit_ledger`. No purchases
+with real money, premium track, paid chest, stake or gambling mechanic is introduced.
+Server administrators control **server points only**, never global shell supply or balances.
+
+- **Reef jobs:** Kelp Keeper (sort, bundle, stock), Coral Courier (map, pack, deliver),
+  Beacon Tender (clean, align, light). A shift is three ordered, owner-bound button tasks
+  completed within five minutes. At most three paid shifts per UTC day, one hour apart.
+  Promotions every ten completed shifts raise pay from 100 to 125 / 150 / 175 / 200 shells.
+  Progress follows the player when changing jobs. The repeatable wage ceiling is 600/day.
+- **Dock auctions:** one unplaced, unbound furniture item, 1–10,000,000 shells, 1–72 hours,
+  at most eight active listings. Inventory is removed into escrow immediately. Each bid
+  reserves shells; an outbid player is refunded in the same transaction. The increment is
+  at least `max(1, floor(current / 20))`. A bid in the last two minutes sets the end to two
+  minutes from the bid, capped at 30 extra minutes beyond the original deadline. Sellers
+  cannot bid on themselves or cancel after a bid. Unbid cancellations/expiries return the
+  item. Settlement credits the seller and deducts a **5% fee, rounded up** (minimum one).
+  Gateways attempt a sweep every 30 seconds; a transaction-scoped Postgres lock admits
+  one runner, releases on restart, and conditional state changes pay once. Worker receipt
+  IDs are reserved from player requests.
+- **Swap table:** immutable offers of shells plus up to eight distinct furniture types per
+  side, 1–10 of each. The creator reserves their own offer; the partner reserves theirs
+  only on confirming. **Both explicitly confirm** the same offer, showing both player IDs,
+  quantities, shell amounts, expiry and confirmation state. Final delivery is one atomic
+  transaction. Reservations remove items/shells from spendable balances, so shop, stall,
+  house placement and gifts cannot spend them. Either participant may cancel before the
+  completed swap; after 24 hours the sweeper refunds reserved assets. Changing an offer
+  requires cancellation and a fresh trade with fresh confirmations. Privacy deletion
+  refunds the surviving participant, including auction bidders/sellers, under sorted locks.
+- **Community pool:** permanent shell donations, no withdrawals, payouts or reward farming.
+  Admins choose a 100–1,000,000,000-shell goal; progress persists when the goal changes and
+  reaching the goal marks a community milestone. Donations are an explicit shell sink.
+- **Provisions:** free tending starts a 12-hour supply cycle. Collect ten shells per complete
+  hour, capped at **120 per cycle** (240/day at continuous care); excess offline time earns
+  nothing. Collect the full accrued cycle before tending again. No compound growth.
+- **Earned treasure:** every fifth completed shift grants one untradeable chest, storage cap
+  ten. Opening is free. Published odds are **70%: 25 shells; 25%: 50; 5%: 100** (expected 35).
+  No source sells chests, and no entry fee is charged. The sustainable supply is at most
+  0.6 chest/day (21 expected shells/day); opening previously stored chests may pay more.
+- **Prestige:** after 40 shifts, opt in to spend **10,000 shells**, reset job rank/progress,
+  and gain one permanent prestige level (cap 100). Inventory, season and daily limits stay.
+  Prestige grants no income multiplier. It is a voluntary long-term sink.
+- **Free season:** each UTC calendar month, ten tiers at 50 progress each; shifts earn ten
+  progress, each tier pays **100 shells**, total **1,000/month**. Claim tiers in order, once
+  each. A new month resets progress and expires unclaimed rewards. All tiers are free.
+- **Server store:** optional minimum server level and minimum membership tenure, plus a
+  store enabled switch. Tenure is conservatively counted from the membership record's
+  timestamp when migration 0083 lands, or first record thereafter. Existing role grant and
+  hierarchy checks remain. Admin reset/reduction previews count and total server points;
+  the hash of exact member balances must still match on confirmation. Keep 0% to reset,
+  or 1–100% to reduce inflation; shells and XP are never reset by this tool. A synchronous
+  operation is capped at 10,000 members; larger servers need an operator-managed batch.
+
+D8's steady repeatable sources total at most 840 shells/day plus earned chest openings
+and the monthly 1,000-shell track. Existing furniture, house, care and crafting sinks
+remain, supplemented by auctions, donations and prestige. All shell movements, including
+escrow, refunds and fees, produce ledger entries. Transfers/refunds do not count as newly
+earned activity. Guarded numeric arithmetic rejects overflow without partial effects.
+
+Migration **0083 only**: `economy_players`, `economy_limits`, `economy_requests`,
+`economy_auctions`, `economy_trades`, `economy_settings`, `economy_ledger`, and
+`members.economy_joined_at`. Every shell/item movement writes a balanced wallet and
+escrow/source/sink ledger pair in the same transaction; privacy removes both entries.
+The existing dashboard access constraint gains the `economy` area for the new admin routes.
+Admin settings and point changes commit with their audit records; unchanged settings do
+not advance the revision or create audit noise. Reset preview hashes include the guild.
+The existing privacy registry deletes normal records and retains daily/month-end claim
+limits through their period to prevent delete/recreate claims. Request receipts bind the
+request ID to the exact submitted action. The `sl:eco:*` namespace extends the existing
+stall component dispatcher; old `sl:<price>` menus are unchanged. Job/trade controls use
+Economy module gating and their canonical command policies.

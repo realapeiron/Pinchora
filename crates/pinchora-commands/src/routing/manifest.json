@@ -760,6 +760,66 @@
     "slice": 0
   },
   {
+    "legacy": "economyv2 auction",
+    "canonical": "stall auction",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 auction-close",
+    "canonical": "stall auction-close",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 bid",
+    "canonical": "stall bid",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 chest",
+    "canonical": "rewards chest",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 donate",
+    "canonical": "rewards donate",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 jobs",
+    "canonical": "rewards jobs",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 prestige",
+    "canonical": "rewards prestige",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 provisions",
+    "canonical": "rewards provisions",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 season",
+    "canonical": "rewards season",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 tools",
+    "canonical": "progression economy tools",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 trade",
+    "canonical": "stall trade",
+    "slice": 20
+  },
+  {
+    "legacy": "economyv2 trade-review",
+    "canonical": "stall trade-review",
+    "slice": 20
+  },
+  {
     "legacy": "event attendees",
     "canonical": "event attendees",
     "slice": 0

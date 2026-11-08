@@ -5,6 +5,7 @@ import { type Names, plainNames, showValue } from "./text";
 
 export const AREA_LABELS: Record<string, string> = {
   configuration: "Configuration",
+  economy: "Economy",
   roles: "Roles",
   safety: "Safety",
   community: "Community",
@@ -48,6 +49,7 @@ const PAGE_AREAS: Record<string, string> = {
   "message-studio": "configuration",
   leveling: "configuration",
   points: "configuration",
+  economy: "economy",
   commands: "configuration",
   responders: "configuration",
   roles: "roles",

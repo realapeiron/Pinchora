@@ -34,6 +34,7 @@ pub struct StoreItem {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreBuy {
+    Conditions,
     /// Points were taken and one unit of stock claimed; the caller now gives the role.
     Bought {
         role_id: i64,
@@ -241,6 +242,9 @@ impl Db {
         let (guild, user) = (sql_id(guild_id), sql_id(user_id));
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[user]).await?;
+        if !crate::economy_v2::store_allowed(&mut tx, guild, user).await? {
+            return Ok(StoreBuy::Conditions);
+        }
         let item: Option<StoreItem> = sqlx::query_as(
             "SELECT id, role_id, price, stock FROM store_items WHERE guild_id = $1 AND id = $2 FOR UPDATE",
         )

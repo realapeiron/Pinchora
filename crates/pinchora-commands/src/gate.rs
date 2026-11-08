@@ -22,7 +22,12 @@ fn subcommand(data: &CommandData) -> Option<&str> {
 /// Whether the command's module is off here; if so, the invoker has been told and the command must
 /// not run.
 pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
-    let refused = refuses(cx, Module::of_command(&data.name, subcommand(data))).await?
+    let module = if data.name == "economyv2" && subcommand(data) == Some("tools") {
+        None
+    } else {
+        Module::of_command(&data.name, subcommand(data))
+    };
+    let refused = refuses(cx, module).await?
         || crate::command_control::refuses(cx, &crate::command_control::path(data), false).await?;
     if !refused {
         crate::stats::count_command(cx).await;
@@ -32,7 +37,16 @@ pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Resu
 
 /// [`refuses_command`] for a button, select or form, by the prefix of its custom id.
 pub(crate) async fn refuses_component(cx: &Cx, custom_id: &str) -> anyhow::Result<bool> {
-    if refuses(cx, custom_id.split(':').next().and_then(Module::of_component_prefix)).await? {
+    if refuses(
+        cx,
+        if custom_id.starts_with("sl:eco:") {
+            Some(Module::Economy)
+        } else {
+            custom_id.split(':').next().and_then(Module::of_component_prefix)
+        },
+    )
+    .await?
+    {
         return Ok(true);
     }
     match crate::command_control::component_owner(cx, custom_id).await? {

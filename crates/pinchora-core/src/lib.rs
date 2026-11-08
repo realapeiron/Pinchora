@@ -47,3 +47,5 @@ pub mod mod_parity;
 pub mod roblox;
 
 pub mod reef_loop;
+
+pub mod economy_v2;

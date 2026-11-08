@@ -506,7 +506,7 @@ impl Module {
     pub fn of_command(name: &str, sub: Option<&str>) -> Option<Self> {
         Some(match name {
             "profile" | "rank" | "leaderboard" | "bio" | "customize" | "character" | "wrapped" => Self::Profile,
-            "daily" | "weekly" | "monthly" | "balance" | "give" | "rep" => Self::Economy,
+            "economyv2" | "daily" | "weekly" | "monthly" | "balance" | "give" | "rep" => Self::Economy,
             "house" => Self::House,
             "shop" | "inventory" | "gift" | "stall" => Self::Shop,
             "pet" => Self::Pets,

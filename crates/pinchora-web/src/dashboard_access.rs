@@ -9,6 +9,7 @@ pub fn route_area(path: &str) -> Option<&'static str> {
         | "store" | "cards" | "message-studio" | "preview" | "branding" | "commands" | "responders" => {
             Some("configuration")
         }
+        "economy" => Some("economy"),
         "roles" => Some("roles"),
         "mod-parity" | "moderation" | "logs" | "cases" | "staff-log" | "automod" | "anti_nuke" | "safety" => {
             Some("safety")

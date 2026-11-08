@@ -44,6 +44,7 @@ export const NAV: NavGroup[] = [
       { to: "welcome-image", label: "Welcome image" },
       { to: "leveling", label: "Leveling" },
       { to: "points", label: "Points & store" },
+      { to: "economy", label: "Economy settings" },
     ],
   },
   {

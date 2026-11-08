@@ -1693,7 +1693,7 @@ privacy, artwork and retention details are in [GAME_DESIGN.md](docs/GAME_DESIGN.
 
 ### W7 Web server tools
 
-`/g/:guildId/access` grants up to 25 Discord roles chosen dashboard areas: configuration, roles,
+`/g/:guildId/access` grants up to 25 Discord roles chosen dashboard areas: configuration, economy, roles,
 safety, community, feeds, stats and audit. Held-role grants combine. `ManagedGuild` reads current
 membership and stored grants on every request; full Discord permissions are refreshed too. The guild
 router enforces this before every handler; unlisted routes fail closed. Owners,
@@ -1749,3 +1749,20 @@ manager grants. F21 gathering and RSVP links preserve the chosen instance; a ful
 reported rather than silently splitting the group. No passive rewards or new slash commands.
 Migration **0082** adds revisions, retry receipts and expiring social admission records with privacy
 coverage. See [Wave 7 contracts and lead browser checks](web/src/reef/README.md#decorating-and-social-spaces-r25r37).
+
+### D8 Player economy v2
+
+| Commands / page | Behavior |
+| --- | --- |
+| `/rewards jobs [job]` | Kelp keeper, coral courier and beacon tender shifts; three ordered button tasks, promotions, one-hour cooldown, three paid shifts/day |
+| `/rewards provisions [action]`, `/rewards chest [open]` | Capped free provisions and earned-only chests with odds displayed before opening |
+| `/rewards season [tier]`, `/rewards prestige [confirm]` | Free monthly ten-tier reward track; opt-in 10,000-shell prestige sink after 40 shifts |
+| `/rewards donate [amount]` | Permanent shell donations to this server's community goal |
+| `/stall auction [item] [price] [hours]`, `/stall bid id amount`, `/stall auction-close id [cancel]` | Timed auctions, bid escrow/refunds, bounded anti-snipe, 5% fee and restart-safe settlement |
+| `/stall trade user [give] [receive] [item] [request_item]`, `/stall trade-review id` | Fixed offers, exact review, both confirmations, atomic items + shells swap, cancel/expiry refunds |
+| `/progression economy tools` | Manage Server: store conditions and donation goal; preview then scale/reset server points |
+| `/me/wallet` | Jobs, provisions, earned treasure, auctions, trades, donation pools, season and prestige alongside the existing wallet/ledger |
+| `/g/:guildId/economy` | Economy settings; Manage Server or the economy access-role area, with atomic admin audit |
+
+D8 adds no registered slash roots. Migration 0083 is the only schema change. Global shells
+are never minted or reset by server administrators. See [reward budgets and trade rules](docs/GAME_DESIGN.md#d8-player-economy-v2).

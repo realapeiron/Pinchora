@@ -45,6 +45,7 @@ pub fn router() -> Router<WebState> {
         )
         .route("/jobs/{id}", get(leveling::job))
         .nest("/xp-admin", super::xp_admin::router())
+        .nest("/economy", super::economy_v2::router())
         .route("/store", get(store::store))
         .route("/store/{role}", put(store::put_item).delete(store::delete_item))
         .route("/modules", get(modules::modules))

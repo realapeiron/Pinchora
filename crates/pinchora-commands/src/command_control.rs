@@ -236,6 +236,13 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
     })
 }
 pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<Option<&'static str>> {
+    if custom_id.starts_with("sl:eco:") {
+        return Ok(Some(if custom_id.starts_with("sl:eco:step:") {
+            "economyv2 jobs"
+        } else {
+            "economyv2 trade-review"
+        }));
+    }
     let mut parts = custom_id.split(':');
     let prefix = parts.next().unwrap_or_default();
     let action = parts.next().unwrap_or_default();

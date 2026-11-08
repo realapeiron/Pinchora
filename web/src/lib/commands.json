@@ -629,6 +629,268 @@
       "commands": [
         {
           "aliases": [
+            "economyv2 auction"
+          ],
+          "description": "Browse auctions or list one item; 5% sale fee, two-minute anti-snipe",
+          "manager": false,
+          "options": [
+            {
+              "description": "Inventory item identifier",
+              "name": "item",
+              "required": false
+            },
+            {
+              "description": "Starting price",
+              "name": "price",
+              "required": false
+            },
+            {
+              "description": "Duration in hours (default 24)",
+              "name": "hours",
+              "required": false
+            }
+          ],
+          "path": "stall auction",
+          "usage": "/stall auction [item] [price] [hours]"
+        },
+        {
+          "aliases": [
+            "economyv2 auction-close"
+          ],
+          "description": "Settle an ended auction, or cancel your unbid auction",
+          "manager": false,
+          "options": [
+            {
+              "description": "Auction number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Cancel before the first bid",
+              "name": "cancel",
+              "required": false
+            }
+          ],
+          "path": "stall auction-close",
+          "usage": "/stall auction-close <id> [cancel]"
+        },
+        {
+          "aliases": [
+            "economyv2 bid"
+          ],
+          "description": "Reserve a bid; outbid shells return immediately",
+          "manager": false,
+          "options": [
+            {
+              "description": "Auction number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Bid in shells (minimum increase 5%, at least one)",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "stall bid",
+          "usage": "/stall bid <id> <amount>"
+        },
+        {
+          "aliases": [
+            "economyv2 trade"
+          ],
+          "description": "Offer an immutable swap; both players must review and confirm",
+          "manager": false,
+          "options": [
+            {
+              "description": "Trading partner",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells you offer",
+              "name": "give",
+              "required": false
+            },
+            {
+              "description": "Shells you request",
+              "name": "receive",
+              "required": false
+            },
+            {
+              "description": "One inventory item you offer",
+              "name": "item",
+              "required": false
+            },
+            {
+              "description": "One inventory item you request",
+              "name": "request_item",
+              "required": false
+            }
+          ],
+          "path": "stall trade",
+          "usage": "/stall trade <user> [give] [receive] [item] [request_item]"
+        },
+        {
+          "aliases": [
+            "economyv2 trade-review"
+          ],
+          "description": "Review exact items, amounts and partner before confirming a trade",
+          "manager": false,
+          "options": [
+            {
+              "description": "Trade number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "stall trade-review",
+          "usage": "/stall trade-review <id>"
+        },
+        {
+          "aliases": [
+            "economyv2 tools"
+          ],
+          "description": "Store and points",
+          "manager": true,
+          "options": [
+            {
+              "description": "Operation",
+              "name": "action",
+              "required": false
+            },
+            {
+              "description": "Level",
+              "name": "level",
+              "required": false
+            },
+            {
+              "description": "Days",
+              "name": "days",
+              "required": false
+            },
+            {
+              "description": "Goal",
+              "name": "goal",
+              "required": false
+            },
+            {
+              "description": "Open",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Keep %",
+              "name": "percent",
+              "required": false
+            },
+            {
+              "description": "Preview token",
+              "name": "version",
+              "required": false
+            }
+          ],
+          "path": "progression economy tools",
+          "usage": "/progression economy tools [action] [level] [days] [goal] [enabled] [percent] [version]"
+        },
+        {
+          "aliases": [
+            "economyv2 chest"
+          ],
+          "description": "Earned chests: 70% 25, 25% 50, 5% 100 shells; never sold",
+          "manager": false,
+          "options": [
+            {
+              "description": "Open one earned chest",
+              "name": "open",
+              "required": false
+            }
+          ],
+          "path": "rewards chest",
+          "usage": "/rewards chest [open]"
+        },
+        {
+          "aliases": [
+            "economyv2 donate"
+          ],
+          "description": "Contribute shells to this server's permanent community pool",
+          "manager": false,
+          "options": [
+            {
+              "description": "Shells to donate; no withdrawals or personal rewards",
+              "name": "amount",
+              "required": false
+            }
+          ],
+          "path": "rewards donate",
+          "usage": "/rewards donate [amount]"
+        },
+        {
+          "aliases": [
+            "economyv2 jobs"
+          ],
+          "description": "Reef jobs: three shifts daily, promotions every ten shifts",
+          "manager": false,
+          "options": [
+            {
+              "description": "Start: kelp_keeper, coral_courier or beacon_tender; omit to view",
+              "name": "job",
+              "required": false
+            }
+          ],
+          "path": "rewards jobs",
+          "usage": "/rewards jobs [job]"
+        },
+        {
+          "aliases": [
+            "economyv2 prestige"
+          ],
+          "description": "After 40 shifts: spend 10000 shells, reset job rank, earn prestige",
+          "manager": false,
+          "options": [
+            {
+              "description": "Confirm spending 10000 shells and resetting job rank",
+              "name": "confirm",
+              "required": false
+            }
+          ],
+          "path": "rewards prestige",
+          "usage": "/rewards prestige [confirm]"
+        },
+        {
+          "aliases": [
+            "economyv2 provisions"
+          ],
+          "description": "Care for provisions: ten shells per hour, capped at 120",
+          "manager": false,
+          "options": [
+            {
+              "description": "tend or claim; omit to view",
+              "name": "action",
+              "required": false
+            }
+          ],
+          "path": "rewards provisions",
+          "usage": "/rewards provisions [action]"
+        },
+        {
+          "aliases": [
+            "economyv2 season"
+          ],
+          "description": "Free monthly season: ten tiers, 100 shells each",
+          "manager": false,
+          "options": [
+            {
+              "description": "Claim the next tier",
+              "name": "tier",
+              "required": false
+            }
+          ],
+          "path": "rewards season",
+          "usage": "/rewards season [tier]"
+        },
+        {
+          "aliases": [
             "weekly"
           ],
           "description": "Collect your weekly shells (every 7 days)",
@@ -7362,16 +7624,16 @@
           "aliases": [
             "config level-roles add"
           ],
-          "description": "Give a role to everyone who reaches a level",
+          "description": "Assign a level role",
           "manager": true,
           "options": [
             {
-              "description": "Level that earns the role",
+              "description": "Required level",
               "name": "level",
               "required": true
             },
             {
-              "description": "The role to give (adding it again moves it to the new level)",
+              "description": "Role to grant; re-adding moves its level",
               "name": "role",
               "required": true
             }
@@ -7393,7 +7655,7 @@
           "aliases": [
             "config level-roles mode"
           ],
-          "description": "Keep every level role, or only the highest one",
+          "description": "Keep all roles or the highest",
           "manager": true,
           "options": [
             {
@@ -7413,11 +7675,11 @@
           "aliases": [
             "config level-roles remove"
           ],
-          "description": "Stop giving a role at a level",
+          "description": "Remove a level role",
           "manager": true,
           "options": [
             {
-              "description": "The role to stop giving",
+              "description": "Role to remove",
               "name": "role",
               "required": true
             }
@@ -7429,7 +7691,7 @@
           "aliases": [
             "config level-roles sync"
           ],
-          "description": "Give members who are already past a level the roles they earned",
+          "description": "Sync members’ earned roles",
           "manager": true,
           "options": [],
           "path": "progression leveling roles-sync",
@@ -8185,5 +8447,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 431
+  "count": 443
 }

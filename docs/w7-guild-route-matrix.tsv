@@ -35,6 +35,10 @@ GET	/xp-admin/members	configuration
 PUT	/xp-admin/members/{user}	configuration
 POST	/xp-admin/import/mee6	configuration
 GET	/xp-admin/jobs/{id}	configuration
+GET	/economy	economy
+PUT	/economy	economy
+GET	/economy/points	economy
+POST	/economy/points	economy
 GET	/store	configuration
 PUT	/store/{role}	configuration
 DELETE	/store/{role}	configuration

@@ -84,7 +84,7 @@ struct MonthRow {
 /// and not a bet or a purchase coming back. A duel's pot pays the winner both stakes, one of them
 /// their own, so only half of it was won.
 pub(crate) fn earned(delta: i64, reason: &str) -> i64 {
-    if delta <= 0 || reason == "transfer_in" || reason.ends_with("refund") {
+    if delta <= 0 || matches!(reason, "transfer_in" | "trade_received" | "auction_sale") || reason.ends_with("refund") {
         0
     } else if reason == "duel_pot" {
         delta / 2

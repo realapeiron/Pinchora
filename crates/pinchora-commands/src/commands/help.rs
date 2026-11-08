@@ -83,7 +83,7 @@ pub(crate) const AREAS: &[Area] = &[
     },
     Area {
         key: "rewards",
-        covers: &["weekly", "monthly", "give", "rep", "remind", "birthday"],
+        covers: &["economyv2", "weekly", "monthly", "give", "rep", "remind", "birthday"],
     },
     Area {
         key: "shops",

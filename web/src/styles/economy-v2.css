@@ -1,0 +1,114 @@
+.economy-v2 {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  margin-block: 1.5rem;
+}
+.economy-v2 p {
+  max-width: 75ch;
+}
+.economy-v2 article,
+.economy-v2 fieldset,
+.economy-review {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  border: 2px solid var(--panel-edge);
+}
+.economy-tabs,
+.economy-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: end;
+}
+.economy-tabs {
+  align-items: stretch;
+}
+.economy-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.economy-job-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.economy-v2 label {
+  display: grid;
+  gap: 0.4rem;
+  margin-block: 0.65rem;
+  min-width: 0;
+}
+.economy-v2 input,
+.economy-v2 select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  padding: 0.6rem;
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--panel-edge);
+}
+.economy-form label {
+  flex: 1 1 150px;
+}
+.economy-v2 .economy-check {
+  display: flex;
+  align-items: start;
+  gap: 0.6rem;
+}
+.economy-v2 .economy-check input {
+  width: auto;
+  margin-top: 0.2rem;
+}
+.economy-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.economy-v2 progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.economy-track {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+.economy-track li {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border: 2px solid var(--panel-edge);
+}
+.economy-task {
+  padding: 1rem;
+  border-left: 4px solid var(--accent);
+}
+.economy-v2 button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .economy-columns,
+  .economy-job-board {
+    grid-template-columns: 1fr;
+  }
+  .economy-track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .economy-tabs > * {
+    flex: 1 1 40%;
+  }
+}
+
+.economy-v2 input:focus-visible,
+.economy-v2 select:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
