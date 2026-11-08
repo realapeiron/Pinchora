@@ -1013,3 +1013,62 @@ async fn feeds_need_manage_server() {
     }
     assert!(sim.app.db.feeds_of(sim.guild).await.unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn branding_reaches_raw_feed_payloads_and_stream_end_edits() {
+    let Some(sim) = Sim::new("branding_feed_payloads").await else {
+        return;
+    };
+    let guild = sim.guild;
+    sim.app
+        .db
+        .save_guild_branding(guild, &pinchora_db::GuildBranding::default())
+        .await
+        .unwrap();
+    assert!(sim.app.db.claim_branding_apply(guild, Some(0x123456)).await.unwrap());
+    let source = format!("streamer{}", unique());
+    let FeedAdd::Added(feed) = sim
+        .app
+        .db
+        .add_feed(&NewFeed {
+            guild,
+            kind: "twitch",
+            source: &source,
+            title: None,
+            channel: sim.channel,
+            message: None,
+            embed: true,
+            ping_role: None,
+            live_role: None,
+            include: &[],
+            exclude: &[],
+            created_by: unique(),
+            seen: &[],
+            interval_secs: 120,
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("feed")
+    };
+    let item = Item {
+        id: "live".into(),
+        title: "Stream".into(),
+        url: Some(format!("https://www.twitch.tv/{source}")),
+        ..Default::default()
+    };
+    assert_eq!(send(&sim.app, &feed, &item, false).await, PostOutcome::Sent);
+    let posts = sim.posts();
+    assert_eq!(
+        only(&posts, sim.channel, Method::POST).embed()["color"],
+        json!(0x123456)
+    );
+    let mut ended = feed;
+    ended.live_message_id = Some(unique() as i64);
+    end_live(&sim.app, &ended).await;
+    let posts = sim.posts();
+    assert_eq!(
+        only(&posts, sim.channel, Method::PATCH).embed()["color"],
+        json!(0x123456)
+    );
+}

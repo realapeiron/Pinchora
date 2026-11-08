@@ -29,6 +29,9 @@ fn view(row: &GuildBranding, guild: u64) -> Value {
         "nickname": row.nickname, "avatar_upload_id": row.avatar_upload_id,
         "banner_upload_id": row.banner_upload_id, "bio": row.bio,
         "embed_color": row.embed_color.map(|c| format!("#{c:06X}")),
+        "active_nickname": row.active_nickname, "active_bio": row.active_bio,
+        "active_avatar_upload_id": row.active_avatar_upload_id, "active_banner_upload_id": row.active_banner_upload_id,
+        "active_embed_color": row.active_embed_color.map(|c| format!("#{c:06X}")),
         "applied_at": row.applied_at, "last_error": row.last_error,
         "avatar_supported": row.avatar_supported, "banner_supported": row.banner_supported,
         "bio_supported": row.bio_supported,
@@ -130,34 +133,12 @@ pub async fn apply(State(state): State<WebState>, managed: ManagedGuild) -> ApiR
 pub async fn reset(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Json<Value>> {
     let guild = managed.id;
     let before = state.app.db.guild_branding(guild).await?;
-    if before.applied_at.is_none()
-        && before.nickname.is_none()
-        && before.avatar_upload_id.is_none()
-        && before.banner_upload_id.is_none()
-        && before.bio.is_none()
-        && before.embed_color.is_none()
-    {
-        return Ok(Json(json!({ "branding": view(&before, guild), "discord_failed": [] })));
-    }
-    if !state.app.db.claim_branding_apply(guild).await? {
-        return Err(ApiError::too_many(600));
-    }
-    let id = twilight_model::id::Id::new(guild);
-    let mut errors = Vec::new();
-    if state.app.http.update_current_member(id).nick(None).await.is_err() {
-        errors.push("nickname");
-    }
-    if state.app.http.update_current_member(id).avatar(None).await.is_err() {
-        errors.push("avatar");
-    }
-    if state.app.http.update_current_member(id).banner(None).await.is_err() {
-        errors.push("banner");
-    }
-    if state.app.http.update_current_member(id).bio(None).await.is_err() {
-        errors.push("bio");
-    }
-    state.app.db.reset_guild_branding(guild).await?;
-    state.app.announce_guild_change(guild).await;
+    let result = branding::reset(&state.app, guild).await?;
+    let errors = match result {
+        ApplyResult::Cooldown => return Err(ApiError::too_many(600)),
+        ApplyResult::Applied => Vec::new(),
+        ApplyResult::Partial(fields) => fields,
+    };
     let after = state.app.db.guild_branding(guild).await?;
     audit::finish(
         &state,

@@ -59,13 +59,16 @@ impl BrandingCommand {
         let before = cx.app.db.guild_branding(guild).await?;
         match self {
             Self::Show(_) => {
-                let color = format!("#{:06X}", before.embed_color.unwrap_or(crate::util::BRAND as i32));
+                let color = format!(
+                    "#{:06X}",
+                    before.active_embed_color.unwrap_or(crate::util::BRAND as i32)
+                );
                 cx.reply_ephemeral(t!(
                     cx.lang(),
                     "branding.show",
-                    nick = before.nickname.as_deref().unwrap_or("—"),
+                    nick = before.active_nickname.as_deref().unwrap_or("—"),
                     color = color,
-                    bio = before.bio.as_deref().unwrap_or("—")
+                    bio = before.active_bio.as_deref().unwrap_or("—")
                 ))
                 .await
             }
@@ -94,11 +97,23 @@ impl BrandingCommand {
                         .reply_ephemeral(t!(cx.lang(), &format!("branding.error.{error}")))
                         .await;
                 }
+                for upload in [&row.avatar_upload_id, &row.banner_upload_id].into_iter().flatten() {
+                    if cx.app.db.card_upload(guild, upload).await?.is_none() {
+                        return cx.reply_ephemeral(t!(cx.lang(), "branding.error.upload")).await;
+                    }
+                }
                 cx.app.db.save_guild_branding(guild, &row).await?;
                 audit(cx, guild, "branding.save", &before, &row).await?;
                 let outcome = branding::apply(&cx.app, guild, &row).await?;
                 if !matches!(outcome, ApplyResult::Cooldown) {
-                    audit(cx, guild, "branding.apply", &before, &row).await?;
+                    audit(
+                        cx,
+                        guild,
+                        "branding.apply",
+                        &before,
+                        &cx.app.db.guild_branding(guild).await?,
+                    )
+                    .await?;
                 }
                 let message = match outcome {
                     ApplyResult::Applied => t!(cx.lang(), "branding.applied"),
@@ -116,32 +131,19 @@ impl BrandingCommand {
                 cx.reply_ephemeral(message).await
             }
             Self::Reset(_) => {
-                if before.applied_at.is_none()
-                    && before.nickname.is_none()
-                    && before.avatar_upload_id.is_none()
-                    && before.banner_upload_id.is_none()
-                    && before.bio.is_none()
-                    && before.embed_color.is_none()
-                {
-                    return cx.reply_ephemeral(t!(cx.lang(), "branding.reset")).await;
-                }
-                if !cx.app.db.claim_branding_apply(guild).await? {
+                let result = branding::reset(&cx.app, guild).await?;
+                if matches!(result, ApplyResult::Cooldown) {
                     return cx.reply_ephemeral(t!(cx.lang(), "branding.cooldown")).await;
                 }
-                let id = twilight_model::id::Id::new(guild);
-                let mut failed = false;
-                for result in [
-                    cx.app.http.update_current_member(id).nick(None).await,
-                    cx.app.http.update_current_member(id).avatar(None).await,
-                    cx.app.http.update_current_member(id).banner(None).await,
-                    cx.app.http.update_current_member(id).bio(None).await,
-                ] {
-                    failed |= result.is_err();
-                }
-                cx.app.db.reset_guild_branding(guild).await?;
-                cx.app.announce_guild_change(guild).await;
-                audit(cx, guild, "branding.reset", &before, &GuildBranding::default()).await?;
-                cx.reply_ephemeral(if failed {
+                audit(
+                    cx,
+                    guild,
+                    "branding.reset",
+                    &before,
+                    &cx.app.db.guild_branding(guild).await?,
+                )
+                .await?;
+                cx.reply_ephemeral(if matches!(result, ApplyResult::Partial(_)) {
                     t!(cx.lang(), "branding.reset-partial")
                 } else {
                     t!(cx.lang(), "branding.reset")
@@ -153,8 +155,8 @@ impl BrandingCommand {
 }
 
 async fn audit(cx: &Cx, guild: u64, action: &str, before: &GuildBranding, after: &GuildBranding) -> anyhow::Result<()> {
-    let previous = serde_json::json!({"nickname": before.nickname, "avatar_upload_id": before.avatar_upload_id, "banner_upload_id": before.banner_upload_id, "bio": before.bio, "embed_color": before.embed_color}).to_string();
-    let next = serde_json::json!({"nickname": after.nickname, "avatar_upload_id": after.avatar_upload_id, "banner_upload_id": after.banner_upload_id, "bio": after.bio, "embed_color": after.embed_color}).to_string();
+    let previous = serde_json::json!({"nickname": before.nickname, "avatar_upload_id": before.avatar_upload_id, "banner_upload_id": before.banner_upload_id, "bio": before.bio, "embed_color": before.embed_color, "active_nickname": before.active_nickname, "active_avatar_upload_id": before.active_avatar_upload_id, "active_banner_upload_id": before.active_banner_upload_id, "active_bio": before.active_bio, "last_error": before.last_error, "active_embed_color": before.active_embed_color}).to_string();
+    let next = serde_json::json!({"nickname": after.nickname, "avatar_upload_id": after.avatar_upload_id, "banner_upload_id": after.banner_upload_id, "bio": after.bio, "embed_color": after.embed_color, "active_nickname": after.active_nickname, "active_avatar_upload_id": after.active_avatar_upload_id, "active_banner_upload_id": after.active_banner_upload_id, "active_bio": after.active_bio, "last_error": after.last_error, "active_embed_color": after.active_embed_color}).to_string();
     cx.app
         .db
         .audit(&NewAudit {

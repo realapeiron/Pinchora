@@ -6,6 +6,8 @@ import { PixelButton } from "../components/PixelButton";
 import type { Overview } from "../lib/api";
 import {
   applyBranding,
+  brandingDraft,
+  brandingResultMessage,
   getBranding,
   resetBranding,
   saveBranding,
@@ -56,19 +58,6 @@ export function BrandingPage() {
   }, []);
   const setField = <K extends keyof BrandingDraft>(key: K, value: BrandingDraft[K]) =>
     setDraft((old) => ({ ...old, [key]: value }));
-  const refresh = async () => {
-    const value = await getBranding(guild.id);
-    setSaved(value);
-    setDraft({
-      nickname: value.nickname,
-      avatar_upload_id: value.avatar_upload_id,
-      banner_upload_id: value.banner_upload_id,
-      bio: value.bio,
-      embed_color: value.embed_color,
-    });
-    setAvatar(value.avatar_url);
-    setBanner(value.banner_url);
-  };
   useEffect(() => {
     let current = true;
     getBranding(guild.id)
@@ -231,9 +220,12 @@ export function BrandingPage() {
               onClick={() =>
                 void run(async () => {
                   await saveBranding(guild.id, draft);
-                  await applyBranding(guild.id);
-                  await refresh();
-                  setNotice(t("Branding applied to Discord."));
+                  const value = await applyBranding(guild.id);
+                  setSaved(value);
+                  setDraft(brandingDraft(value));
+                  setAvatar(value.avatar_url);
+                  setBanner(value.banner_url);
+                  setNotice(brandingResultMessage(Boolean(value.last_error)));
                 })
               }
             >
@@ -241,7 +233,7 @@ export function BrandingPage() {
                 ? t("Apply in {minutes} min", { minutes: Math.ceil(wait / 60) })
                 : t("Apply to Discord")}
             </PixelButton>
-            <PixelButton variant="ghost" disabled={busy} onClick={() => setResetting(true)}>
+            <PixelButton variant="ghost" disabled={busy || wait > 0} onClick={() => setResetting(true)}>
               {t("Reset branding")}
             </PixelButton>
           </div>
@@ -254,15 +246,11 @@ export function BrandingPage() {
                   void run(async () => {
                     const result = await resetBranding(guild.id);
                     setSaved(result.branding);
-                    setDraft(defaultDraft);
-                    setAvatar(null);
-                    setBanner(null);
+                    setDraft(brandingDraft(result.branding));
+                    setAvatar(result.branding.avatar_url);
+                    setBanner(result.branding.banner_url);
                     setResetting(false);
-                    setNotice(
-                      result.discord_failed.length
-                        ? t("Saved branding reset; Discord refused some profile fields.")
-                        : t("Branding reset."),
-                    );
+                    setNotice(brandingResultMessage(result.discord_failed.length > 0, true));
                   })
                 }
               >
@@ -276,6 +264,8 @@ export function BrandingPage() {
         </section>
         <aside className="branding-preview" aria-label={t("Live preview")}>
           <h2>{t("Live preview")}</h2>
+          <p>{t("Last accepted nickname: {name}", { name: saved.active_nickname ?? "Pinchora" })}</p>
+          <p>{t("Last accepted bio: {bio}", { bio: saved.active_bio ?? "—" })}</p>
           <div className="branding-profile">
             <div
               className="branding-banner"

@@ -135,6 +135,8 @@ struct Mock {
     bot_guilds: Arc<Mutex<HashSet<u64>>>,
     profile_patches: Arc<Mutex<Vec<Value>>>,
     refuse_banner: Arc<AtomicBool>,
+    refuse_avatar: Arc<AtomicBool>,
+    refuse_profile: Arc<AtomicBool>,
     guild_owners: Arc<Mutex<HashMap<u64, u64>>>,
     /// Forms posted to the token endpoint, oldest first.
     token_forms: Arc<Mutex<Vec<HashMap<String, String>>>>,
@@ -401,7 +403,15 @@ async fn discord(
         (&Method::PATCH, [.., "guilds", _, "members", "@me"]) => {
             let value: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
             mock.profile_patches.lock().unwrap().push(value.clone());
-            if mock.refuse_banner.load(Ordering::SeqCst) && value.get("banner").is_some() {
+            if mock.refuse_profile.load(Ordering::SeqCst) {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    json!({"message":"Unauthorized","code":0}).to_string(),
+                );
+            }
+            if (mock.refuse_banner.load(Ordering::SeqCst) && value.get("banner").is_some())
+                || (mock.refuse_avatar.load(Ordering::SeqCst) && value.get("avatar").is_some())
+            {
                 return (
                     StatusCode::FORBIDDEN,
                     json!({"message":"Missing Access","code":50001}).to_string(),

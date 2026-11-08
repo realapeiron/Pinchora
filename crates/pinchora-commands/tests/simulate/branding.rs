@@ -70,3 +70,80 @@ async fn branding_applies_profile_color_to_english_and_turkish_embeds() {
         .await;
     assert!(cooldown.content().contains("10"));
 }
+
+#[tokio::test]
+async fn branding_all_command_actions_refuse_members_without_manage_server() {
+    let Some(mut sim) = Sim::new("branding_permissions").await else {
+        return;
+    };
+    sim.permissions = 0;
+    let member = unique();
+    for action in ["show", "apply", "reset"] {
+        let answer = sim
+            .legacy_command(member, "setup", json!([group("branding", sub(action, vec![]))]))
+            .await;
+        assert!(answer.ephemeral);
+        assert!(answer.content().contains("Manage Server"), "{answer}");
+    }
+    assert!(sim.app.db.guild_branding(sim.guild).await.unwrap().applied_at.is_none());
+    assert!(sim.mock.mod_calls.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn branding_rejects_foreign_uploads_before_saving_a_draft() {
+    let Some(mut sim) = Sim::new("branding_foreign_upload").await else {
+        return;
+    };
+    let manager = unique();
+    sim.permissions = MANAGE_GUILD;
+    sim.own_server(manager);
+    let answer = sim
+        .legacy_command(
+            manager,
+            "setup",
+            json!([group(
+                "branding",
+                sub("apply", vec![text_option("avatar", &format!("{:032x}", unique()))])
+            )]),
+        )
+        .await;
+    assert!(answer.content().contains("uploaded to this server"), "{answer}");
+    let saved = sim.app.db.guild_branding(sim.guild).await.unwrap();
+    assert!(saved.avatar_upload_id.is_none() && saved.applied_at.is_none());
+}
+
+#[tokio::test]
+async fn branding_show_reports_accepted_profile_instead_of_an_unapplied_draft() {
+    let Some(mut sim) = Sim::new("branding_show_active").await else {
+        return;
+    };
+    let manager = unique();
+    sim.permissions = MANAGE_GUILD;
+    sim.own_server(manager);
+    let row = pinchora_db::GuildBranding {
+        nickname: Some("Accepted".into()),
+        embed_color: Some(0x123456),
+        ..Default::default()
+    };
+    sim.app.db.save_guild_branding(sim.guild, &row).await.unwrap();
+    pinchora_commands::branding::apply(&sim.app, sim.guild, &row)
+        .await
+        .unwrap();
+    let draft = pinchora_db::GuildBranding {
+        nickname: Some("Unapplied".into()),
+        embed_color: Some(0x654321),
+        ..Default::default()
+    };
+    sim.app.db.save_guild_branding(sim.guild, &draft).await.unwrap();
+    for locale in ["en-US", "tr"] {
+        sim.locale = locale;
+        let shown = sim
+            .legacy_command(manager, "setup", json!([group("branding", sub("show", vec![]))]))
+            .await;
+        assert!(
+            shown.content().contains("Accepted") && shown.content().contains("#123456"),
+            "{shown}"
+        );
+        assert!(!shown.content().contains("Unapplied"));
+    }
+}

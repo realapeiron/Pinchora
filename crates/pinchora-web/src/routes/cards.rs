@@ -491,3 +491,37 @@ pub async fn upload_png(
         .ok_or_else(ApiError::not_found)?;
     Ok(png_response(png, "private, max-age=86400"))
 }
+
+#[cfg(test)]
+mod upload_security_tests {
+    use super::*;
+
+    #[test]
+    fn sniffed_images_are_static_bounded_pngs_even_with_a_false_mime_label() {
+        let mut gif = Vec::new();
+        {
+            let mut encoder = image::codecs::gif::GifEncoder::new(&mut gif);
+            for color in [[255, 0, 0, 255], [0, 255, 0, 255]] {
+                encoder
+                    .encode_frame(image::Frame::new(image::RgbaImage::from_pixel(
+                        2,
+                        2,
+                        image::Rgba(color),
+                    )))
+                    .unwrap();
+            }
+        }
+        let (png, w, h) = reencode(&gif).unwrap();
+        assert_eq!((w, h), (2, 2));
+        assert_eq!(image::guess_format(&png).unwrap(), ImageFormat::Png);
+        assert_eq!(
+            image::load_from_memory(&png).unwrap().to_rgba8().get_pixel(0, 0).0,
+            [255, 0, 0, 255]
+        );
+        let decoder = image::codecs::png::PngDecoder::new(Cursor::new(&png)).unwrap();
+        assert!(!decoder.is_apng().unwrap());
+        assert!(reencode(b"<svg><script>alert(1)</script></svg>").is_err());
+        let bomb = encode_png(&image::RgbaImage::new(UPLOAD_MAX_SIDE + 1, 1)).unwrap();
+        assert!(reencode(&bomb).is_err());
+    }
+}

@@ -67,7 +67,7 @@ pub async fn backup_preview(
             })
             .collect();
         for (old, new) in uploads {
-            for section in ["card_uploads", "card_designs"] {
+            for section in ["card_uploads", "card_designs", "guild_branding"] {
                 for row in backup.sections.get_mut(section).unwrap() {
                     replace_string(row, &old, &new);
                 }
@@ -182,7 +182,8 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
     let get = |table: &str| backup.sections.get(table).map(Vec::as_slice).unwrap_or_default();
     for (table, max) in [
         ("guild_modules", pinchora_core::modules::Module::ALL.len()),
-        ("card_uploads", pinchora_core::card_design::MAX_UPLOADS),
+        // Up to two card backgrounds plus four desired/accepted branding images are retained.
+        ("card_uploads", pinchora_core::card_design::MAX_UPLOADS + 6),
         ("card_designs", 2),
         ("auto_roles", pinchora_core::roles_pack::MAX_AUTO_ROLES),
         ("color_roles", pinchora_core::roles_pack::MAX_COLOR_ROLES),
@@ -344,6 +345,36 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
         let decoded = reader.decode().map_err(|_| invalid())?;
         if i64::from(decoded.width()) != n(row, "width")? || i64::from(decoded.height()) != n(row, "height")? {
             return Err(invalid());
+        }
+    }
+    for row in get("guild_branding") {
+        let optional = |key: &str| -> Result<Option<String>, String> {
+            if row[key].is_null() {
+                Ok(None)
+            } else {
+                s(row, key).map(Some)
+            }
+        };
+        let branding = pinchora_db::GuildBranding {
+            nickname: optional("nickname")?,
+            bio: optional("bio")?,
+            avatar_upload_id: optional("avatar_upload_id")?,
+            banner_upload_id: optional("banner_upload_id")?,
+            embed_color: if row["embed_color"].is_null() {
+                None
+            } else {
+                Some(i32::try_from(n(row, "embed_color")?).map_err(|_| invalid())?)
+            },
+            ..Default::default()
+        };
+        crate::branding::validate(&branding).map_err(|_| invalid())?;
+        for upload in [&branding.avatar_upload_id, &branding.banner_upload_id]
+            .into_iter()
+            .flatten()
+        {
+            if !get("card_uploads").iter().any(|r| r["id"] == *upload) {
+                return Err(invalid());
+            }
         }
     }
     for row in get("card_designs") {

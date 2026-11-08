@@ -29,8 +29,6 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Confirm reset": "Sıfırlamayı onayla",
   "Clear the saved profile and colour for this server?":
     "Bu sunucunun kayıtlı profil ve renk ayarları silinsin mi?",
-  "Saved branding reset; Discord refused some profile fields.":
-    "Kayıtlı marka ayarları sıfırlandı; Discord bazı profil alanlarını reddetti.",
   "Branding reset.": "Marka ayarları sıfırlandı.",
   "Live preview": "Canlı önizleme",
   Bot: "Bot",
@@ -3478,4 +3476,10 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Live now role": "Canlı yayın rolü",
   "Given only to a linked streamer while this channel is live.":
     "Yalnızca bağlı yayıncı canlı yayındayken verilir.",
+  "Some profile fields could not be reset. Their previous values were kept.":
+    "Bazı profil alanları sıfırlanamadı. Önceki değerleri korundu.",
+  "Some profile fields could not be applied. Review the details below.":
+    "Bazı profil alanları uygulanamadı. Aşağıdaki ayrıntıları kontrol et.",
+  "Last accepted nickname: {name}": "Son kabul edilen takma ad: {name}",
+  "Last accepted bio: {bio}": "Son kabul edilen biyografi: {bio}",
 };

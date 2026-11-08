@@ -99,3 +99,54 @@ async fn uploads_are_kept_per_server_and_the_oldest_unused_go() {
         "not another server's"
     );
 }
+
+#[tokio::test]
+async fn branding_null_slots_do_not_disable_upload_pruning_and_active_images_survive() {
+    let Some(db) = db().await else { return };
+    let g = guild();
+    db.save_guild_branding(g, &pinchora_db::GuildBranding::default())
+        .await
+        .unwrap();
+    let protected = format!("{g:032x}");
+    db.add_card_upload(g, &protected, b"png", 1, 1).await.unwrap();
+    sqlx::query("UPDATE guild_branding SET active_avatar_upload_id=$2 WHERE guild_id=$1")
+        .bind(g as i64)
+        .bind(&protected)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    for i in 1..=MAX_UPLOADS + 5 {
+        db.add_card_upload(g, &format!("{:032x}", u128::from(g) + i as u128), b"png", 1, 1)
+            .await
+            .unwrap();
+    }
+    assert_eq!(db.card_uploads(g).await.unwrap().len(), MAX_UPLOADS + 1);
+    assert!(db.card_upload(g, &protected).await.unwrap().is_some());
+}
+
+#[tokio::test]
+async fn branding_reset_does_not_erase_a_concurrent_new_draft() {
+    use pinchora_db::GuildBranding;
+    let Some(db) = db().await else { return };
+    let g = guild();
+    let before = GuildBranding {
+        nickname: Some("Before".into()),
+        embed_color: Some(1),
+        ..Default::default()
+    };
+    db.save_guild_branding(g, &before).await.unwrap();
+    assert!(db.claim_branding_apply(g, None).await.unwrap());
+    let next = GuildBranding {
+        nickname: Some("Saved during Discord request".into()),
+        embed_color: Some(2),
+        ..Default::default()
+    };
+    db.save_guild_branding(g, &next).await.unwrap();
+    db.branding_result(g, &GuildBranding::default(), [true; 4], [Some(true); 3], Some(&before))
+        .await
+        .unwrap();
+    let after = db.guild_branding(g).await.unwrap();
+    assert_eq!(after.nickname, next.nickname);
+    assert_eq!(after.embed_color, next.embed_color);
+    assert!(after.active_nickname.is_none() && after.active_embed_color.is_none());
+}

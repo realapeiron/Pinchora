@@ -27,8 +27,6 @@ export const en = {
   "Confirm reset": "Confirm reset",
   "Clear the saved profile and colour for this server?":
     "Clear the saved profile and colour for this server?",
-  "Saved branding reset; Discord refused some profile fields.":
-    "Saved branding reset; Discord refused some profile fields.",
   "Branding reset.": "Branding reset.",
   "Live preview": "Live preview",
   Bot: "Bot",
@@ -3451,4 +3449,10 @@ export const en = {
   "Live now role": "Live now role",
   "Given only to a linked streamer while this channel is live.":
     "Given only to a linked streamer while this channel is live.",
+  "Some profile fields could not be reset. Their previous values were kept.":
+    "Some profile fields could not be reset. Their previous values were kept.",
+  "Some profile fields could not be applied. Review the details below.":
+    "Some profile fields could not be applied. Review the details below.",
+  "Last accepted nickname: {name}": "Last accepted nickname: {name}",
+  "Last accepted bio: {bio}": "Last accepted bio: {bio}",
 } as const;

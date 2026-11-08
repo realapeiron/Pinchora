@@ -393,7 +393,9 @@ async fn send(
     quiet: bool,
 ) {
     let mut branded = embeds.to_vec();
-    app.brand_embeds(guild, &mut branded).await;
+    if !quiet {
+        app.brand_embeds(guild, &mut branded).await;
+    }
     let mut request = app.http.create_message(channel).allowed_mentions(Some(mentions));
     if !content.is_empty() {
         request = request.content(content);

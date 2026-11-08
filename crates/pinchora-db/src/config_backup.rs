@@ -252,6 +252,20 @@ impl Db {
                     {
                         continue;
                     }
+                    // Branding's cooldown and accepted Discord state are runtime state. A replace
+                    // clears only its draft; restoring a backup must never permit a second PATCH.
+                    if section.table == "guild_branding" {
+                        sqlx::query("UPDATE guild_branding SET nickname=NULL,avatar_upload_id=NULL,banner_upload_id=NULL,bio=NULL,embed_color=NULL WHERE guild_id=$1")
+                            .bind(sql_id(guild)).execute(&mut *tx).await?;
+                        continue;
+                    }
+                    if section.table == "card_uploads" {
+                        let active: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guild_branding WHERE guild_id=$1 AND $2 IN (active_avatar_upload_id,active_banner_upload_id))")
+                            .bind(sql_id(guild)).bind(row["id"].as_str()).fetch_one(&mut *tx).await?;
+                        if active {
+                            continue;
+                        }
+                    }
                     let predicate = key_predicate(section);
                     let query = format!(
                         "DELETE FROM {} t WHERE {} AND {predicate}",

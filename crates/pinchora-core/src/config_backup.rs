@@ -60,7 +60,7 @@ pub const SECTIONS: &[Section] = &[
     section!("card_uploads", "id,png,width,height", "id", false),
     section!(
         "guild_branding",
-        "nickname,avatar_upload_id,banner_upload_id,bio,embed_color,active_embed_color",
+        "nickname,avatar_upload_id,banner_upload_id,bio,embed_color",
         "",
         false
     ),

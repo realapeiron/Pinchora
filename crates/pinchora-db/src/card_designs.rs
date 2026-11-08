@@ -103,8 +103,9 @@ impl Db {
                AND id NOT IN (SELECT id FROM card_uploads WHERE guild_id = $1 ORDER BY created_at DESC, id LIMIT $2)
                AND id NOT IN (SELECT design #>> '{background,id}' FROM card_designs
                               WHERE guild_id = $1 AND design #>> '{background,type}' = 'upload')
-               AND id NOT IN (SELECT avatar_upload_id FROM guild_branding WHERE guild_id = $1)
-               AND id NOT IN (SELECT banner_upload_id FROM guild_branding WHERE guild_id = $1)",
+               AND NOT EXISTS (SELECT 1 FROM guild_branding b WHERE b.guild_id = $1
+                   AND card_uploads.id IN (b.avatar_upload_id, b.banner_upload_id,
+                                          b.active_avatar_upload_id, b.active_banner_upload_id))",
         )
         .bind(sql_id(guild))
         .bind(MAX_UPLOADS as i64)
