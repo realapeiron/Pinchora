@@ -496,6 +496,21 @@
     border-width: 2px 0 0;
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
+  /* Keep the room tappable while the editor scrolls in its own row. */
+  .reef[data-decorating="true"] {
+    flex-direction: column;
+  }
+  .reef[data-decorating="true"] .reef-decorate {
+    position: relative;
+    inset: auto;
+    flex: 0 0 45%;
+    min-height: 0;
+    max-height: none;
+  }
+  /* Chat resumes when the active panel closes, retaining its draft and consent. */
+  .reef[data-panel-open="true"] .reef-chat {
+    display: none;
+  }
 }
 
 /* Social rows can contain long player names and multiple actions on a phone. */

@@ -1326,9 +1326,14 @@ async fn wave7_guestbook_appreciation_and_evidence_reuse() {
 #[ignore = "seeds isolated Wave 7 browser fixtures for the lead"]
 async fn seed_reef_wave7() {
     let site = Site::new().await.expect("test services");
-    let host = 770000000000000181u64;
-    let guest = 770000000000000182u64;
-    let guild = 770000000000000180u64;
+    // The browser suite supplies fresh identities per test: SQL reseeding cannot
+    // reset the running web process's account budgets or live room actors.
+    let guild = std::env::var("PINCHORA_E2E_REEF_GUILD_ID")
+        .map(|id| id.parse::<u64>().expect("fixture guild ID"))
+        .unwrap_or(770000000000000180);
+    assert!(guild > 0 && guild < i64::MAX as u64 - 2);
+    let host = guild + 1;
+    let guest = guild + 2;
     site.app.db.guild_settings(guild).await.unwrap();
     sqlx::query("DELETE FROM events WHERE guild_id=$1")
         .bind(guild as i64)

@@ -219,6 +219,56 @@ describe("Reef socket", () => {
     Socket.instances[1]!.onopen?.();
     expect(Socket.instances[1]!.sent[0]).toMatchObject({ type: "authenticate", ticket: "takeover-ticket" });
   });
+  it("backs off rejected joins and recovers when the account budget refills", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    await net.connect();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const socket = Socket.instances.at(-1)!;
+      socket.onopen?.();
+      socket.message({ type: "authenticated", user_id: "1" }, 1, "");
+      socket.message({ type: "error", request_id: "2", reason: "rate_limited" }, 2, "");
+      expect(net.network).toBe("offline");
+      expect(net.ready).toBe(false);
+      expect(socket.readyState).toBe(3);
+      await vi.advanceTimersByTimeAsync(retryDelay(attempt, 0.5) - 1);
+      expect(Socket.instances).toHaveLength(attempt + 1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(Socket.instances).toHaveLength(attempt + 2);
+    }
+    const socket = Socket.instances.at(-1)!;
+    socket.onopen?.();
+    socket.message({ type: "authenticated", user_id: "1" }, 1, "");
+    socket.message({ type: "snapshot", revision: "r1", players: [player()] }, 2);
+    expect(net.network).toBe("connected");
+    expect(net.ready).toBe(true);
+    expect(net.players.size).toBe(1);
+    socket.close();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(Socket.instances).toHaveLength(5); // Successful admission resets backoff.
+  });
+  it("keeps an admitted room connected when chat or movement is rate limited", async () => {
+    const socket = await connected();
+    net.say("Hello");
+    socket.message({ type: "error", request_id: "3", reason: "rate_limited" }, 3);
+    net.move([1, 7]);
+    socket.message({ type: "error", request_id: "4", reason: "rate_limited" }, 4);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(Socket.instances).toHaveLength(1);
+    expect(net.network).toBe("connected");
+    expect(net.ready).toBe(true);
+    expect(net.chat.snapshot()[0]).toMatchObject({ delivery: "failed", reason: "rate_limited" });
+  });
+  it("cancels a rejected join's retry when the room is disposed", async () => {
+    await net.connect();
+    const socket = Socket.instances[0]!;
+    socket.onopen?.();
+    socket.message({ type: "authenticated", user_id: "1" }, 1, "");
+    socket.message({ type: "error", request_id: "2", reason: "rate_limited" }, 2, "");
+    net.dispose();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(Socket.instances).toHaveLength(1);
+    expect(api).toHaveBeenCalledTimes(1);
+  });
   it("keeps network state within the documented states", async () => {
     expect(net.network).toBe("preview");
     const socket = await connected();
@@ -255,6 +305,7 @@ describe("Reef socket", () => {
     socket.message({ type: "error", reason: "access_denied" }, 3);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(net.ready).toBe(false);
+    expect(net.network).toBe("preview");
     expect(Socket.instances).toHaveLength(1);
   });
 });

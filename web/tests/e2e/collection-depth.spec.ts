@@ -27,30 +27,33 @@ test("recycling waits for confirmation and reuses its operation key", async ({ p
   await devLogin(page, "770000000000088085", []);
   let writes = 0;
   const requests: string[] = [];
-  await page.route("**/api/me/collection/book", (route) =>
-    route.fulfill({
-      json: {
-        items: [
-          {
-            id: "crab",
-            name: "Crab",
-            kind: "critter",
-            rarity: "Common",
-            caught: 3,
-            kept: 3,
-            glimmer: 0,
-            habitat: "shore",
-          },
-        ],
-        found: 1,
-        total: 84,
-        shards: 24,
-        fragments: 0,
-        craft_cost: 12,
-        sets: [],
-        roll: null,
-      },
-    }),
+  // Player reads include a locale query; match the endpoint independently of it.
+  await page.route(
+    (url) => url.pathname === "/api/me/collection/book",
+    (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              id: "crab",
+              name: "Crab",
+              kind: "critter",
+              rarity: "Common",
+              caught: 3,
+              kept: 3,
+              glimmer: 0,
+              habitat: "shore",
+            },
+          ],
+          found: 1,
+          total: 84,
+          shards: 24,
+          fragments: 0,
+          craft_cost: 12,
+          sets: [],
+          roll: null,
+        },
+      }),
   );
   await page.route("**/api/me/collection/recycle", async (route) => {
     writes++;

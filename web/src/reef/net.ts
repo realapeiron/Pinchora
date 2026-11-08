@@ -75,6 +75,7 @@ export class ReefNet {
   private recoveryDeadline: ReturnType<typeof setTimeout> | undefined;
   private generation = 0;
   private pending: { id: string; tile: Point } | null = null;
+  private joinRequest: string | null = null;
   private room: string;
   private initialLayout?: RoomJson;
   private changed: (status: string) => void;
@@ -162,6 +163,7 @@ export class ReefNet {
     this.chat.disconnected();
     this.ready = false;
     this.pending = null;
+    this.joinRequest = null;
     this.players.clear();
     this.samples.clear();
   }
@@ -227,6 +229,7 @@ export class ReefNet {
     }
     if (message.type === "authenticated") {
       this.userId = message.user_id!;
+      this.joinRequest = String(this.sequence + 1);
       this.send({ type: "join", room: this.room });
       return;
     }
@@ -236,11 +239,19 @@ export class ReefNet {
       return;
     }
     if (message.type === "error") {
+      // Heartbeats keep a rejected join's socket alive forever. Reconnect with the
+      // existing backoff so admission can recover when the account budget refills.
+      // A throttled chat/movement request must not tear down an admitted room.
+      if (message.request_id === this.joinRequest && message.reason === "rate_limited") {
+        this.socket?.close();
+        return;
+      }
       this.chat.reject(message.request_id, message.reason ?? "chat_filtered");
       this.pending = null;
       this.changed(message.reason ?? "Request rejected");
       if (["access_denied", "room_full", "no_free_entry", "invalid_room"].includes(message.reason ?? "")) {
         this.dispose();
+        this.network = "preview";
         this.changed("Local preview — " + message.reason);
       }
       return;

@@ -813,7 +813,13 @@ export default function ReefStage({
     };
   }, [room, own, roomKey]);
   return (
-    <section className="reef" aria-label={t("Play in this room")} data-controls-open={drawer}>
+    <section
+      className="reef"
+      aria-label={t("Play in this room")}
+      data-controls-open={drawer}
+      data-decorating={decorating}
+      data-panel-open={decorating || social || drawer}
+    >
       <div className="reef-surface">
         <canvas
           ref={canvas}

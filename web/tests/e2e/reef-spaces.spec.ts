@@ -1,23 +1,32 @@
 // Real API, Redis actors and two authenticated browsers. The lead runs Chromium.
+import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { test, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 import { devLogin, overflow, shot } from "./helpers";
-const HOST = "770000000000000181",
-  GUEST = "770000000000000182",
-  GUILD = "770000000000000180";
+const test = base.extend<{ reef: { HOST: string; GUEST: string; GUILD: string } }>({
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires destructuring fixture dependencies.
+  reef: async ({}, use) => {
+    // Account join budgets live in the server, not in the database seed. Isolate
+    // tests/retries without bypassing the six-joins-per-minute production limit.
+    // End guild IDs in 0: the Discord mock treats IDs ending in 9 as bot-absent.
+    const guild = 770000000000000000n + BigInt(randomBytes(6).readUIntBE(0, 6)) * 10n;
+    const GUILD = String(guild),
+      HOST = String(guild + 1n),
+      GUEST = String(guild + 2n);
+    execFileSync(
+      "cargo",
+      ["test", "-p", "pinchora-web", "--test", "reef", "seed_reef_wave7", "--", "--ignored"],
+      {
+        cwd: fileURLToPath(new URL("../../..", import.meta.url)),
+        stdio: "inherit",
+        env: { ...process.env, CARGO_BUILD_JOBS: "4", PINCHORA_E2E_REEF_GUILD_ID: GUILD },
+      },
+    );
+    await use({ HOST, GUEST, GUILD });
+  },
+});
 test.setTimeout(90_000);
-test.beforeEach(() =>
-  execFileSync(
-    "cargo",
-    ["test", "-p", "pinchora-web", "--test", "reef", "seed_reef_wave7", "--", "--ignored"],
-    {
-      cwd: fileURLToPath(new URL("../../..", import.meta.url)),
-      stdio: "inherit",
-      env: { ...process.env, CARGO_BUILD_JOBS: "4" },
-    },
-  ),
-);
 async function write(page: Page, path: string, method: string, data: unknown) {
   const me = await (await page.request.get("/api/me")).json();
   return page.request.fetch(path, { method, headers: { "X-CSRF-Token": me.csrf }, data });
@@ -26,7 +35,11 @@ async function ready(page: Page) {
   await expect(page.locator(".reef-canvas")).toHaveAttribute("data-network", "connected");
 }
 for (const phone of [false, true])
-  test(`two browsers decorate and reconcile ${phone ? "phone" : "desktop"}`, async ({ browser, baseURL }) => {
+  test(`two browsers decorate and reconcile ${phone ? "phone" : "desktop"}`, async ({
+    browser,
+    baseURL,
+    reef: { HOST, GUEST },
+  }) => {
     const a = await browser.newContext({
       baseURL,
       viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 800 },
@@ -44,18 +57,58 @@ for (const phone of [false, true])
       await ready(host);
       await ready(guest);
       await host.getByRole("button", { name: "Decorate", exact: true }).click();
-      await host.getByLabel("Inventory", { exact: true }).selectOption("pebblerest_stool__sand");
+      // The wrapping label also contains option text; use the select's accessible name.
+      await host
+        .getByRole("combobox", { name: "Inventory", exact: true })
+        .selectOption("pebblerest_stool__sand");
       if (phone) {
-        const point = await host.locator(".reef-canvas").evaluate((el) => {
-          const c = el as HTMLCanvasElement;
-          const [ox, oy] = c.dataset.origin!.split(",").map(Number);
-          const [cx, cy] = c.dataset.camera!.split(",").map(Number);
-          const scale = Number(c.dataset.scale),
-            dpr = devicePixelRatio;
-          return { x: (cx! + ox! * scale) / dpr, y: (cy! + (oy! + 48) * scale) / dpr };
-        });
-        await host.locator(".reef-canvas").tap({ position: point });
-        await expect(host.getByLabel("Position X", { exact: true })).toHaveValue("1");
+        const canvas = host.locator(".reef-canvas");
+        const sheet = host.getByRole("complementary", { name: "Decorate", exact: true });
+        await expect(host.getByRole("region", { name: "Room chat", exact: true })).toBeHidden();
+        await expect(canvas).toHaveAttribute("data-art-ready", "true");
+        await expect(canvas).toHaveAttribute("data-camera-settled", "true");
+        const canvasBox = (await canvas.boundingBox())!;
+        const sheetBox = (await sheet.boundingBox())!;
+        expect(canvasBox.y + canvasBox.height).toBeLessThanOrEqual(sheetBox.y + 1);
+        expect(await sheet.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+        // A phone camera follows the player: tile (1, 1) can be offscreen (x=419 at 390px).
+        // Tap an unobscured tile centre, then verify both coordinates rather than assuming a camera.
+        const maxX = Number(await host.getByLabel("Position X", { exact: true }).getAttribute("max"));
+        const maxY = Number(
+          await host.getByLabel("Position Y / wall level", { exact: true }).getAttribute("max"),
+        );
+        const point = await canvas.evaluate(
+          (el, { maxX, maxY }) => {
+            const c = el as HTMLCanvasElement;
+            const rect = c.getBoundingClientRect();
+            const [ox, oy] = c.dataset.origin!.split(",").map(Number);
+            const [cx, cy] = c.dataset.camera!.split(",").map(Number);
+            const scale = Number(c.dataset.scale),
+              dpr = devicePixelRatio;
+            for (let tileX = 1; tileX <= maxX; tileX++) {
+              for (let tileY = 1; tileY <= maxY; tileY++) {
+                const x = (cx! + (ox! + 32 * (tileX - tileY)) * scale) / dpr;
+                const y = (cy! + (oy! + 16 * (tileX + tileY + 1)) * scale) / dpr;
+                if (
+                  x >= 16 &&
+                  x < rect.width - 16 &&
+                  y >= 16 &&
+                  y < rect.height - 16 &&
+                  document.elementFromPoint(rect.left + x, rect.top + y) === c
+                )
+                  return { x, y, tileX, tileY };
+              }
+            }
+            return null;
+          },
+          { maxX, maxY },
+        );
+        expect(point, "The phone editor must leave a floor tile available to tap").not.toBeNull();
+        await canvas.tap({ position: { x: point!.x, y: point!.y } });
+        await expect(host.getByLabel("Position X", { exact: true })).toHaveValue(String(point!.tileX));
+        await expect(host.getByLabel("Position Y / wall level", { exact: true })).toHaveValue(
+          String(point!.tileY),
+        );
       } else {
         await host.getByLabel("Position X", { exact: true }).fill("2");
         await host.getByLabel("Position Y / wall level", { exact: true }).fill("2");
@@ -68,14 +121,22 @@ for (const phone of [false, true])
       await expect(host.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
       await host.getByRole("button", { name: "Undo", exact: true }).click();
       await expect(guest.locator(".reef-canvas")).toHaveAttribute("data-placements", "0");
+      await expect(host.getByRole("heading", { level: 1 })).toHaveCount(1);
       expect(await overflow(host)).toBeLessThanOrEqual(1);
       await shot(host, `reef7-decorate-${phone ? "phone" : "desktop"}`);
+      await host.getByRole("button", { name: "Done", exact: true }).click();
+      await expect(host.locator(".reef-canvas")).toBeFocused();
+      await expect(host.getByRole("region", { name: "Room chat", exact: true })).toBeVisible();
     } finally {
       await a.close();
       await b.close();
     }
   });
-test("two browsers ring, accept, visit, appreciate and sign in-world", async ({ browser, baseURL }) => {
+test("two browsers ring, accept, visit, appreciate and sign in-world", async ({
+  browser,
+  baseURL,
+  reef: { HOST, GUEST },
+}) => {
   const a = await browser.newContext({ baseURL }),
     b = await browser.newContext({ baseURL });
   try {
@@ -118,6 +179,7 @@ test("two browsers ring, accept, visit, appreciate and sign in-world", async ({ 
 test("two guild members enter the same plaza and RSVP to a scheduled gathering", async ({
   browser,
   baseURL,
+  reef: { HOST, GUEST, GUILD },
 }) => {
   const a = await browser.newContext({ baseURL }),
     b = await browser.newContext({ baseURL });
@@ -156,7 +218,10 @@ test("two guild members enter the same plaza and RSVP to a scheduled gathering",
   }
 });
 
-test("social sheet wraps long names at 390 px and supports keyboard open/close", async ({ page }) => {
+test("social sheet wraps long names at 390 px and supports keyboard open/close", async ({
+  page,
+  reef: { HOST, GUEST },
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await devLogin(page, HOST, [], "Reef host");
   await page.route("**/api/reef/social", (route) =>
