@@ -21,19 +21,19 @@ pub enum Workflow {
     Runs(Runs),
 }
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "list", desc = "List workflows")]
+#[command(name = "list", desc = "List")]
 pub struct List {}
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "toggle", desc = "Toggle a workflow")]
+#[command(name = "toggle", desc = "Enable or disable")]
 pub struct Toggle {
-    /// Workflow name
+    /// Name
     #[command(max_length = 40)]
     name: String,
 }
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "runs", desc = "Recent workflow runs")]
+#[command(name = "runs", desc = "Recent runs")]
 pub struct Runs {
-    /// Workflow name
+    /// Name
     #[command(max_length = 40)]
     name: String,
 }

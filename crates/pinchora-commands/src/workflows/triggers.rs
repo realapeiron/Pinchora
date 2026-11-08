@@ -79,11 +79,14 @@ pub async fn roles(app: &Arc<App>, e: &MemberUpdate) {
     let guild = e.guild_id.get();
     let user = e.user.id.get();
     let key = format!("wf:roles:{guild}:{user}");
-    let Ok(previous) = app.cache.get(&key).await else {
+    let now: Vec<String> = e.roles.iter().map(ToString::to_string).collect();
+    let Ok(previous) = app
+        .cache
+        .replace_workflow_roles(&key, &serde_json::to_string(&now).unwrap_or_default())
+        .await
+    else {
         return;
     };
-    let now: Vec<String> = e.roles.iter().map(ToString::to_string).collect();
-    seed(app, guild, user, now.clone()).await;
     let Some(before) = previous.and_then(|s| serde_json::from_str::<Vec<String>>(&s).ok()) else {
         return;
     };
@@ -91,8 +94,25 @@ pub async fn roles(app: &Arc<App>, e: &MemberUpdate) {
         if before.contains(role) == now.contains(role) {
             continue;
         }
-        if !matches!(app.cache.get(&format!("wf:own:{guild}:{user}:{role}")).await, Ok(None)) {
-            continue;
+        match app
+            .db
+            .consume_workflow_role_change(guild, user, role.parse().unwrap_or(0), now.contains(role))
+            .await
+        {
+            Ok(true) => {
+                // The legacy responder sees this same callback after the workflow hook.
+                let _ = app
+                    .cache
+                    .put(
+                        &crate::custom::own_change_key(guild, user, role.parse().unwrap_or(0)),
+                        "1",
+                        Duration::from_secs(120),
+                    )
+                    .await;
+                continue;
+            }
+            Err(_) => continue,
+            Ok(false) => {}
         }
         if !matches!(
             app.cache
@@ -185,7 +205,7 @@ pub async fn command(cx: &Cx, name: &str) -> anyhow::Result<bool> {
         .workflows(guild)
         .await?
         .into_iter()
-        .find(|r| r.name == name && r.enabled && r.definition().is_ok_and(|d| d.trigger == Trigger::Command))
+        .find(|r| r.name == name && r.enabled && r.definition().is_ok_and(|d| d.trigger == Trigger::Command {}))
     {
         invoke(cx, row, "command").await?;
     } else {
@@ -234,7 +254,7 @@ pub async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Result
             .db
             .workflow(guild, id)
             .await?
-            .filter(|r| r.enabled && r.definition().is_ok_and(|d| d.trigger == Trigger::Button))
+            .filter(|r| r.enabled && r.definition().is_ok_and(|d| d.trigger == Trigger::Button {}))
     {
         return invoke(cx, row, "button").await;
     }

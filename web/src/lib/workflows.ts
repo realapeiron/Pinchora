@@ -52,6 +52,13 @@ export function payload(d: Definition): Definition {
     actions: d.actions,
   };
 }
+export function fingerprint(d: Definition): string {
+  return JSON.stringify(payload(d), (_, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+      : value,
+  );
+}
 export function move<T>(items: T[], index: number, delta: number): T[] {
   const next = [...items];
   const target = index + delta;

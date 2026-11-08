@@ -319,11 +319,7 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
     tree.iter_mut().find(|c| c.name == "info").unwrap().contexts =
         original.iter().find(|c| c.name == "wrapped").unwrap().contexts.clone();
     for (name, description, permissions) in [
-        (
-            "setup",
-            "Configure server settings and administration tools",
-            Some(Permissions::MANAGE_GUILD),
-        ),
+        ("setup", "Server settings and tools", Some(Permissions::MANAGE_GUILD)),
         (
             "safety",
             "Configure moderation and server protection",
@@ -370,7 +366,7 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
             if !root.options.iter().any(|o| o.name == name) {
                 let description = if parts[0] == "mod" {
                     original.iter().find(|c| c.name == name).unwrap().description.clone()
-                } else if parts[0] == "community" {
+                } else if matches!(parts[0], "community" | "setup") {
                     format!("{name} settings")
                 } else {
                     format!("Configure {name} settings")

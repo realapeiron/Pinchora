@@ -296,7 +296,7 @@ async fn post_button(
         .await?
         .ok_or_else(ApiError::not_found)?;
     let lang = state.app.guild_lang(managed.id).await;
-    if row.definition()?.trigger != Trigger::Button
+    if row.definition()?.trigger != (Trigger::Button {})
         || !workflows::id(&body.channel_id)
         || body.text.trim().is_empty()
         || body.text.chars().count() > 2000

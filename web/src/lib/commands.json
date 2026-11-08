@@ -3485,7 +3485,7 @@
           "aliases": [
             "workflow list"
           ],
-          "description": "List workflows",
+          "description": "List",
           "manager": true,
           "options": [],
           "path": "setup workflows list",
@@ -3495,11 +3495,11 @@
           "aliases": [
             "workflow runs"
           ],
-          "description": "Recent workflow runs",
+          "description": "Recent runs",
           "manager": true,
           "options": [
             {
-              "description": "Workflow name",
+              "description": "Name",
               "name": "name",
               "required": true
             }
@@ -3511,11 +3511,11 @@
           "aliases": [
             "workflow toggle"
           ],
-          "description": "Toggle a workflow",
+          "description": "Enable or disable",
           "manager": true,
           "options": [
             {
-              "description": "Workflow name",
+              "description": "Name",
               "name": "name",
               "required": true
             }

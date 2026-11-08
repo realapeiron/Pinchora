@@ -144,3 +144,13 @@
   height: 20px;
   accent-color: var(--accent);
 }
+
+.wf-page fieldset,
+.wf-page details {
+  min-width: 0;
+}
+.wf-list button,
+.wf-page legend {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

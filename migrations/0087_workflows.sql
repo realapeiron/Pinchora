@@ -22,8 +22,22 @@ CREATE TABLE workflow_runs (
 );
 CREATE INDEX workflow_runs_guild_time ON workflow_runs(guild_id,started_at DESC);
 CREATE INDEX workflow_runs_history ON workflow_runs(workflow_id,started_at DESC);
+CREATE INDEX workflow_runs_expiry ON workflow_runs(started_at);
 CREATE TABLE workflow_schedules (
  workflow_id BIGINT PRIMARY KEY REFERENCES workflows(id) ON DELETE CASCADE,
  spec JSONB NOT NULL, tz TEXT NOT NULL, next_run_at TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX workflow_schedules_due ON workflow_schedules(next_run_at);
+-- Reservations survive workflow/history deletion and hold no member identifiers.
+CREATE TABLE workflow_run_budget (
+ guild_id BIGINT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+ reserved_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX workflow_run_budget_guild_time ON workflow_run_budget(guild_id,reserved_at);
+-- Pending role events survive gateway delays and process restarts.
+CREATE TABLE workflow_role_changes (
+ guild_id BIGINT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+ user_id BIGINT NOT NULL, role_id BIGINT NOT NULL, added BOOLEAN NOT NULL,
+ pending BIGINT NOT NULL DEFAULT 1 CHECK(pending >= 0),
+ PRIMARY KEY(guild_id,user_id,role_id,added)
+);

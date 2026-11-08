@@ -2,6 +2,7 @@ mod invalidate;
 mod queue;
 mod reef;
 mod stats;
+mod workflows;
 
 use std::time::Duration;
 

@@ -482,8 +482,8 @@ fn registered_command_sizes_keep_growth_headroom() {
     }
     assert!(sizes[0].0 <= 6_800, "largest root must retain Wave 8 headroom");
     for (size, name) in sizes {
-        if name == "collection" {
-            assert!(size <= 6_650, "collection root: {size}");
+        if matches!(name.as_str(), "collection" | "setup") {
+            assert!(size <= 6_650, "{name} root: {size}");
         }
         assert!(size <= 6_800, "{name}: {size}");
         if name == "community" {

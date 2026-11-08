@@ -24,6 +24,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("workflow_vars", "subject_id"),
     ("workflow_runs", "user_id"),
+    ("workflow_role_changes", "user_id"),
     ("reef_edit_receipts", "actor_id"),
     ("reef_edit_receipts", "owner_id"),
     ("reef_space_preferences", "user_id"),
@@ -291,6 +292,7 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
     "workflow_schedules",
+    "workflow_run_budget",
     // No user IDs; both foreign keys cascade with their registered personal-data parents.
     "reef_guestbook_evidence",
     "economy_settings",

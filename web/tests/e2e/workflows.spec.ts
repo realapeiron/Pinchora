@@ -13,6 +13,7 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   expect(module.ok()).toBeTruthy();
   await page.goto(`/g/${guild}/workflows`);
   await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toHaveCount(1);
   await expect(page.getByText(/Message Content is off/)).toBeVisible();
   await page.getByRole("button", { name: "New workflow", exact: true }).click();
   await page.getByLabel("Workflow name").fill("welcome");
@@ -28,8 +29,22 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   await page.getByRole("button", { name: "Add condition", exact: true }).click();
   await page.locator(".wf-columns").getByRole("button", { name: "Remove", exact: true }).first().click();
   await expect(page.locator(".wf-step legend").filter({ hasText: /Condition/ })).toHaveCount(0);
+  const saving = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith(`/guilds/${guild}/workflows`),
+  );
   await page.getByRole("button", { name: "Save workflow", exact: true }).click();
+  expect(Object.keys((await saving).postDataJSON() as object).sort()).toEqual([
+    "actions",
+    "conditions",
+    "enabled",
+    "name",
+    "trigger",
+  ]);
   await expect(page.getByText("Workflow saved.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save workflow", exact: true })).toBeDisabled();
+  await page.getByLabel("Message", { exact: true }).first().fill("Changed");
+  await expect(page.getByRole("button", { name: "Save workflow", exact: true })).toBeEnabled();
+  await page.getByLabel("Message", { exact: true }).first().fill("Second action");
   await expect(page.getByRole("button", { name: "Save workflow", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Test run", exact: true }).click();
   await expect(page.getByRole("region", { name: "Playback" })).toBeVisible();
@@ -39,6 +54,9 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   await page.getByLabel("Variable value").fill("1");
   await page.getByRole("button", { name: "Save variable", exact: true }).click();
   await expect(page.getByText("{var.server.visits}", { exact: true })).toBeVisible();
+  await page.getByLabel("Variable key").fill("visits");
+  await page.getByLabel("Variable value").fill("1");
+  await expect(page.getByRole("button", { name: "Save variable", exact: true })).toBeDisabled();
   await page.getByLabel("Scope", { exact: true }).selectOption("member");
   await page.getByLabel("Subject ID (blank: you)").fill(`${user}1`);
   await page.getByLabel("Variable key").fill("visits");
@@ -77,6 +95,8 @@ test("workflow editor: build, reorder, dry run, variables and persisted history"
   await expect(page.locator("pre").filter({ hasText: "Recorded step" })).toBeVisible();
   await shot(page, "workflows-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("Workflow name").fill("W".repeat(40));
+  await page.getByLabel("Variable value").fill("x".repeat(200));
   await overflow(page);
   await shot(page, "workflows-mobile");
   await page.reload();

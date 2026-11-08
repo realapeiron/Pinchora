@@ -1,6 +1,9 @@
 //! Workflow execution, entry points and schedule worker.
+mod actions;
 pub mod engine;
+mod messages;
 mod schedule;
+mod tickets;
 pub mod triggers;
 use crate::App;
 use pinchora_core::{
@@ -11,17 +14,24 @@ pub use schedule::spawn_ticker;
 use std::sync::Arc;
 pub async fn available(app: &App, guild: u64, trigger: &Trigger) -> bool {
     match trigger.owner() {
-        Some(module) => app.module_enabled(guild, module).await,
+        Some(Module::Leveling) => app
+            .guild_settings(guild)
+            .await
+            .is_ok_and(|settings| settings.leveling_enabled),
+        Some(module) => app
+            .guild_modules(guild)
+            .await
+            .is_ok_and(|rules| rules.rule(module).enabled),
         None => true,
     }
 }
 pub async fn trigger_catalog(app: &App, guild: u64) -> Vec<Trigger> {
     let all = vec![
-        Trigger::Command,
-        Trigger::Button,
-        Trigger::MemberJoin,
-        Trigger::MemberLeave,
-        Trigger::LevelUp,
+        Trigger::Command {},
+        Trigger::Button {},
+        Trigger::MemberJoin {},
+        Trigger::MemberLeave {},
+        Trigger::LevelUp {},
         Trigger::RoleAdded { role_id: String::new() },
         Trigger::RoleRemoved { role_id: String::new() },
         Trigger::ReactionAdded {
@@ -33,13 +43,13 @@ pub async fn trigger_catalog(app: &App, guild: u64) -> Vec<Trigger> {
             spec: pinchora_core::workflows::Schedule::Daily { hour: 9, minute: 0 },
             tz: "UTC".into(),
         },
-        Trigger::VoiceJoin,
-        Trigger::Birthday,
-        Trigger::Achievement,
-        Trigger::TicketOpened,
-        Trigger::TicketClosed,
-        Trigger::StarboardPost,
-        Trigger::FeedItem,
+        Trigger::VoiceJoin {},
+        Trigger::Birthday {},
+        Trigger::Achievement {},
+        Trigger::TicketOpened {},
+        Trigger::TicketClosed {},
+        Trigger::StarboardPost {},
+        Trigger::FeedItem {},
     ];
     let mut result = Vec::new();
     for trigger in all {
@@ -63,7 +73,7 @@ pub fn emit(app: &Arc<App>, guild: u64, event: Event) {
     });
 }
 async fn dispatch(app: &App, guild: u64, event: Event) -> anyhow::Result<()> {
-    if !app.module_enabled(guild, Module::Workflows).await {
+    if !app.guild_modules(guild).await?.rule(Module::Workflows).enabled {
         return Ok(());
     }
     for row in app.db.workflows(guild).await? {

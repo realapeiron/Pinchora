@@ -207,7 +207,7 @@ pub(crate) async fn autocomplete(cx: &Cx, data: &CommandData) -> Vec<CommandOpti
         for row in rows.into_iter().filter(|r| {
             r.enabled
                 && r.definition()
-                    .is_ok_and(|d| d.trigger == pinchora_core::workflows::Trigger::Command)
+                    .is_ok_and(|d| d.trigger == pinchora_core::workflows::Trigger::Command {})
         }) {
             let name = format!("wf:{}", row.name);
             if name.contains(&typed) && found.len() < MAX_SUGGESTIONS {

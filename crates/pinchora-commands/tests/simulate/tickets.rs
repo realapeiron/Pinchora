@@ -1109,3 +1109,38 @@ async fn tickets_speak_turkish() {
     let refused = sim.click(member, &welcome, "Üstlen").await;
     assert_eq!(refused.content(), "Bunu yalnızca talebin yetkilileri yapabilir.");
 }
+
+#[tokio::test]
+async fn workflows_open_ticket_does_not_trigger_ticket_opened_workflows() {
+    use pinchora_core::workflows::{Definition, Event};
+    let Some((sim, world)) = ticket_sim("workflows_ticket_depth").await else {
+        return;
+    };
+    let user = unique();
+    let panel = save_panel(&sim, "Workflow", sim.channel, &[Topic::new("Help")], &[], &[]).await;
+    let next: Definition = serde_json::from_value(json!({"name":"next","enabled":true,"trigger":{"kind":"ticket_opened"},"conditions":[],"actions":[{"kind":"set_var","scope":"server","key":"chained","value":"yes"}]})).unwrap();
+    let next = sim.app.db.save_workflow(sim.guild, None, &next, user).await.unwrap();
+    let first: Definition = serde_json::from_value(json!({"name":"open","enabled":true,"trigger":{"kind":"button"},"conditions":[],"actions":[{"kind":"open_ticket","panel_id":panel,"topic":0}]})).unwrap();
+    let first = sim.app.db.save_workflow(sim.guild, None, &first, user).await.unwrap();
+    let result = pinchora_commands::workflows::engine::run(
+        &sim.app,
+        &first,
+        Event {
+            kind: "button".into(),
+            user_id: user.to_string(),
+            channel_id: sim.channel.to_string(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(result.outcome, "completed");
+    sim.app.drain(std::time::Duration::from_secs(2)).await;
+    assert_eq!(world.made.lock().unwrap().len(), 1);
+    assert!(sim.app.db.workflow_runs(sim.guild, next.id).await.unwrap().is_empty());
+    assert!(sim.app.db.workflow_vars(sim.guild, user).await.unwrap().is_empty());
+    let posts = take_posts(&sim);
+    assert_eq!(posts.len(), 1);
+    assert_eq!(posts[0].body["allowed_mentions"]["parse"], json!([]));
+    assert!(world.made.lock().unwrap().len() + posts.len() <= 5);
+}
