@@ -36,7 +36,8 @@ pub fn router() -> Router<WebState> {
         .route("/anniversary", put(save_anniversary))
         .route("/confessions/settings", put(save_confessions))
         .route("/confessions/{id}/review", put(review_confession))
-        .route("/confessions/{id}/reveal", get(reveal_confession))
+        .route("/confessions/{id}/reveal", put(reveal_confession))
+        .route("/confessions/{id}/ban", put(ban_confession))
         .route("/suggestions/{id}", put(save_suggestion))
 }
 
@@ -81,18 +82,22 @@ async fn add_reminder(
         return Err(bad("interval_minutes", "Choose 1 hour to 365 days."));
     }
     let user = guild.current.session.user_id as i64;
-    let count: (i64,) =
-        sqlx::query_as("SELECT count(*) FROM personal_recurring_reminders WHERE user_id=$1 AND enabled")
-            .bind(user)
-            .fetch_one(state.app.db.pool())
-            .await?;
-    if count.0 >= 25 {
-        return Err(bad("text", "You can have 25 recurring reminders."));
-    }
     let lang = state.app.user_lang_choice(user as u64).await.unwrap_or_default();
-    let row:(i64,)=sqlx::query_as("INSERT INTO personal_recurring_reminders(user_id,body,interval_minutes,next_at,language) VALUES($1,$2,$3,now()+$3*interval '1 minute',$4) RETURNING id")
-        .bind(user).bind(text).bind(body.interval_minutes).bind(lang.code()).fetch_one(state.app.db.pool()).await?;
-    Ok(Json(json!({"id":row.0.to_string()})))
+    let Some(row) = state
+        .app
+        .db
+        .add_recurring_reminder(
+            user as u64,
+            &text,
+            body.interval_minutes,
+            state.app.now() + chrono::Duration::minutes(i64::from(body.interval_minutes)),
+            lang.code(),
+        )
+        .await?
+    else {
+        return Err(bad("text", "You can have 25 recurring reminders."));
+    };
+    Ok(Json(json!({"id":row.to_string()})))
 }
 async fn remove_reminder(
     State(state): State<WebState>,
@@ -125,19 +130,10 @@ async fn add_checklist(
         return Err(bad("text", "Use 1 to 200 characters."));
     }
     let user = guild.current.session.user_id as i64;
-    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM personal_checklist_items WHERE user_id=$1 AND NOT done")
-        .bind(user)
-        .fetch_one(state.app.db.pool())
-        .await?;
-    if count.0 >= 50 {
+    let Some(row) = state.app.db.add_checklist_item(user as u64, &text).await? else {
         return Err(bad("text", "Your checklist has 50 open items."));
-    }
-    let row: (i64,) = sqlx::query_as("INSERT INTO personal_checklist_items(user_id,body) VALUES($1,$2) RETURNING id")
-        .bind(user)
-        .bind(text)
-        .fetch_one(state.app.db.pool())
-        .await?;
-    Ok(Json(json!({"id":row.0.to_string()})))
+    };
+    Ok(Json(json!({"id":row.to_string()})))
 }
 async fn complete_checklist(
     State(state): State<WebState>,
@@ -189,20 +185,9 @@ async fn add_highlight(
         return Err(bad("word", "Use one word of 2 to 40 letters or digits."));
     }
     let user = guild.current.session.user_id as i64;
-    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM keyword_highlights WHERE guild_id=$1 AND user_id=$2")
-        .bind(guild.id as i64)
-        .bind(user)
-        .fetch_one(state.app.db.pool())
-        .await?;
-    if count.0 >= 10 {
+    if !state.app.db.add_keyword_highlight(guild.id, user as u64, &word).await? {
         return Err(bad("word", "You can follow 10 words in this server."));
     }
-    sqlx::query("INSERT INTO keyword_highlights(guild_id,user_id,keyword) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
-        .bind(guild.id as i64)
-        .bind(user)
-        .bind(&word)
-        .execute(state.app.db.pool())
-        .await?;
     Ok(Json(json!({"word":word})))
 }
 async fn remove_highlight(
@@ -298,8 +283,8 @@ async fn list(State(state): State<WebState>, guild: ManagedGuild) -> ApiResult<J
     .bind(g)
     .fetch_optional(state.app.db.pool())
     .await?;
-    let confessions: Vec<(i64, String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT id,body,status,created_at FROM confessions WHERE guild_id=$1 ORDER BY created_at DESC LIMIT 100",
+    let confessions: Vec<(i64, String, String, chrono::DateTime<chrono::Utc>, i64)> = sqlx::query_as(
+        "SELECT c.id,c.body,c.status,c.created_at,(SELECT count(*) FROM confession_reports r WHERE r.confession_id=c.id) FROM confessions c WHERE c.guild_id=$1 ORDER BY c.created_at DESC LIMIT 100",
     )
     .bind(g)
     .fetch_all(state.app.db.pool())
@@ -311,7 +296,7 @@ async fn list(State(state): State<WebState>, guild: ManagedGuild) -> ApiResult<J
         "autopost":auto.iter().map(|(channel,thread,cross)|json!({"channel_id":channel.to_string(),"thread":thread,"crosspost":cross})).collect::<Vec<_>>(),
         "anniversary":{"channel_id":anniversary.as_ref().and_then(|a|a.0).map(|n|n.to_string()),"enabled":anniversary.is_some_and(|a|a.1)},
         "confession_settings":{"review_channel_id":confession_settings.as_ref().and_then(|c|c.0).map(|n|n.to_string()),"publish_channel_id":confession_settings.as_ref().and_then(|c|c.1).map(|n|n.to_string()),"enabled":confession_settings.is_some_and(|c|c.2)},
-        "confessions":confessions.iter().map(|(id,body,status,created)|json!({"id":id.to_string(),"body":body,"status":status,"created_at":created})).collect::<Vec<_>>(),
+        "confessions":confessions.iter().map(|(id,body,status,created,reports)|json!({"id":id.to_string(),"body":body,"status":status,"created_at":created,"reports":reports})).collect::<Vec<_>>(),
         "message_content":state.app.message_content,
     })))
 }
@@ -669,6 +654,37 @@ async fn save_suggestion(
         Some(&raw),
         json!(before),
         json!({"status":body.status,"staff_note":body.staff_note}),
+    )
+    .await;
+    Ok(Json(json!({"ok":true})))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BanBody {
+    banned: bool,
+}
+async fn ban_confession(
+    State(state): State<WebState>,
+    guild: ManagedGuild,
+    Path((_, raw)): Path<(String, String)>,
+    ApiJson(body): ApiJson<BanBody>,
+) -> ApiResult<Json<Value>> {
+    if !state
+        .app
+        .db
+        .ban_confession_author(guild.id, id(&raw, "id")?, guild.current.session.user_id, body.banned)
+        .await?
+    {
+        return Err(ApiError::not_found());
+    }
+    audited(
+        &state,
+        &guild,
+        "community.confessions.ban",
+        Some(&raw),
+        Value::Null,
+        json!({"banned":body.banned}),
     )
     .await;
     Ok(Json(json!({"ok":true})))

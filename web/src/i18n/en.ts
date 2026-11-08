@@ -4005,4 +4005,8 @@ export const en = {
   "Reminder text": "Reminder text",
   "Repeat every (hours)": "Repeat every (hours)",
   "WORDS YOU FOLLOW": "WORDS YOU FOLLOW",
+  "REPORTED CONFESSIONS": "REPORTED CONFESSIONS",
+  "Block author": "Block author",
+  "Unblock author": "Unblock author",
+  Reports: "Reports",
 } as const;

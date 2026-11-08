@@ -4036,4 +4036,8 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Reminder text": "Hatırlatıcı metni",
   "Repeat every (hours)": "Yineleme aralığı (saat)",
   "WORDS YOU FOLLOW": "TAKİP ETTİĞİN KELİMELER",
+  "REPORTED CONFESSIONS": "BİLDİRİLEN İTİRAFLAR",
+  "Block author": "Yazarı engelle",
+  "Unblock author": "Yazarın engelini kaldır",
+  Reports: "Bildirimler",
 };

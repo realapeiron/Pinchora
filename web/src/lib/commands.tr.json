@@ -2587,6 +2587,39 @@
           "usage": "/confess settings <review_channel> <publish_channel>"
         },
         {
+          "aliases": [],
+          "description": "Yayımlanmış bir itirafı ekibe bildir",
+          "manager": false,
+          "options": [
+            {
+              "description": "İtiraf numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "confess report",
+          "usage": "/confess report <id>"
+        },
+        {
+          "aliases": [],
+          "description": "İtiraf yazarının gönderim iznini kimliğini açıklamadan değiştir",
+          "manager": false,
+          "options": [
+            {
+              "description": "İtiraf numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Bu yazarın itiraf göndermesini engelle",
+              "name": "banned",
+              "required": true
+            }
+          ],
+          "path": "confess ban",
+          "usage": "/confess ban <id> <banned>"
+        },
+        {
           "aliases": [
             "roles add"
           ],
@@ -7879,5 +7912,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 411
+  "count": 413
 }

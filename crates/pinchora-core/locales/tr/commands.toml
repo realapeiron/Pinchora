@@ -1213,3 +1213,9 @@
 "poll anonymous" = "Anketi açan kişi gizlensin"
 "poll required_role" = "Oy verebilen rol"
 "suggestion" = "Sunucu önerilerini yönet"
+
+"confess report" = "Yayımlanmış bir itirafı ekibe bildir"
+"confess report id" = "İtiraf numarası"
+"confess ban" = "İtiraf yazarının gönderim iznini kimliğini açıklamadan değiştir"
+"confess ban id" = "İtiraf numarası"
+"confess ban banned" = "Bu yazarın itiraf göndermesini engelle"

@@ -125,10 +125,101 @@ async fn community_v2_hides_confession_authors_and_refuses_non_managers() {
     assert_eq!(stranger.get(&base).await.status, StatusCode::FORBIDDEN);
     assert_eq!(
         stranger
-            .get(&format!("{base}/confessions/{}/reveal", row.0))
+            .write(Method::PUT, &format!("{base}/confessions/{}/reveal", row.0), json!({}))
             .await
             .status,
         StatusCode::FORBIDDEN
     );
     assert!(owner > 0);
+}
+
+#[tokio::test]
+async fn confession_reveal_requires_csrf_owner_and_records_audit_without_author() {
+    let Some(h) = Harness::new("confession_reveal_requires_csrf_owner_and_records_audit_without_author").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    h.mock.guild_owners.lock().unwrap().insert(guild, owner);
+    let author = unique();
+    let id = h
+        .state
+        .app
+        .db
+        .submit_confession(guild, author, "anonymous thought")
+        .await
+        .unwrap()
+        .unwrap();
+    let base = format!("/api/guilds/{guild}/community-v2");
+    let reveal = format!("{base}/confessions/{id}/reveal");
+    assert_eq!(browser.get(&reveal).await.status, StatusCode::METHOD_NOT_ALLOWED);
+    let token = browser.csrf.take();
+    assert_eq!(browser.write(Method::PUT, &reveal, json!({})).await.code(), "csrf");
+    browser.csrf = token;
+    let revealed = browser.write(Method::PUT, &reveal, json!({})).await;
+    assert_eq!(revealed.status, StatusCode::OK, "{}", revealed.text());
+    assert_eq!(revealed.json()["author_id"], author.to_string());
+    let audit = h.state.app.db.audit_page(guild, None, 20).await.unwrap();
+    assert_eq!(
+        audit
+            .iter()
+            .filter(|a| a.action == "community.confessions.reveal")
+            .count(),
+        1
+    );
+    let mut manager = h.browser();
+    manager
+        .login(&h, unique(), vec![guild_entry(guild, "Manager", false, MANAGE_GUILD)])
+        .await;
+    assert_eq!(
+        manager.write(Method::PUT, &reveal, json!({})).await.status,
+        StatusCode::NOT_FOUND
+    );
+    let banned = manager
+        .write(
+            Method::PUT,
+            &format!("{base}/confessions/{id}/ban"),
+            json!({"banned":true}),
+        )
+        .await;
+    assert_eq!(banned.status, StatusCode::OK, "{}", banned.text());
+    assert!(!banned.text().contains(&author.to_string()));
+    assert!(
+        h.state
+            .app
+            .db
+            .submit_confession(guild, author, "blocked thought")
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let readonly = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/anniversary"),
+            json!({"enabled":false,"channel_id":null,"guild_id":guild.to_string()}),
+        )
+        .await;
+    assert_eq!(readonly.status, StatusCode::BAD_REQUEST);
+    assert!(readonly.text().contains("unknown field"), "{}", readonly.text());
+    let mut member = h.browser();
+    member
+        .login(&h, unique(), vec![guild_entry(guild, "Member", false, SEND_MESSAGES)])
+        .await;
+    for (path, body) in [
+        (
+            "autopost".to_string(),
+            json!({"channel_id":GENERAL.to_string(),"thread":true,"crosspost":false}),
+        ),
+        ("anniversary".into(), json!({"channel_id":null,"enabled":false})),
+        (
+            "confessions/settings".into(),
+            json!({"review_channel_id":GENERAL.to_string(),"publish_channel_id":"2","enabled":true}),
+        ),
+        (format!("confessions/{id}/review"), json!({"approve":false})),
+        (format!("confessions/{id}/ban"), json!({"banned":true})),
+        ("suggestions/1".into(), json!({"status":"denied","staff_note":null})),
+    ] {
+        let response = member.write(Method::PUT, &format!("{base}/{path}"), body).await;
+        assert_eq!(response.status, StatusCode::FORBIDDEN, "{path}: {}", response.text());
+    }
 }

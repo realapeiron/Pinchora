@@ -624,6 +624,37 @@ async fn discord(
                 .unwrap_or_default();
             return (StatusCode::OK, Value::Array(history).to_string());
         }
+        (&Method::POST, [.., "channels", channel, "messages", message, "threads"]) => {
+            if mock.blocked.lock().unwrap().contains(&number(channel)) {
+                return (
+                    StatusCode::FORBIDDEN,
+                    json!({"code":50013,"message":"Missing Permissions"}).to_string(),
+                );
+            }
+            mock.mod_calls.lock().unwrap().push(format!("auto-thread {message}"));
+            let (body, _) = request_body(&headers, &body);
+            let thread = json!({"id":message,"type":11,"parent_id":channel,"name":body["name"]});
+            mock.channels.lock().unwrap().insert(number(message), thread.clone());
+            return (StatusCode::OK, thread.to_string());
+        }
+        (&Method::POST, [.., "channels", channel, "messages", message, "crosspost"]) => {
+            if mock.blocked.lock().unwrap().contains(&number(channel)) {
+                return (
+                    StatusCode::FORBIDDEN,
+                    json!({"code":50013,"message":"Missing Permissions"}).to_string(),
+                );
+            }
+            mock.mod_calls.lock().unwrap().push(format!("auto-crosspost {message}"));
+            let mut posted = message_json(number(channel), number(message));
+            posted["flags"] = json!(1);
+            mock.history
+                .lock()
+                .unwrap()
+                .entry(number(channel))
+                .or_default()
+                .push(posted.clone());
+            return (StatusCode::OK, posted.to_string());
+        }
         (&Method::POST, [.., "channels", _, "messages", "bulk-delete"]) => {
             let (body, _) = request_body(&headers, &body);
             let n = body["messages"].as_array().map_or(0, Vec::len);

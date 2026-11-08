@@ -2587,6 +2587,39 @@
           "usage": "/confess settings <review_channel> <publish_channel>"
         },
         {
+          "aliases": [],
+          "description": "Report a published confession to moderators",
+          "manager": false,
+          "options": [
+            {
+              "description": "Confession number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "confess report",
+          "usage": "/confess report <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Block or unblock a confession author without revealing them",
+          "manager": false,
+          "options": [
+            {
+              "description": "Confession number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Block this author from submitting confessions",
+              "name": "banned",
+              "required": true
+            }
+          ],
+          "path": "confess ban",
+          "usage": "/confess ban <id> <banned>"
+        },
+        {
           "aliases": [
             "roles add"
           ],
@@ -7879,5 +7912,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 411
+  "count": 413
 }

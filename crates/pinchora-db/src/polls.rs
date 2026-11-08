@@ -158,9 +158,10 @@ impl Db {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
-            sqlx::query_as("SELECT status='open' AND ends_at>$2 AND multiple FROM polls WHERE id=$1 FOR SHARE")
+            sqlx::query_as("SELECT status='open' AND ends_at>$2 AND multiple AND $3>=0 AND $3<cardinality(options) FROM polls WHERE id=$1 FOR SHARE")
                 .bind(id)
                 .bind(now)
+                .bind(i64::try_from(choice).unwrap_or(i64::MAX))
                 .fetch_optional(&mut *tx)
                 .await?;
         if open != Some((true,)) {
@@ -193,9 +194,10 @@ impl Db {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
-            sqlx::query_as("SELECT status = 'open' AND ends_at > $2 FROM polls WHERE id = $1 FOR SHARE")
+            sqlx::query_as("SELECT status = 'open' AND ends_at > $2 AND NOT multiple AND $3>=0 AND $3<cardinality(options) FROM polls WHERE id = $1 FOR SHARE")
                 .bind(id)
                 .bind(now)
+                .bind(i64::try_from(choice).unwrap_or(i64::MAX))
                 .fetch_optional(&mut *tx)
                 .await?;
         if open != Some((true,)) {

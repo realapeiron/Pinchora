@@ -46,6 +46,10 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 /// panel that a channel reply cannot stand in for (any other private panel is caught as it is
 /// answered), or it shows the server's settings, which a reply in the channel would show to everyone.
 const SLASH_ONLY: &[&str] = &[
+    "confess",
+    "checklist",
+    "highlight",
+    "remind",
     "character",
     "setup",
     "safety",

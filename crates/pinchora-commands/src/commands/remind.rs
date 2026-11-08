@@ -206,18 +206,21 @@ impl RemindCommand {
                 if text.trim().is_empty() {
                     return cx.reply_ephemeral(t!(cx.lang(), "community-v2.text-required")).await;
                 }
-                let count: (i64,) =
-                    sqlx::query_as("SELECT count(*) FROM personal_recurring_reminders WHERE user_id=$1 AND enabled")
-                        .bind(user as i64)
-                        .fetch_one(cx.app.db.pool())
-                        .await?;
-                if count.0 >= 25 {
+                let Some(id) = cx
+                    .app
+                    .db
+                    .add_recurring_reminder(
+                        user,
+                        &text,
+                        span.num_minutes() as i32,
+                        cx.app.now() + span,
+                        cx.lang().code(),
+                    )
+                    .await?
+                else {
                     return cx.reply_ephemeral(t!(cx.lang(), "community-v2.recurring-full")).await;
-                }
-                let id: (i64,) = sqlx::query_as("INSERT INTO personal_recurring_reminders(user_id,body,interval_minutes,next_at,language) VALUES($1,$2,$3,$4,$5) RETURNING id")
-                    .bind(user as i64).bind(text).bind(span.num_minutes() as i32).bind(cx.app.now()+span).bind(cx.lang().code())
-                    .fetch_one(cx.app.db.pool()).await?;
-                cx.reply_ephemeral(t!(cx.lang(), "community-v2.recurring-set", id = id.0))
+                };
+                cx.reply_ephemeral(t!(cx.lang(), "community-v2.recurring-set", id = id))
                     .await
             }
             Self::RepeatList(_) => {
@@ -231,7 +234,7 @@ impl RemindCommand {
                 cx.reply_ephemeral(if lines.is_empty() {
                     t!(cx.lang(), "community-v2.recurring-empty")
                 } else {
-                    lines
+                    lines.chars().take(1900).collect::<String>()
                 })
                 .await
             }

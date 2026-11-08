@@ -159,15 +159,6 @@ fn chosen(picked: Vec<u64>, pool: &[u64], max: usize) -> Vec<u64> {
     out
 }
 
-/// Who has entered the giveaway.
-async fn entrants_of(tx: &mut Transaction<'_, Postgres>, id: i64) -> anyhow::Result<Vec<u64>> {
-    let rows: Vec<(i64,)> = sqlx::query_as("SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1")
-        .bind(id)
-        .fetch_all(&mut **tx)
-        .await?;
-    Ok(rows.into_iter().map(|(user,)| user as u64).collect())
-}
-
 /// Who has entered the giveaway and is not among `winners` yet.
 async fn candidates_of(tx: &mut Transaction<'_, Postgres>, id: i64, winners: &[i64]) -> anyhow::Result<Vec<u64>> {
     let rows: Vec<(i64,)> =
@@ -177,14 +168,6 @@ async fn candidates_of(tx: &mut Transaction<'_, Postgres>, id: i64, winners: &[i
             .fetch_all(&mut **tx)
             .await?;
     Ok(rows.into_iter().map(|(user,)| user as u64).collect())
-}
-
-/// Whether two lists hold the same people, in any order.
-fn same_people(a: &[u64], b: &[u64]) -> bool {
-    let (mut a, mut b) = (a.to_vec(), b.to_vec());
-    a.sort_unstable();
-    b.sort_unstable();
-    a == b
 }
 
 /// Adds shells to a balance inside a transaction, with its ledger line.
@@ -435,7 +418,41 @@ impl Db {
     ) -> anyhow::Result<Option<EndedGiveaway>> {
         let mut retry = Retry::new("end_giveaway");
         loop {
+            let result = self
+                .end_giveaway_once(id, now, early, &mut |pool, n, _| pick(pool, n))
+                .await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// Production draws read weights and entrants from the same validated transaction snapshot.
+    pub async fn end_giveaway_weighted(
+        &self,
+        id: i64,
+        now: DateTime<Utc>,
+        early: bool,
+        mut pick: impl FnMut(&[u64], usize, &std::collections::HashMap<u64, i16>) -> Vec<u64>,
+    ) -> anyhow::Result<Option<EndedGiveaway>> {
+        let mut retry = Retry::new("end_giveaway");
+        loop {
             let result = self.end_giveaway_once(id, now, early, &mut pick).await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+    pub async fn reroll_giveaway_weighted(
+        &self,
+        guild: u64,
+        id: i64,
+        count: usize,
+        mut pick: impl FnMut(&[u64], usize, &std::collections::HashMap<u64, i16>) -> Vec<u64>,
+    ) -> anyhow::Result<Reroll> {
+        let mut retry = Retry::new("reroll_giveaway");
+        loop {
+            let result = self.reroll_giveaway_once(guild, id, count, &mut pick).await;
             if !retry.again(&result).await {
                 return result;
             }
@@ -450,7 +467,7 @@ impl Db {
         id: i64,
         now: DateTime<Utc>,
         early: bool,
-        pick: &mut impl FnMut(&[u64], usize) -> Vec<u64>,
+        pick: &mut impl FnMut(&[u64], usize, &std::collections::HashMap<u64, i16>) -> Vec<u64>,
     ) -> anyhow::Result<Option<EndedGiveaway>> {
         let due = concat!(
             "SELECT ",
@@ -468,8 +485,14 @@ impl Db {
             let Some(seen) = seen else {
                 return Ok(None);
             };
-            let seen_in = entrants_of(&mut tx, id).await?;
-            let winners = chosen(pick(&seen_in, seen.winners as usize), &seen_in, seen.winners as usize);
+            let weights = weights_of(&mut tx, id).await?;
+            let mut seen_in: Vec<u64> = weights.keys().copied().collect();
+            seen_in.sort_unstable();
+            let winners = chosen(
+                pick(&seen_in, seen.winners as usize, &weights),
+                &seen_in,
+                seen.winners as usize,
+            );
             // The winners are locked even when no shells move: that waits for one who is deleting
             // their data, whose entry is then gone and makes the end start over without them.
             let mut locked: Vec<i64> = winners.iter().map(|w| sql_id(*w)).collect();
@@ -486,8 +509,7 @@ impl Db {
             let Some(mut giveaway) = row else {
                 return Ok(None);
             };
-            let now_in = entrants_of(&mut tx, id).await?;
-            if !same_people(&now_in, &seen_in) {
+            if weights_of(&mut tx, id).await? != weights {
                 tx.rollback().await?;
                 continue;
             }
@@ -538,7 +560,9 @@ impl Db {
     ) -> anyhow::Result<Reroll> {
         let mut retry = Retry::new("reroll_giveaway");
         loop {
-            let result = self.reroll_giveaway_once(guild_id, id, count, &mut pick).await;
+            let result = self
+                .reroll_giveaway_once(guild_id, id, count, &mut |pool, n, _| pick(pool, n))
+                .await;
             if !retry.again(&result).await {
                 return result;
             }
@@ -551,7 +575,7 @@ impl Db {
         guild_id: u64,
         id: i64,
         count: usize,
-        pick: &mut impl FnMut(&[u64], usize) -> Vec<u64>,
+        pick: &mut impl FnMut(&[u64], usize, &std::collections::HashMap<u64, i16>) -> Vec<u64>,
     ) -> anyhow::Result<Reroll> {
         let giveaway = concat!(
             "SELECT ",
@@ -572,7 +596,8 @@ impl Db {
                 return Ok(Reroll::StillRunning);
             }
             let candidates = candidates_of(&mut tx, id, &seen.winner_ids).await?;
-            let picked = chosen(pick(&candidates, count), &candidates, count);
+            let weights = weights_of(&mut tx, id).await?;
+            let picked = chosen(pick(&candidates, count, &weights), &candidates, count);
             if picked.is_empty() {
                 return Ok(Reroll::NoOneLeft);
             }
@@ -645,7 +670,7 @@ impl Db {
         Ok(sqlx::query_as::<_, GiveawayRow>(concat!(
             "SELECT ",
             columns!(),
-            " FROM giveaways g WHERE g.guild_id = $1 AND g.status = 'running' ORDER BY g.ends_at LIMIT $2"
+            " FROM giveaways g WHERE g.guild_id = $1 AND g.status IN ('running','scheduled') ORDER BY g.ends_at LIMIT $2"
         ))
         .bind(sql_id(guild_id))
         .bind(MAX_RUNNING_GIVEAWAYS)
@@ -670,6 +695,17 @@ impl Db {
         })
         .await
     }
+}
+
+async fn weights_of(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+) -> anyhow::Result<std::collections::HashMap<u64, i16>> {
+    let rows: Vec<(i64, i16)> = sqlx::query_as("SELECT user_id,weight FROM giveaway_entries WHERE giveaway_id=$1")
+        .bind(id)
+        .fetch_all(&mut **tx)
+        .await?;
+    Ok(rows.into_iter().map(|(u, w)| (u as u64, w)).collect())
 }
 
 #[cfg(test)]

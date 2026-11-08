@@ -146,7 +146,13 @@ impl Sim {
     /// limit. Gives back whether it was one and the replies it posted, as messages a member can
     /// click on. Every reply must answer the member's message and ping nobody but whom the handler
     /// names.
-    async fn text(&mut self, user: u64, roles: &[u64], content: &str, mentions: &[u64]) -> (bool, Vec<Reply>) {
+    pub(super) async fn text(
+        &mut self,
+        user: u64,
+        roles: &[u64],
+        content: &str,
+        mentions: &[u64],
+    ) -> (bool, Vec<Reply>) {
         self.app
             .cache
             .release_cooldown(&format!("text:{user}"))

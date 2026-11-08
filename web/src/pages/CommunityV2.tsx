@@ -48,6 +48,7 @@ interface Confession {
   body: string;
   status: string;
   created_at: string;
+  reports: number;
 }
 interface Data {
   giveaways: Giveaway[];
@@ -87,8 +88,10 @@ function useWrite(guild: string, client: ReturnType<typeof useQueryClient>) {
       await api(`/api/guilds/${guild}/community-v2${path}`, method, payload);
       await client.invalidateQueries({ queryKey: ["community-v2", guild] });
       setNotice(t("Saved."));
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? t(error.message) : t("Could not save."));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -275,8 +278,10 @@ export function CommunityReminders() {
       await api(`/api/guilds/${guild}/community-v2/personal${path}`, method, body);
       await client.invalidateQueries({ queryKey: ["community-v2-personal", guild] });
       setNotice(t("Saved."));
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? t(error.message) : t("Could not save."));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -337,11 +342,16 @@ export function CommunityReminders() {
               <button
                 className="pixel-button"
                 disabled={
-                  !text.trim() || hours < 1 || hours > 8760 || busy || personal.data.reminders.length >= 25
+                  !text.trim() ||
+                  !Number.isInteger(hours * 60) ||
+                  hours < 1 ||
+                  hours > 8760 ||
+                  busy ||
+                  personal.data.reminders.length >= 25
                 }
                 onClick={() =>
-                  void write("/reminders", "PUT", { text, interval_minutes: hours * 60 }).then(() =>
-                    setText(""),
+                  void write("/reminders", "PUT", { text, interval_minutes: hours * 60 }).then(
+                    (saved) => saved && setText(""),
                   )
                 }
               >
@@ -390,7 +400,9 @@ export function CommunityReminders() {
               <button
                 className="pixel-button"
                 disabled={!task.trim() || busy || personal.data.checklist.filter((c) => !c.done).length >= 50}
-                onClick={() => void write("/checklist", "PUT", { text: task }).then(() => setTask(""))}
+                onClick={() =>
+                  void write("/checklist", "PUT", { text: task }).then((saved) => saved && setTask(""))
+                }
               >
                 {t("Add task")}
               </button>
@@ -417,8 +429,10 @@ export function CommunityHighlights() {
       await api(`/api/guilds/${guild}/community-v2/personal${path}`, method, body);
       await client.invalidateQueries({ queryKey: ["community-v2-personal", guild] });
       setNotice(t("Saved."));
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? t(error.message) : t("Could not save."));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -480,12 +494,12 @@ export function CommunityHighlights() {
               className="pixel-button"
               disabled={
                 !query.data?.message_content ||
-                !/^\p{L}[\p{L}\p{N}]{1,39}$/u.test(word) ||
+                !/^[\p{L}\p{N}]{2,40}$/u.test(word.trim()) ||
                 busy ||
                 personal.data.highlights.length >= 10 ||
-                personal.data.highlights.includes(word.toLowerCase())
+                personal.data.highlights.includes(word.trim().toLowerCase())
               }
-              onClick={() => void write("/highlights", "PUT", { word }).then(() => setWord(""))}
+              onClick={() => void write("/highlights", "PUT", { word }).then((saved) => saved && setWord(""))}
             >
               {t("Follow word")}
             </button>
@@ -656,50 +670,34 @@ export function CommunityConfessions() {
   return (
     <ConfessionForm
       key={guild + JSON.stringify(query.data.confession_settings)}
-      guild={guild}
       data={query.data}
       discord={discord.data}
       busy={busy}
       notice={notice}
       write={write}
-      client={client}
     />
   );
 }
 function ConfessionForm({
-  guild,
   data,
   discord,
   busy,
   notice,
   write,
-  client,
 }: {
-  guild: string;
   data: Data;
   discord: ReturnType<typeof useDiscord>["data"];
   busy: boolean;
   notice: string;
   write: ReturnType<typeof useWrite>["write"];
-  client: ReturnType<typeof useQueryClient>;
 }) {
   const [review, setReview] = useState<string | null>(data.confession_settings.review_channel_id);
   const [publish, setPublish] = useState<string | null>(data.confession_settings.publish_channel_id);
   const [enabled, setEnabled] = useState(data.confession_settings.enabled);
-  const [reviewing, setReviewing] = useState<string | null>(null);
   const changed =
     review !== data.confession_settings.review_channel_id ||
     publish !== data.confession_settings.publish_channel_id ||
     enabled !== data.confession_settings.enabled;
-  async function decide(id: string, approve: boolean) {
-    setReviewing(id);
-    try {
-      await api(`/api/guilds/${guild}/community-v2/confessions/${id}/review`, "PUT", { approve });
-      await client.invalidateQueries({ queryKey: ["community-v2", guild] });
-    } finally {
-      setReviewing(null);
-    }
-  }
   return (
     <SettingsPage
       title={t("ANONYMOUS CONFESSIONS")}
@@ -755,15 +753,15 @@ function ConfessionForm({
                   <div className="community-v2-actions">
                     <button
                       className="pixel-button"
-                      disabled={reviewing !== null}
-                      onClick={() => void decide(c.id, true)}
+                      disabled={busy}
+                      onClick={() => void write(`/confessions/${c.id}/review`, "PUT", { approve: true })}
                     >
                       {t("Approve")}
                     </button>
                     <button
                       className="pixel-button"
-                      disabled={reviewing !== null}
-                      onClick={() => void decide(c.id, false)}
+                      disabled={busy}
+                      onClick={() => void write(`/confessions/${c.id}/review`, "PUT", { approve: false })}
                     >
                       {t("Deny")}
                     </button>
@@ -772,6 +770,36 @@ function ConfessionForm({
               ))}
           </div>
         )}
+      </Panel>
+      <Panel title={t("REPORTED CONFESSIONS")}>
+        <div className="community-v2-list">
+          {data.confessions
+            .filter((c) => c.reports > 0)
+            .map((c) => (
+              <article className="community-v2-item" key={c.id}>
+                <strong>
+                  #{c.id} · {t("Reports")}: {c.reports}
+                </strong>
+                <p>{c.body}</p>
+                <div className="community-v2-actions">
+                  <button
+                    className="pixel-button"
+                    disabled={busy}
+                    onClick={() => void write(`/confessions/${c.id}/ban`, "PUT", { banned: true })}
+                  >
+                    {t("Block author")}
+                  </button>
+                  <button
+                    className="pixel-button"
+                    disabled={busy}
+                    onClick={() => void write(`/confessions/${c.id}/ban`, "PUT", { banned: false })}
+                  >
+                    {t("Unblock author")}
+                  </button>
+                </div>
+              </article>
+            ))}
+        </div>
       </Panel>
     </SettingsPage>
   );

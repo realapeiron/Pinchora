@@ -1,5 +1,6 @@
 -- Community tools v2. Personal data in these tables is registered in privacy.rs.
 ALTER TABLE giveaways ADD COLUMN starts_at TIMESTAMPTZ;
+ALTER TABLE giveaways ADD COLUMN start_announced BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE giveaways ADD COLUMN min_level INTEGER NOT NULL DEFAULT 0 CHECK (min_level BETWEEN 0 AND 1000);
 ALTER TABLE giveaways ADD COLUMN min_account_days INTEGER NOT NULL DEFAULT 0 CHECK (min_account_days BETWEEN 0 AND 3650);
 ALTER TABLE giveaways ADD COLUMN min_server_days INTEGER NOT NULL DEFAULT 0 CHECK (min_server_days BETWEEN 0 AND 3650);
@@ -37,6 +38,7 @@ CREATE TABLE personal_recurring_reminders (
     interval_minutes INTEGER NOT NULL CHECK (interval_minutes BETWEEN 60 AND 525600),
     next_at TIMESTAMPTZ NOT NULL,
     lease_until TIMESTAMPTZ,
+    attempts SMALLINT NOT NULL DEFAULT 0,
     language TEXT NOT NULL DEFAULT 'en',
     enabled BOOLEAN NOT NULL DEFAULT TRUE
 );
@@ -118,3 +120,38 @@ CREATE TABLE confession_reveals (
     owner_id BIGINT NOT NULL,
     revealed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reports contain no confession text or author; identity stays behind audited reveal.
+CREATE TABLE confession_bans (
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    PRIMARY KEY(guild_id,user_id)
+);
+CREATE TABLE confession_reports (
+    confession_id BIGINT NOT NULL REFERENCES confessions(id) ON DELETE CASCADE,
+    reporter_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY(confession_id,reporter_id)
+);
+CREATE TABLE confession_moderation (
+    id BIGSERIAL PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    confession_id BIGINT NOT NULL REFERENCES confessions(id) ON DELETE CASCADE,
+    moderator_id BIGINT NOT NULL,
+    banned BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE community_autopost_jobs (
+    message_id BIGINT PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    thread_pending BOOLEAN NOT NULL,
+    crosspost_pending BOOLEAN NOT NULL,
+    thread_name TEXT NOT NULL,
+    attempts SMALLINT NOT NULL DEFAULT 0,
+    next_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    lease_until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX community_autopost_due_idx ON community_autopost_jobs(next_at)
+    WHERE attempts<5 AND (thread_pending OR crosspost_pending);

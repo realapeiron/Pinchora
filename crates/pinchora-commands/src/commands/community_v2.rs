@@ -89,23 +89,9 @@ impl HighlightCommand {
                 if word.chars().count() < 2 || word.chars().count() > 40 || !word.chars().all(char::is_alphanumeric) {
                     return tell(cx, t!(cx.lang(), "community-v2.word-invalid")).await;
                 }
-                let count: (i64,) =
-                    sqlx::query_as("SELECT count(*) FROM keyword_highlights WHERE guild_id=$1 AND user_id=$2")
-                        .bind(guild as i64)
-                        .bind(user)
-                        .fetch_one(cx.app.db.pool())
-                        .await?;
-                if count.0 >= 10 {
+                if !cx.app.db.add_keyword_highlight(guild, user as u64, &word).await? {
                     return tell(cx, t!(cx.lang(), "community-v2.highlight-full")).await;
                 }
-                sqlx::query(
-                    "INSERT INTO keyword_highlights(guild_id,user_id,keyword) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",
-                )
-                .bind(guild as i64)
-                .bind(user)
-                .bind(&word)
-                .execute(cx.app.db.pool())
-                .await?;
                 tell(cx, t!(cx.lang(), "community-v2.highlight-added", word = word)).await
             }
             Self::Remove(c) => {
@@ -184,21 +170,10 @@ impl ChecklistCommand {
                 if text.trim().is_empty() {
                     return tell(cx, t!(cx.lang(), "community-v2.text-required")).await;
                 }
-                let count: (i64,) =
-                    sqlx::query_as("SELECT count(*) FROM personal_checklist_items WHERE user_id=$1 AND NOT done")
-                        .bind(user)
-                        .fetch_one(cx.app.db.pool())
-                        .await?;
-                if count.0 >= 50 {
+                let Some(id) = cx.app.db.add_checklist_item(user as u64, &text).await? else {
                     return tell(cx, t!(cx.lang(), "community-v2.checklist-full")).await;
-                }
-                let id: (i64,) =
-                    sqlx::query_as("INSERT INTO personal_checklist_items(user_id,body) VALUES($1,$2) RETURNING id")
-                        .bind(user)
-                        .bind(text)
-                        .fetch_one(cx.app.db.pool())
-                        .await?;
-                tell(cx, t!(cx.lang(), "community-v2.checklist-added", id = id.0)).await
+                };
+                tell(cx, t!(cx.lang(), "community-v2.checklist-added", id = id)).await
             }
             Self::List(_) => {
                 let rows: Vec<(i64, String, bool)> = sqlx::query_as(
@@ -217,7 +192,7 @@ impl ChecklistCommand {
                     if lines.is_empty() {
                         t!(cx.lang(), "community-v2.checklist-empty")
                     } else {
-                        lines
+                        lines.chars().take(1900).collect()
                     },
                 )
                 .await
@@ -315,9 +290,17 @@ impl AutopostCommand {
                     .iter()
                     .map(|(id, thread, cross)| {
                         format!(
-                            "<#{id}> · {}{}",
-                            if *thread { "thread " } else { "" },
-                            if *cross { "crosspost" } else { "" }
+                            "<#{id}> · {} {}",
+                            if *thread {
+                                t!(cx.lang(), "community-v2.action-thread")
+                            } else {
+                                String::new()
+                            },
+                            if *cross {
+                                t!(cx.lang(), "community-v2.action-crosspost")
+                            } else {
+                                String::new()
+                            }
                         )
                     })
                     .collect::<Vec<_>>()
@@ -327,7 +310,7 @@ impl AutopostCommand {
                     if lines.is_empty() {
                         t!(cx.lang(), "community-v2.autopost-empty")
                     } else {
-                        lines
+                        lines.chars().take(1900).collect()
                     },
                 )
                 .await
@@ -393,6 +376,10 @@ pub enum ConfessCommand {
     Reveal(ConfessReveal),
     #[command(name = "settings")]
     Settings(ConfessSettings),
+    #[command(name = "report")]
+    Report(ConfessReport),
+    #[command(name = "ban")]
+    Ban(ConfessBan),
 }
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "submit", desc = "Submit privately to the review queue")]
@@ -426,6 +413,23 @@ pub struct ConfessSettings {
     publish_channel: InteractionChannel,
 }
 
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "report", desc = "Report a published confession to moderators")]
+pub struct ConfessReport {
+    /// Confession number
+    #[command(min_value = 1)]
+    id: i64,
+}
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "ban", desc = "Block or unblock a confession author without revealing them")]
+pub struct ConfessBan {
+    /// Confession number
+    #[command(min_value = 1)]
+    id: i64,
+    /// Block this author from submitting confessions
+    banned: bool,
+}
+
 impl ConfessCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
@@ -435,6 +439,59 @@ impl ConfessCommand {
             Self::Submit(c) => submit_confession(cx, guild, &c.text).await,
             Self::Review(c) => review_confession(cx, guild, c.id, c.approve).await,
             Self::Reveal(c) => reveal_confession(cx, guild, c.id).await,
+            Self::Ban(c) => {
+                if !cx.can_manage_guild() {
+                    return tell(cx, t!(cx.lang(), "community-v2.manage-only")).await;
+                }
+                let changed = cx
+                    .app
+                    .db
+                    .ban_confession_author(guild, c.id, cx.author()?.id.get(), c.banned)
+                    .await?;
+                tell(
+                    cx,
+                    t!(
+                        cx.lang(),
+                        if changed {
+                            "community-v2.confession-ban-saved"
+                        } else {
+                            "community-v2.confession-missing"
+                        }
+                    ),
+                )
+                .await
+            }
+            Self::Report(c) => {
+                let user = cx.author()?.id.get();
+                if cx
+                    .app
+                    .cache
+                    .try_cooldown(&format!("confess-report:{guild}:{user}"), Duration::from_secs(60))
+                    .await?
+                    .is_some()
+                {
+                    return tell(cx, t!(cx.lang(), "community-v2.confession-slow")).await;
+                }
+                if cx.app.db.report_confession(guild, c.id, user).await? {
+                    let settings: Option<(Option<i64>,)> = sqlx::query_as(
+                        "SELECT review_channel_id FROM confession_settings WHERE guild_id=$1 AND enabled",
+                    )
+                    .bind(guild as i64)
+                    .fetch_optional(cx.app.db.pool())
+                    .await?;
+                    if let Some((Some(channel),)) = settings {
+                        let lang = cx.app.guild_lang(guild).await;
+                        let _ = cx
+                            .app
+                            .http
+                            .create_message(Id::new(channel as u64))
+                            .content(&t!(lang, "community-v2.confession-report-alert", id = c.id))
+                            .allowed_mentions(quiet().as_ref())
+                            .await;
+                    }
+                }
+                tell(cx, t!(cx.lang(), "community-v2.confession-reported")).await
+            }
             Self::Settings(c) => {
                 if !cx.can_manage_guild() {
                     return tell(cx, t!(cx.lang(), "community-v2.manage-only")).await;
@@ -483,23 +540,9 @@ async fn submit_confession(cx: &Cx, guild: u64, text: &str) -> anyhow::Result<()
     {
         return tell(cx, t!(cx.lang(), "community-v2.confession-slow")).await;
     }
-    let daily: (i64,) = sqlx::query_as(
-        "SELECT count(*) FROM confessions WHERE guild_id=$1 AND author_id=$2 AND created_at>now()-interval '1 day'",
-    )
-    .bind(guild as i64)
-    .bind(user as i64)
-    .fetch_one(cx.app.db.pool())
-    .await?;
-    if daily.0 >= 3 {
+    let Some(id) = cx.app.db.submit_confession(guild, user, &body).await? else {
         return tell(cx, t!(cx.lang(), "community-v2.confession-slow")).await;
-    }
-    let (id,): (i64,) =
-        sqlx::query_as("INSERT INTO confessions(guild_id,author_id,body) VALUES($1,$2,$3) RETURNING id")
-            .bind(guild as i64)
-            .bind(user as i64)
-            .bind(&body)
-            .fetch_one(cx.app.db.pool())
-            .await?;
+    };
     let lang = cx.app.guild_lang(guild).await;
     let embed = EmbedBuilder::new()
         .title(t!(lang, "community-v2.confession-review-title", id = id))
@@ -687,10 +730,23 @@ pub(crate) async fn on_confession_button<'a>(cx: &Cx, mut parts: impl Iterator<I
 
 /// Message content is read only for opted-in words. The DM includes a link, never a content excerpt.
 pub(crate) async fn on_message(app: &Arc<App>, msg: &Message) {
+    if msg.author.bot || msg.webhook_id.is_some() {
+        return;
+    }
     let Some(guild) = msg.guild_id else {
         return;
     };
     let guild = guild.get();
+    if !app
+        .module_allowed(
+            guild,
+            Some(msg.channel_id.get()),
+            pinchora_core::modules::Module::Utility,
+        )
+        .await
+    {
+        return;
+    }
     let channel = msg.channel_id.get();
     let user = msg.author.id.get();
     if app.message_content && !msg.content.is_empty() {
@@ -702,7 +758,7 @@ pub(crate) async fn on_message(app: &Arc<App>, msg: &Message) {
             .map(str::to_owned)
             .collect();
         let matches: Vec<(i64, String)> =
-            match sqlx::query_as("SELECT DISTINCT ON (user_id) user_id,keyword FROM keyword_highlights WHERE guild_id=$1 AND user_id<>$2 AND keyword=ANY($3) ORDER BY user_id,keyword")
+            match sqlx::query_as("SELECT DISTINCT ON (user_id) user_id,keyword FROM keyword_highlights WHERE guild_id=$1 AND user_id<>$2 AND keyword=ANY($3) ORDER BY user_id,keyword LIMIT 100")
                 .bind(guild as i64)
                 .bind(user as i64)
                 .bind(&words)
@@ -715,8 +771,13 @@ pub(crate) async fn on_message(app: &Arc<App>, msg: &Message) {
                     return;
                 }
             };
-        let public = matches.is_empty() || crate::stats::everyone_can_view(app, guild, channel).await;
-        for (follower, keyword) in matches.into_iter().filter(|_| public) {
+        for (follower, keyword) in matches {
+            if !highlight_can_view(app, guild, channel, follower as u64)
+                .await
+                .unwrap_or(false)
+            {
+                continue;
+            }
             let key = format!("highlight:{guild}:{follower}");
             if !matches!(app.cache.try_cooldown(&key, Duration::from_secs(600)).await, Ok(None)) {
                 continue;
@@ -738,19 +799,44 @@ pub(crate) async fn on_message(app: &Arc<App>, msg: &Message) {
             }
         }
     }
-    let config: Option<(bool,bool,String)> = match sqlx::query_as(
-        "SELECT auto_thread,auto_crosspost,thread_name FROM community_auto_channels WHERE guild_id=$1 AND channel_id=$2")
-        .bind(guild as i64).bind(channel as i64).fetch_optional(app.db.pool()).await {
-            Ok(row) => row, Err(error) => { tracing::warn!(%error,"auto channel query failed"); return; }
-        };
-    if let Some((thread, crosspost, name)) = config {
-        if thread && let Err(error) = app.http.create_thread_from_message(msg.channel_id, msg.id, &name).await {
-            tracing::warn!(guild,channel,%error,"auto thread failed");
-        }
-        if crosspost && let Err(error) = app.http.crosspost_message(msg.channel_id, msg.id).await {
-            tracing::warn!(guild,channel,%error,"auto crosspost failed");
-        }
+    if let Err(error) = sqlx::query("INSERT INTO community_autopost_jobs(message_id,guild_id,channel_id,thread_pending,crosspost_pending,thread_name) SELECT $1,guild_id,channel_id,auto_thread,auto_crosspost,thread_name FROM community_auto_channels WHERE guild_id=$2 AND channel_id=$3 ON CONFLICT DO NOTHING")
+        .bind(msg.id.get() as i64).bind(guild as i64).bind(channel as i64).execute(app.db.pool()).await {
+        tracing::warn!(%error,"autopost enqueue failed");
     }
+}
+
+/// Fresh Discord membership and overwrites; any lookup failure suppresses delivery.
+/// Thread membership and age-gate eligibility cannot be verified here; suppress both.
+async fn highlight_can_view(app: &App, guild: u64, channel: u64, user: u64) -> anyhow::Result<bool> {
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(user))
+        .await?
+        .model()
+        .await?;
+    let channel = app.http.channel(Id::new(channel)).await?.model().await?;
+    if channel.guild_id.map(|id| id.get()) != Some(guild) || channel.kind.is_thread() || channel.nsfw == Some(true) {
+        return Ok(false);
+    }
+    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+    let owner = app.http.guild(Id::new(guild)).await?.model().await?.owner_id.get();
+    let held: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+    let base = if owner == user {
+        Permissions::all()
+    } else {
+        roles
+            .iter()
+            .filter(|r| r.id.get() == guild || held.contains(&r.id.get()))
+            .fold(Permissions::empty(), |p, r| p | r.permissions)
+    };
+    Ok(crate::text::access::channel_permissions(
+        base,
+        guild,
+        user,
+        &held,
+        channel.permission_overwrites.as_deref().unwrap_or_default(),
+    )
+    .contains(Permissions::VIEW_CHANNEL))
 }
 
 pub(crate) async fn on_join(app: &Arc<App>, guild: u64, user: u64, joined: DateTime<Utc>) {
@@ -779,32 +865,44 @@ pub(crate) async fn on_leave(app: &Arc<App>, guild: u64, user: u64) {
     }
 }
 
-/// A claimed recurrence advances before Discord delivery, preventing duplicate DMs across pods.
+/// Leases expire after a crash. Failures retry at most five times per occurrence.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
-    let due: Vec<(i64,i64,String,i32,String)> = sqlx::query_as(
-        "UPDATE personal_recurring_reminders SET next_at=now()+interval_minutes*interval '1 minute' WHERE id IN (SELECT id FROM personal_recurring_reminders WHERE enabled AND next_at<=now() FOR UPDATE SKIP LOCKED LIMIT 25) RETURNING id,user_id,body,interval_minutes,language")
+    let due: Vec<(i64,i64,String,String,DateTime<Utc>)> = sqlx::query_as(
+        "UPDATE personal_recurring_reminders SET lease_until=now()+interval '2 minutes',attempts=attempts+1 WHERE id IN (SELECT id FROM personal_recurring_reminders WHERE enabled AND next_at<=now() AND (lease_until IS NULL OR lease_until<=now()) ORDER BY next_at FOR UPDATE SKIP LOCKED LIMIT 25) RETURNING id,user_id,body,language,lease_until")
         .fetch_all(app.db.pool()).await?;
     let mut sent = 0;
-    for (_id, user, body, _interval, language) in due {
-        if let Some(dm) = crate::leveling::open_private_channel(app, user as u64).await {
+    for (id, user, body, language, lease) in due {
+        let delivered = if let Some(dm) = crate::leveling::open_private_channel(app, user as u64).await {
             let lang = pinchora_core::i18n::Lang::from_code(&language).unwrap_or_default();
-            if app
-                .http
+            app.http
                 .create_message(dm)
                 .content(&t!(lang, "community-v2.recurring-dm", body = body))
                 .allowed_mentions(quiet().as_ref())
                 .await
                 .is_ok()
-            {
-                sent += 1;
-            }
-        }
+        } else {
+            false
+        };
+        sent += usize::from(delivered);
+        sqlx::query("UPDATE personal_recurring_reminders SET next_at=CASE WHEN $3 OR attempts>=5 THEN now()+interval_minutes*interval '1 minute' ELSE now()+interval '2 minutes' END,attempts=CASE WHEN $3 OR attempts>=5 THEN 0 ELSE attempts END,lease_until=NULL WHERE id=$1 AND lease_until=$2")
+            .bind(id).bind(lease).bind(delivered).execute(app.db.pool()).await?;
     }
+    tick_autopost(app).await?;
     let today = app.now();
     let anniversaries: Vec<(i64,i64,i64,i32)> = sqlx::query_as(
         "SELECT m.guild_id,m.user_id,s.channel_id,EXTRACT(YEAR FROM age(CURRENT_DATE,m.joined_at::date))::integer FROM member_anniversaries m JOIN anniversary_settings s ON s.guild_id=m.guild_id AND s.enabled AND s.channel_id IS NOT NULL WHERE EXTRACT(MONTH FROM m.joined_at)=$1 AND EXTRACT(DAY FROM m.joined_at)=$2 AND m.joined_at<now()-interval '1 year' AND NOT EXISTS(SELECT 1 FROM anniversary_sent a WHERE a.guild_id=m.guild_id AND a.user_id=m.user_id AND a.year=$3) LIMIT 50")
         .bind(today.month() as i32).bind(today.day() as i32).bind(today.year()).fetch_all(app.db.pool()).await?;
     for (guild, user, channel, years) in anniversaries {
+        if !app
+            .module_allowed(
+                guild as u64,
+                Some(channel as u64),
+                pinchora_core::modules::Module::Birthdays,
+            )
+            .await
+        {
+            continue;
+        }
         let claimed =
             sqlx::query("INSERT INTO anniversary_sent(guild_id,user_id,year) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
                 .bind(guild)
@@ -853,4 +951,75 @@ pub fn spawn_ticker(app: Arc<App>) {
             }
         }
     });
+}
+
+async fn tick_autopost(app: &App) -> anyhow::Result<()> {
+    type Job = (i64, i64, i64, bool, bool, String, DateTime<Utc>);
+    let jobs: Vec<Job> = sqlx::query_as("UPDATE community_autopost_jobs SET lease_until=now()+interval '2 minutes',attempts=attempts+1 WHERE message_id IN (SELECT message_id FROM community_autopost_jobs WHERE attempts<5 AND (thread_pending OR crosspost_pending) AND next_at<=now() AND (lease_until IS NULL OR lease_until<=now()) ORDER BY next_at FOR UPDATE SKIP LOCKED LIMIT 25) RETURNING message_id,guild_id,channel_id,thread_pending,crosspost_pending,thread_name,lease_until")
+        .fetch_all(app.db.pool()).await?;
+    for (message, guild, channel, thread, crosspost, name, lease) in jobs {
+        if !app
+            .module_allowed(
+                guild as u64,
+                Some(channel as u64),
+                pinchora_core::modules::Module::Utility,
+            )
+            .await
+        {
+            sqlx::query("UPDATE community_autopost_jobs SET attempts=attempts-1,lease_until=NULL,next_at=now()+interval '2 minutes' WHERE message_id=$1 AND lease_until=$2").bind(message).bind(lease).execute(app.db.pool()).await?;
+            continue;
+        }
+        let configured: Option<(bool, bool)> = sqlx::query_as(
+            "SELECT auto_thread,auto_crosspost FROM community_auto_channels WHERE guild_id=$1 AND channel_id=$2",
+        )
+        .bind(guild)
+        .bind(channel)
+        .fetch_optional(app.db.pool())
+        .await?;
+        let (mut thread, mut crosspost) = configured.map_or((false, false), |(t, c)| (thread && t, crosspost && c));
+        if thread {
+            let name = if name == "Discussion" {
+                t!(app.guild_lang(guild as u64).await, "community-v2.thread-name")
+            } else {
+                name
+            };
+            // A message can have only one thread; reconcile a successful send whose ACK was lost.
+            let existing = app.http.channel(Id::new(message as u64)).await;
+            if matches!(existing, Ok(ref r) if r.status().is_success())
+                || app
+                    .http
+                    .create_thread_from_message(Id::new(channel as u64), Id::new(message as u64), &name)
+                    .await
+                    .is_ok()
+            {
+                thread = false;
+            }
+        }
+        if crosspost {
+            let posted = app.http.message(Id::new(channel as u64), Id::new(message as u64)).await;
+            let already = match posted {
+                Ok(r) => r
+                    .model()
+                    .await
+                    .ok()
+                    .and_then(|m| m.flags)
+                    .is_some_and(|f| f.contains(twilight_model::channel::message::MessageFlags::CROSSPOSTED)),
+                Err(_) => false,
+            };
+            if already
+                || app
+                    .http
+                    .crosspost_message(Id::new(channel as u64), Id::new(message as u64))
+                    .await
+                    .is_ok()
+            {
+                crosspost = false;
+            }
+        }
+        sqlx::query("UPDATE community_autopost_jobs SET thread_pending=$3,crosspost_pending=$4,lease_until=NULL,next_at=now()+interval '2 minutes' WHERE message_id=$1 AND lease_until=$2")
+            .bind(message).bind(lease).bind(thread).bind(crosspost).execute(app.db.pool()).await?;
+    }
+    sqlx::query("DELETE FROM community_autopost_jobs WHERE message_id IN (SELECT message_id FROM community_autopost_jobs WHERE created_at<now()-interval '7 days' FOR UPDATE SKIP LOCKED LIMIT 100)")
+        .execute(app.db.pool()).await?;
+    Ok(())
 }

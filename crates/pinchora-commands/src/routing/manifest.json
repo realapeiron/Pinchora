@@ -370,6 +370,16 @@
     "slice": 18
   },
   {
+    "legacy": "confess ban",
+    "canonical": "confess ban",
+    "slice": 0
+  },
+  {
+    "legacy": "confess report",
+    "canonical": "confess report",
+    "slice": 0
+  },
+  {
     "legacy": "confess reveal",
     "canonical": "confess reveal",
     "slice": 20

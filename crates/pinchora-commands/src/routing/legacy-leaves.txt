@@ -72,6 +72,8 @@ community forms post
 community modmail settings
 community qotd queue
 community qotd settings
+confess ban
+confess report
 confess reveal
 confess review
 confess settings

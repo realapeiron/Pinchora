@@ -438,11 +438,10 @@ async fn end_now(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
 
 async fn reroll(cx: &Cx, guild: u64, c: GiveawayReroll) -> anyhow::Result<()> {
     let count = c.winners.unwrap_or(1) as usize;
-    let weights = cx.app.db.giveaway_entry_weights(c.id).await?;
     let outcome = cx
         .app
         .db
-        .reroll_giveaway(guild, c.id, count, |pool, n| draw_weighted(pool, n, &weights))
+        .reroll_giveaway_weighted(guild, c.id, count, draw_weighted)
         .await?;
     let (giveaway, picked) = match outcome {
         Reroll::Done(giveaway, picked) => (*giveaway, picked),
@@ -673,15 +672,21 @@ pub(crate) async fn refresh_message(app: &App, id: i64) {
     };
     if let Some(message) = giveaway.message_id {
         let lang = app.guild_lang(giveaway.guild_id as u64).await;
-        edit_message(
+        let refreshed = edit_message(
             app,
             giveaway.channel_id as u64,
             message as u64,
             None,
             Some(&[giveaway_embed(lang, &giveaway)]),
-            None,
+            Some(&giveaway_components(lang, &giveaway)),
         )
         .await;
+        if refreshed {
+            let _ = sqlx::query("UPDATE giveaways SET start_announced=TRUE WHERE id=$1 AND status='running'")
+                .bind(id)
+                .execute(app.db.pool())
+                .await;
+        }
     }
 }
 
@@ -711,10 +716,9 @@ pub(crate) async fn refresh_changed(app: &Arc<App>) {
 /// Ends giveaway `id` (when it is due, or at once with `early`) and tells the channel. `None` when it
 /// was not running, because somebody else ended it first.
 pub(crate) async fn end(app: &Arc<App>, id: i64, early: bool) -> anyhow::Result<Option<EndedGiveaway>> {
-    let weights = app.db.giveaway_entry_weights(id).await?;
     let Some(ended) = app
         .db
-        .end_giveaway(id, app.now(), early, |pool, n| draw_weighted(pool, n, &weights))
+        .end_giveaway_weighted(id, app.now(), early, draw_weighted)
         .await?
     else {
         return Ok(None);

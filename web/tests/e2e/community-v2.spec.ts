@@ -42,3 +42,50 @@ test("community tools pages and personal lists work at desktop and phone widths"
     expect(await overflow(page), path).toBeLessThanOrEqual(0);
   }
 });
+
+test("community forms preserve failed drafts, surface review errors and send only editable fields", async ({
+  page,
+}) => {
+  await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
+  await page.goto(`/g/${guild}/reminders`);
+  await page.getByLabel("Reminder text").fill("Keep this failed draft");
+  await page.route(`**/api/guilds/${guild}/community-v2/personal/reminders`, (route) =>
+    route.fulfill({ status: 500, json: { error: { code: "internal", message: "Could not save." } } }),
+  );
+  await page.getByRole("button", { name: "Add reminder" }).click();
+  await expect(page.getByRole("status")).toBeVisible();
+  await expect(page.getByLabel("Reminder text")).toHaveValue("Keep this failed draft");
+  await page.unroute(`**/api/guilds/${guild}/community-v2/personal/reminders`);
+
+  const data = {
+    giveaways: [],
+    polls: [],
+    suggestions: [],
+    autopost: [],
+    anniversary: { channel_id: null, enabled: false },
+    confession_settings: { review_channel_id: null, publish_channel_id: null, enabled: false },
+    confessions: [
+      {
+        id: "7",
+        body: "a".repeat(1000),
+        status: "pending",
+        created_at: new Date().toISOString(),
+        reports: 0,
+      },
+    ],
+    message_content: true,
+  };
+  await page.route(`**/api/guilds/${guild}/community-v2`, (route) => route.fulfill({ json: data }));
+  await page.route(`**/api/guilds/${guild}/community-v2/confessions/7/review`, (route) => {
+    expect(route.request().postDataJSON()).toEqual({ approve: true });
+    return route.fulfill({ status: 500, json: { error: { code: "internal", message: "Could not save." } } });
+  });
+  await page.goto(`/g/${guild}/confessions`);
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect(page.getByRole("status")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+});

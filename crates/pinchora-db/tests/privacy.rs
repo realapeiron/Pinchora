@@ -339,6 +339,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO anniversary_sent(guild_id,user_id,year) VALUES($1,$1,2026)",
         "INSERT INTO confessions(guild_id,author_id,body,reviewer_id)
          VALUES($1,$1,'My private confession',$2),($1,$2,'Someone else wrote this',$1)",
+        "INSERT INTO confession_bans(guild_id,user_id) VALUES($1,$1)",
+        "INSERT INTO confession_reports(confession_id,reporter_id) SELECT id,$1 FROM confessions WHERE guild_id=$1 AND author_id=$2",
+        "INSERT INTO confession_moderation(guild_id,confession_id,moderator_id,banned) SELECT guild_id,id,$1,true FROM confessions WHERE guild_id=$1 AND author_id=$2",
         "INSERT INTO confession_reveals(guild_id,confession_id,owner_id)
          SELECT guild_id,id,$1 FROM confessions WHERE guild_id=$1 AND author_id=$2",
         // What roles they held when they left, a role that lapses, and one that waits for them ($1 doubles as the server).

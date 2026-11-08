@@ -513,3 +513,196 @@ async fn suggestions_are_numbered_per_server_voted_on_and_decided_once() {
         Decision::Missing
     ));
 }
+
+#[tokio::test]
+async fn community_quotas_are_atomic_across_dashboard_and_commands() {
+    let Some(db) = db().await else { return };
+    let [guild, user] = ids();
+    let mut tasks = Vec::new();
+    for n in 0..35 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.add_keyword_highlight(guild, user, &format!("word{n}"))
+                .await
+                .unwrap()
+        }));
+    }
+    let mut added = 0;
+    for task in tasks {
+        added += usize::from(task.await.unwrap());
+    }
+    assert_eq!(added, 10);
+    let (word,): (String,) = sqlx::query_as("SELECT keyword FROM keyword_highlights WHERE guild_id=$1 LIMIT 1")
+        .bind(guild as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert!(
+        db.add_keyword_highlight(guild, user, &word).await.unwrap(),
+        "same keyword is idempotent at quota"
+    );
+    let mut tasks = Vec::new();
+    for _ in 0..60 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.add_checklist_item(user, "private item").await.unwrap()
+        }));
+    }
+    let mut added = 0;
+    for task in tasks {
+        added += usize::from(task.await.unwrap().is_some());
+    }
+    assert_eq!(added, 50);
+    let mut tasks = Vec::new();
+    for _ in 0..35 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.add_recurring_reminder(user, "private reminder", 60, Utc::now() + Duration::days(1), "tr")
+                .await
+                .unwrap()
+        }));
+    }
+    let mut added = 0;
+    for task in tasks {
+        added += usize::from(task.await.unwrap().is_some());
+    }
+    assert_eq!(added, 25);
+}
+
+#[tokio::test]
+async fn confession_bans_reports_and_durable_rate_limit_preserve_anonymity() {
+    let Some(db) = db().await else { return };
+    let [guild, other, user, reporter, moderator] = ids();
+    let id = db
+        .submit_confession(guild, user, "private thought")
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        db.submit_confession(guild, user, "second thought")
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(!db.ban_confession_author(other, id, moderator, true).await.unwrap());
+    assert!(
+        !db.report_confession(guild, id, reporter).await.unwrap(),
+        "pending confessions are not reportable"
+    );
+    sqlx::query("UPDATE confessions SET status='approved',created_at=now()-interval '2 days' WHERE id=$1")
+        .bind(id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert!(db.report_confession(guild, id, reporter).await.unwrap());
+    assert!(
+        !db.report_confession(guild, id, reporter).await.unwrap(),
+        "one report per member"
+    );
+    assert!(db.ban_confession_author(guild, id, moderator, true).await.unwrap());
+    assert!(
+        db.submit_confession(guild, user, "blocked thought")
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(db.ban_confession_author(guild, id, moderator, false).await.unwrap());
+    let mut tasks = Vec::new();
+    for _ in 0..5 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.submit_confession(guild, user, "concurrent thought").await.unwrap()
+        }));
+    }
+    let mut added = 0;
+    for task in tasks {
+        added += usize::from(task.await.unwrap().is_some());
+    }
+    assert_eq!(added, 1);
+    let (audits,): (i64,) = sqlx::query_as("SELECT count(*) FROM confession_moderation WHERE confession_id=$1")
+        .bind(id)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(audits, 2);
+}
+
+#[tokio::test]
+async fn poll_storage_rejects_wrong_mode_and_out_of_range_votes() {
+    let Some(db) = db().await else { return };
+    let [guild, author, voter] = ids();
+    let options = vec!["Yes".to_owned(), "No".to_owned()];
+    let PollOpen::Started(poll) = db
+        .create_poll(NewPoll {
+            guild_id: guild,
+            channel_id: 1,
+            author,
+            question: "Question",
+            options: &options,
+            ends_at: Utc::now() + Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("poll")
+    };
+    for choice in [2, 20, usize::MAX] {
+        assert_eq!(
+            db.vote_poll(poll.id, voter, choice, Utc::now()).await.unwrap(),
+            PollVote::Closed
+        );
+    }
+    assert_eq!(
+        db.vote_poll_multiple(poll.id, voter, 0, Utc::now()).await.unwrap(),
+        PollVote::Closed
+    );
+    sqlx::query("UPDATE polls SET multiple=true WHERE id=$1")
+        .bind(poll.id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(
+        db.vote_poll(poll.id, voter, 0, Utc::now()).await.unwrap(),
+        PollVote::Closed
+    );
+    assert_eq!(
+        db.vote_poll_multiple(poll.id, voter, usize::MAX, Utc::now())
+            .await
+            .unwrap(),
+        PollVote::Closed
+    );
+    assert_eq!(db.poll_tally(poll.id, 2).await.unwrap(), vec![0, 0]);
+}
+
+#[tokio::test]
+async fn weighted_draw_and_reroll_use_transaction_entry_weights() {
+    let Some(db) = db().await else { return };
+    let [guild, host, user, other] = ids();
+    let draw = open(&db, guild, host, 0, 1).await;
+    db.toggle_giveaway_entry_weighted(draw.id, user, 21, Utc::now())
+        .await
+        .unwrap();
+    db.toggle_giveaway_entry_weighted(draw.id, other, 1, Utc::now())
+        .await
+        .unwrap();
+    // The draw's picker receives the weights read in its own transaction, not a stale caller snapshot.
+    let ended = db
+        .end_giveaway_weighted(draw.id, Utc::now(), true, |pool, n, weights| {
+            assert_eq!(weights.get(&user), Some(&21));
+            assert_eq!(weights.len(), pool.len());
+            first_n(pool, n)
+        })
+        .await
+        .unwrap()
+        .unwrap();
+    let winner = ended.winners[0];
+    let result = db
+        .reroll_giveaway_weighted(guild, draw.id, 1, |pool, n, weights| {
+            assert!(!pool.contains(&winner));
+            assert_eq!(weights.get(&user), Some(&21));
+            first_n(pool, n)
+        })
+        .await
+        .unwrap();
+    assert!(matches!(result,Reroll::Done(_,ids) if !ids.contains(&winner)));
+}
