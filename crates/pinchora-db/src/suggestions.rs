@@ -246,7 +246,7 @@ impl Db {
         let Some((id, status)) = found else {
             return Ok(Decision::Missing);
         };
-        if status != OPEN {
+        if status != OPEN && status != "considering" {
             return Ok(Decision::Already(status));
         }
         sqlx::query(

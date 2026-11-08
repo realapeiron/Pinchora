@@ -14,8 +14,8 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
-The merged wave 3 and F14/F17 command tree has **72 slash roots plus the Report message action**,
-covering **388 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
+The merged wave 5 command tree has **78 slash roots plus the Report message action**,
+covering **422 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
 separate roots. F20 adds four member roots, F16 adds `/roblox`, and F17 adds `/game`.
 `/setup` has six groups and `/integrations` has five;
 `/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.
@@ -1068,6 +1068,14 @@ invite cards are private and check the viewer’s channel permissions; role page
 ### Utility
 
 `/afk set [reason] [global] [nickname]` marks you away until your next message. Mentions get one short notice per channel every five minutes. `/community utility sticky-set|sticky-remove|sticky-show` keeps a channel message visible after both a chosen number of human messages and a minimum time interval, with batched counters; the bot needs Manage Messages. `/community utility schedule-add|schedule-list|schedule-remove|schedule-pause|schedule-resume|schedule-run-now|schedule-preview` posts once or on an interval, daily, weekly, or with a five-field cron pattern. Each server stores a default IANA time zone such as `Europe/Istanbul`, which a schedule can override; daylight saving changes are automatic. Nonexistent local times are skipped, and repeated local times run once at the first occurrence. Up to 20 schedules fit. Missed recurrences coalesce into one send. A failed or uncertain delivery pauses with a reason; check the channel before resuming. Delivery intent is stored before sending, so a crash cannot automatically replay a potentially delivered message. Managers can edit sticky and scheduled messages on the Messages dashboard page.
+
+### Community tools v2
+
+`/giveaway start` now accepts minimum server level, account and membership age, a bonus role with up to 20 extra entries, and `start_in`; its existing Enter button, live count, multiple winners and reroll remain. `/poll` accepts up to 20 choices, `multiple`, `anonymous` and `required_role`, keeps a timed result card, and `/suggestion consider|implement|note|thread` extends the existing suggestion votes and decisions.
+
+`/remind repeat|repeat-list|repeat-cancel` sends private recurring reminders; `/checklist add|list|done|remove` stores private tasks. `/highlight add|list|remove` is opt-in and needs Message Content; it sends only a message link, at most once per member per server per ten minutes. `/autopost set|remove|list` configures automatic threads and announcement crossposts. `/anniversary set|off` announces members' server join anniversaries. `/confess submit|review|reveal|settings|report|ban` queues anonymous posts for staff; submissions are limited to three per day and one per hour, and only the server owner can reveal an author, with an audit record. Members can report published confessions; managers can block or unblock their authors by confession number without revealing their identities. Confessions and personal tools are slash-only to keep private data out of prefix replies. Autopost and recurring reminders use persistent, bounded retry jobs. Highlights verify current membership and channel overwrites and suppress thread and age-restricted channel notifications. The dashboard has a page for each tool; private reminders, checklists and followed words belong to the signed-in user.
+
+Migration `0079_community_tools_v2.sql` adds these settings, personal rows, review queue and extension columns. No new `/community` children were added; feature settings live under their own roots.
 
 ### Community pack
 

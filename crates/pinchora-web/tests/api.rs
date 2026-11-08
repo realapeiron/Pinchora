@@ -60,6 +60,8 @@ mod roles;
 // Tickets: settings, panels, the tickets list and transcripts.
 #[path = "api/community_pack.rs"]
 mod community_pack;
+#[path = "api/community_v2.rs"]
+mod community_v2;
 #[path = "api/invites.rs"]
 mod invites;
 #[path = "api/roblox.rs"]

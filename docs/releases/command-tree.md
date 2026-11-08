@@ -1,5 +1,7 @@
 # Command tree release rehearsal
 
+D10 adds `/highlight`, `/checklist`, `/autopost`, `/anniversary` and `/confess` as feature roots. Existing `/giveaway`, `/poll`, `/suggestion` and `/remind` grow within their budgets. Registration now has **78 slash roots plus Report**. `/community` gains no children and stays under its 6,400-character budget. D10 uses migration 0079 only.
+
 F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`). Registration has
 **72 slash roots plus the Report message action** (73 total). `/ban`, `/kick`, `/warn`,
 `/timeout` and `/purge` remain direct roots with their D11 options and original Ban Members,

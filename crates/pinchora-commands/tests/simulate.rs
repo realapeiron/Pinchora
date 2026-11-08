@@ -93,6 +93,8 @@ mod anti_nuke;
 mod automod;
 #[path = "simulate/community_pack.rs"]
 mod community_pack;
+#[path = "simulate/community_v2.rs"]
+mod community_v2;
 #[path = "simulate/events.rs"]
 mod events;
 #[path = "simulate/moderation.rs"]
@@ -626,6 +628,37 @@ async fn discord(
                 .cloned()
                 .unwrap_or_default();
             return (StatusCode::OK, Value::Array(history).to_string());
+        }
+        (&Method::POST, [.., "channels", channel, "messages", message, "threads"]) => {
+            if mock.blocked.lock().unwrap().contains(&number(channel)) {
+                return (
+                    StatusCode::FORBIDDEN,
+                    json!({"code":50013,"message":"Missing Permissions"}).to_string(),
+                );
+            }
+            mock.mod_calls.lock().unwrap().push(format!("auto-thread {message}"));
+            let (body, _) = request_body(&headers, &body);
+            let thread = json!({"id":message,"type":11,"parent_id":channel,"name":body["name"]});
+            mock.channels.lock().unwrap().insert(number(message), thread.clone());
+            return (StatusCode::OK, thread.to_string());
+        }
+        (&Method::POST, [.., "channels", channel, "messages", message, "crosspost"]) => {
+            if mock.blocked.lock().unwrap().contains(&number(channel)) {
+                return (
+                    StatusCode::FORBIDDEN,
+                    json!({"code":50013,"message":"Missing Permissions"}).to_string(),
+                );
+            }
+            mock.mod_calls.lock().unwrap().push(format!("auto-crosspost {message}"));
+            let mut posted = message_json(number(channel), number(message));
+            posted["flags"] = json!(1);
+            mock.history
+                .lock()
+                .unwrap()
+                .entry(number(channel))
+                .or_default()
+                .push(posted.clone());
+            return (StatusCode::OK, posted.to_string());
         }
         (&Method::POST, [.., "channels", _, "messages", "bulk-delete"]) => {
             let (body, _) = request_body(&headers, &body);
@@ -11254,10 +11287,11 @@ async fn polls_collect_one_vote_each_and_close_into_a_chart() {
 
     // Bad polls are refused before anything is posted.
     let long = format!("a | {}", "x".repeat(81));
+    let too_many = (0..21).map(|n| n.to_string()).collect::<Vec<_>>().join(" | ");
     for (options, duration, expected) in [
-        ("Only one", None, "two to five answers"),
-        ("a | b | c | d | e | f", None, "two to five answers"),
-        ("a | <@1> | ", None, "two to five answers"),
+        ("Only one", None, "two to twenty answers"),
+        (too_many.as_str(), None, "two to twenty answers"),
+        ("a | <@1> | ", None, "two to twenty answers"),
         ("Same | same", None, "different"),
         (long.as_str(), None, "80 characters"),
         ("a | b", Some("later"), "couldn't read"),

@@ -68,6 +68,31 @@ pub enum RemindCommand {
     List(RemindList),
     #[command(name = "cancel")]
     Cancel(RemindCancel),
+    #[command(name = "repeat")]
+    Repeat(RemindRepeat),
+    #[command(name = "repeat-list")]
+    RepeatList(RemindRepeatList),
+    #[command(name = "repeat-cancel")]
+    RepeatCancel(RemindRepeatCancel),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "repeat", desc = "Remind me every day, week, or chosen interval")]
+pub struct RemindRepeat {
+    /// Interval such as 1d or 1w, from one hour to one year
+    duration: String,
+    /// Private reminder text
+    #[command(min_length = 1, max_length = 200)]
+    text: String,
+}
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "repeat-list", desc = "Show my recurring reminders")]
+pub struct RemindRepeatList;
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "repeat-cancel", desc = "Cancel a recurring reminder")]
+pub struct RemindRepeatCancel {
+    /// Recurring reminder number
+    id: i64,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -169,6 +194,58 @@ impl RemindCommand {
                     t!(lang, "remind.no-such", id = c.id)
                 };
                 cx.reply_ephemeral(note).await
+            }
+            Self::Repeat(c) => {
+                let Some(span) = pinchora_core::server_events::parse_duration(&c.duration) else {
+                    return cx.reply_ephemeral(t!(cx.lang(), "community-v2.bad-interval")).await;
+                };
+                if span < chrono::Duration::hours(1) || span > chrono::Duration::days(365) {
+                    return cx.reply_ephemeral(t!(cx.lang(), "community-v2.bad-interval")).await;
+                }
+                let text = crate::util::strip_mentions(&c.text);
+                if text.trim().is_empty() {
+                    return cx.reply_ephemeral(t!(cx.lang(), "community-v2.text-required")).await;
+                }
+                let Some(id) = cx
+                    .app
+                    .db
+                    .add_recurring_reminder(
+                        user,
+                        &text,
+                        span.num_minutes() as i32,
+                        cx.app.now() + span,
+                        cx.lang().code(),
+                    )
+                    .await?
+                else {
+                    return cx.reply_ephemeral(t!(cx.lang(), "community-v2.recurring-full")).await;
+                };
+                cx.reply_ephemeral(t!(cx.lang(), "community-v2.recurring-set", id = id))
+                    .await
+            }
+            Self::RepeatList(_) => {
+                let rows: Vec<(i64,String,chrono::DateTime<chrono::Utc>)> = sqlx::query_as("SELECT id,body,next_at FROM personal_recurring_reminders WHERE user_id=$1 AND enabled ORDER BY next_at LIMIT 25")
+                    .bind(user as i64).fetch_all(cx.app.db.pool()).await?;
+                let lines = rows
+                    .iter()
+                    .map(|(id, body, next)| format!("`#{id}` · {} · {body}", relative(*next)))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                cx.reply_ephemeral(if lines.is_empty() {
+                    t!(cx.lang(), "community-v2.recurring-empty")
+                } else {
+                    lines.chars().take(1900).collect::<String>()
+                })
+                .await
+            }
+            Self::RepeatCancel(c) => {
+                sqlx::query("DELETE FROM personal_recurring_reminders WHERE user_id=$1 AND id=$2")
+                    .bind(user as i64)
+                    .bind(c.id)
+                    .execute(cx.app.db.pool())
+                    .await?;
+                cx.reply_ephemeral(t!(cx.lang(), "community-v2.recurring-removed"))
+                    .await
             }
         }
     }

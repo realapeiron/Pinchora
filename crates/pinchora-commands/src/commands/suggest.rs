@@ -51,6 +51,43 @@ pub enum SuggestionCommand {
     Approve(SuggestionApprove),
     #[command(name = "deny")]
     Deny(SuggestionDeny),
+    #[command(name = "consider")]
+    Consider(SuggestionId),
+    #[command(name = "implement")]
+    Implement(SuggestionImplement),
+    #[command(name = "note")]
+    Note(SuggestionNote),
+    #[command(name = "thread")]
+    Thread(SuggestionThread),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "consider", desc = "Mark a suggestion as under consideration")]
+pub struct SuggestionId {
+    /// Suggestion number
+    id: i64,
+}
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "implement", desc = "Mark a suggestion as implemented")]
+pub struct SuggestionImplement {
+    /// Suggestion number
+    id: i64,
+}
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "thread", desc = "Open a discussion thread on a suggestion")]
+pub struct SuggestionThread {
+    /// Suggestion number
+    id: i64,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "note", desc = "Add a private staff note")]
+pub struct SuggestionNote {
+    /// Suggestion number
+    id: i64,
+    /// Staff-only note
+    #[command(max_length = 1000)]
+    text: String,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -125,6 +162,8 @@ fn suggestion_embed(lang: Lang, s: &SuggestionRow) -> Embed {
     let (color, verdict) = match s.status.as_str() {
         pinchora_db::SUGGESTION_APPROVED => (SUCCESS, Some(t!(lang, "suggest.approved-by"))),
         pinchora_db::SUGGESTION_DENIED => (DANGER, Some(t!(lang, "suggest.denied-by"))),
+        "implemented" => (SUCCESS, Some(t!(lang, "suggest.implemented-by"))),
+        "considering" => (BRAND, Some(t!(lang, "suggest.considering-by"))),
         _ => (BRAND, None),
     };
     let mut embed = EmbedBuilder::new()
@@ -258,8 +297,123 @@ impl SuggestionCommand {
         match self {
             Self::Approve(c) => decide(cx, guild, c.id, true, c.reason).await,
             Self::Deny(c) => decide(cx, guild, c.id, false, c.reason).await,
+            Self::Consider(c) => set_status(cx, guild, c.id, "considering").await,
+            Self::Implement(c) => set_status(cx, guild, c.id, "implemented").await,
+            Self::Note(c) => staff_note(cx, guild, c.id, &c.text).await,
+            Self::Thread(c) => create_thread(cx, guild, c.id).await,
         }
     }
+}
+
+async fn set_status(cx: &Cx, guild: u64, number: i64, status: &str) -> anyhow::Result<()> {
+    let changed: Option<(i64,)> = sqlx::query_as("UPDATE suggestions SET status=$3,decided_by=$4,decided_at=now() WHERE guild_id=$1 AND number=$2 AND status <> 'denied' RETURNING id")
+        .bind(guild as i64).bind(number as i32).bind(status).bind(cx.author()?.id.get() as i64)
+        .fetch_optional(cx.app.db.pool()).await?;
+    let Some((id,)) = changed else {
+        return tell(cx, t!(cx.lang(), "suggest.none", number = number)).await;
+    };
+    let Some(s) = cx.app.db.suggestion(id).await? else {
+        return Ok(());
+    };
+    if let Some((channel, message)) = s.channel_id.zip(s.message_id) {
+        let lang = cx.app.guild_lang(guild).await;
+        edit_message(
+            &cx.app,
+            channel as u64,
+            message as u64,
+            None,
+            Some(&[suggestion_embed(lang, &s)]),
+            Some(&suggestion_components(&s)),
+        )
+        .await;
+    }
+    let _ = tell_author(&cx.app, guild, &s).await;
+    tell(
+        cx,
+        t!(
+            cx.lang(),
+            "suggest.status-set",
+            number = number,
+            status = status_word(cx.lang(), status)
+        ),
+    )
+    .await
+}
+
+/// Keep the public suggestion card in sync when staff changes its status in the dashboard.
+pub async fn refresh_suggestion_message(app: &App, guild: u64, id: i64) -> anyhow::Result<()> {
+    let Some(s) = app.db.suggestion(id).await? else {
+        return Ok(());
+    };
+    if s.guild_id as u64 != guild {
+        return Ok(());
+    }
+    if let Some((channel, message)) = s.channel_id.zip(s.message_id) {
+        let lang = app.guild_lang(guild).await;
+        edit_message(
+            app,
+            channel as u64,
+            message as u64,
+            None,
+            Some(&[suggestion_embed(lang, &s)]),
+            Some(&suggestion_components(&s)),
+        )
+        .await;
+    }
+    Ok(())
+}
+
+async fn staff_note(cx: &Cx, guild: u64, number: i64, text: &str) -> anyhow::Result<()> {
+    let text = strip_mentions(text);
+    let changed = sqlx::query("UPDATE suggestions SET staff_note=$3 WHERE guild_id=$1 AND number=$2")
+        .bind(guild as i64)
+        .bind(number as i32)
+        .bind(text)
+        .execute(cx.app.db.pool())
+        .await?
+        .rows_affected();
+    if changed == 0 {
+        return tell(cx, t!(cx.lang(), "suggest.none", number = number)).await;
+    }
+    tell(cx, t!(cx.lang(), "suggest.note-saved")).await
+}
+
+async fn create_thread(cx: &Cx, guild: u64, number: i64) -> anyhow::Result<()> {
+    type SuggestionPost = (i64, Option<i64>, Option<i64>, Option<i64>);
+    let row: Option<SuggestionPost> =
+        sqlx::query_as("SELECT id,channel_id,message_id,thread_id FROM suggestions WHERE guild_id=$1 AND number=$2")
+            .bind(guild as i64)
+            .bind(number as i32)
+            .fetch_optional(cx.app.db.pool())
+            .await?;
+    let Some((id, Some(channel), Some(message), thread)) = row else {
+        return tell(cx, t!(cx.lang(), "suggest.none", number = number)).await;
+    };
+    if thread.is_some() {
+        return tell(cx, t!(cx.lang(), "suggest.thread-exists")).await;
+    }
+    let title = t!(cx.app.guild_lang(guild).await, "suggest.thread-title", number = number);
+    let posted = cx
+        .app
+        .http
+        .create_thread_from_message(Id::new(channel as u64), Id::new(message as u64), &title)
+        .await?
+        .model()
+        .await?;
+    sqlx::query("UPDATE suggestions SET thread_id=$2 WHERE id=$1 AND thread_id IS NULL")
+        .bind(id)
+        .bind(posted.id.get() as i64)
+        .execute(cx.app.db.pool())
+        .await?;
+    tell(
+        cx,
+        t!(
+            cx.lang(),
+            "suggest.thread-created",
+            thread = format!("<#{id}>", id = posted.id)
+        ),
+    )
+    .await
 }
 
 async fn decide(cx: &Cx, guild: u64, number: i64, approve: bool, reason: Option<String>) -> anyhow::Result<()> {
@@ -321,10 +475,11 @@ async fn decide(cx: &Cx, guild: u64, number: i64, approve: bool, reason: Option<
 fn status_word(lang: Lang, status: &str) -> String {
     t!(
         lang,
-        if status == pinchora_db::SUGGESTION_APPROVED {
-            "suggest.approved"
-        } else {
-            "suggest.denied"
+        match status {
+            "approved" => "suggest.approved",
+            "implemented" => "suggest.implemented",
+            "considering" => "suggest.considering",
+            _ => "suggest.denied",
         }
     )
 }

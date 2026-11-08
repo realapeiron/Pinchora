@@ -196,3 +196,35 @@ async fn leveling_0077_preserves_existing_xp_and_levels() {
     assert_eq!(global, fixture.iter().map(|(id, xp, _)| (*id, *xp)).collect::<Vec<_>>());
     tx.rollback().await.unwrap();
 }
+
+#[tokio::test]
+async fn community_0079_preserves_existing_live_rows() {
+    let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let mut conn = PgConnection::connect(&url).await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    sqlx::query("CREATE SCHEMA community_upgrade_fixture")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("SET LOCAL search_path TO community_upgrade_fixture")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let all = sqlx::migrate!("../../migrations");
+    Migrator::with_migrations(all.iter().filter(|m| m.version < 79).cloned().collect())
+        .run(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::raw_sql("INSERT INTO giveaways(id,guild_id,channel_id,host_id,prize,shells,winners,ends_at) VALUES(1,10,20,30,'existing prize',0,1,now()); INSERT INTO giveaway_entries(giveaway_id,user_id) VALUES(1,40); INSERT INTO polls(id,guild_id,channel_id,author_id,question,options,ends_at) VALUES(1,10,20,30,'existing poll',ARRAY['yes','no'],now()); INSERT INTO poll_votes(poll_id,user_id,choice) VALUES(1,40,1); INSERT INTO suggestions(guild_id,author_id,number,body) VALUES(10,30,1,'existing idea');")
+        .execute(&mut *tx).await.unwrap();
+    all.run(&mut *tx).await.unwrap();
+    let row:(String,i16,i64)=sqlx::query_as("SELECT prize,weight,(SELECT count(*) FROM poll_votes) FROM giveaways JOIN giveaway_entries ON giveaway_id=giveaways.id WHERE giveaways.id=1").fetch_one(&mut *tx).await.unwrap();
+    assert_eq!(row, ("existing prize".into(), 1, 1));
+    sqlx::query("UPDATE giveaways SET status='scheduled',starts_at=now()+interval '1 day' WHERE id=1")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx.rollback().await.unwrap();
+}

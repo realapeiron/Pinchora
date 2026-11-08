@@ -40,6 +40,16 @@
     "slice": 0
   },
   {
+    "legacy": "anniversary off",
+    "canonical": "anniversary off",
+    "slice": 20
+  },
+  {
+    "legacy": "anniversary set",
+    "canonical": "anniversary set",
+    "slice": 20
+  },
+  {
     "legacy": "antinuke disable",
     "canonical": "safety antinuke disable",
     "slice": 6
@@ -113,6 +123,21 @@
     "legacy": "automod toggle",
     "canonical": "safety automod toggle",
     "slice": 6
+  },
+  {
+    "legacy": "autopost list",
+    "canonical": "autopost list",
+    "slice": 20
+  },
+  {
+    "legacy": "autopost remove",
+    "canonical": "autopost remove",
+    "slice": 20
+  },
+  {
+    "legacy": "autopost set",
+    "canonical": "autopost set",
+    "slice": 20
   },
   {
     "legacy": "autoroles add",
@@ -240,6 +265,26 @@
     "slice": 0
   },
   {
+    "legacy": "checklist add",
+    "canonical": "checklist add",
+    "slice": 20
+  },
+  {
+    "legacy": "checklist done",
+    "canonical": "checklist done",
+    "slice": 20
+  },
+  {
+    "legacy": "checklist list",
+    "canonical": "checklist list",
+    "slice": 20
+  },
+  {
+    "legacy": "checklist remove",
+    "canonical": "checklist remove",
+    "slice": 20
+  },
+  {
     "legacy": "color list",
     "canonical": "color list",
     "slice": 0
@@ -323,6 +368,36 @@
     "legacy": "community qotd settings",
     "canonical": "qotd settings",
     "slice": 18
+  },
+  {
+    "legacy": "confess ban",
+    "canonical": "confess ban",
+    "slice": 0
+  },
+  {
+    "legacy": "confess report",
+    "canonical": "confess report",
+    "slice": 0
+  },
+  {
+    "legacy": "confess reveal",
+    "canonical": "confess reveal",
+    "slice": 20
+  },
+  {
+    "legacy": "confess review",
+    "canonical": "confess review",
+    "slice": 20
+  },
+  {
+    "legacy": "confess settings",
+    "canonical": "confess settings",
+    "slice": 20
+  },
+  {
+    "legacy": "confess submit",
+    "canonical": "confess submit",
+    "slice": 20
   },
   {
     "legacy": "config critters",
@@ -888,6 +963,21 @@
     "legacy": "highfive",
     "canonical": "highfive",
     "slice": 0
+  },
+  {
+    "legacy": "highlight add",
+    "canonical": "highlight add",
+    "slice": 20
+  },
+  {
+    "legacy": "highlight list",
+    "canonical": "highlight list",
+    "slice": 20
+  },
+  {
+    "legacy": "highlight remove",
+    "canonical": "highlight remove",
+    "slice": 20
   },
   {
     "legacy": "house aquarium",
@@ -1460,6 +1550,21 @@
     "slice": 0
   },
   {
+    "legacy": "remind repeat",
+    "canonical": "remind repeat",
+    "slice": 20
+  },
+  {
+    "legacy": "remind repeat-cancel",
+    "canonical": "remind repeat-cancel",
+    "slice": 20
+  },
+  {
+    "legacy": "remind repeat-list",
+    "canonical": "remind repeat-list",
+    "slice": 20
+  },
+  {
     "legacy": "rep",
     "canonical": "rep",
     "slice": 0
@@ -1690,9 +1795,29 @@
     "slice": 9
   },
   {
+    "legacy": "suggestion consider",
+    "canonical": "suggestion consider",
+    "slice": 20
+  },
+  {
     "legacy": "suggestion deny",
     "canonical": "mod suggestion deny",
     "slice": 9
+  },
+  {
+    "legacy": "suggestion implement",
+    "canonical": "suggestion implement",
+    "slice": 20
+  },
+  {
+    "legacy": "suggestion note",
+    "canonical": "suggestion note",
+    "slice": 20
+  },
+  {
+    "legacy": "suggestion thread",
+    "canonical": "suggestion thread",
+    "slice": 20
   },
   {
     "legacy": "surge",

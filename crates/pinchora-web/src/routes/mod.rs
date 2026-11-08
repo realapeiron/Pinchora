@@ -10,6 +10,7 @@ mod cards;
 mod commands;
 mod community;
 mod community_pack;
+mod community_v2;
 mod discord_info;
 mod events;
 mod feed_links;

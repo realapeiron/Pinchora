@@ -7,6 +7,7 @@ mod branding;
 mod card_designs;
 mod character;
 mod collection;
+mod community_v2;
 mod contest;
 mod customize;
 mod economy;

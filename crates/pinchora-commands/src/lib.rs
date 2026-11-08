@@ -4,6 +4,7 @@ pub mod branding;
 mod card_images;
 mod catalog;
 mod commands;
+pub use commands::suggest::refresh_suggestion_message;
 mod community_pack;
 mod components;
 mod custom;
@@ -57,6 +58,7 @@ pub use commands::achievements::{
     evaluate as evaluate_achievements, invalidate as invalidate_achievements, on_message as achievement_tick,
     source_enabled as achievement_source_enabled,
 };
+pub use commands::community_v2::{spawn_ticker as spawn_community_v2_ticker, tick as community_v2_tick};
 pub use commands::invites::{
     grant_invite_reward, reconcile_all_invite_rewards, refresh_created_snapshot as refresh_created_invite_snapshot,
     refresh_deleted_snapshot as refresh_deleted_invite_snapshot, refresh_snapshot as refresh_invite_snapshot,

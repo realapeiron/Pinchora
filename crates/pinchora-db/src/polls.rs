@@ -28,6 +28,9 @@ pub struct PollRow {
     pub ends_at: DateTime<Utc>,
     pub status: String,
     pub announced: bool,
+    pub multiple: bool,
+    pub anonymous: bool,
+    pub required_role_id: Option<i64>,
 }
 
 impl PollRow {
@@ -67,7 +70,7 @@ pub enum PollVote {
 
 macro_rules! columns {
     () => {
-        "id, guild_id, channel_id, message_id, author_id, question, options, ends_at, status, announced"
+        "id, guild_id, channel_id, message_id, author_id, question, options, ends_at, status, announced, multiple, anonymous, required_role_id"
     };
 }
 
@@ -144,14 +147,57 @@ impl Db {
         retry("vote_poll", || self.vote_poll_once(id, user, choice, now)).await
     }
 
+    /// A multiple choice poll stores each selected answer separately, guarded by the poll lock.
+    pub async fn vote_poll_multiple(
+        &self,
+        id: i64,
+        user: u64,
+        choice: usize,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<PollVote> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        let open: Option<(bool,)> =
+            sqlx::query_as("SELECT status='open' AND ends_at>$2 AND multiple AND $3>=0 AND $3<cardinality(options) FROM polls WHERE id=$1 FOR SHARE")
+                .bind(id)
+                .bind(now)
+                .bind(i64::try_from(choice).unwrap_or(i64::MAX))
+                .fetch_optional(&mut *tx)
+                .await?;
+        if open != Some((true,)) {
+            return Ok(PollVote::Closed);
+        }
+        let removed = sqlx::query("DELETE FROM poll_extra_votes WHERE poll_id=$1 AND user_id=$2 AND choice=$3")
+            .bind(id)
+            .bind(sql_id(user))
+            .bind(choice as i16)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+        let outcome = if removed > 0 {
+            PollVote::Withdrawn
+        } else {
+            sqlx::query("INSERT INTO poll_extra_votes(poll_id,user_id,choice) VALUES($1,$2,$3)")
+                .bind(id)
+                .bind(sql_id(user))
+                .bind(choice as i16)
+                .execute(&mut *tx)
+                .await?;
+            PollVote::Cast
+        };
+        tx.commit().await?;
+        Ok(outcome)
+    }
+
     /// One attempt of [`Db::vote_poll`].
     async fn vote_poll_once(&self, id: i64, user: u64, choice: usize, now: DateTime<Utc>) -> anyhow::Result<PollVote> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
-            sqlx::query_as("SELECT status = 'open' AND ends_at > $2 FROM polls WHERE id = $1 FOR SHARE")
+            sqlx::query_as("SELECT status = 'open' AND ends_at > $2 AND NOT multiple AND $3>=0 AND $3<cardinality(options) FROM polls WHERE id = $1 FOR SHARE")
                 .bind(id)
                 .bind(now)
+                .bind(i64::try_from(choice).unwrap_or(i64::MAX))
                 .fetch_optional(&mut *tx)
                 .await?;
         if open != Some((true,)) {
@@ -197,7 +243,7 @@ impl Db {
     /// Votes per option, in option order, for a poll of `options` options.
     pub async fn poll_tally(&self, id: i64, options: usize) -> anyhow::Result<Vec<i64>> {
         let rows: Vec<(i16, i64)> =
-            sqlx::query_as("SELECT choice, count(*) FROM poll_votes WHERE poll_id = $1 GROUP BY choice")
+            sqlx::query_as("SELECT choice, count(*) FROM (SELECT choice FROM poll_votes WHERE poll_id=$1 UNION ALL SELECT choice FROM poll_extra_votes WHERE poll_id=$1) v GROUP BY choice")
                 .bind(id)
                 .fetch_all(self.pool())
                 .await?;
