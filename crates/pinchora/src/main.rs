@@ -158,6 +158,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_trackers_ticker(app.clone());
     pinchora_commands::spawn_event_ticker(app.clone());
     pinchora_commands::spawn_community_ticker(app.clone());
+    pinchora_commands::spawn_community_v2_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());

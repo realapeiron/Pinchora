@@ -58,6 +58,12 @@ pub struct GiveawayRow {
     pub winners: i32,
     pub required_role_id: Option<i64>,
     pub ends_at: DateTime<Utc>,
+    pub starts_at: Option<DateTime<Utc>>,
+    pub min_level: i32,
+    pub min_account_days: i32,
+    pub min_server_days: i32,
+    pub bonus_role_id: Option<i64>,
+    pub bonus_entries: i16,
     /// When it actually ended: sooner than `ends_at` for a giveaway a manager ended early.
     pub ended_at: Option<DateTime<Utc>>,
     pub status: String,
@@ -136,7 +142,8 @@ pub enum Reroll {
 macro_rules! columns {
     () => {
         "g.id, g.guild_id, g.channel_id, g.message_id, g.host_id, g.prize, g.shells, g.winners, \
-         g.required_role_id, g.ends_at, g.ended_at, g.status, g.winner_ids, g.announced, \
+         g.required_role_id, g.ends_at, g.starts_at, g.min_level, g.min_account_days, g.min_server_days, \
+         g.bonus_role_id, g.bonus_entries, g.ended_at, g.status, g.winner_ids, g.announced, \
          (SELECT count(*) FROM giveaway_entries e WHERE e.giveaway_id = g.id) AS entries"
     };
 }
@@ -194,6 +201,14 @@ async fn credit(tx: &mut Transaction<'_, Postgres>, user: i64, amount: i64, reas
 }
 
 impl Db {
+    /// Entry weights are fixed when a member joins; a later role change cannot affect a draw.
+    pub async fn giveaway_entry_weights(&self, id: i64) -> anyhow::Result<std::collections::HashMap<u64, i16>> {
+        let rows: Vec<(i64, i16)> = sqlx::query_as("SELECT user_id,weight FROM giveaway_entries WHERE giveaway_id=$1")
+            .bind(id)
+            .fetch_all(self.pool())
+            .await?;
+        Ok(rows.into_iter().map(|(user, weight)| (user as u64, weight)).collect())
+    }
     /// Starts a giveaway: holds `winners` x `shells` from the host and creates the row, in one
     /// transaction. Nothing changes when the host cannot cover it or the server is full.
     pub async fn create_giveaway(&self, new: NewGiveaway<'_>) -> anyhow::Result<GiveawayOpen> {
@@ -210,7 +225,7 @@ impl Db {
             .execute(&mut *tx)
             .await?;
         let (running,): (i64,) =
-            sqlx::query_as("SELECT count(*) FROM giveaways WHERE guild_id = $1 AND status = 'running'")
+            sqlx::query_as("SELECT count(*) FROM giveaways WHERE guild_id = $1 AND status IN ('running','scheduled')")
                 .bind(sql_id(new.guild_id))
                 .fetch_one(&mut *tx)
                 .await?;
@@ -303,7 +318,7 @@ impl Db {
         let row = sqlx::query_as::<_, GiveawayRow>(concat!(
             "SELECT ",
             columns!(),
-            " FROM giveaways g WHERE g.id = $1 AND g.status = 'running' FOR UPDATE OF g"
+            " FROM giveaways g WHERE g.id = $1 AND g.status IN ('running','scheduled') FOR UPDATE OF g"
         ))
         .bind(id)
         .fetch_optional(&mut *tx)
@@ -325,14 +340,32 @@ impl Db {
     /// Enters the member, or takes their entry back when they are in. The giveaway row is
     /// share-locked, so an entry never lands after the giveaway ended.
     pub async fn toggle_giveaway_entry(&self, id: i64, user: u64, now: DateTime<Utc>) -> anyhow::Result<EntryToggle> {
+        self.toggle_giveaway_entry_weighted(id, user, 1, now).await
+    }
+
+    /// Toggle an entry and its bonus weight atomically, so an ending draw sees the right weight.
+    pub async fn toggle_giveaway_entry_weighted(
+        &self,
+        id: i64,
+        user: u64,
+        weight: i16,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<EntryToggle> {
+        anyhow::ensure!((1..=21).contains(&weight), "invalid giveaway entry weight");
         retry("toggle_giveaway_entry", || {
-            self.toggle_giveaway_entry_once(id, user, now)
+            self.toggle_giveaway_entry_once(id, user, weight, now)
         })
         .await
     }
 
     /// One attempt of [`Db::toggle_giveaway_entry`].
-    async fn toggle_giveaway_entry_once(&self, id: i64, user: u64, now: DateTime<Utc>) -> anyhow::Result<EntryToggle> {
+    async fn toggle_giveaway_entry_once(
+        &self,
+        id: i64,
+        user: u64,
+        weight: i16,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<EntryToggle> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
@@ -352,9 +385,10 @@ impl Db {
             .rows_affected()
             > 0;
         if !left {
-            sqlx::query("INSERT INTO giveaway_entries (giveaway_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+            sqlx::query("INSERT INTO giveaway_entries (giveaway_id, user_id, weight) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
                 .bind(id)
                 .bind(sql_id(user))
+                .bind(weight)
                 .execute(&mut *tx)
                 .await?;
         }
@@ -421,7 +455,7 @@ impl Db {
         let due = concat!(
             "SELECT ",
             columns!(),
-            " FROM giveaways g WHERE g.id = $1 AND g.status = 'running' AND ($3 OR g.ends_at <= $2)"
+            " FROM giveaways g WHERE g.id = $1 AND g.status IN ('running','scheduled') AND ($3 OR (g.status='running' AND g.ends_at <= $2))"
         );
         for _ in 0..END_TRIES {
             let mut tx = self.pool().begin().await?;
@@ -534,7 +568,7 @@ impl Db {
             let Some(seen) = seen else {
                 return Ok(Reroll::Missing);
             };
-            if seen.is_running() {
+            if seen.status != ENDED {
                 return Ok(Reroll::StillRunning);
             }
             let candidates = candidates_of(&mut tx, id, &seen.winner_ids).await?;
@@ -662,6 +696,12 @@ mod tests {
             winners: 3,
             required_role_id: None,
             ends_at: Utc::now(),
+            starts_at: None,
+            min_level: 0,
+            min_account_days: 0,
+            min_server_days: 0,
+            bonus_role_id: None,
+            bonus_entries: 0,
             ended_at: None,
             status: RUNNING.to_owned(),
             winner_ids: Vec::new(),

@@ -915,5 +915,5 @@ async fn a_turkish_server_hears_its_events_in_turkish() {
     );
     sim.locale = "tr";
     let bad = poll_cmd(&mut sim, admin, "Soru?", "Yalnızca bir", None).await;
-    assert!(bad.content().contains("iki ila beş cevap"), "{}", bad.content());
+    assert!(bad.content().contains("iki ila yirmi cevap"), "{}", bad.content());
 }

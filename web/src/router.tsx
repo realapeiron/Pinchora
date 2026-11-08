@@ -101,6 +101,38 @@ const localizedRoutes: RouteObject[] = [
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
       {
+        path: "giveaways",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityGiveaways }),
+      },
+      {
+        path: "polls",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityPolls }),
+      },
+      {
+        path: "suggestions",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunitySuggestions }),
+      },
+      {
+        path: "reminders",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityReminders }),
+      },
+      {
+        path: "highlights",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityHighlights }),
+      },
+      {
+        path: "auto-channels",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityAutoChannels }),
+      },
+      {
+        path: "anniversaries",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityAnniversaries }),
+      },
+      {
+        path: "confessions",
+        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityConfessions }),
+      },
+      {
         path: "community-pack",
         lazy: async () => ({ Component: (await import("./pages/CommunityPack")).CommunityPack }),
       },

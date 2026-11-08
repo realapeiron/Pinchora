@@ -329,6 +329,18 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
                 ($1, 2, $2, 'Theirs?', ARRAY['a', 'b'], now() + interval '1 day')",
         "INSERT INTO poll_votes (poll_id, user_id, choice)
          SELECT id, $1, 0 FROM polls WHERE guild_id = $1 AND author_id = $2",
+        "INSERT INTO poll_extra_votes (poll_id, user_id, choice)
+         SELECT id, $1, 1 FROM polls WHERE guild_id = $1 AND author_id = $2",
+        "INSERT INTO personal_recurring_reminders(user_id,body,interval_minutes,next_at)
+         VALUES($1,'Remember privately',60,now()+interval '1 hour')",
+        "INSERT INTO personal_checklist_items(user_id,body) VALUES($1,'Private task')",
+        "INSERT INTO keyword_highlights(guild_id,user_id,keyword) VALUES($1,$1,'coral')",
+        "INSERT INTO member_anniversaries(guild_id,user_id,joined_at) VALUES($1,$1,now()-interval '1 year')",
+        "INSERT INTO anniversary_sent(guild_id,user_id,year) VALUES($1,$1,2026)",
+        "INSERT INTO confessions(guild_id,author_id,body,reviewer_id)
+         VALUES($1,$1,'My private confession',$2),($1,$2,'Someone else wrote this',$1)",
+        "INSERT INTO confession_reveals(guild_id,confession_id,owner_id)
+         SELECT guild_id,id,$1 FROM confessions WHERE guild_id=$1 AND author_id=$2",
         // What roles they held when they left, a role that lapses, and one that waits for them ($1 doubles as the server).
         "INSERT INTO sticky_roles (guild_id, user_id, role_ids, left_at) VALUES ($1, $1, ARRAY[5, 6], now())",
         "INSERT INTO timed_roles (guild_id, user_id, role_id, remove_at) VALUES ($1, $1, 5, now() + interval '1 day')",

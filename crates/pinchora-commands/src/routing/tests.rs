@@ -12,8 +12,8 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 107);
-    assert_eq!(paths.len(), 388);
+    assert_eq!(tree.len(), 112);
+    assert_eq!(paths.len(), 411);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     assert_eq!(
@@ -21,7 +21,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
             .iter()
             .filter(|c| c.kind == twilight_model::application::command::CommandType::ChatInput)
             .count(),
-        72
+        78
     );
     assert_eq!(
         registered
@@ -46,7 +46,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 205);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 228);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()

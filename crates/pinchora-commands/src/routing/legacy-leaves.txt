@@ -6,6 +6,8 @@ achievementadmin list
 achievementadmin remove
 achievements
 afk set
+anniversary off
+anniversary set
 antinuke disable
 antinuke enable
 antinuke events
@@ -21,6 +23,9 @@ automod profile
 automod show
 automod test
 automod toggle
+autopost list
+autopost remove
+autopost set
 autoroles add
 autoroles list
 autoroles remove
@@ -46,6 +51,10 @@ branding reset
 branding show
 case
 character
+checklist add
+checklist done
+checklist list
+checklist remove
 color list
 color pick
 color remove
@@ -63,6 +72,10 @@ community forms post
 community modmail settings
 community qotd queue
 community qotd settings
+confess reveal
+confess review
+confess settings
+confess submit
 config critters
 config gambling
 config goodbye
@@ -172,6 +185,9 @@ giveaway reroll
 giveaway start
 help
 highfive
+highlight add
+highlight list
+highlight remove
 house contest enter
 house contest view
 house contest vote
@@ -281,6 +297,9 @@ remind cancel
 remind list
 remind me in
 remind me when
+remind repeat
+remind repeat-cancel
+remind repeat-list
 rep
 roblox unverify
 roblox update
@@ -327,7 +346,11 @@ sticky show
 store
 suggest
 suggestion approve
+suggestion consider
 suggestion deny
+suggestion implement
+suggestion note
+suggestion thread
 surge
 tag
 ticket add

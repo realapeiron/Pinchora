@@ -4,12 +4,13 @@
 //! winners are paid when it ends and whatever nobody won goes back to the host, so a server can never
 //! mint shells. Mentions in the prize are stripped and every message pings nobody.
 
+use std::collections::HashMap;
 use std::{sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
 use pinchora_core::{
     i18n::Lang,
-    server_events::{GIVEAWAY_MAX, GIVEAWAY_MIN, parse_duration, pick_winners},
+    server_events::{GIVEAWAY_MAX, GIVEAWAY_MIN, parse_duration},
     t,
 };
 use pinchora_db::{EndedGiveaway, EntryToggle, GiveawayOpen, GiveawayRow, MAX_RUNNING_GIVEAWAYS, NewGiveaway, Reroll};
@@ -78,6 +79,22 @@ pub struct GiveawayStart {
     channel: Option<InteractionChannel>,
     /// Only members with this role can enter
     required_role: Option<Role>,
+    /// Minimum level in this server
+    #[command(min_value = 0, max_value = 1000)]
+    min_level: Option<i64>,
+    /// Minimum Discord account age in days
+    #[command(min_value = 0, max_value = 3650)]
+    account_days: Option<i64>,
+    /// Minimum time in this server in days
+    #[command(min_value = 0, max_value = 3650)]
+    server_days: Option<i64>,
+    /// Members with this role receive bonus entries
+    bonus_role: Option<Role>,
+    /// Extra entries for the bonus role, up to 20
+    #[command(min_value = 1, max_value = 20)]
+    bonus_entries: Option<i64>,
+    /// Wait before opening: 1m to 30d
+    start_in: Option<String>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -113,9 +130,31 @@ fn parse_button<'a>(mut parts: impl Iterator<Item = &'a str>) -> Option<i64> {
     parts.next().is_none().then_some(id)
 }
 
-/// Picks winners uniformly from `pool`.
-fn draw(pool: &[u64], count: usize) -> Vec<u64> {
-    pick_winners(pool, count, |n| rand::random_range(0..n))
+/// Samples without replacement, giving each entrant their weight at entry time.
+fn draw_weighted(pool: &[u64], count: usize, weights: &HashMap<u64, i16>) -> Vec<u64> {
+    let mut remaining = pool.to_vec();
+    let mut picked = Vec::new();
+    while !remaining.is_empty() && picked.len() < count {
+        let total: u64 = remaining
+            .iter()
+            .map(|id| u64::from(*weights.get(id).unwrap_or(&1) as u16))
+            .sum();
+        let mut ticket = rand::random_range(0..total);
+        let index = remaining
+            .iter()
+            .position(|id| {
+                let weight = u64::from(*weights.get(id).unwrap_or(&1) as u16);
+                if ticket < weight {
+                    true
+                } else {
+                    ticket -= weight;
+                    false
+                }
+            })
+            .unwrap_or(0);
+        picked.push(remaining.remove(index));
+    }
+    picked
 }
 
 fn mentions(ids: &[i64]) -> String {
@@ -129,12 +168,19 @@ fn timestamp(at: DateTime<Utc>) -> String {
 /// The giveaway as its message shows it: details and the entry count while it runs, the winners after.
 fn giveaway_embed(lang: Lang, g: &GiveawayRow) -> Embed {
     let mut lines = Vec::new();
+    let upcoming = g.status == "scheduled";
     if g.is_running() {
         lines.push(t!(lang, "giveaway.press-enter"));
         lines.push(String::new());
     }
     lines.push(t!(lang, "giveaway.hosted-by", host = format!("<@{}>", g.host_id)));
-    if g.is_running() {
+    if upcoming {
+        lines.push(t!(
+            lang,
+            "giveaway.starts",
+            when = relative(g.starts_at.unwrap_or(g.ends_at))
+        ));
+    } else if g.is_running() {
         lines.push(t!(
             lang,
             "giveaway.ends",
@@ -155,11 +201,31 @@ fn giveaway_embed(lang: Lang, g: &GiveawayRow) -> Embed {
     if let Some(role) = g.required_role_id {
         lines.push(t!(lang, "giveaway.requires", role = format!("<@&{role}>")));
     }
+    if g.min_level > 0 {
+        lines.push(t!(lang, "giveaway.min-level", level = g.min_level));
+    }
+    if g.min_account_days > 0 {
+        lines.push(t!(lang, "giveaway.min-account", days = g.min_account_days));
+    }
+    if g.min_server_days > 0 {
+        lines.push(t!(lang, "giveaway.min-server", days = g.min_server_days));
+    }
+    if let Some(role) = g.bonus_role_id {
+        lines.push(t!(
+            lang,
+            "giveaway.bonus",
+            role = format!("<@&{role}>"),
+            entries = g.bonus_entries
+        ));
+    }
+    if g.status == "scheduled" {
+        lines.push(t!(lang, "giveaway.scheduled"));
+    }
     let mut embed = EmbedBuilder::new()
-        .color(if g.is_running() { BRAND } else { SUCCESS })
+        .color(if g.is_running() || upcoming { BRAND } else { SUCCESS })
         .title(&g.prize)
         .description(lines.join("\n"));
-    embed = if g.is_running() {
+    embed = if g.is_running() || upcoming {
         embed.field(EmbedFieldBuilder::new(t!(lang, "giveaway.entries"), g.entries.to_string()).inline())
     } else if g.winner_ids.is_empty() {
         embed.field(EmbedFieldBuilder::new(
@@ -178,7 +244,7 @@ fn giveaway_embed(lang: Lang, g: &GiveawayRow) -> Embed {
 }
 
 fn giveaway_components(lang: Lang, g: &GiveawayRow) -> Vec<Component> {
-    let (label, style) = if g.is_running() {
+    let (label, style) = if g.is_running() || g.status == "scheduled" {
         (t!(lang, "giveaway.enter"), ButtonStyle::Primary)
     } else {
         (t!(lang, "giveaway.ended-button"), ButtonStyle::Secondary)
@@ -229,6 +295,17 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
     let shells = c.shells.unwrap_or(0);
     // @everyone is the whole server, so requiring it requires nothing.
     let required_role = c.required_role.map(|r| r.id.get()).filter(|r| *r != guild);
+    if c.bonus_entries.is_some() && c.bonus_role.is_none() {
+        return tell(cx, t!(cx.lang(), "giveaway.bonus-needs-role")).await;
+    }
+    let starts_at = match c.start_in.as_deref() {
+        Some(value) => match parse_duration(value) {
+            Some(delay) if (GIVEAWAY_MIN..=GIVEAWAY_MAX).contains(&delay) => Some(cx.app.now() + delay),
+            _ => return tell(cx, t!(cx.lang(), "giveaway.bad-duration")).await,
+        },
+        None => None,
+    };
+    let ends_at = starts_at.unwrap_or_else(|| cx.app.now()) + span;
 
     let opened = cx
         .app
@@ -241,10 +318,10 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
             shells,
             winners: c.winners as i32,
             required_role,
-            ends_at: cx.app.now() + span,
+            ends_at,
         })
         .await?;
-    let giveaway = match opened {
+    let mut giveaway = match opened {
         GiveawayOpen::Started(giveaway) => *giveaway,
         GiveawayOpen::Broke { balance } => {
             return tell(
@@ -264,6 +341,15 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
             return tell(cx, t!(cx.lang(), "giveaway.full", max = MAX_RUNNING_GIVEAWAYS)).await;
         }
     };
+    if let Err(error) = sqlx::query("UPDATE giveaways SET min_level=$2,min_account_days=$3,min_server_days=$4,bonus_role_id=$5,bonus_entries=$6,starts_at=$7,status=CASE WHEN $7::timestamptz IS NULL THEN 'running' ELSE 'scheduled' END WHERE id=$1")
+        .bind(giveaway.id).bind(c.min_level.unwrap_or(0) as i32).bind(c.account_days.unwrap_or(0) as i32)
+        .bind(c.server_days.unwrap_or(0) as i32).bind(c.bonus_role.map(|r| r.id.get() as i64))
+        .bind(c.bonus_entries.unwrap_or(0) as i16).bind(starts_at)
+        .execute(cx.app.db.pool()).await {
+        let _ = cx.app.db.abort_giveaway(giveaway.id).await;
+        return Err(error.into());
+    }
+    giveaway = cx.app.db.giveaway(giveaway.id).await?.expect("new giveaway");
     // The giveaway message answers nobody in particular: it speaks the server's language.
     let server_lang = cx.app.guild_lang(guild).await;
 
@@ -352,7 +438,12 @@ async fn end_now(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
 
 async fn reroll(cx: &Cx, guild: u64, c: GiveawayReroll) -> anyhow::Result<()> {
     let count = c.winners.unwrap_or(1) as usize;
-    let outcome = cx.app.db.reroll_giveaway(guild, c.id, count, draw).await?;
+    let weights = cx.app.db.giveaway_entry_weights(c.id).await?;
+    let outcome = cx
+        .app
+        .db
+        .reroll_giveaway(guild, c.id, count, |pool, n| draw_weighted(pool, n, &weights))
+        .await?;
     let (giveaway, picked) = match outcome {
         Reroll::Done(giveaway, picked) => (*giveaway, picked),
         Reroll::Missing => return tell(cx, t!(cx.lang(), "giveaway.none", id = c.id)).await,
@@ -486,7 +577,60 @@ pub(crate) async fn on_component<'a>(cx: &Cx, parts: impl Iterator<Item = &'a st
             return tell(cx, t!(cx.lang(), "giveaway.needs-role", role = format!("<@&{role}>"))).await;
         }
     }
-    let entered = cx.app.db.toggle_giveaway_entry(id, user, cx.app.now()).await?;
+    let rules: (i32,i32,i32,Option<i64>,i16,Option<DateTime<Utc>>) = sqlx::query_as(
+        "SELECT min_level,min_account_days,min_server_days,bonus_role_id,bonus_entries,starts_at FROM giveaways WHERE id=$1")
+        .bind(id).fetch_one(cx.app.db.pool()).await?;
+    let now = cx.app.now();
+    if giveaway.status == "scheduled" || rules.5.is_some_and(|at| at > now) {
+        return tell(cx, t!(cx.lang(), "giveaway.not-started")).await;
+    }
+    if rules.0 > 0 {
+        let xp: Option<(i64,)> = sqlx::query_as("SELECT xp FROM members WHERE guild_id=$1 AND user_id=$2")
+            .bind(giveaway.guild_id)
+            .bind(user as i64)
+            .fetch_optional(cx.app.db.pool())
+            .await?;
+        if cx
+            .app
+            .db
+            .leveling_parity(giveaway.guild_id as u64)
+            .await?
+            .level_of(xp.map_or(0, |x| x.0))
+            < rules.0 as u32
+        {
+            return tell(cx, t!(cx.lang(), "giveaway.needs-level", level = rules.0)).await;
+        }
+    }
+    let account_ms = ((user >> 22) + 1_420_070_400_000) as i64;
+    if now.timestamp_millis() - account_ms < i64::from(rules.1) * 86_400_000 {
+        return tell(cx, t!(cx.lang(), "giveaway.needs-account-age", days = rules.1)).await;
+    }
+    if rules.2 > 0 {
+        let old_enough = cx
+            .interaction
+            .member
+            .as_ref()
+            .and_then(|m| m.joined_at)
+            .is_some_and(|joined| now.timestamp_micros() - joined.as_micros() >= i64::from(rules.2) * 86_400_000_000);
+        if !old_enough {
+            return tell(cx, t!(cx.lang(), "giveaway.needs-server-age", days = rules.2)).await;
+        }
+    }
+    let weight = if rules.3.is_some_and(|role| {
+        cx.interaction
+            .member
+            .as_ref()
+            .is_some_and(|m| m.roles.iter().any(|r| r.get() == role as u64))
+    }) {
+        rules.4 + 1
+    } else {
+        1
+    };
+    let entered = cx
+        .app
+        .db
+        .toggle_giveaway_entry_weighted(id, user, weight, cx.app.now())
+        .await?;
     let text = match entered {
         EntryToggle::Closed => return tell(cx, t!(cx.lang(), "giveaway.closed")).await,
         EntryToggle::Entered(n) => t!(
@@ -521,7 +665,7 @@ async fn show_count(app: &Arc<App>, id: i64) {
 }
 
 /// Edits the giveaway message to the entry count the database has now.
-async fn refresh_message(app: &App, id: i64) {
+pub(crate) async fn refresh_message(app: &App, id: i64) {
     let giveaway = match app.db.giveaway(id).await {
         Ok(Some(g)) if g.is_running() => g,
         Ok(_) => return,
@@ -567,7 +711,12 @@ pub(crate) async fn refresh_changed(app: &Arc<App>) {
 /// Ends giveaway `id` (when it is due, or at once with `early`) and tells the channel. `None` when it
 /// was not running, because somebody else ended it first.
 pub(crate) async fn end(app: &Arc<App>, id: i64, early: bool) -> anyhow::Result<Option<EndedGiveaway>> {
-    let Some(ended) = app.db.end_giveaway(id, app.now(), early, draw).await? else {
+    let weights = app.db.giveaway_entry_weights(id).await?;
+    let Some(ended) = app
+        .db
+        .end_giveaway(id, app.now(), early, |pool, n| draw_weighted(pool, n, &weights))
+        .await?
+    else {
         return Ok(None);
     };
     metrics::counter!("pinchora_giveaways_ended_total").increment(1);
@@ -664,6 +813,12 @@ mod tests {
             winners: 2,
             required_role_id: Some(5),
             ends_at: Utc::now(),
+            starts_at: None,
+            min_level: 0,
+            min_account_days: 0,
+            min_server_days: 0,
+            bonus_role_id: None,
+            bonus_entries: 0,
             ended_at: (!running).then(Utc::now),
             status: if running { "running" } else { "ended" }.to_owned(),
             winner_ids: if running { Vec::new() } else { vec![7, 8] },

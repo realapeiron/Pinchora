@@ -1,6 +1,17 @@
 # /giveaway.
 
 [giveaway]
+scheduled = "This giveaway opens at its scheduled start."
+starts = "Starts {when}"
+min-level = "Minimum server level: {level}"
+min-account = "Account age: {days} days"
+min-server = "Server membership: {days} days"
+bonus = "{role} receives {entries} bonus entries"
+not-started = "This giveaway has not started yet."
+bonus-needs-role = "Choose a bonus role when adding bonus entries."
+needs-level = "You need level {level} to enter."
+needs-account-age = "Your Discord account must be at least {days} days old."
+needs-server-age = "You must have been in this server for at least {days} days."
 press-enter = "Press **Enter** to join. Press it again to leave."
 hosted-by = "Hosted by {host}"
 ends = "Ends {relative} ({absolute})"

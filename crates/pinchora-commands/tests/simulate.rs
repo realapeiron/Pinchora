@@ -93,6 +93,8 @@ mod anti_nuke;
 mod automod;
 #[path = "simulate/community_pack.rs"]
 mod community_pack;
+#[path = "simulate/community_v2.rs"]
+mod community_v2;
 #[path = "simulate/events.rs"]
 mod events;
 #[path = "simulate/moderation.rs"]
@@ -11249,10 +11251,11 @@ async fn polls_collect_one_vote_each_and_close_into_a_chart() {
 
     // Bad polls are refused before anything is posted.
     let long = format!("a | {}", "x".repeat(81));
+    let too_many = (0..21).map(|n| n.to_string()).collect::<Vec<_>>().join(" | ");
     for (options, duration, expected) in [
-        ("Only one", None, "two to five answers"),
-        ("a | b | c | d | e | f", None, "two to five answers"),
-        ("a | <@1> | ", None, "two to five answers"),
+        ("Only one", None, "two to twenty answers"),
+        (too_many.as_str(), None, "two to twenty answers"),
+        ("a | <@1> | ", None, "two to twenty answers"),
         ("Same | same", None, "different"),
         (long.as_str(), None, "80 characters"),
         ("a | b", Some("later"), "couldn't read"),

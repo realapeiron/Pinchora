@@ -146,6 +146,49 @@ async fn a_giveaway_holds_the_prize_and_gives_back_what_nobody_won() {
 }
 
 #[tokio::test]
+async fn scheduled_giveaway_rejects_early_entries_and_preserves_bonus_weight() {
+    let Some(db) = db().await else { return };
+    let [guild, host, entrant] = ids();
+    let giveaway = open(&db, guild, host, 0, 1).await;
+    let start = Utc::now() + Duration::minutes(2);
+    sqlx::query("UPDATE giveaways SET status='scheduled',starts_at=$2,ends_at=$3 WHERE id=$1")
+        .bind(giveaway.id)
+        .bind(start)
+        .bind(start + Duration::hours(1))
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(
+        db.toggle_giveaway_entry_weighted(giveaway.id, entrant, 4, Utc::now())
+            .await
+            .unwrap(),
+        EntryToggle::Closed
+    );
+    assert!(
+        db.end_giveaway(giveaway.id, Utc::now(), false, first_n)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    sqlx::query("UPDATE giveaways SET status='running' WHERE id=$1 AND starts_at<=$2")
+        .bind(giveaway.id)
+        .bind(start)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(
+        db.toggle_giveaway_entry_weighted(giveaway.id, entrant, 4, start)
+            .await
+            .unwrap(),
+        EntryToggle::Entered(1)
+    );
+    assert_eq!(
+        db.giveaway_entry_weights(giveaway.id).await.unwrap().get(&entrant),
+        Some(&4)
+    );
+}
+
+#[tokio::test]
 async fn a_giveaway_ends_once_however_many_pods_try() {
     let Some(db) = db().await else { return };
     let [guild, host, a, b, c, d, e] = ids();
@@ -310,6 +353,53 @@ async fn polls_take_one_vote_each_and_close_once() {
     assert_eq!(db.vote_poll(poll.id, c, 0, now).await.unwrap(), PollVote::Closed);
     assert!(db.claim_poll_announcement(poll.id, later).await.unwrap());
     assert!(!db.claim_poll_announcement(poll.id, later).await.unwrap());
+}
+
+#[tokio::test]
+async fn multiple_choice_votes_toggle_independently_and_close() {
+    let Some(db) = db().await else { return };
+    let [guild, author, voter] = ids();
+    let options = ["A".to_owned(), "B".to_owned(), "C".to_owned()];
+    let PollOpen::Started(poll) = db
+        .create_poll(NewPoll {
+            guild_id: guild,
+            channel_id: 1,
+            author,
+            question: "Choose any",
+            options: &options,
+            ends_at: Utc::now() + Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("poll not started")
+    };
+    sqlx::query("UPDATE polls SET multiple=TRUE,anonymous=TRUE WHERE id=$1")
+        .bind(poll.id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let now = Utc::now();
+    assert_eq!(
+        db.vote_poll_multiple(poll.id, voter, 0, now).await.unwrap(),
+        PollVote::Cast
+    );
+    assert_eq!(
+        db.vote_poll_multiple(poll.id, voter, 2, now).await.unwrap(),
+        PollVote::Cast
+    );
+    assert_eq!(db.poll_tally(poll.id, 3).await.unwrap(), [1, 0, 1]);
+    assert_eq!(
+        db.vote_poll_multiple(poll.id, voter, 0, now).await.unwrap(),
+        PollVote::Withdrawn
+    );
+    assert_eq!(db.poll_tally(poll.id, 3).await.unwrap(), [0, 0, 1]);
+    assert_eq!(
+        db.vote_poll_multiple(poll.id, voter, 1, now + Duration::hours(2))
+            .await
+            .unwrap(),
+        PollVote::Closed
+    );
 }
 
 #[tokio::test]

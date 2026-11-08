@@ -66,12 +66,23 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     // F19 AFK and sticky messages come after F1.
     crate::utility::after_message(app, msg).await;
     crate::community_pack::on_guild_message(app, msg).await;
+    crate::commands::community_v2::on_message(app, msg).await;
     // F15 AI characters answer mentions.
     Verdict::Continue
 }
 
 /// A member joined, before their join role and welcome.
 pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
+    crate::commands::community_v2::on_join(
+        app,
+        event.guild_id.get(),
+        event.user.id.get(),
+        event
+            .joined_at
+            .and_then(|t| chrono::DateTime::from_timestamp_micros(t.as_micros()))
+            .unwrap_or(app.now()),
+    )
+    .await;
     crate::leveling_parity::on_member_join(app, event).await;
     if crate::mod_parity::member_join(app, event.guild_id.get(), event.user.id.get()).await == JoinVerdict::Held {
         return JoinVerdict::Held;
@@ -99,6 +110,7 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
 
 /// A member left or was removed, before the goodbye.
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
+    crate::commands::community_v2::on_leave(app, event.guild_id.get(), event.user.id.get()).await;
     crate::leveling_parity::on_member_leave(app, event).await;
     crate::verification::on_member_leave(app, event).await;
     if let Err(error) = app

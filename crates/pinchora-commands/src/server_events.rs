@@ -48,6 +48,22 @@ const MISSING_PERMISSIONS: u64 = 50013;
 /// still go out. The step looks at [`SCAN`] due ones at a time, so paused ones cannot starve the others.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let now = app.now();
+    let scheduled: Vec<pinchora_db::Due> = sqlx::query_as(
+        "SELECT id,guild_id,channel_id FROM giveaways WHERE status='scheduled' AND starts_at<=$1 ORDER BY starts_at LIMIT 50")
+        .bind(now).fetch_all(app.db.pool()).await?;
+    for draw in scheduled {
+        if app
+            .module_allowed(draw.guild_id as u64, Some(draw.channel_id as u64), Module::Giveaways)
+            .await
+        {
+            let started: Option<pinchora_db::Due> = sqlx::query_as(
+                "UPDATE giveaways SET status='running' WHERE id=$1 AND status='scheduled' RETURNING id,guild_id,channel_id")
+                .bind(draw.id).fetch_optional(app.db.pool()).await?;
+            if started.is_some() {
+                giveaway::refresh_message(app, draw.id).await;
+            }
+        }
+    }
     let mut ended = 0;
     let mut turns = 0;
     for due in app.db.due_giveaways(now, SCAN).await? {

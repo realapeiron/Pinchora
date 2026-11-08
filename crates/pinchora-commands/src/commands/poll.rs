@@ -1,4 +1,4 @@
-//! `/poll`: a question with two to five answers, one vote per member, results drawn as a pixel
+//! `/poll`: a question with two to twenty answers, results drawn as a pixel
 //! bar chart when it closes (or on demand while it is open, at most every ten seconds).
 
 use std::{
@@ -44,19 +44,25 @@ static CARDS: LazyLock<Mutex<HashMap<(i64, Lang), Drawn>>> = LazyLock::new(Mutex
 #[derive(CommandModel, CreateCommand)]
 #[command(
     name = "poll",
-    desc = "Ask the server a question with up to five answers",
+    desc = "Ask the server a question with up to twenty answers",
     contexts = "guild"
 )]
 pub struct Poll {
     /// The question
     #[command(min_length = 1, max_length = 200)]
     question: String,
-    /// Two to five answers, separated by |
+    /// Two to twenty answers, separated by |
     #[command(min_length = 3, max_length = 450)]
     options: String,
     /// How long it stays open: 30m, 6h, 1d (default 1 day, up to 14 days)
     #[command(max_length = 20)]
     duration: Option<String>,
+    /// Let members select more than one answer
+    multiple: Option<bool>,
+    /// Hide who created this poll on its message
+    anonymous: Option<bool>,
+    /// Only this role may vote
+    required_role: Option<twilight_model::guild::Role>,
 }
 
 /// The answers a member typed, separated by `|`: mentions stripped, blanks dropped.
@@ -66,7 +72,7 @@ fn parse_options(lang: Lang, raw: &str) -> Result<Vec<String>, String> {
         .map(|o| single_line(&strip_mentions(o)))
         .filter(|o| !o.is_empty())
         .collect();
-    if !(2..=5).contains(&options.len()) {
+    if !(2..=20).contains(&options.len()) {
         return Err(t!(lang, "poll.bad-options"));
     }
     if options.iter().any(|o| o.chars().count() > OPTION_MAX) {
@@ -113,7 +119,9 @@ fn poll_embed(lang: Lang, p: &PollRow) -> Embed {
         .map(|(i, o)| format!("**{}** · {o}", i + 1))
         .collect();
     lines.push(String::new());
-    lines.push(t!(lang, "poll.asked-by", author = format!("<@{}>", p.author_id)));
+    if !p.anonymous {
+        lines.push(t!(lang, "poll.asked-by", author = format!("<@{}>", p.author_id)));
+    }
     if p.is_open() {
         lines.push(t!(lang, "poll.closes", when = relative(p.ends_at)));
     } else {
@@ -191,12 +199,25 @@ impl Poll {
                 ends_at: cx.app.now() + span,
             })
             .await?;
-        let poll = match opened {
+        let mut poll = match opened {
             PollOpen::Started(poll) => poll,
             PollOpen::TooMany => {
                 return tell(cx, t!(cx.lang(), "poll.too-many", max = MAX_OPEN_POLLS)).await;
             }
         };
+        let multiple = self.multiple.unwrap_or(false);
+        let anonymous = self.anonymous.unwrap_or(false);
+        let role = self.required_role.map(|r| r.id.get() as i64);
+        sqlx::query("UPDATE polls SET multiple=$2,anonymous=$3,required_role_id=$4 WHERE id=$1")
+            .bind(poll.id)
+            .bind(multiple)
+            .bind(anonymous)
+            .bind(role)
+            .execute(cx.app.db.pool())
+            .await?;
+        poll.multiple = multiple;
+        poll.anonymous = anonymous;
+        poll.required_role_id = role;
         // The poll's message answers nobody in particular: it speaks the server's language.
         let server_lang = cx.app.guild_lang(guild).await;
         let posted = cx
@@ -255,7 +276,23 @@ async fn vote(cx: &Cx, poll: &PollRow, choice: usize) -> anyhow::Result<()> {
         return tell(cx, t!(cx.lang(), "social.button-expired")).await;
     };
     let user = cx.author()?.id.get();
-    let outcome = cx.app.db.vote_poll(poll.id, user, choice, cx.app.now()).await?;
+    if let Some(role) = poll.required_role_id
+        && !cx
+            .interaction
+            .member
+            .as_ref()
+            .is_some_and(|m| m.roles.iter().any(|r| r.get() == role as u64))
+    {
+        return tell(cx, t!(cx.lang(), "poll.needs-role", role = format!("<@&{role}>"))).await;
+    }
+    let outcome = if poll.multiple {
+        cx.app
+            .db
+            .vote_poll_multiple(poll.id, user, choice, cx.app.now())
+            .await?
+    } else {
+        cx.app.db.vote_poll(poll.id, user, choice, cx.app.now()).await?
+    };
     if outcome == PollVote::Cast {
         let held: Vec<u64> = cx
             .interaction
@@ -481,6 +518,9 @@ mod tests {
             ends_at: chrono::Utc::now(),
             status: if open { "open" } else { "closed" }.to_owned(),
             announced: false,
+            multiple: false,
+            anonymous: false,
+            required_role_id: None,
         }
     }
 
@@ -491,7 +531,8 @@ mod tests {
             ["Pizza", "Tacos", "everyone Sushi"]
         );
         assert!(parse_options(Lang::En, "Only one").is_err());
-        assert!(parse_options(Lang::En, "a|b|c|d|e|f").is_err());
+        assert!(parse_options(Lang::En, &(0..20).map(|n| n.to_string()).collect::<Vec<_>>().join("|")).is_ok());
+        assert!(parse_options(Lang::En, &(0..21).map(|n| n.to_string()).collect::<Vec<_>>().join("|")).is_err());
         assert!(parse_options(Lang::En, "a| |<@1>").is_err(), "blanks do not count");
         assert!(parse_options(Lang::En, &format!("a|{}", "x".repeat(81))).is_err());
         assert!(parse_options(Lang::En, &format!("a|{}", "x".repeat(80))).is_ok());
@@ -529,6 +570,9 @@ mod tests {
         five.options = (1..=5).map(|n| format!("Answer {n}")).collect();
         let rows = poll_components(Lang::En, &five);
         assert_eq!(rows.len(), 2, "five answers fill a row; Results goes on the next");
+        five.options = (1..=20).map(|n| format!("Answer {n}")).collect();
+        let rows = poll_components(Lang::En, &five);
+        assert_eq!(rows.len(), 5, "twenty answers and Results fit Discord's five rows");
         assert!(
             poll_components(Lang::En, &poll(false)).is_empty(),
             "no buttons once closed"

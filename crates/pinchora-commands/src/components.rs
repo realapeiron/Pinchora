@@ -95,6 +95,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("rm") => remind::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("pr") => privacy::on_component(cx, parts).await,
         Some("gw") => giveaway::on_component(cx, parts).await,
+        Some("cv") => crate::commands::community_v2::on_confession_button(cx, parts).await,
         Some("sg") => suggest::on_vote(cx, parts).await,
         Some("tg") => customcommand::on_page(cx, parts).await,
         Some("pl") => poll::on_component(cx, parts).await,

@@ -753,6 +753,47 @@
         },
         {
           "aliases": [],
+          "description": "Seçtiğin aralıkta hatırlatıcı gönder",
+          "manager": false,
+          "options": [
+            {
+              "description": "1d veya 1w gibi yineleme aralığı",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Özel hatırlatıcı metni",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "remind repeat",
+          "usage": "/remind repeat <duration> <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Yinelenen hatırlatıcılarını göster",
+          "manager": false,
+          "options": [],
+          "path": "remind repeat-list",
+          "usage": "/remind repeat-list"
+        },
+        {
+          "aliases": [],
+          "description": "Yinelenen bir hatırlatıcıyı kaldır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Hatırlatıcı numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "remind repeat-cancel",
+          "usage": "/remind repeat-cancel <id>"
+        },
+        {
+          "aliases": [],
           "description": "Doğum gününü gizlilik seçimlerinle kaydet",
           "manager": false,
           "options": [
@@ -2061,7 +2102,7 @@
       "commands": [
         {
           "aliases": [],
-          "description": "Sunucuya en fazla beş cevaplı bir soru sor",
+          "description": "Sunucuya en fazla yirmi cevaplı bir soru sor",
           "manager": false,
           "options": [
             {
@@ -2070,7 +2111,7 @@
               "required": true
             },
             {
-              "description": "| ile ayrılmış iki ila beş cevap",
+              "description": "| ile ayrılmış iki ila yirmi cevap",
               "name": "options",
               "required": true
             },
@@ -2078,10 +2119,25 @@
               "description": "Ne kadar açık kalır: 30m, 6h, 1d (varsayılan 1 gün, en çok 14 gün)",
               "name": "duration",
               "required": false
+            },
+            {
+              "description": "Birden fazla seçenek seçilebilsin",
+              "name": "multiple",
+              "required": false
+            },
+            {
+              "description": "Anketi açan kişi gizlensin",
+              "name": "anonymous",
+              "required": false
+            },
+            {
+              "description": "Oy verebilen rol",
+              "name": "required_role",
+              "required": false
             }
           ],
           "path": "poll",
-          "usage": "/poll <question> <options> [duration]"
+          "usage": "/poll <question> <options> [duration] [multiple] [anonymous] [required_role]"
         },
         {
           "aliases": [],
@@ -2096,6 +2152,67 @@
           ],
           "path": "suggest",
           "usage": "/suggest <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Öneriyi değerlendirmede olarak işaretle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Öneri numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "suggestion consider",
+          "usage": "/suggestion consider <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Öneriyi uygulandı olarak işaretle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Öneri numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "suggestion implement",
+          "usage": "/suggestion implement <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Özel ekip notu ekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Öneri numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Ekip notu",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "suggestion note",
+          "usage": "/suggestion note <id> <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Öneri için tartışma konusu aç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Öneri numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "suggestion thread",
+          "usage": "/suggestion thread <id>"
         },
         {
           "aliases": [
@@ -2173,10 +2290,40 @@
               "description": "Yalnızca bu role sahip üyeler katılabilir",
               "name": "required_role",
               "required": false
+            },
+            {
+              "description": "Katılım için en düşük sunucu seviyesi",
+              "name": "min_level",
+              "required": false
+            },
+            {
+              "description": "Discord hesabı için en az gün",
+              "name": "account_days",
+              "required": false
+            },
+            {
+              "description": "Sunucuda bulunma için en az gün",
+              "name": "server_days",
+              "required": false
+            },
+            {
+              "description": "Ek katılım hakkı veren rol",
+              "name": "bonus_role",
+              "required": false
+            },
+            {
+              "description": "Rol için ek katılım hakkı",
+              "name": "bonus_entries",
+              "required": false
+            },
+            {
+              "description": "Başlamadan önce beklenecek süre",
+              "name": "start_in",
+              "required": false
             }
           ],
           "path": "giveaway start",
-          "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role]"
+          "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role] [min_level] [account_days] [server_days] [bonus_role] [bonus_entries] [start_in]"
         },
         {
           "aliases": [],
@@ -2218,6 +2365,226 @@
           "options": [],
           "path": "giveaway list",
           "usage": "/giveaway list"
+        },
+        {
+          "aliases": [],
+          "description": "Bir kelime söylenince özel mesaj al",
+          "manager": false,
+          "options": [
+            {
+              "description": "Takip edilecek kelime",
+              "name": "word",
+              "required": true
+            }
+          ],
+          "path": "highlight add",
+          "usage": "/highlight add <word>"
+        },
+        {
+          "aliases": [],
+          "description": "Kelime takibini bırak",
+          "manager": false,
+          "options": [
+            {
+              "description": "Takipten çıkarılacak kelime",
+              "name": "word",
+              "required": true
+            }
+          ],
+          "path": "highlight remove",
+          "usage": "/highlight remove <word>"
+        },
+        {
+          "aliases": [],
+          "description": "Takip ettiğin kelimeleri göster",
+          "manager": false,
+          "options": [],
+          "path": "highlight list",
+          "usage": "/highlight list"
+        },
+        {
+          "aliases": [],
+          "description": "Listeye görev ekle",
+          "manager": false,
+          "options": [
+            {
+              "description": "Görev metni",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "checklist add",
+          "usage": "/checklist add <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Kontrol listeni göster",
+          "manager": false,
+          "options": [],
+          "path": "checklist list",
+          "usage": "/checklist list"
+        },
+        {
+          "aliases": [],
+          "description": "Bir görevi tamamla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Görev numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "checklist done",
+          "usage": "/checklist done <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Bir görevi kaldır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Görev numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "checklist remove",
+          "usage": "/checklist remove <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Kanalın otomatik işlemlerini ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ayarlanacak kanal",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Her yeni mesaj için tartışma konusu aç",
+              "name": "thread",
+              "required": true
+            },
+            {
+              "description": "Duyuruları çapraz paylaş",
+              "name": "crosspost",
+              "required": true
+            }
+          ],
+          "path": "autopost set",
+          "usage": "/autopost set <channel> <thread> <crosspost>"
+        },
+        {
+          "aliases": [],
+          "description": "Kanalın otomatik işlemlerini durdur",
+          "manager": true,
+          "options": [
+            {
+              "description": "Durdurulacak kanal",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "autopost remove",
+          "usage": "/autopost remove <channel>"
+        },
+        {
+          "aliases": [],
+          "description": "Otomatik kanal işlemlerini göster",
+          "manager": true,
+          "options": [],
+          "path": "autopost list",
+          "usage": "/autopost list"
+        },
+        {
+          "aliases": [],
+          "description": "Yıl dönümlerinin paylaşılacağı kanalı seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Duyuru kanalı",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "anniversary set",
+          "usage": "/anniversary set <channel>"
+        },
+        {
+          "aliases": [],
+          "description": "Yıl dönümü duyurularını kapat",
+          "manager": true,
+          "options": [],
+          "path": "anniversary off",
+          "usage": "/anniversary off"
+        },
+        {
+          "aliases": [],
+          "description": "İtirafını gizli inceleme sırasına gönder",
+          "manager": false,
+          "options": [
+            {
+              "description": "İtiraf metni",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "confess submit",
+          "usage": "/confess submit <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Sıradaki itirafı onayla veya reddet",
+          "manager": false,
+          "options": [
+            {
+              "description": "İtiraf numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Yayımlanması için onayla",
+              "name": "approve",
+              "required": true
+            }
+          ],
+          "path": "confess review",
+          "usage": "/confess review <id> <approve>"
+        },
+        {
+          "aliases": [],
+          "description": "Yalnızca sunucu sahibi: yazarı denetim kaydıyla göster",
+          "manager": false,
+          "options": [
+            {
+              "description": "İtiraf numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "confess reveal",
+          "usage": "/confess reveal <id>"
+        },
+        {
+          "aliases": [],
+          "description": "İnceleme ve yayın kanallarını ayarla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Özel ekip inceleme kanalı",
+              "name": "review_channel",
+              "required": true
+            },
+            {
+              "description": "Herkese açık yayın kanalı",
+              "name": "publish_channel",
+              "required": true
+            }
+          ],
+          "path": "confess settings",
+          "usage": "/confess settings <review_channel> <publish_channel>"
         },
         {
           "aliases": [
@@ -7512,5 +7879,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 388
+  "count": 411
 }

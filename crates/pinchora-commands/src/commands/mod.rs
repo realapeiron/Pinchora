@@ -9,6 +9,7 @@ pub(crate) mod character;
 pub(crate) mod collection;
 pub(crate) mod command_control;
 pub(crate) mod community_pack;
+pub(crate) mod community_v2;
 pub(crate) mod config;
 pub(crate) mod connect4;
 pub(crate) mod contest;
@@ -141,6 +142,11 @@ macro_rules! commands {
 commands!(
     moderation::parity::Parity,
     community_pack::CommunityAdmin,
+    community_v2::HighlightCommand,
+    community_v2::ChecklistCommand,
+    community_v2::AutopostCommand,
+    community_v2::AnniversaryCommand,
+    community_v2::ConfessCommand,
     community_pack::QotdCommand,
     community_pack::CountingCommand,
     community_pack::FormCommand,

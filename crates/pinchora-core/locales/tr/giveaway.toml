@@ -1,6 +1,17 @@
 # /giveaway.
 
 [giveaway]
+scheduled = "Bu çekiliş planlanan zamanda açılacak."
+starts = "Başlangıç: {when}"
+min-level = "En düşük sunucu seviyesi: {level}"
+min-account = "Hesap yaşı: {days} gün"
+min-server = "Sunucu üyeliği: {days} gün"
+bonus = "{role} rolü {entries} ek katılım hakkı kazanır"
+not-started = "Bu çekiliş henüz başlamadı."
+bonus-needs-role = "Ek katılım hakkı için bir rol seç."
+needs-level = "Katılmak için {level}. seviyeye ulaşmalısın."
+needs-account-age = "Discord hesabın en az {days} günlük olmalı."
+needs-server-age = "Bu sunucuda en az {days} gündür bulunmalısın."
 press-enter = "Katılmak için **Katıl**'a bas. Ayrılmak için yeniden bas."
 hosted-by = "Düzenleyen: {host}"
 ends = "Bitiş: {relative} ({absolute})"

@@ -753,6 +753,47 @@
         },
         {
           "aliases": [],
+          "description": "Remind me every day, week, or chosen interval",
+          "manager": false,
+          "options": [
+            {
+              "description": "Interval such as 1d or 1w, from one hour to one year",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Private reminder text",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "remind repeat",
+          "usage": "/remind repeat <duration> <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Show my recurring reminders",
+          "manager": false,
+          "options": [],
+          "path": "remind repeat-list",
+          "usage": "/remind repeat-list"
+        },
+        {
+          "aliases": [],
+          "description": "Cancel a recurring reminder",
+          "manager": false,
+          "options": [
+            {
+              "description": "Recurring reminder number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "remind repeat-cancel",
+          "usage": "/remind repeat-cancel <id>"
+        },
+        {
+          "aliases": [],
           "description": "Save your birthday privately; you choose whether others can see it",
           "manager": false,
           "options": [
@@ -2061,7 +2102,7 @@
       "commands": [
         {
           "aliases": [],
-          "description": "Ask the server a question with up to five answers",
+          "description": "Ask the server a question with up to twenty answers",
           "manager": false,
           "options": [
             {
@@ -2070,7 +2111,7 @@
               "required": true
             },
             {
-              "description": "Two to five answers, separated by |",
+              "description": "Two to twenty answers, separated by |",
               "name": "options",
               "required": true
             },
@@ -2078,10 +2119,25 @@
               "description": "How long it stays open: 30m, 6h, 1d (default 1 day, up to 14 days)",
               "name": "duration",
               "required": false
+            },
+            {
+              "description": "Let members select more than one answer",
+              "name": "multiple",
+              "required": false
+            },
+            {
+              "description": "Hide who created this poll on its message",
+              "name": "anonymous",
+              "required": false
+            },
+            {
+              "description": "Only this role may vote",
+              "name": "required_role",
+              "required": false
             }
           ],
           "path": "poll",
-          "usage": "/poll <question> <options> [duration]"
+          "usage": "/poll <question> <options> [duration] [multiple] [anonymous] [required_role]"
         },
         {
           "aliases": [],
@@ -2096,6 +2152,67 @@
           ],
           "path": "suggest",
           "usage": "/suggest <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Mark a suggestion as under consideration",
+          "manager": true,
+          "options": [
+            {
+              "description": "Suggestion number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "suggestion consider",
+          "usage": "/suggestion consider <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Mark a suggestion as implemented",
+          "manager": true,
+          "options": [
+            {
+              "description": "Suggestion number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "suggestion implement",
+          "usage": "/suggestion implement <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Add a private staff note",
+          "manager": true,
+          "options": [
+            {
+              "description": "Suggestion number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Staff-only note",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "suggestion note",
+          "usage": "/suggestion note <id> <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Open a discussion thread on a suggestion",
+          "manager": true,
+          "options": [
+            {
+              "description": "Suggestion number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "suggestion thread",
+          "usage": "/suggestion thread <id>"
         },
         {
           "aliases": [
@@ -2173,10 +2290,40 @@
               "description": "Only members with this role can enter",
               "name": "required_role",
               "required": false
+            },
+            {
+              "description": "Minimum level in this server",
+              "name": "min_level",
+              "required": false
+            },
+            {
+              "description": "Minimum Discord account age in days",
+              "name": "account_days",
+              "required": false
+            },
+            {
+              "description": "Minimum time in this server in days",
+              "name": "server_days",
+              "required": false
+            },
+            {
+              "description": "Members with this role receive bonus entries",
+              "name": "bonus_role",
+              "required": false
+            },
+            {
+              "description": "Extra entries for the bonus role, up to 20",
+              "name": "bonus_entries",
+              "required": false
+            },
+            {
+              "description": "Wait before opening: 1m to 30d",
+              "name": "start_in",
+              "required": false
             }
           ],
           "path": "giveaway start",
-          "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role]"
+          "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role] [min_level] [account_days] [server_days] [bonus_role] [bonus_entries] [start_in]"
         },
         {
           "aliases": [],
@@ -2218,6 +2365,226 @@
           "options": [],
           "path": "giveaway list",
           "usage": "/giveaway list"
+        },
+        {
+          "aliases": [],
+          "description": "DM me when this word is said",
+          "manager": false,
+          "options": [
+            {
+              "description": "Word to follow",
+              "name": "word",
+              "required": true
+            }
+          ],
+          "path": "highlight add",
+          "usage": "/highlight add <word>"
+        },
+        {
+          "aliases": [],
+          "description": "Stop following a word",
+          "manager": false,
+          "options": [
+            {
+              "description": "Word to remove",
+              "name": "word",
+              "required": true
+            }
+          ],
+          "path": "highlight remove",
+          "usage": "/highlight remove <word>"
+        },
+        {
+          "aliases": [],
+          "description": "Words I follow in this server",
+          "manager": false,
+          "options": [],
+          "path": "highlight list",
+          "usage": "/highlight list"
+        },
+        {
+          "aliases": [],
+          "description": "Add a task to your checklist",
+          "manager": false,
+          "options": [
+            {
+              "description": "Task text",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "checklist add",
+          "usage": "/checklist add <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Show your checklist",
+          "manager": false,
+          "options": [],
+          "path": "checklist list",
+          "usage": "/checklist list"
+        },
+        {
+          "aliases": [],
+          "description": "Mark one item complete",
+          "manager": false,
+          "options": [
+            {
+              "description": "Item number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "checklist done",
+          "usage": "/checklist done <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Remove a checklist item",
+          "manager": false,
+          "options": [
+            {
+              "description": "Item number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "checklist remove",
+          "usage": "/checklist remove <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Set automatic actions in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to configure",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Create a discussion thread for each new message",
+              "name": "thread",
+              "required": true
+            },
+            {
+              "description": "Crosspost each announcement",
+              "name": "crosspost",
+              "required": true
+            }
+          ],
+          "path": "autopost set",
+          "usage": "/autopost set <channel> <thread> <crosspost>"
+        },
+        {
+          "aliases": [],
+          "description": "Stop automatic actions in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to stop",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "autopost remove",
+          "usage": "/autopost remove <channel>"
+        },
+        {
+          "aliases": [],
+          "description": "Show automatic channel actions",
+          "manager": true,
+          "options": [],
+          "path": "autopost list",
+          "usage": "/autopost list"
+        },
+        {
+          "aliases": [],
+          "description": "Post member anniversaries in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Announcement channel",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "anniversary set",
+          "usage": "/anniversary set <channel>"
+        },
+        {
+          "aliases": [],
+          "description": "Stop anniversary announcements",
+          "manager": true,
+          "options": [],
+          "path": "anniversary off",
+          "usage": "/anniversary off"
+        },
+        {
+          "aliases": [],
+          "description": "Submit privately to the review queue",
+          "manager": false,
+          "options": [
+            {
+              "description": "Confession text",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "confess submit",
+          "usage": "/confess submit <text>"
+        },
+        {
+          "aliases": [],
+          "description": "Approve or deny a queued confession",
+          "manager": false,
+          "options": [
+            {
+              "description": "Confession number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Approve for public posting",
+              "name": "approve",
+              "required": true
+            }
+          ],
+          "path": "confess review",
+          "usage": "/confess review <id> <approve>"
+        },
+        {
+          "aliases": [],
+          "description": "Server owner only: reveal an author with an audit entry",
+          "manager": false,
+          "options": [
+            {
+              "description": "Confession number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "confess reveal",
+          "usage": "/confess reveal <id>"
+        },
+        {
+          "aliases": [],
+          "description": "Set review and public channels",
+          "manager": false,
+          "options": [
+            {
+              "description": "Private staff review channel",
+              "name": "review_channel",
+              "required": true
+            },
+            {
+              "description": "Public channel for approved posts",
+              "name": "publish_channel",
+              "required": true
+            }
+          ],
+          "path": "confess settings",
+          "usage": "/confess settings <review_channel> <publish_channel>"
         },
         {
           "aliases": [
@@ -7512,5 +7879,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 388
+  "count": 411
 }
