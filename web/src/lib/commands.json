@@ -1574,6 +1574,108 @@
       "commands": [
         {
           "aliases": [],
+          "description": "Show a League account's rank and champions",
+          "manager": false,
+          "options": [
+            {
+              "description": "Riot ID, for example Player#EUW",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Europe West",
+                "North America",
+                "Europe Nordic",
+                "Korea",
+                "Brazil",
+                "Turkey",
+                "Japan"
+              ],
+              "description": "League platform",
+              "name": "region",
+              "required": true
+            }
+          ],
+          "path": "game lol profile",
+          "usage": "/game lol profile <name> <region>"
+        },
+        {
+          "aliases": [],
+          "description": "Link your League Riot ID",
+          "manager": false,
+          "options": [
+            {
+              "description": "Riot ID, for example Player#EUW",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Europe West",
+                "North America",
+                "Europe Nordic",
+                "Korea",
+                "Brazil",
+                "Turkey",
+                "Japan"
+              ],
+              "description": "League platform",
+              "name": "region",
+              "required": true
+            }
+          ],
+          "path": "game lol link",
+          "usage": "/game lol link <name> <region>"
+        },
+        {
+          "aliases": [],
+          "description": "Remove your linked League account",
+          "manager": false,
+          "options": [],
+          "path": "game lol unlink",
+          "usage": "/game lol unlink"
+        },
+        {
+          "aliases": [],
+          "description": "Valorant profile status",
+          "manager": false,
+          "options": [],
+          "path": "game valorant profile",
+          "usage": "/game valorant profile"
+        },
+        {
+          "aliases": [],
+          "description": "Ping a public Minecraft Java server",
+          "manager": false,
+          "options": [
+            {
+              "description": "Public DNS name and optional port",
+              "name": "host",
+              "required": true
+            }
+          ],
+          "path": "game mc status",
+          "usage": "/game mc status <host>"
+        },
+        {
+          "aliases": [],
+          "description": "Latest Minecraft Java releases",
+          "manager": false,
+          "options": [],
+          "path": "game mc news",
+          "usage": "/game mc news"
+        },
+        {
+          "aliases": [],
+          "description": "Start a Minecraft trivia round",
+          "manager": false,
+          "options": [],
+          "path": "game mc trivia",
+          "usage": "/game mc trivia"
+        },
+        {
+          "aliases": [],
           "description": "Guess the word before the tide takes the sandcastle",
           "manager": false,
           "options": [],
@@ -1612,7 +1714,8 @@
                 "Geography",
                 "Food",
                 "History",
-                "Home"
+                "Home",
+                "Minecraft"
               ],
               "description": "Pick a topic (default: anything)",
               "name": "category",
@@ -2769,6 +2872,121 @@
           ],
           "path": "integrations feeds test",
           "usage": "/integrations feeds test <id>"
+        },
+        {
+          "aliases": [
+            "trackers mc-news-channel"
+          ],
+          "description": "Set the Minecraft news channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for Minecraft news",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Clear the channel",
+              "name": "clear",
+              "required": false
+            }
+          ],
+          "path": "integrations trackers mc-news-channel",
+          "usage": "/integrations trackers mc-news-channel [channel] [clear]"
+        },
+        {
+          "aliases": [
+            "trackers mc-unwatch"
+          ],
+          "description": "Stop watching a Minecraft server",
+          "manager": true,
+          "options": [
+            {
+              "description": "Minecraft host to remove",
+              "name": "host",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers mc-unwatch",
+          "usage": "/integrations trackers mc-unwatch <host>"
+        },
+        {
+          "aliases": [
+            "trackers mc-watch"
+          ],
+          "description": "Update a Minecraft server status every five minutes",
+          "manager": true,
+          "options": [
+            {
+              "description": "Public Minecraft host and optional port",
+              "name": "host",
+              "required": true
+            },
+            {
+              "description": "Channel for status updates",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers mc-watch",
+          "usage": "/integrations trackers mc-watch <host> <channel>"
+        },
+        {
+          "aliases": [
+            "trackers patch-add"
+          ],
+          "description": "Post official patch notes to a channel",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "League of Legends",
+                "Valorant",
+                "Minecraft"
+              ],
+              "description": "Game to follow",
+              "name": "game",
+              "required": true
+            },
+            {
+              "description": "Channel for patch notes",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers patch-add",
+          "usage": "/integrations trackers patch-add <game> <channel>"
+        },
+        {
+          "aliases": [
+            "trackers patch-list"
+          ],
+          "description": "List game patch channels",
+          "manager": true,
+          "options": [],
+          "path": "integrations trackers patch-list",
+          "usage": "/integrations trackers patch-list"
+        },
+        {
+          "aliases": [
+            "trackers patch-remove"
+          ],
+          "description": "Stop patch notes for a game",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "League of Legends",
+                "Valorant",
+                "Minecraft"
+              ],
+              "description": "Game to stop following",
+              "name": "game",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers patch-remove",
+          "usage": "/integrations trackers patch-remove <game>"
         },
         {
           "aliases": [
@@ -4718,6 +4936,62 @@
           ],
           "path": "setup backup restore",
           "usage": "/setup backup restore <id>"
+        },
+        {
+          "aliases": [
+            "branding apply"
+          ],
+          "description": "Apply the server profile and embed colour",
+          "manager": true,
+          "options": [
+            {
+              "description": "The server nickname (up to 32 characters)",
+              "name": "nickname",
+              "required": false
+            },
+            {
+              "description": "Avatar upload ID from the dashboard",
+              "name": "avatar",
+              "required": false
+            },
+            {
+              "description": "Banner upload ID from the dashboard",
+              "name": "banner",
+              "required": false
+            },
+            {
+              "description": "Profile bio (up to 190 characters)",
+              "name": "bio",
+              "required": false
+            },
+            {
+              "description": "Embed colour as #RRGGBB",
+              "name": "colour",
+              "required": false
+            }
+          ],
+          "path": "setup branding apply",
+          "usage": "/setup branding apply [nickname] [avatar] [banner] [bio] [colour]"
+        },
+        {
+          "aliases": [
+            "branding reset"
+          ],
+          "description": "Clear this server's branding",
+          "manager": true,
+          "options": [],
+          "path": "setup branding reset",
+          "usage": "/setup branding reset"
+        },
+        {
+          "aliases": [
+            "branding show"
+          ],
+          "description": "Show this server's bot profile and colour",
+          "manager": true,
+          "options": [],
+          "path": "setup branding show",
+          "usage": "/setup branding show"
         },
         {
           "aliases": [],
@@ -7046,5 +7320,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 365
+  "count": 381
 }
