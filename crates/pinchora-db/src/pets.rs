@@ -394,6 +394,7 @@ impl Db {
         day: i32,
         fee: i64,
     ) -> anyhow::Result<Wake> {
+        let seen_at = crate::timestamp(seen_at);
         retry("wake_pet", || {
             self.wake_pet_once(owner, pet_id, seen_at, needs, at, day, fee)
         })

@@ -128,31 +128,19 @@ pub struct BindRemove {
 pub struct BindList;
 
 impl RobloxCommand {
-    pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral(t!(cx.lang(), "roblox.guild-only")).await;
-        };
-        let me = cx.author()?.id.get();
-        let _lease = if matches!(&self, Self::Verify(_) | Self::Unverify(_)) {
-            let Some(lease) = cx
-                .app
-                .cache
-                .verification_lease(
-                    &format!("roblox:user:{me}"),
-                    &format!("{:032x}", rand::random::<u128>()),
-                )
-                .await?
-            else {
-                return cx.reply_ephemeral(t!(cx.lang(), "roblox.busy")).await;
-            };
-            Some(lease)
-        } else {
-            None
-        };
+    /// Prepare the response while holding the user lease; send it only after release.
+    async fn change_link(self, cx: &Cx, guild: u64, me: u64) -> anyhow::Result<InteractionResponseData> {
+        fn message(content: String) -> InteractionResponseData {
+            InteractionResponseData {
+                content: Some(content),
+                flags: Some(twilight_model::channel::message::MessageFlags::EPHEMERAL),
+                ..Default::default()
+            }
+        }
         match self {
             Self::Verify(command) => {
                 if cx.app.db.roblox_link(me).await?.is_some() {
-                    return cx.reply_ephemeral(t!(cx.lang(), "roblox.already-linked")).await;
+                    return Ok(message(t!(cx.lang(), "roblox.already-linked")));
                 }
                 if cx
                     .app
@@ -161,14 +149,14 @@ impl RobloxCommand {
                     .await?
                     .is_some()
                 {
-                    return cx.reply_ephemeral(t!(cx.lang(), "roblox.verify-cooldown")).await;
+                    return Ok(message(t!(cx.lang(), "roblox.verify-cooldown")));
                 }
                 let (id, name) = match RobloxApi::with_cache(&cx.app.cache).lookup(&command.username).await {
                     Ok(v) => v,
-                    Err(_) => return cx.reply_ephemeral(t!(cx.lang(), "roblox.not-found")).await,
+                    Err(_) => return Ok(message(t!(cx.lang(), "roblox.not-found"))),
                 };
                 if cx.app.db.roblox_link_by_id(id).await?.is_some() {
-                    return cx.reply_ephemeral(t!(cx.lang(), "roblox.taken")).await;
+                    return Ok(message(t!(cx.lang(), "roblox.taken")));
                 }
                 let code = format!("pinchora-{me:x}-{id:x}-{:032x}", rand::random::<u128>());
                 cx.app.db.roblox_start(me, id, &name, &code).await?;
@@ -185,20 +173,46 @@ impl RobloxCommand {
                         sku_id: None,
                     })],
                 });
-                cx.reply(InteractionResponseData {
+                Ok(InteractionResponseData {
                     content: Some(t!(cx.lang(), "roblox.instructions", name = name, code = code)),
                     components: Some(vec![button]),
                     flags: Some(twilight_model::channel::message::MessageFlags::EPHEMERAL),
                     ..Default::default()
                 })
-                .await
             }
             Self::Unverify(_) => {
                 cx.app.db.roblox_unlink(me).await?;
                 cx.app.db.roblox_queue_linked_guilds(me).await?;
                 cx.app.db.roblox_queue(guild, me).await?;
-                cx.reply_ephemeral(t!(cx.lang(), "roblox.unlinked")).await
+                Ok(message(t!(cx.lang(), "roblox.unlinked")))
             }
+            _ => unreachable!("only link changes hold the user lease"),
+        }
+    }
+
+    pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let Some(guild) = cx.guild_id() else {
+            return cx.reply_ephemeral(t!(cx.lang(), "roblox.guild-only")).await;
+        };
+        let me = cx.author()?.id.get();
+        if matches!(&self, Self::Verify(_) | Self::Unverify(_)) {
+            let Some(lease) = cx
+                .app
+                .cache
+                .verification_lease(
+                    &format!("roblox:user:{me}"),
+                    &format!("{:032x}", rand::random::<u128>()),
+                )
+                .await?
+            else {
+                return cx.reply_ephemeral(t!(cx.lang(), "roblox.busy")).await;
+            };
+            let response = self.change_link(cx, guild, me).await;
+            lease.release().await?;
+            return cx.reply(response?).await;
+        }
+        match self {
+            Self::Verify(_) | Self::Unverify(_) => unreachable!("handled above"),
             Self::Whois(command) => {
                 let user = command.user.map_or(me, |u| u.resolved.id.get());
                 if user != me && super::privacy::private_profile(cx, user).await? {
@@ -423,7 +437,7 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
         return Ok(());
     }
     let user = cx.author()?.id.get();
-    let Some(_lease) = cx
+    let Some(lease) = cx
         .app
         .cache
         .verification_lease(
@@ -434,25 +448,31 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
     else {
         return cx.reply_ephemeral(t!(cx.lang(), "roblox.busy")).await;
     };
+    let response = check_profile(cx, user).await;
+    lease.release().await?;
+    cx.reply_ephemeral(response?).await
+}
+
+async fn check_profile(cx: &Cx, user: u64) -> anyhow::Result<String> {
     let Some(mut pending) = cx.app.db.roblox_pending(user).await? else {
-        return cx.reply_ephemeral(t!(cx.lang(), "roblox.expired")).await;
+        return Ok(t!(cx.lang(), "roblox.expired"));
     };
     if !cx.app.db.roblox_check_attempt(user, &pending.code).await? {
-        return cx.reply_ephemeral(t!(cx.lang(), "roblox.check-cooldown")).await;
+        return Ok(t!(cx.lang(), "roblox.check-cooldown"));
     }
     let profile = match RobloxApi::with_cache(&cx.app.cache)
         .profile(pending.roblox_id as u64)
         .await
     {
         Ok(Some(p)) if !p.is_banned => p,
-        _ => return cx.reply_ephemeral(t!(cx.lang(), "roblox.api-error")).await,
+        _ => return Ok(t!(cx.lang(), "roblox.api-error")),
     };
     if !roblox::description_has_code(&profile.description, &pending.code) {
-        return cx.reply_ephemeral(t!(cx.lang(), "roblox.code-missing")).await;
+        return Ok(t!(cx.lang(), "roblox.code-missing"));
     }
     pending.roblox_name = profile.name;
     if !cx.app.db.roblox_complete(user, &pending).await? {
-        return cx.reply_ephemeral(t!(cx.lang(), "roblox.taken")).await;
+        return Ok(t!(cx.lang(), "roblox.taken"));
     }
     cx.app.db.roblox_queue_linked_guilds(user).await?;
     if let Some(guild) = cx.guild_id() {
@@ -463,6 +483,5 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
     {
         tracing::warn!(guild,user,%error,"Roblox join release failed");
     }
-    cx.reply_ephemeral(t!(cx.lang(), "roblox.verified", name = pending.roblox_name))
-        .await
+    Ok(t!(cx.lang(), "roblox.verified", name = pending.roblox_name))
 }

@@ -1,0 +1,196 @@
+CI timestamp audit — 2026-11-08, fix/ci-green based on c92cf97
+
+Scope: production Rust and embedded SQL throughout crates/. Reviewed timestamp
+column names against migrations (read only), equality/IS NOT DISTINCT FROM,
+reverse parameter comparisons, timestamp tokens, and dynamic SQL key predicates.
+Count: 28 guard/query sites: 22 SQL statements (25 timestamp predicates) and
+6 Rust guards. One Rust API precision defect fixed; 27 sites safe against it.
+A statement with multiple timestamp predicates counts as one site.
+
+SQLx 0.9's postgres chrono encoder uses num_microseconds() since the PostgreSQL
+epoch. Modern application timestamps are therefore truncated on every SQL bind;
+a SQL WHERE timestamp = $n is not comparing nanoseconds with microseconds.
+The Rust wake comparison bypassed that encoding. The public wake_pet boundary
+now uses the single pinchora_db::timestamp helper. No migration is needed.
+
+Production impact: both Discord pet::wake and web_player_depth::wake_pet fetch
+pets from PostgreSQL immediately before passing pet.needs_at. Neither supplies
+a newly generated nanosecond timestamp as the guard. Thus the logs do not show
+Linux users unable to wake pets; this was a latent production API defect exposed
+by the test retaining its write timestamp. The other three failures were exact
+assertions against unrepresentable nanoseconds. Fixtures now use database
+precision; every original assertion remains. The new explicit .958061832Z
+regression exercises raw input, a one-microsecond stale guard, single-use/free
+wake behavior, exact read-back, and SQL trip/care guards on macOS as well.
+
+Sites (line numbers after this change):
+
+
+01. crates/pinchora-db/src/pets.rs:274 — start_trip
+    needs_at = $9
+    SAFE: seen.needs_at from a PetRow; SQLx binds microseconds; SQL comparison uses microsecond values.
+
+02. crates/pinchora-db/src/pets.rs:593 — save_pet_on (save_pet and care_pet)
+    needs_at = $10; trip_ends_at IS NOT DISTINCT FROM $14
+    SAFE: PetRow timestamps; both SQL binds truncate, including a caller-retained nanosecond timestamp; SQL comparison uses microsecond values.
+
+03. crates/pinchora-db/src/party.rs:313 — claim_surge_slot
+    surge_next_at = $2
+    SAFE: due_surges database row; SQL comparison uses microsecond values.
+
+04. crates/pinchora-db/src/roles_pack.rs:445 — removal_current
+    remove_at = $2; lease_until = $3
+    SAFE: claim_due_removals RETURNING row; SQL comparison uses microsecond values.
+
+05. crates/pinchora-db/src/roles_pack.rs:459 — finish_removal
+    remove_at = $2; lease_until = $3
+    SAFE: claim_due_removals RETURNING row; SQL comparison uses microsecond values.
+
+06. crates/pinchora-db/src/moderation.rs:494 — close_ban
+    created_at = $3
+    SAFE: CaseRow from PostgreSQL; SQL comparison uses microsecond values.
+
+07. crates/pinchora-db/src/moderation.rs:514 — postpone_lift
+    created_at = $3
+    SAFE: CaseRow from PostgreSQL; SQL comparison uses microsecond values.
+
+08. crates/pinchora-db/src/reminders.rs:244 — finish_reminder
+    due_at = $2
+    SAFE: ReminderRow from PostgreSQL; SQL comparison uses microsecond values.
+
+09. crates/pinchora-db/src/reminders.rs:254 — postpone_reminder
+    due_at = $2
+    SAFE: ReminderRow from PostgreSQL; SQL comparison uses microsecond values.
+
+10. crates/pinchora-db/src/events.rs:615 — claim_event_delivery
+    q.due_at = $5
+    SAFE: ReminderRow from PostgreSQL; SQL comparison uses microsecond values.
+
+11. crates/pinchora-db/src/utility.rs:172 — begin_sticky
+    lease_until = $2
+    SAFE: claim_stickies RETURNING row; SQL comparison uses microsecond values.
+
+12. crates/pinchora-db/src/utility.rs:178 — finish_sticky
+    lease_until = $3
+    SAFE: claim_stickies RETURNING row; SQL comparison uses microsecond values.
+
+13. crates/pinchora-db/src/utility.rs:194 — release_sticky
+    lease_until = $2
+    SAFE: claim_stickies RETURNING row; SQL comparison uses microsecond values.
+
+14. crates/pinchora-db/src/utility.rs:203 — pause_sticky
+    lease_until = $2
+    SAFE: claim_stickies RETURNING row; SQL comparison uses microsecond values.
+
+15. crates/pinchora-db/src/utility.rs:288 — begin_schedule
+    lease_until = $2
+    SAFE: claim_schedules/claim_schedule_now RETURNING row; SQL comparison uses microsecond values.
+
+16. crates/pinchora-db/src/utility.rs:293 — finish_schedule
+    lease_until = $3
+    SAFE: claim_schedules/claim_schedule_now RETURNING row; SQL comparison uses microsecond values.
+
+17. crates/pinchora-db/src/utility.rs:299 — release_schedule
+    lease_until = $2
+    SAFE: claim_schedules/claim_schedule_now RETURNING row; SQL comparison uses microsecond values.
+
+18. crates/pinchora-db/src/utility.rs:308 — pause_schedule
+    lease_until = $2
+    SAFE: claim_schedules/claim_schedule_now RETURNING row; SQL comparison uses microsecond values.
+
+19. crates/pinchora-db/src/reef_loop.rs:471 — reef_partner_once
+    since = $3
+    SAFE: partner() database row, rechecked under user locks; SQL comparison uses microsecond values.
+
+20. crates/pinchora-commands/src/commands/community_v2.rs:887 — tick recurring reminder completion
+    lease_until = $2
+    SAFE: UPDATE RETURNING lease generated by PostgreSQL; SQL comparison uses microsecond values.
+
+21. crates/pinchora-commands/src/commands/community_v2.rs:969 — tick_autopost disabled module
+    lease_until = $2
+    SAFE: UPDATE RETURNING lease generated by PostgreSQL; SQL comparison uses microsecond values.
+
+22. crates/pinchora-commands/src/commands/community_v2.rs:1019 — tick_autopost completion
+    lease_until = $2
+    SAFE: UPDATE RETURNING lease generated by PostgreSQL; SQL comparison uses microsecond values.
+
+23. crates/pinchora-db/src/pets.rs:426 — wake_pet_once
+    t != seen_at
+    FIXED: raw caller timestamp could differ from stored microseconds; normalize once at wake_pet entry. Current Discord and web callers read pet.needs_at from DB, so no demonstrated live failure.
+
+24. crates/pinchora-db/src/house.rs:531 — restore_for_once
+    since.timestamp_micros() == bond
+    SAFE: partnership token is explicitly microseconds at creation and comparison.
+
+25. crates/pinchora-commands/src/verification/raid.rs:610 — raid action recheck
+    current.joined_at != j.joined_at
+    SAFE: both values loaded from PostgreSQL.
+
+26. crates/pinchora-commands/src/verification/mod.rs:319 — release
+    t.as_micros() == p.joined_at.timestamp_micros()
+    SAFE: Discord and DB timestamps explicitly compared in microseconds.
+
+27. crates/pinchora-commands/src/verification/mod.rs:571 — web_identity
+    p.joined_at.timestamp_micros() == joined
+    SAFE: web token encodes microseconds when issued at line 386.
+
+28. crates/pinchora-commands/src/verification/safety.rs:196 — punish
+    Some(j.joined_at.timestamp_micros()) != joined
+    SAFE: Discord and DB timestamps explicitly compared in microseconds.
+
+
+Additional checks outside the 28 parameter/identity guard sites:
+- birthdays.rs:187 birthday_cleanup_roles: r.remove_at = d.role_until; SAFE,
+  both are stored timestamps, no application nanoseconds.
+- events.rs:616 claim_event_delivery: due_at = starts_at - integer-minute
+  interval; SAFE, both operands computed in PostgreSQL at microsecond precision.
+- reef_loop.rs:483 partner-streak reset: since <> EXCLUDED.since; SAFE,
+  both database values, with EXCLUDED coming from the stored partner row.
+- reef_loop.rs:374 dive nonce: SAFE, explicit microsecond integer token stored
+  in BIGINT, not a timestamptz comparison.
+- config_backup.rs:319 dynamic key_predicate: keys in the static SECTIONS
+  manifest are identifiers/names, not timestamps; no hidden timestamp CAS.
+- shop.rs:117,140 market hour equality: BIGINT, not the unrelated stats hour
+  timestamptz column. Day counters/date keys likewise are not timestamptz CAS.
+- Deadline ordering, IS NULL and revision/sequence guards do not compare a raw
+  timestamp for exact equality; SQL timestamp ordering also uses encoded binds.
+
+Roblox lock cause and fix:
+VerificationLease::drop spawned Redis deletion without awaiting it. Completed
+verify/check/unverify handlers could reply while the lease remained held. A real
+user repeating a click could receive 'Another Roblox update is running' after
+completion. This was timing dependent, not Linux-specific and not test-only.
+These handlers now prepare their response, await token-checked release on both
+success and error paths, then reply. Drop remains cancellation/failure cleanup;
+the lease TTL and heartbeat behavior are retained. Role sync also awaits release
+before returning, and privacy cleanup releases after the database deletion.
+The Roblox simulator no longer sleeps 30 ms to wait for these unlocks. Actual overlapping work
+still returns busy. The lease regression checks immediate reacquisition and
+ensures an old owner cannot delete its replacement; the existing English/Turkish
+single-use/expired assertion remains unchanged.
+
+CI now runs on main and merge/** pushes and uses cargo test --workspace
+--no-fail-fast. Validation is deliberately scoped; the full workspace suite was
+not run. PINCHORA_TEST_MIX_SECS=60 is supplied to each requested test run, but
+that knob is consumed by the separate locks test binary, not db or simulate.
+Other VerificationLease users still use asynchronous Drop cleanup and can have
+similar brief retry windows; they are outside the reported Roblox flow.
+
+Validation results (local macOS, final source):
+- cargo fmt --all --check: PASS.
+- cargo clippy -p pinchora-db -p pinchora-commands --all-targets -- -D warnings:
+  PASS, including the final sync/privacy changes.
+- cargo test -p pinchora-db --test db -- --test-threads=4:
+  final three consecutive runs 45/45, 45/45, 45/45; zero failed/ignored.
+  An earlier three-run block also passed 45/45 each before fixture cleanup.
+- cargo test -p pinchora-commands --test simulate roblox -- --test-threads=4:
+  three consecutive runs 6/6, 6/6, 6/6; zero failed/ignored, 566 filtered out.
+- Every test run supplied the requested PostgreSQL URL, Redis database 14,
+  PINCHORA_TEST_MIX_SECS=60, CARGO_BUILD_JOBS=2 and CARGO_INCREMENTAL=0.
+- Logs are under target/ci-green/: db-final-{1,2,3}.log,
+  roblox-{1,2,3}.log and clippy-final.log. No full workspace suite was run.
+- macOS test linking warns that __eh_frame exceeds compact-unwind limits;
+  tests still pass. The worktree build-script .git/HEAD watch also causes
+  repeated command-crate builds. Neither was changed as part of this fix.
+- GitHub's Linux job has not been rerun here; --no-fail-fast will expose any
+  failures in binaries that previous CI runs did not reach.

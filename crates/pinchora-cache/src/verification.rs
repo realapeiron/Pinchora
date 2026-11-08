@@ -81,6 +81,7 @@ pub struct VerificationLease {
     key: String,
     owner: String,
     heartbeat: tokio::task::JoinHandle<()>,
+    released: bool,
 }
 impl Cache {
     pub async fn verification_lease(&self, key: &str, owner: &str) -> anyhow::Result<Option<VerificationLease>> {
@@ -119,12 +120,32 @@ impl Cache {
             key,
             owner: owner.to_owned(),
             heartbeat,
+            released: false,
         }))
+    }
+}
+impl VerificationLease {
+    /// Finish the transition before replying, so the next request can acquire its lease.
+    /// Drop remains a best-effort fallback for cancellation or a failed Redis request.
+    pub async fn release(mut self) -> anyhow::Result<()> {
+        self.heartbeat.abort();
+        let _: i32 = redis::Script::new(
+            "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0",
+        )
+        .key(&self.key)
+        .arg(&self.owner)
+        .invoke_async(&mut self.cache.conn())
+        .await?;
+        self.released = true;
+        Ok(())
     }
 }
 impl Drop for VerificationLease {
     fn drop(&mut self) {
         self.heartbeat.abort();
+        if self.released {
+            return;
+        }
         let cache = self.cache.clone();
         let key = self.key.clone();
         let owner = self.owner.clone();

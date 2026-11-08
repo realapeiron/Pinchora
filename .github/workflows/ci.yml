@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "merge/**"]
   pull_request:
 
 concurrency:
@@ -67,7 +67,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test
-        run: cargo test --workspace
+        run: cargo test --workspace --no-fail-fast
 
   web:
     name: web dashboard (lint, test, build, e2e)

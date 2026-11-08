@@ -1816,7 +1816,7 @@ async fn a_trip_pays_once_and_freezes_the_pets_needs() {
     let [owner, other] = ids();
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
     assert!(!pet.is_away(chrono::Utc::now()) && !pet.has_souvenir(chrono::Utc::now()));
-    let now = chrono::Utc::now();
+    let now = pinchora_db::timestamp(chrono::Utc::now());
     let back = now + chrono::Duration::hours(4);
 
     // Only the owner can send it, and only once at a time.
@@ -1915,7 +1915,7 @@ async fn care_cannot_write_over_a_trip() {
     let Some(db) = db().await else { return };
     let [owner, other] = ids();
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
-    let now = chrono::Utc::now();
+    let now = pinchora_db::timestamp(chrono::Utc::now());
     let back = now + chrono::Duration::hours(4);
     let frozen = [10, 20, 30, 40];
 
@@ -2007,7 +2007,7 @@ async fn a_care_write_that_read_the_pet_before_a_claim_cannot_undo_the_trip_xp()
 async fn a_care_click_racing_a_claim_or_a_trip_never_loses_the_trips_xp_or_needs() {
     let Some(db) = db().await else { return };
     let [owner] = ids();
-    let now = chrono::Utc::now();
+    let now = pinchora_db::timestamp(chrono::Utc::now());
     let back = now + chrono::Duration::hours(2);
     let after = back + chrono::Duration::minutes(1);
 
@@ -2081,11 +2081,11 @@ async fn waking_a_pet_is_free_once_a_day_and_costs_a_fee_after_that() {
         db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap(),
         db.adopt(owner, "ribbonfin_guppy", "Bub").await.unwrap(),
     );
-    let long_ago = chrono::Utc::now() - chrono::Duration::days(5);
+    let long_ago = pinchora_db::timestamp(chrono::Utc::now()) - chrono::Duration::days(5);
     for p in [&pet, &second] {
         db.save_pet(owner, p, [0, 0, 100, 0], 1, 0, long_ago).await.unwrap();
     }
-    let now = chrono::Utc::now();
+    let now = pinchora_db::timestamp(chrono::Utc::now());
     assert!(db.free_wake_ready(owner, 20_000).await.unwrap());
 
     // A stale read changes nothing and charges nothing.
@@ -2149,6 +2149,73 @@ async fn waking_a_pet_is_free_once_a_day_and_costs_a_fee_after_that() {
         }
     );
     assert_eq!(db.user(owner).await.unwrap().credits, 25);
+}
+
+#[tokio::test]
+async fn pet_timestamp_guards_accept_nanoseconds_but_reject_a_changed_microsecond() {
+    let Some(db) = db().await else { return };
+    let [owner] = ids();
+    let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
+    // Explicit nanoseconds reproduce the Linux clock on macOS too. Keep the raw
+    // value as the next guard, just as a caller retaining its last write would.
+    let raw = chrono::DateTime::parse_from_rfc3339("2026-11-08T10:00:00.958061832Z")
+        .unwrap()
+        .to_utc();
+    let stored = chrono::DateTime::parse_from_rfc3339("2026-11-08T10:00:00.958061Z")
+        .unwrap()
+        .to_utc();
+    assert_ne!(raw, stored);
+    assert!(db.save_pet(owner, &pet, [0, 0, 100, 0], 1, 0, raw).await.unwrap());
+    assert_eq!(db.active_pet(owner).await.unwrap().unwrap().needs_at, stored);
+    let now = raw + chrono::Duration::days(5);
+    assert_eq!(
+        db.wake_pet(
+            owner,
+            pet.id,
+            raw + chrono::Duration::microseconds(1),
+            [50, 50, 100, 50],
+            now,
+            20_000,
+            75
+        )
+        .await
+        .unwrap(),
+        Wake::Stale
+    );
+    assert!(db.free_wake_ready(owner, 20_000).await.unwrap());
+    assert_eq!(
+        db.wake_pet(owner, pet.id, raw, [50, 50, 100, 50], now, 20_000, 75)
+            .await
+            .unwrap(),
+        Wake::Woke { free: true, balance: 0 }
+    );
+    assert_eq!(
+        db.active_pet(owner).await.unwrap().unwrap().needs_at,
+        stored + chrono::Duration::days(5)
+    );
+    assert_eq!(
+        db.wake_pet(owner, pet.id, raw, [50, 50, 100, 50], now, 20_001, 75)
+            .await
+            .unwrap(),
+        Wake::Stale
+    );
+    assert!(db.free_wake_ready(owner, 20_001).await.unwrap());
+    assert_eq!(db.user(owner).await.unwrap().credits, 0);
+
+    // The SQL guards must retain the same precision semantics as the Rust guard.
+    let mut seen = db.active_pet(owner).await.unwrap().unwrap();
+    seen.needs_at = now;
+    let ends = now + chrono::Duration::hours(4);
+    assert!(
+        db.start_trip(owner, &seen, "shore", [10, 20, 30, 40], ends)
+            .await
+            .unwrap()
+    );
+    assert!(!db.save_pet(owner, &seen, [1, 2, 3, 4], 1, 0, ends).await.unwrap());
+    seen = db.active_pet(owner).await.unwrap().unwrap();
+    seen.needs_at = ends;
+    seen.trip_ends_at = Some(ends);
+    assert!(db.save_pet(owner, &seen, [50, 50, 100, 50], 1, 0, ends).await.unwrap());
 }
 
 #[tokio::test]

@@ -237,7 +237,6 @@ async fn branding_roblox_profile_code_english_and_turkish() {
             .iter()
             .any(|call| call.starts_with(&format!("member {user} ")))
     );
-    tokio::time::sleep(Duration::from_millis(30)).await;
     rank.store(5, Ordering::SeqCst);
     sqlx::query("DELETE FROM roblox_cache WHERE key=$1")
         .bind(format!("groups:{roblox_id}"))
@@ -250,7 +249,6 @@ async fn branding_roblox_profile_code_english_and_turkish() {
             .unwrap()
     );
     assert!(sim.role_changes().contains(&format!("DELETE {user} {ranked_role}")));
-    tokio::time::sleep(Duration::from_millis(30)).await;
     banned.store(true, Ordering::SeqCst);
     assert!(
         !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
@@ -260,14 +258,12 @@ async fn branding_roblox_profile_code_english_and_turkish() {
     let changes = sim.role_changes();
     assert!(changes.contains(&format!("DELETE {user} {verified_role}")));
     assert!(changes.contains(&format!("DELETE {user} {retained_role}")));
-    tokio::time::sleep(Duration::from_millis(30)).await;
     banned.store(false, Ordering::SeqCst);
     assert!(
         pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
-    tokio::time::sleep(Duration::from_millis(30)).await;
     missing.store(true, Ordering::SeqCst);
     assert!(
         !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
@@ -275,14 +271,12 @@ async fn branding_roblox_profile_code_english_and_turkish() {
             .unwrap()
     );
     assert!(sim.role_changes().contains(&format!("DELETE {user} {verified_role}")));
-    tokio::time::sleep(Duration::from_millis(30)).await;
     missing.store(false, Ordering::SeqCst);
     assert!(
         pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
-    tokio::time::sleep(Duration::from_millis(30)).await;
     sim.locale = "tr";
     let gone = sim.command(user, "roblox", json!([sub("unverify", vec![])])).await;
     assert!(
@@ -294,7 +288,6 @@ async fn branding_roblox_profile_code_english_and_turkish() {
     let mut disabled = sim.app.db.roblox_settings(sim.guild).await.unwrap();
     disabled.enabled = false;
     sim.app.db.roblox_save_settings(sim.guild, &disabled).await.unwrap();
-    tokio::time::sleep(Duration::from_millis(30)).await;
     assert!(
         !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
             .await
@@ -315,9 +308,8 @@ async fn branding_roblox_profile_code_english_and_turkish() {
         .unwrap()
         .unwrap();
     assert_eq!(pinchora_commands::roblox::tick(&sim.app).await.unwrap(), 0);
-    drop(lease);
+    lease.release().await.unwrap();
     let key = format!("roblox:user:{user}");
-    tokio::time::sleep(Duration::from_millis(30)).await;
     let _lease = sim
         .app
         .cache
@@ -361,7 +353,6 @@ async fn privacy_removes_roblox_roles_before_forgetting_the_link() {
     let refused = delete_through_the_panel(&mut sim, user).await;
     assert!(refused.content().contains("No data was deleted"), "{refused}");
     assert!(sim.app.db.roblox_link(user).await.unwrap().is_some());
-    tokio::time::sleep(Duration::from_millis(30)).await;
     sim.allow_role_changes(true);
     let done = delete_through_the_panel(&mut sim, user).await;
     assert_eq!(done.title(), "Your data is deleted");
@@ -468,4 +459,52 @@ async fn roblox_admin_rejects_overflowed_optional_ranks_and_join_prompts_are_bou
     assert!(pinchora_commands::roblox::on_join(&sim.app, sim.guild, unique(), false).await);
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(sim.posts().len(), 1, "replayed and burst joins must not spam prompts");
+}
+
+#[tokio::test]
+async fn roblox_lease_release_is_awaited_and_preserves_a_replacement_owner() {
+    let Some(sim) = Sim::new("roblox_lease_release").await else {
+        return;
+    };
+    let key = format!("roblox:user:{}", unique());
+    let lease = sim.app.cache.verification_lease(&key, "first").await.unwrap().unwrap();
+    assert!(
+        sim.app
+            .cache
+            .verification_lease(&key, "contender")
+            .await
+            .unwrap()
+            .is_none()
+    );
+    lease.release().await.unwrap();
+    let old = sim
+        .app
+        .cache
+        .verification_lease(&key, "old")
+        .await
+        .unwrap()
+        .expect("release completed");
+    // Simulate expiry and another pod replacing the owner before the old task finishes.
+    let _: () = redis::cmd("SET")
+        .arg(format!("pinchora:vf:lease:{key}"))
+        .arg("replacement")
+        .arg("EX")
+        .arg(180)
+        .query_async(&mut sim.app.cache.conn())
+        .await
+        .unwrap();
+    old.release().await.unwrap();
+    assert!(
+        sim.app
+            .cache
+            .verification_lease(&key, "contender")
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let _: () = redis::cmd("DEL")
+        .arg(format!("pinchora:vf:lease:{key}"))
+        .query_async(&mut sim.app.cache.conn())
+        .await
+        .unwrap();
 }
