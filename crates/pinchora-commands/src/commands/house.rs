@@ -503,9 +503,22 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
 pub(crate) async fn on_view_nav(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let room: i16 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
-    // A house hidden after its picture was posted stops showing its other rooms.
-    if owner != cx.author()?.id.get() && cx.app.db.privacy(owner).await?.hide_house {
-        return cx.reply_ephemeral(t!(cx.lang(), "privacy.house-private")).await;
+    // Old navigation controls must honor the same current access policy as a new visit,
+    // including the aquarium attached to every room. The owner can still enter.
+    let viewer = cx.author()?.id.get();
+    if owner != viewer {
+        let private = cx.app.db.privacy(owner).await?.hide_house;
+        let restricted = cx.guild_id() != Some(owner)
+            && (cx.app.db.socially_blocked(owner, viewer).await?
+                || cx
+                    .app
+                    .db
+                    .house_if_any(owner)
+                    .await?
+                    .is_some_and(|(house, _)| house.locked));
+        if private || restricted {
+            return cx.reply_ephemeral(t!(cx.lang(), "privacy.house-private")).await;
+        }
     }
     let name = if cx.guild_id() == Some(owner) {
         super::plaza::guild_name(cx, owner).await

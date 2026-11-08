@@ -22,16 +22,22 @@ CREATE TABLE reef_loop_daily (
  pet_reward BOOLEAN NOT NULL DEFAULT FALSE, partner_reward BOOLEAN NOT NULL DEFAULT FALSE,
  PRIMARY KEY(user_id, day)
 );
+CREATE INDEX reef_loop_daily_prune ON reef_loop_daily(day);
 CREATE TABLE reef_requests (
  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  rotation BIGINT NOT NULL, PRIMARY KEY(user_id, rotation)
 );
+CREATE INDEX reef_requests_prune ON reef_requests(rotation);
 CREATE TABLE reef_catches (
  guild_id BIGINT NOT NULL, day DATE NOT NULL, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  fish_id TEXT NOT NULL, size_cm REAL NOT NULL, score DOUBLE PRECISION NOT NULL CHECK (score > 0),
  caught_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(guild_id, day, user_id)
 );
 CREATE INDEX reef_catches_board ON reef_catches(guild_id, day, score DESC, caught_at);
+-- Cover user deletion/season qualification and the global retention sweep. The board's
+-- guild-leading index cannot support these lookups on a populated live database.
+CREATE INDEX reef_catches_user ON reef_catches(user_id, guild_id, day);
+CREATE INDEX reef_catches_prune ON reef_catches(day);
 CREATE TABLE reef_season_claims (
  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  season DATE NOT NULL, PRIMARY KEY(user_id, season)
@@ -41,3 +47,4 @@ CREATE TABLE reef_partner_streaks (
  user_b BIGINT NOT NULL, since TIMESTAMPTZ NOT NULL,
  a_day INTEGER, b_day INTEGER, completed_day INTEGER, streak INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX reef_partner_streaks_user_b ON reef_partner_streaks(user_b);

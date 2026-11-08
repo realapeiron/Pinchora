@@ -208,7 +208,9 @@ impl Db {
                 let Some(planted) = s.planted_at else {
                     return Ok(Missing);
                 };
-                if s.watered_at.is_none() || now < planted + Duration::seconds(rules::GROW_SECS) {
+                if !s.watered_at.is_some_and(|watered| watered <= now)
+                    || now < planted + Duration::seconds(rules::GROW_SECS)
+                {
                     return Ok(Wait);
                 }
                 if s.seaweed > rules::INGREDIENT_CAP - rules::HARVEST {
@@ -369,15 +371,31 @@ impl Db {
                 surface,
                 roll,
             } => {
-                if s.dive_nonce != nonce || s.dive_depth != depth || !s.dive_until.is_some_and(|until| until > now) {
+                if s.dive_nonce != nonce || s.dive_depth != depth || now.timestamp_micros() < nonce {
+                    return Ok(Stale);
+                }
+                let Some(until) = s.dive_until else { return Ok(Stale) };
+                if until <= now {
+                    // Persist an observed timeout so an older queued click cannot revive it.
+                    sqlx::query("UPDATE reef_loop SET dive_until=NULL,dive_depth=0 WHERE user_id=$1")
+                        .bind(id)
+                        .execute(&mut *tx)
+                        .await?;
+                    tx.commit().await?;
                     return Ok(Stale);
                 }
                 if surface {
-                    sqlx::query("UPDATE users SET pearls=pearls+$2 WHERE id=$1")
+                    if sqlx::query("UPDATE users SET pearls=pearls+$2 WHERE id=$1 AND pearls <= $3")
                         .bind(id)
                         .bind(i64::from(depth))
+                        .bind(i64::MAX - i64::from(depth))
                         .execute(&mut *tx)
-                        .await?;
+                        .await?
+                        .rows_affected()
+                        == 0
+                    {
+                        return Ok(Full);
+                    }
                     sqlx::query("UPDATE reef_loop SET dive_until=NULL WHERE user_id=$1")
                         .bind(id)
                         .execute(&mut *tx)
@@ -464,6 +482,16 @@ impl Db {
         ensure(&mut tx, b).await?;
         sqlx::query("INSERT INTO reef_partner_streaks(user_a,user_b,since) VALUES($1,$2,$3) ON CONFLICT(user_a) DO UPDATE SET user_b=EXCLUDED.user_b,since=EXCLUDED.since,a_day=NULL,b_day=NULL,completed_day=NULL,streak=0 WHERE reef_partner_streaks.since<>EXCLUDED.since OR reef_partner_streaks.user_b<>EXCLUDED.user_b").bind(a).bind(b).bind(p.since).execute(&mut *tx).await?;
         let day = now.timestamp().div_euclid(86400) as i32;
+        let (a_day, b_day, completed, value): (Option<i32>, Option<i32>, Option<i32>, i32) =
+            sqlx::query_as("SELECT a_day,b_day,completed_day,streak FROM reef_partner_streaks WHERE user_a=$1")
+                .bind(a)
+                .fetch_one(&mut *tx)
+                .await?;
+        // Requests can acquire the pair's locks out of arrival order around UTC midnight.
+        // Never erase a newer check-in or reopen an already completed day.
+        if completed == Some(day) || [a_day, b_day, completed].into_iter().flatten().any(|d| d > day) {
+            return Ok((ReefOutcome::Already, value));
+        }
         let (ad,bd,last,value):(Option<i32>,Option<i32>,Option<i32>,i32)=sqlx::query_as("UPDATE reef_partner_streaks SET a_day=CASE WHEN user_a=$2 THEN $3 ELSE a_day END,b_day=CASE WHEN user_b=$2 THEN $3 ELSE b_day END WHERE user_a=$1 RETURNING a_day,b_day,completed_day,streak").bind(a).bind(sql_id(user)).bind(day).fetch_one(&mut *tx).await?;
         let mut streak = value;
         let outcome = if last == Some(day) {

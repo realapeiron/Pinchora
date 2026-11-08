@@ -204,3 +204,37 @@ async fn reef_loop_english() {
 async fn reef_loop_turkish() {
     Box::pin(flow("tr", "reef_loop_turkish")).await;
 }
+
+#[tokio::test]
+async fn aquarium_navigation_rechecks_locked_and_blocked_house_access() {
+    let Some(mut sim) = Sim::new("aquarium_navigation_access").await else {
+        return;
+    };
+    let owner = unique();
+    let visitor = unique();
+    let db = sim.app.db.clone();
+    fund(&sim, owner, 10000).await;
+    fund(&sim, visitor, 1000).await;
+    sim.command(owner, "house", sub("aquarium", json!([]))).await;
+    sqlx::query("INSERT INTO reef_aquarium(user_id,slot,fish_id,size_cm) VALUES($1,1,'toaststripe_minnow',5)")
+        .bind(owner as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let home = sim.command(owner, "house", sub("view", json!([]))).await;
+    assert_eq!(home.files.len(), 2);
+    let nav = format!("hv:{owner}:0");
+    let open = sim.component(visitor, &nav, &[], &home).await;
+    assert_eq!(open.files.len(), 2);
+    db.set_house_locked(owner, true).await.unwrap();
+    let locked = sim.component(visitor, &nav, &[], &home).await;
+    assert!(locked.ephemeral && locked.files.is_empty());
+    assert_eq!(locked.content(), t!(Lang::En, "privacy.house-private"));
+    db.set_house_locked(owner, false).await.unwrap();
+    db.block_signer(owner, visitor, "visitor").await.unwrap();
+    let blocked = sim.component(visitor, &nav, &[], &home).await;
+    assert!(blocked.ephemeral && blocked.files.is_empty());
+    assert_eq!(blocked.content(), t!(Lang::En, "privacy.house-private"));
+    let own = sim.component(owner, &nav, &[], &home).await;
+    assert_eq!(own.files.len(), 2);
+}

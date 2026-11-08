@@ -319,6 +319,11 @@ impl Db {
     /// Puts a catch in the fish book (counting it, and the record size if it beats the last), the
     /// bucket and the weekly board, and pays the book milestones it reached, all together.
     pub async fn record_catch(&self, user: u64, catch: NewCatch<'_>) -> anyhow::Result<CatchLog> {
+        anyhow::ensure!(
+            catch.weekly.is_none()
+                || (catch.size_cm.is_finite() && catch.size_cm > 0. && catch.ratio.is_finite() && catch.ratio > 0.),
+            "contest catches need finite, positive sizes and scores"
+        );
         retry("record_catch", || self.record_catch_once(user, catch)).await
     }
 
@@ -357,7 +362,9 @@ impl Db {
             .await?;
         let week_best = match catch.weekly {
             Some((guild, week)) => {
-                sqlx::query("INSERT INTO reef_catches(guild_id,day,user_id,fish_id,size_cm,score) VALUES($1,(now() AT TIME ZONE 'UTC')::DATE,$2,$3,$4,$5) ON CONFLICT(guild_id,day,user_id) DO UPDATE SET fish_id=EXCLUDED.fish_id,size_cm=EXCLUDED.size_cm,score=EXCLUDED.score,caught_at=now() WHERE EXCLUDED.score>reef_catches.score")
+                // The transaction may have waited across midnight for the player lock. Use one
+                // statement timestamp for both the UTC day and tie-breaking time after that wait.
+                sqlx::query("INSERT INTO reef_catches(guild_id,day,user_id,fish_id,size_cm,score,caught_at) VALUES($1,(statement_timestamp() AT TIME ZONE 'UTC')::DATE,$2,$3,$4,$5,statement_timestamp()) ON CONFLICT(guild_id,day,user_id) DO UPDATE SET fish_id=EXCLUDED.fish_id,size_cm=EXCLUDED.size_cm,score=EXCLUDED.score,caught_at=EXCLUDED.caught_at WHERE EXCLUDED.score>reef_catches.score")
                     .bind(sql_id(guild)).bind(id).bind(catch.fish_id).bind(catch.size_cm).bind(catch.ratio).execute(&mut *tx).await?;
                 sqlx::query(
                     "INSERT INTO weekly_catch (guild_id, week, user_id, fish_id, size_cm, ratio)
