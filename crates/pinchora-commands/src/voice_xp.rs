@@ -658,7 +658,8 @@ pub async fn prune(app: &App) -> anyhow::Result<Option<u64>> {
     let before = week_start(now) - chrono::Duration::weeks(KEEP_WEEKS);
     let xp = app.db.forget_weeks_before(before).await?;
     let catches = app.db.forget_catch_weeks_before(before).await?;
-    Ok(Some(xp + catches))
+    let reef = app.db.prune_reef_loop(now).await?;
+    Ok(Some(xp + catches + reef))
 }
 
 /// The minutes a ticker whose last round paid up to `next - 1` has to pay now that it is `now`: every

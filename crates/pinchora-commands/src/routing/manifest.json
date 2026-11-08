@@ -755,8 +755,28 @@
     "slice": 0
   },
   {
+    "legacy": "fish contest",
+    "canonical": "fish contest",
+    "slice": 0
+  },
+  {
+    "legacy": "fish dive",
+    "canonical": "fish dive",
+    "slice": 0
+  },
+  {
+    "legacy": "fish dock",
+    "canonical": "fish dock",
+    "slice": 0
+  },
+  {
     "legacy": "fish gear",
     "canonical": "fish gear",
+    "slice": 0
+  },
+  {
+    "legacy": "fish season",
+    "canonical": "fish season",
     "slice": 0
   },
   {
@@ -870,6 +890,11 @@
     "slice": 0
   },
   {
+    "legacy": "house aquarium",
+    "canonical": "house aquarium",
+    "slice": 0
+  },
+  {
     "legacy": "house contest enter",
     "canonical": "house contest enter",
     "slice": 0
@@ -890,6 +915,11 @@
     "slice": 0
   },
   {
+    "legacy": "house craft",
+    "canonical": "house craft",
+    "slice": 0
+  },
+  {
     "legacy": "house decorate",
     "canonical": "house decorate",
     "slice": 0
@@ -897,6 +927,11 @@
   {
     "legacy": "house edit",
     "canonical": "house edit",
+    "slice": 0
+  },
+  {
+    "legacy": "house garden",
+    "canonical": "house garden",
     "slice": 0
   },
   {
@@ -1140,6 +1175,11 @@
     "slice": 0
   },
   {
+    "legacy": "partner streak",
+    "canonical": "partner streak",
+    "slice": 0
+  },
+  {
     "legacy": "partner view",
     "canonical": "partner view",
     "slice": 0
@@ -1212,6 +1252,11 @@
   {
     "legacy": "pet rename",
     "canonical": "pet rename",
+    "slice": 0
+  },
+  {
+    "legacy": "pet streak",
+    "canonical": "pet streak",
     "slice": 0
   },
   {

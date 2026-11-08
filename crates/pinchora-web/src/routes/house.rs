@@ -257,6 +257,7 @@ pub(super) async fn overview(state: &WebState, current: &CurrentSession, whose: 
         _ => owner_name(state, owner).await,
     };
     Ok(Json(json!({
+        "reef_loop": super::reef_loop::snapshot(state, owner, current.session.user_id).await?,
         "scope": whose.scope(),
         "whose": owner.to_string(),
         "owner": { "id": owner.to_string(), "name": name, "you": whose.scope() == "own" },

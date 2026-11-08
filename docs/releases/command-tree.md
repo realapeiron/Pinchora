@@ -140,3 +140,13 @@ runtime: `commands::dispatch` retains every legacy typed model and `routing::ada
 payloads through. Failed bulk registration therefore does not make old slash names unknown.
 This patch also accepts the prior consolidated `/setup` paths during propagation and from text aliases.
 No production registration or deployment is performed by this fix.
+
+## D7 reef loop
+
+Nine member leaves extend the existing roots: `fish dock|contest|season|dive`,
+`house aquarium|garden|craft`, `pet streak`, `partner streak`. The tree remains at
+72 slash roots plus Report; the source action inventory becomes 397 entries.
+All nine leaves defer privately, retain existing root module ownership and command
+controls, and are included in the EN/TR command catalogs. Diving shares the existing
+`fz` fishing dispatcher via its `loop` action. Migration 0078 only; no registration
+or deployment is performed in this worktree.

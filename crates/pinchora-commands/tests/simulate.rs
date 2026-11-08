@@ -484,6 +484,9 @@ async fn discord(
         return answer;
     }
     match (&method, parts.as_slice()) {
+        (&Method::GET, [.., "users", user]) if user.parse::<u64>().is_ok() => {
+            return (StatusCode::OK, user_json(user.parse().unwrap()).to_string());
+        }
         (&Method::GET, [.., "users", "@me", "guilds"]) => {
             let query = uri.query().unwrap_or_default().to_owned();
             mock.bot_guild_queries.lock().unwrap().push(query.clone());
@@ -15370,3 +15373,6 @@ mod mod_parity;
 mod web_house_edit;
 #[path = "simulate/web_player.rs"]
 mod web_player;
+
+#[path = "simulate/reef_loop.rs"]
+mod reef_loop;

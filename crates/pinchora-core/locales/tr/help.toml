@@ -14,9 +14,9 @@ start = { title = "Buradan başla", intro = "Her günün temelleri. Geri kalan h
 profile = { title = "Profil ve kartlar", intro = "Görünüşün, karakterin ve başkalarının senden neler görebileceği." }
 rewards = { title = "Kabuklar ve ödüller", intro = "Her hafta ve ay daha büyük ödüller, arkadaşlara kabuk, itibar ve hatırlatıcılar." }
 shops = { title = "Mağaza ve ticaret", intro = "Mobilya al, envanterinde sakla, hediye et ya da kendi tezgâhında sat." }
-house = { title = "Ev ve meydan", intro = "Kendi piksel evin, haftalık oda yarışması ve tüm sunucunun paylaştığı meydan." }
+house = { title = "Ev ve meydan", intro = "Piksel evin, isimli akvaryumun, yosun bahçen, mobilya üretimi ve ortak meydan." }
 pets = { title = "Evcil hayvanlar", intro = "Bir hayvan sahiplen, ona iyi bak ve eve hatıra getirdiği gezilere gönder." }
-fishing = { title = "Balıkçılık", intro = "Oltanı at, kovanı doldur, avını sat ve balık defterini tamamla." }
+fishing = { title = "Balıkçılık", intro = "Balık tut, Mallowfin’e teslim et, günlük ve sezonluk yarışmalara katıl, inci için dal." }
 friends = { title = "Arkadaşlar ve partnerler", intro = "Arkadaş ekle, bir partnerle eşleş ve hareketli selamlar gönder." }
 duels = { title = "Düellolar", intro = "Bir arkadaşına hızlı bir oyun için meydan oku. Çoğunda isteğe bağlı bahis var." }
 puzzles = { title = "Bulmacalar ve kelime oyunları", intro = "Tek başına oyna ya da tüm kanal için bir parti oyunu başlat." }

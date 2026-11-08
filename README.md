@@ -1640,3 +1640,19 @@ replay a preview without overwriting XP earned since the first application.
 
 Server message tuning and effort bonuses do not alter global XP amounts or its one-minute cooldown.
 Automatic level rewards recheck live role hierarchy and dangerous permissions before granting.
+
+### D7 — fish, house and pet loop
+
+| Member command | What it does |
+| --- | --- |
+| `/fish dock [deliver]` | Mallowfin's rotating request: two fish for two seaweed, once per eight-hour rotation |
+| `/fish contest [yesterday]`, `/fish season [previous] [claim]` | Daily catch rankings, seasonal fish/results, and a bound furniture keepsake after three fishing days |
+| `/fish dive [start]` | Lantern Descent: 300-shell entry, daily capped, three risk/reward steps and a 90-second deadline |
+| `/house aquarium [action] [name] [fish] [slot] [page]` | Name a six-fish aquarium; move caught fish intact between bucket and home |
+| `/house garden [action]` | Plant for 40 shells, water after one hour, harvest four seaweed after eight hours |
+| `/house craft [recipe]` | Browse or craft bound furniture with seaweed, common fish, pearls and shells |
+| `/pet streak`, `/partner streak` | Daily care and mutual check-ins, one-day grace, one seaweed per person/day |
+
+The aquarium appears with authorized house visits and on the web house page; owners also
+see garden status there. All commands/cards are EN/TR. Migration **0078** only; balance,
+privacy, artwork and retention details are in [GAME_DESIGN.md](docs/GAME_DESIGN.md#d7--fishhousepet-long-loop-migration-0078).

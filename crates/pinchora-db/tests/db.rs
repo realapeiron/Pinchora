@@ -2471,6 +2471,8 @@ async fn care_commits_payment_and_pet_together_under_races_and_refusals() {
         db.care_pet(owner, &pet, [90; 4], 1, 15, now, -10).await.unwrap(),
         PetCare::Poor
     );
+    assert_eq!(db.reef_state(owner).await.unwrap().pet_streak, 0);
+    assert_eq!(db.reef_state(owner).await.unwrap().seaweed, 0);
     let unchanged = db.pets(owner).await.unwrap().remove(0);
     assert_eq!(unchanged.xp, pet.xp);
     assert_eq!(unchanged.needs_at, pet.needs_at);
@@ -2484,6 +2486,8 @@ async fn care_commits_payment_and_pet_together_under_races_and_refusals() {
     assert_eq!(outcomes.iter().filter(|v| **v == PetCare::Stale).count(), 1);
     assert_eq!(db.user(owner).await.unwrap().credits, 90);
     assert_eq!(db.pets(owner).await.unwrap()[0].xp, 15);
+    assert_eq!(db.reef_state(owner).await.unwrap().pet_streak, 1);
+    assert_eq!(db.reef_state(owner).await.unwrap().seaweed, 1);
     let ledger: Vec<(i64, String)> =
         sqlx::query_as("SELECT delta, reason FROM credit_ledger WHERE user_id=$1 AND reason LIKE 'pet_%'")
             .bind(owner as i64)
@@ -2497,6 +2501,7 @@ async fn care_commits_payment_and_pet_together_under_races_and_refusals() {
         PetCare::Stale
     );
     assert_eq!(db.user(owner).await.unwrap().credits, 90);
+    assert_eq!(db.reef_state(owner).await.unwrap().seaweed, 1);
 }
 
 #[tokio::test]

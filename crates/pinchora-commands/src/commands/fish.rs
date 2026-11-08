@@ -50,6 +50,14 @@ pub enum FishCommand {
     Sell(FishSell),
     #[command(name = "book")]
     Book(FishBook),
+    #[command(name = "dock")]
+    Dock(super::reef_loop::Dock),
+    #[command(name = "contest")]
+    Contest(super::reef_loop::Contest),
+    #[command(name = "season")]
+    Season(super::reef_loop::Season),
+    #[command(name = "dive")]
+    Dive(super::reef_loop::Dive),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -98,7 +106,13 @@ pub enum SpotChoice {
 
 impl FishCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        super::social::remember(cx, cx.author()?).await?;
         match self {
+            Self::Dock(c) => c.run(cx).await,
+            Self::Contest(c) => c.run(cx).await,
+            Self::Season(c) => c.run(cx).await,
+            Self::Dive(c) => c.run(cx).await,
+
             Self::Cast(c) => cast(cx, c.spot).await,
             Self::Shop(_) => gear::shop(cx).await,
             Self::Gear(_) => gear::panel(cx).await,

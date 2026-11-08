@@ -1,3 +1,4 @@
+import { ReefLoop } from "../components/ReefLoop";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
@@ -173,6 +174,9 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                 )
               }
             />
+          )}
+          {!playing && house.data?.reef_loop && (
+            <ReefLoop data={house.data.reef_loop} art={art.data} own={house.data.owner.you} />
           )}
           {house.isPending && <Loading label={t("Opening the door")} />}
           {house.isError && <Problem error={house.error} />}

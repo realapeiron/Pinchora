@@ -191,8 +191,14 @@ impl Db {
         xp: i32,
         at: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
-        let mut connection = self.pool().acquire().await?;
-        save_pet_on(&mut connection, owner, seen, needs, level, xp, at).await
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(owner)]).await?;
+        let saved = save_pet_on(&mut tx, owner, seen, needs, level, xp, at).await?;
+        if saved {
+            crate::reef_loop::reef_pet_care(&mut tx, sql_id(owner), at).await?;
+        }
+        tx.commit().await?;
+        Ok(saved)
     }
 
     /// Care and its food charge / walk reward commit together, or neither does. Both clients
@@ -231,6 +237,7 @@ impl Db {
                 }
                 crate::economy::ledger(&mut tx, id, shells, if shells < 0 { "pet_food" } else { "pet_walk" }).await?;
             }
+            crate::reef_loop::reef_pet_care(&mut tx, id, at).await?;
             tx.commit().await?;
             Ok(PetCare::Saved)
         })

@@ -1,4 +1,19 @@
 export const en = {
+  "{size} cm": "{size} cm",
+  "Aquarium and garden": "Aquarium and garden",
+  "{count}/6 fish at home": "{count}/6 fish at home",
+  "Bring a catch home with /house aquarium in Discord.":
+    "Bring a catch home with /house aquarium in Discord.",
+  "Name your tank and move fish with /house aquarium.": "Name your tank and move fish with /house aquarium.",
+  "Brinebud Garden": "Brinebud Garden",
+  "Seaweed: {count}/999": "Seaweed: {count}/999",
+  "Watered. Your plants never wither.": "Watered. Your plants never wither.",
+  "Growing. Water once after the first hour.": "Growing. Water once after the first hour.",
+  "One empty bed, ready for seeds.": "One empty bed, ready for seeds.",
+  "Harvest from {time}": "Harvest from {time}",
+  "Use /house garden to tend your plants, then /house craft to make furniture.":
+    "Use /house garden to tend your plants, then /house craft to make furniture.",
+
   "File must be readable and at most 2 MB.": "File must be readable and at most 2 MB.",
   "Malformed CSV row.": "Malformed CSV row.",
   "Import members must be verified in this server.": "Import members must be verified in this server.",
@@ -785,14 +800,14 @@ export const en = {
   "Buy furniture, keep it in your inventory, give it away or sell it from your own stall.":
     "Buy furniture, keep it in your inventory, give it away or sell it from your own stall.",
   "House & plaza": "House & plaza",
-  "Your own pixel house, the weekly room contest, and the plaza the whole server shares.":
-    "Your own pixel house, the weekly room contest, and the plaza the whole server shares.",
+  "Your pixel house, named aquarium, seaweed garden, furniture crafting and shared plaza.":
+    "Your pixel house, named aquarium, seaweed garden, furniture crafting and shared plaza.",
   Pets: "Pets",
   "Adopt a pet, look after it, and send it on trips that bring souvenirs home.":
     "Adopt a pet, look after it, and send it on trips that bring souvenirs home.",
   Fishing: "Fishing",
-  "Cast a line, fill your bucket, sell the catch and complete the fish book.":
-    "Cast a line, fill your bucket, sell the catch and complete the fish book.",
+  "Fish, trade at Mallowfin’s dock, enter daily and seasonal contests, or dive for pearls.":
+    "Fish, trade at Mallowfin’s dock, enter daily and seasonal contests, or dive for pearls.",
   "Friends & partners": "Friends & partners",
   "Add friends, pair up with a partner, and send animated greetings.":
     "Add friends, pair up with a partner, and send animated greetings.",

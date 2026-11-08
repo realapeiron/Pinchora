@@ -458,6 +458,18 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     for sql in inserts {
         run(db, sql, user, other).await;
     }
+    for sql in [
+        "INSERT INTO reef_loop(user_id) VALUES($1) ON CONFLICT DO NOTHING",
+        "INSERT INTO reef_loop_daily(user_id,day,requests,dives,pet_reward,partner_reward)
+         VALUES($1,floor(extract(epoch FROM now()) / 86400)::int,3,1,true,true),($1,1,3,1,true,true)",
+        "INSERT INTO reef_aquarium(user_id,slot,fish_id,size_cm) VALUES($1,1,'toaststripe_minnow',5)",
+        "INSERT INTO reef_requests(user_id,rotation) VALUES($1,1)",
+        "INSERT INTO reef_catches(guild_id,day,user_id,fish_id,size_cm,score) VALUES($2,CURRENT_DATE,$1,'toaststripe_minnow',5,1)",
+        "INSERT INTO reef_season_claims(user_id,season) VALUES($1,'2026-03-01')",
+        "INSERT INTO reef_partner_streaks(user_a,user_b,since) SELECT user_a,user_b,since FROM partners WHERE user_a=$1 OR user_b=$1",
+    ] {
+        run(db, sql, user, other).await;
+    }
     let mut filled = Vec::new();
     for (table, column) in USER_COLUMNS {
         if count(db, table, column, user).await > 0 {
