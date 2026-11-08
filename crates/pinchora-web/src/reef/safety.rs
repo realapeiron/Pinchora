@@ -120,6 +120,7 @@ async fn report(
     current: CurrentSession,
     Json(body): Json<Report>,
 ) -> ApiResult<Json<Value>> {
+    super::spaces::limit(&state, current.session.user_id, "report", 10).await?;
     let receipt = state
         .app
         .db
@@ -166,7 +167,7 @@ async fn queue(
 ) -> ApiResult<Json<Value>> {
     let items = if let Some(raw) = scope.guild {
         let guild = id(&raw)?;
-        super::spaces::manager(&state, &mut current, guild).await?;
+        super::spaces::manager(&state, &mut current, guild, "plazas/moderation").await?;
         state.app.db.reef_queue_guild(current.session.user_id, guild).await?
     } else {
         state
@@ -205,7 +206,7 @@ async fn moderate(
     let _guard = state.reef.safety.lock().await;
     let allowed = if let Some(guild) = action.owner.filter(|_| !action.operator) {
         if state.app.db.is_guild(guild).await? {
-            super::spaces::manager(&state, &mut current, guild).await?;
+            super::spaces::manager(&state, &mut current, guild, "plazas/moderation").await?;
             state.app.db.reef_moderate_guild(&action, guild).await?
         } else {
             state.app.db.reef_moderate(&action).await?

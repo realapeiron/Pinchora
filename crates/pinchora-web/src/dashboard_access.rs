@@ -13,8 +13,8 @@ pub fn route_area(path: &str) -> Option<&'static str> {
         "mod-parity" | "moderation" | "logs" | "cases" | "staff-log" | "automod" | "anti_nuke" | "safety" => {
             Some("safety")
         }
-        "plazas" | "community" | "community-pack" | "community-v2" | "suggestions" | "critters" | "surge"
-        | "temp-voice" | "tickets" | "birthdays" | "events" | "starboard" | "achievements" | "utility" => {
+        "plazas" | "gatherings" | "community" | "community-pack" | "community-v2" | "suggestions" | "critters"
+        | "surge" | "temp-voice" | "tickets" | "birthdays" | "events" | "starboard" | "achievements" | "utility" => {
             Some("community")
         }
         "feeds" | "trackers" | "roblox" => Some("feeds"),
@@ -323,5 +323,30 @@ mod route_inventory_tests {
             actual, reviewed,
             "Update the explicit security review matrix when adding a guild route"
         );
+    }
+}
+
+#[cfg(test)]
+mod reef_area_tests {
+    use super::*;
+    #[test]
+    fn wave7_guild_actions_have_explicit_community_area_mapping() {
+        for path in [
+            "plazas",
+            "plazas/decorate",
+            "plazas/moderation",
+            "gatherings",
+            "gatherings/1/rsvp",
+        ] {
+            assert_eq!(route_area(path), Some("community"));
+            for area in pinchora_db::DASHBOARD_AREAS {
+                assert_eq!(
+                    permitted(path, false, &[(*area).into()]),
+                    *area == "community",
+                    "{path}: {area}"
+                );
+            }
+            assert!(!permitted(path, false, &[]));
+        }
     }
 }

@@ -497,3 +497,18 @@
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
 }
+
+/* Social rows can contain long player names and multiple actions on a phone. */
+.reef-space-sheet {
+  overflow-wrap: anywhere;
+}
+.reef-space-sheet .reef-objects li {
+  flex-wrap: wrap;
+}
+.reef-space-sheet .reef-objects li > span {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+.reef-space-sheet .reef-drawer-heading h2 {
+  min-width: 0;
+}

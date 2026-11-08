@@ -172,6 +172,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     let mut current_room: Option<mpsc::Sender<Input>> = None;
     let mut current_key: Option<RoomKey> = None;
     let mut sequence = 1;
+    let mut frames = super::Bucket::new(30.0, 60.0);
     let mut seen = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
     heartbeat.tick().await;
@@ -224,9 +225,13 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
             message=reader.next() => {
                 let Some(Ok(message))=message else { break; };
                 if peer.close.borrow().is_some() { break; }
+                if !frames.take(Instant::now()) { peer.terminate("rate_limited"); break; }
                 let Message::Text(text)=message else {
-                    if matches!(message,Message::Close(_)) { break; }
-                    continue;
+                    match message {
+                        Message::Close(_) => break,
+                        Message::Ping(_) | Message::Pong(_) => continue,
+                        _ => { peer.terminate("invalid_message"); break; }
+                    }
                 };
                 let Some(envelope)=Envelope::parse(&text) else { peer.terminate("invalid_message"); break; };
                 if envelope.protocol_version!=1 || envelope.sequence!=sequence+1 || envelope.request_id.is_empty() || envelope.request_id.len()>64 || envelope.room_epoch.len()>64 {

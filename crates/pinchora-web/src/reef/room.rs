@@ -539,7 +539,7 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                     member.advance(now.saturating_duration_since(member.advanced).as_secs_f64());
                     member.advanced = now;
                 }
-                if !room.members.is_empty() {room.broadcast("",json!({"type":"correction","updates":room.members.values().map(Member::correction).collect::<Vec<_>>()}));}
+                if !room.members.is_empty() {room.broadcast("",json!({"type":"correction","roster":true,"updates":room.members.values().map(Member::correction).collect::<Vec<_>>()}));}
             }
         }
     }

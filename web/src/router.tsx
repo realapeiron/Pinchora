@@ -1,8 +1,11 @@
-import { ModerationPage } from "./reef/ModerationPage";
+import { lazy, Suspense } from "react";
+const ModerationPage = lazy(() =>
+  import("./reef/ModerationPage").then((m) => ({ default: m.ModerationPage })),
+);
 import { Navigate, Outlet, createBrowserRouter, type RouteObject } from "react-router";
 import { useLocale } from "./i18n";
 
-import { GuildLayout } from "./pages/GuildLayout";
+const GuildLayout = lazy(() => import("./pages/GuildLayout").then((m) => ({ default: m.GuildLayout })));
 import { MyHouse, VisitHouse } from "./pages/House";
 import { Login } from "./pages/Login";
 import { NotFound } from "./pages/NotFound";
@@ -63,12 +66,31 @@ const localizedRoutes: RouteObject[] = [
     path: "/feeds/my-channels",
     lazy: async () => ({ Component: (await import("./pages/Feeds")).MyFeedsChannelsRoute }),
   },
-  { path: "/reef/moderation", element: <RequireLogin>{() => <ModerationPage />}</RequireLogin> },
+  {
+    path: "/reef/moderation",
+    element: (
+      <RequireLogin>
+        {() => (
+          <Suspense>
+            <ModerationPage />
+          </Suspense>
+        )}
+      </RequireLogin>
+    ),
+  },
   { path: "/me/house", element: <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> },
   { path: "/house/:userId", element: <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> },
   {
     path: "/g/:guildId",
-    element: <RequireLogin>{(me) => <GuildLayout me={me} />}</RequireLogin>,
+    element: (
+      <RequireLogin>
+        {(me) => (
+          <Suspense>
+            <GuildLayout me={me} />
+          </Suspense>
+        )}
+      </RequireLogin>
+    ),
     children: [
       { index: true, lazy: async () => ({ Component: (await import("./pages/Overview")).Overview }) },
       { path: "modules", lazy: async () => ({ Component: (await import("./pages/Modules")).Modules }) },

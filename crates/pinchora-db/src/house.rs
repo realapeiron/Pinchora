@@ -517,6 +517,11 @@ impl Db {
             return Ok(RestoreOutcome::Refused(Refusal::Blocked("room_changed".into())));
         }
         if let Some((guest, bond)) = partnership {
+            let blocked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1))")
+                .bind(id).bind(sql_id(guest)).fetch_one(&mut *tx).await?;
+            if blocked {
+                return Ok(RestoreOutcome::Refused(Refusal::Blocked("access_denied".into())));
+            }
             let pair: Option<(chrono::DateTime<chrono::Utc>,)> =
                 sqlx::query_as("SELECT since FROM partners WHERE user_a=$1 AND user_b=$2 FOR SHARE")
                     .bind(sql_id(owner.min(guest)))

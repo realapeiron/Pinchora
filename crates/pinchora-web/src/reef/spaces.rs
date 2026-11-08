@@ -16,6 +16,17 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use twilight_model::id::Id;
 
+pub(super) async fn limit(s: &WebState, user: u64, action: &str, count: i64) -> ApiResult<()> {
+    crate::ratelimit::check_strict(
+        &s.app.cache,
+        &format!("reef:{action}"),
+        &user.to_string(),
+        count,
+        std::time::Duration::from_secs(60),
+    )
+    .await
+}
+
 fn denied() -> ApiError {
     ApiError::new(StatusCode::FORBIDDEN, "access_denied", "access_denied")
 }
@@ -87,7 +98,12 @@ pub async fn membership(state: &WebState, guild: u64, user: u64) -> anyhow::Resu
 pub async fn visit_consent(state: &WebState, owner: u64, user: u64) -> anyhow::Result<bool> {
     state.app.db.reef_house_access(owner, user).await
 }
-pub(super) async fn manager(state: &WebState, current: &mut CurrentSession, guild: u64) -> ApiResult<()> {
+pub(super) async fn manager(
+    state: &WebState,
+    current: &mut CurrentSession,
+    guild: u64,
+    area_path: &str,
+) -> ApiResult<()> {
     membership(state, guild, current.session.user_id)
         .await
         .map_err(|_| denied())?;
@@ -95,7 +111,7 @@ pub(super) async fn manager(state: &WebState, current: &mut CurrentSession, guil
     let full = guilds.iter().any(|g| g.id() == Some(guild) && g.can_manage());
     if !full
         && !crate::dashboard_access::permitted(
-            "plazas",
+            area_path,
             false,
             &crate::dashboard_access::areas(state, guild, current.session.user_id).await?,
         )
@@ -169,6 +185,7 @@ async fn doorbells(State(s): State<WebState>, c: CurrentSession) -> ApiResult<Js
     Ok(Json(json!({"items":s.app.db.reef_doorbells(c.session.user_id).await?})))
 }
 async fn ring(State(s): State<WebState>, c: CurrentSession, Path(owner): Path<String>) -> ApiResult<Json<Value>> {
+    limit(&s, c.session.user_id, "doorbell", 12).await?;
     let owner = id(&owner)?;
     if s.app.db.is_guild(owner).await? || s.app.db.privacy(owner).await?.hide_house {
         return Err(denied());
@@ -222,6 +239,7 @@ async fn sign(
     Path(owner): Path<String>,
     ApiJson(n): ApiJson<Note>,
 ) -> ApiResult<Json<Value>> {
+    limit(&s, c.session.user_id, "guestbook", 10).await?;
     let owner = id(&owner)?;
     let user = c.session.user_id;
     house(&s, user, owner).await?;
@@ -260,6 +278,7 @@ async fn report_note(
     Path((owner, note)): Path<(String, String)>,
     ApiJson(body): ApiJson<Report>,
 ) -> ApiResult<Json<Value>> {
+    limit(&s, c.session.user_id, "report", 10).await?;
     let owner = id(&owner)?;
     house(&s, c.session.user_id, owner).await?;
     if !["harassment", "personal_info", "spam", "other"].contains(&body.reason.as_str()) {
@@ -280,6 +299,7 @@ async fn report_note(
     Ok(Json(json!({"receipt":receipt})))
 }
 async fn appreciate(State(s): State<WebState>, c: CurrentSession, Path(owner): Path<String>) -> ApiResult<Json<Value>> {
+    limit(&s, c.session.user_id, "appreciate", 20).await?;
     let owner = id(&owner)?;
     house(&s, c.session.user_id, owner).await?;
     if owner == c.session.user_id {
@@ -369,8 +389,9 @@ async fn schedule(
     Path(guild): Path<String>,
     ApiJson(body): ApiJson<Gathering>,
 ) -> ApiResult<Json<Value>> {
+    limit(&s, c.session.user_id, "schedule", 6).await?;
     let guild = id(&guild)?;
-    manager(&s, &mut c, guild).await?;
+    manager(&s, &mut c, guild, "gatherings").await?;
     if !s
         .app
         .db
@@ -431,6 +452,7 @@ async fn rsvp(
     Path((guild, event)): Path<(String, String)>,
     ApiJson(body): ApiJson<Rsvp>,
 ) -> ApiResult<Json<Value>> {
+    limit(&s, c.session.user_id, "rsvp", 20).await?;
     let guild = id(&guild)?;
     let event = id(&event)? as i64;
     let roles = membership(&s, guild, c.session.user_id).await.map_err(|_| denied())?;

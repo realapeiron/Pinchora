@@ -155,3 +155,34 @@ test("two guild members enter the same plaza and RSVP to a scheduled gathering",
     await b.close();
   }
 });
+
+test("social sheet wraps long names at 390 px and supports keyboard open/close", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await devLogin(page, HOST, [], "Reef host");
+  await page.route("**/api/reef/social", (route) =>
+    route.fulfill({
+      json: {
+        people: [
+          { id: GUEST, name: "W".repeat(32), partner: true, online: true, visitable: true, doorbell: true },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/reef/doorbells", (route) =>
+    route.fulfill({ json: { items: [{ id: "1", host_id: HOST, guest_id: GUEST, status: "pending" }] } }),
+  );
+  await page.goto("/me/house?play=1");
+  await ready(page);
+  const toggle = page.getByRole("button", { name: "Social spaces", exact: true });
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  const sheet = page.getByRole("complementary", { name: "Social spaces", exact: true });
+  await expect(sheet.getByText("W".repeat(32), { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  expect(await sheet.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  await sheet.getByRole("button", { name: "Close", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator(".reef-canvas")).toBeFocused();
+});

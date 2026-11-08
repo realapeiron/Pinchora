@@ -51,6 +51,44 @@ async fn guild_plaza_membership_delegated_management_capacity_and_scheduled_rsvp
         member.write(Method::POST, &edit, body.clone()).await.status,
         StatusCode::FORBIDDEN
     );
+    for op in [
+        json!({"type":"place","item_id":"pebblerest_stool__sand","x":1,"y":1,"flipped":false}),
+        json!({"type":"move","id":"1","x":1,"y":1,"flipped":false}),
+        json!({"type":"flip","id":"1"}),
+        json!({"type":"pickup","id":"1"}),
+        json!({"type":"undo"}),
+        json!({"type":"surface","wallpaper":"paper"}),
+    ] {
+        assert_eq!(
+            member
+                .write(
+                    Method::POST,
+                    &edit,
+                    json!({"expected":room.json()["fingerprint"],"op":op})
+                )
+                .await
+                .status,
+            StatusCode::FORBIDDEN
+        );
+    }
+    h.state
+        .app
+        .db
+        .replace_dashboard_managers(
+            guild,
+            owner,
+            "Owner",
+            &[pinchora_db::DashboardManager {
+                role_id: FAN as i64,
+                areas: vec!["configuration".into(), "safety".into()],
+            }],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        member.write(Method::POST, &edit, body.clone()).await.status,
+        StatusCode::FORBIDDEN
+    );
     h.state
         .app
         .db
@@ -90,7 +128,7 @@ async fn guild_plaza_membership_delegated_management_capacity_and_scheduled_rsvp
     );
     let gatherings = format!("/api/reef/guilds/{guild}/gatherings");
     let schedule = json!({"title":"Reef room tour","starts_at":chrono::Utc::now()+chrono::Duration::hours(1),"ends_at":chrono::Utc::now()+chrono::Duration::hours(2)});
-    let event = member.write(Method::POST, &gatherings, schedule).await;
+    let event = member.write(Method::POST, &gatherings, schedule.clone()).await;
     assert_eq!(event.status, StatusCode::OK, "{}", event.text());
     let event_id = event.json()["id"].as_str().unwrap().to_owned();
     let rsvp = member
@@ -119,6 +157,10 @@ async fn guild_plaza_membership_delegated_management_capacity_and_scheduled_rsvp
     );
     assert_eq!(
         member.get(&format!("/api/reef/moderation?guild={guild}")).await.status,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(
+        member.write(Method::POST, &gatherings, schedule).await.status,
         StatusCode::FORBIDDEN
     );
     h.mock.absent_leveling_members.lock().unwrap().insert((guild, user));

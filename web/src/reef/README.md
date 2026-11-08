@@ -175,9 +175,10 @@ and block revocation. The existing seed resets the two fixture accounts' blocks 
 ## Decorating and social spaces (R25–R37)
 
 Apply migration **0082** before running this code. It adds `houses.edit_revision`,
-`reef_edit_receipts`, `reef_space_preferences`, `reef_doorbells`, and a nullable note reference
-on the existing moderation evidence. New personal records are privacy-registered; receipts expire
-after seven days and doorbells are removed one day after expiry by the existing retention worker.
+`reef_edit_receipts`, `reef_space_preferences`, `reef_doorbells`, and `reef_guestbook_evidence`,
+a cascading lookup for existing moderation evidence. New personal records are privacy-registered;
+receipts expire after seven days. Retention prunes expired doorbells while preserving the latest
+minute of abuse counters; both cleanup paths use batches of at most 500 rows.
 
 In Play choose **Decorate**. The sheet shares the existing house operation queue and undo stack.
 Choose inventory or an existing piece, position by pointer/tap or numeric coordinates, rotate and

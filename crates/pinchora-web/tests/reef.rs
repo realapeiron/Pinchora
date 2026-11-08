@@ -1057,6 +1057,7 @@ async fn wave7_atomic_receipts_revision_races_and_shared_undo() {
         .api_value(reqwest::Method::GET, "/api/house/rooms/0", Value::Null)
         .await;
     let request = json!({"request_id":"wave7-place","expected_revision":before["revision"],"expected_fingerprint":before["fingerprint"],"op":{"type":"place","item_id":item,"x":1,"y":1,"flipped":false}});
+    let replay_after_retention = request.clone();
     let (a, b) = tokio::join!(
         browser.api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", request.clone()),
         browser.api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", request.clone())
@@ -1157,6 +1158,17 @@ async fn wave7_atomic_receipts_revision_races_and_shared_undo() {
     );
     assert_eq!(replay["revision"], revision);
     assert_eq!(site.app.db.reef_edit_revision(owner).await.unwrap(), revision);
+    sqlx::query("UPDATE reef_edit_receipts SET created_at=now()-interval '8 days' WHERE actor_id=$1 AND request_id='wave7-place'")
+        .bind(owner as i64).execute(&site.pool).await.unwrap();
+    site.app.db.reef_prune_outbox().await.unwrap();
+    assert_eq!(
+        browser
+            .api_value(reqwest::Method::POST, "/api/house/rooms/0/ops", replay_after_retention)
+            .await
+            .0,
+        409
+    );
+    assert!(site.app.db.placements(owner, 0).await.unwrap().is_empty());
 }
 #[tokio::test]
 async fn wave7_doorbell_admission_expiry_blocks_and_presence_consent() {
@@ -1385,4 +1397,276 @@ async fn seed_reef_wave7() {
         }
     }
     site.app.db.befriend(host, guest).await.unwrap();
+}
+
+#[tokio::test]
+async fn wave7_partner_block_is_rechecked_by_the_shared_transaction() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let guest = unique();
+    site.house(host).await;
+    site.app.db.pair_partners(host, guest).await.unwrap();
+    let pair = site.app.db.partner(guest).await.unwrap().unwrap();
+    let who = pinchora_commands::Who::partner_of(guest, pair);
+    let item = "pebblerest_stool__sand";
+    site.app.db.grant_item(guest, item, 1).await.unwrap();
+    // Resolve authorization first, then revoke it before the actual mutation (TOCTOU).
+    site.app.db.block_signer(guest, host, "").await.unwrap();
+    let before = site.app.db.placements(host, 0).await.unwrap();
+    let outcome = pinchora_commands::house_edit::apply(
+        &site.app,
+        who,
+        0,
+        (8, 8),
+        &pinchora_commands::house_edit::fingerprint(&before),
+        pinchora_commands::house_edit::Operation::Place {
+            item_id: item.into(),
+            x: 1,
+            y: 1,
+            flipped: false,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(matches!(
+        outcome,
+        pinchora_commands::house_edit::Outcome::Refused { .. }
+    ));
+    assert!(site.app.db.placements(host, 0).await.unwrap().is_empty());
+    assert_eq!(
+        site.app
+            .db
+            .inventory(guest)
+            .await
+            .unwrap()
+            .iter()
+            .find(|r| r.item_id == item)
+            .unwrap()
+            .quantity,
+        1
+    );
+}
+
+#[tokio::test]
+async fn wave7_hidden_notes_cannot_be_promoted_to_report_evidence() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let author = unique();
+    let reader = unique();
+    site.house(host).await;
+    site.browser(author).await;
+    let note: i64 = sqlx::query_scalar("INSERT INTO guestbook_notes(host_id,author_id,author_name,day,body) VALUES($1,$2,'author',CURRENT_DATE,'Lovely room') RETURNING id")
+        .bind(host as i64).bind(author as i64).fetch_one(&site.pool).await.unwrap();
+    site.app.db.block_signer(author, reader, "").await.unwrap();
+    let browser = site.browser(reader).await;
+    let path = format!("/api/reef/houses/{host}/guestbook");
+    assert_eq!(
+        browser.api_value(reqwest::Method::GET, &path, Value::Null).await.1["notes"],
+        json!([])
+    );
+    assert_eq!(
+        browser
+            .api_value(
+                reqwest::Method::POST,
+                &format!("{path}/{note}/report"),
+                json!({"reason":"other"})
+            )
+            .await
+            .0,
+        403
+    );
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM reef_guestbook_evidence WHERE note_id=$1")
+        .bind(note)
+        .fetch_one(&site.pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+    site.app.db.unblock_signer(author, reader).await.unwrap();
+    let evidence = site
+        .app
+        .db
+        .reef_note_evidence(host, reader, note)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        site.app.db.reef_note_evidence(host, reader, note).await.unwrap(),
+        Some(evidence)
+    );
+    assert!(
+        site.app
+            .db
+            .reef_report(reader, evidence, "other")
+            .await
+            .unwrap()
+            .is_some()
+    );
+    site.app.db.delete_note(host, note).await.unwrap();
+    assert!(
+        site.app
+            .db
+            .reef_note_evidence(host, reader, note)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let kept: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_chat_evidence WHERE id=$1 AND reported)")
+        .bind(evidence)
+        .fetch_one(&site.pool)
+        .await
+        .unwrap();
+    assert!(kept, "deleting a note must retain reported evidence");
+}
+
+#[tokio::test]
+async fn wave7_abuse_limits_cover_reports_likes_and_rsvp() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let user = unique();
+    site.house(host).await;
+    let browser = site.browser(user).await;
+    for (action, count, path, body) in [
+        (
+            "report",
+            10,
+            "/api/reef/reports".to_owned(),
+            json!({"message_id":"1","reason":"other"}),
+        ),
+        (
+            "report",
+            10,
+            format!("/api/reef/houses/{host}/guestbook/1/report"),
+            json!({"reason":"other"}),
+        ),
+        (
+            "appreciate",
+            20,
+            format!("/api/reef/houses/{host}/appreciate"),
+            json!({}),
+        ),
+        (
+            "rsvp",
+            20,
+            format!("/api/reef/guilds/{host}/gatherings/1/rsvp"),
+            json!({"option":"going"}),
+        ),
+        (
+            "schedule",
+            6,
+            format!("/api/reef/guilds/{host}/gatherings"),
+            json!({"title":"Tour","starts_at":chrono::Utc::now(),"ends_at":chrono::Utc::now()+chrono::Duration::hours(1)}),
+        ),
+        ("doorbell", 12, format!("/api/reef/houses/{host}/doorbells"), json!({})),
+        (
+            "guestbook",
+            10,
+            format!("/api/reef/houses/{host}/guestbook"),
+            json!({"text":"Lovely room"}),
+        ),
+    ] {
+        // Seed both sides of a window boundary so this test cannot flake at xx:xx:59.
+        let window = chrono::Utc::now().timestamp() / 60;
+        for bucket in [window, window + 1] {
+            site.app
+                .cache
+                .incr_by(
+                    &format!("web:rl:reef:{action}:{user}:{bucket}"),
+                    count,
+                    Duration::from_secs(120),
+                )
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            browser.api_value(reqwest::Method::POST, &path, body).await.0,
+            429,
+            "{path}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn wave7_socket_binary_and_control_frame_floods_close() {
+    let Some(site) = Site::new().await else { return };
+    let browser = site.browser(unique()).await;
+    let mut player = browser.connect().await;
+    player.socket.send(Message::Binary(vec![0; 16].into())).await.unwrap();
+    assert_eq!(player.close_reason().await, "invalid_message");
+    let mut player = browser.connect().await;
+    for _ in 0..70 {
+        if player.socket.send(Message::Ping(vec![].into())).await.is_err() {
+            break;
+        }
+    }
+    assert_eq!(player.close_reason().await, "rate_limited");
+}
+
+#[tokio::test]
+async fn wave7_blocks_filter_room_rosters_and_live_movement() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let a = unique();
+    let b = unique();
+    site.house(host).await;
+    let first = site.browser(a).await;
+    let second = site.browser(b).await;
+    site.app.db.block_signer(a, b, "").await.unwrap();
+    let mut one = first.connect().await;
+    one.join(host).await;
+    let mut two = second.connect().await;
+    let snapshot = two.join(host).await;
+    assert!(
+        snapshot["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|p| p["user_id"].as_str() != Some(a.to_string().as_str()))
+    );
+    one.send(json!({"type":"snapshot"})).await;
+    let snapshot = one.until("snapshot").await;
+    assert!(
+        snapshot["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|p| p["user_id"].as_str() != Some(b.to_string().as_str()))
+    );
+    for _ in 0..3 {
+        let correction = one.until("correction").await;
+        if correction["roster"] != true {
+            continue;
+        }
+        assert!(
+            correction["players"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|p| p["user_id"].as_str() != Some(b.to_string().as_str()))
+        );
+    }
+}
+
+#[tokio::test]
+async fn wave7_doorbell_retention_preserves_recent_abuse_counters() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let guest = unique();
+    let old: i64 = sqlx::query_scalar("INSERT INTO reef_doorbells(host_id,guest_id,created_at,expires_at) VALUES($1,$2,now()-interval '1 hour',now()-interval '1 minute') RETURNING id")
+        .bind(host as i64).bind(guest as i64).fetch_one(&site.pool).await.unwrap();
+    let recent: i64 = sqlx::query_scalar(
+        "INSERT INTO reef_doorbells(host_id,guest_id,expires_at) VALUES($1,$2,now()-interval '1 second') RETURNING id",
+    )
+    .bind(host as i64)
+    .bind(guest as i64)
+    .fetch_one(&site.pool)
+    .await
+    .unwrap();
+    site.app.db.reef_retain(chrono::Utc::now()).await.unwrap();
+    let retained: Vec<i64> = sqlx::query_scalar("SELECT id FROM reef_doorbells WHERE id IN ($1,$2) ORDER BY id")
+        .bind(old)
+        .bind(recent)
+        .fetch_all(&site.pool)
+        .await
+        .unwrap();
+    assert_eq!(retained, vec![recent]);
 }

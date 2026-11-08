@@ -1,12 +1,9 @@
-import { ReefLoop } from "../components/ReefLoop";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
-import { HouseEditor } from "../components/HouseEditor";
 import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
-import { RoomStage } from "../components/RoomStage";
 import { TopBar } from "../components/TopBar";
 import { decodePng } from "../iso/png";
 import { renderRoom } from "../iso/render";
@@ -28,6 +25,10 @@ import { t } from "../reef/i18n";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/house.css";
+
+const ReefLoop = lazy(() => import("../components/ReefLoop").then((m) => ({ default: m.ReefLoop })));
+const RoomStage = lazy(() => import("../components/RoomStage").then((m) => ({ default: m.RoomStage })));
+const HouseEditor = lazy(() => import("../components/HouseEditor").then((m) => ({ default: m.HouseEditor })));
 
 const ReefStage = lazy(() => import("../reef/ReefStage"));
 
@@ -176,7 +177,9 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
             />
           )}
           {!playing && house.data?.reef_loop && (
-            <ReefLoop data={house.data.reef_loop} art={art.data} own={house.data.owner.you} />
+            <Suspense>
+              <ReefLoop data={house.data.reef_loop} art={art.data} own={house.data.owner.you} />
+            </Suspense>
           )}
           {house.isPending && <Loading label={t("Opening the door")} />}
           {house.isError && <Problem error={house.error} />}
@@ -319,27 +322,31 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                 room.data &&
                 art.data &&
                 sprites.isSuccess && (
-                  <HouseEditor
-                    key={housePath(target, `/rooms/${idx}`)}
-                    target={target}
-                    initial={room.data}
-                    art={art.data}
-                    house={house.data}
-                    onExit={() => setEditing(false)}
-                  />
+                  <Suspense fallback={<Loading label={t("Loading…")} />}>
+                    <HouseEditor
+                      key={housePath(target, `/rooms/${idx}`)}
+                      target={target}
+                      initial={room.data}
+                      art={art.data}
+                      house={house.data}
+                      onExit={() => setEditing(false)}
+                    />
+                  </Suspense>
                 )}
               {drawn && summary && (
                 <>
-                  <RoomStage
-                    rendered={drawn.rendered}
-                    hover={hover}
-                    onHover={setHover}
-                    label={t("{name}, {count} items", {
-                      name: roomLabel(summary.room_type, summary.name),
-                      count: summary.items,
-                    })}
-                    botPicture={compare && bot.url ? bot.url : null}
-                  />
+                  <Suspense fallback={<Loading label={t("Drawing the room")} />}>
+                    <RoomStage
+                      rendered={drawn.rendered}
+                      hover={hover}
+                      onHover={setHover}
+                      label={t("{name}, {count} items", {
+                        name: roomLabel(summary.room_type, summary.name),
+                        count: summary.items,
+                      })}
+                      botPicture={compare && bot.url ? bot.url : null}
+                    />
+                  </Suspense>
                   <div className="house-info" aria-live="polite">
                     {info ? (
                       <>

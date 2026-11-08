@@ -15412,3 +15412,38 @@ mod web_player;
 
 #[path = "simulate/reef_loop.rs"]
 mod reef_loop;
+
+#[tokio::test]
+async fn blocked_partner_cannot_use_an_already_open_discord_editor() {
+    let Some(mut sim) = Sim::new("reef7_blocked_partner_editor").await else {
+        return;
+    };
+    let (guest, host) = (unique(), unique());
+    sim.app.db.pair_partners(guest, host).await.unwrap();
+    let options = json!([sub("edit", vec![user_option("owner", host)])]);
+    let edit = sim
+        .command_resolved(guest, "house", options.clone(), named(&[(host, "Host")]))
+        .await;
+    let item = edit
+        .options("pt:s:")
+        .iter()
+        .find(|o| !o.value.starts_with('<') && o.value != "none")
+        .unwrap()
+        .value
+        .clone();
+    let held = sim.pick(guest, &edit, "pt:s:", &item).await;
+    let stock = owned(&sim, guest, &item).await;
+    sim.app.db.block_signer(host, guest, "").await.unwrap();
+    let denied = sim.click(guest, &held, "Place").await;
+    assert!(
+        denied.ephemeral && denied.content().contains("cannot apply"),
+        "{}",
+        denied.content()
+    );
+    assert!(room_pieces(&sim, host, 0).await.is_empty());
+    assert_eq!(owned(&sim, guest, &item).await, stock);
+    let denied = sim
+        .command_resolved(guest, "house", options, named(&[(host, "Host")]))
+        .await;
+    assert!(denied.ephemeral && denied.content().contains("cannot apply"));
+}

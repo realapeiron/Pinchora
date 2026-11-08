@@ -28,6 +28,7 @@ interface ServerMessage {
   user_id?: string;
   revision?: string;
   players?: NetPlayer[];
+  roster?: boolean;
   updates?: [string, number, number, number, number, Direction, NetPlayer["state"]][];
   player?: NetPlayer;
   action?: string;
@@ -203,9 +204,18 @@ export class ReefNet {
     this.received = message.sequence;
     // A missing event may have revoked chat visibility. Snapshots do not replay policy
     // notifications, and a policy event must take effect even while recovering a gap.
-    if (gap || message.type === "policy_changed") this.chat.clear();
+    const policyChanged = message.type === "policy_changed";
+    if (gap || policyChanged) {
+      this.chat.clear();
+      this.players.clear();
+      this.samples.clear();
+    }
     if (message.type === "ping") this.send({ type: "ping" });
-    if ((gap || this.recovering) && message.type !== "snapshot" && (this.epoch || this.userId)) {
+    if (
+      (gap || policyChanged || this.recovering) &&
+      message.type !== "snapshot" &&
+      (this.epoch || this.userId)
+    ) {
       if (!this.recovering) {
         this.send({ type: "snapshot" });
         this.recoveryDeadline = setTimeout(() => this.socket?.close(), 3000);
@@ -268,6 +278,16 @@ export class ReefNet {
       }
       if (message.player) this.record(message.player, now);
       for (const player of message.players ?? []) this.record(player, now);
+      // Complete corrections also remove identities hidden by a block on another transport.
+      if (message.type === "correction" && message.roster) {
+        const visible = new Set((message.updates ?? []).map(([id]) => id));
+        for (const id of this.players.keys()) {
+          if (!visible.has(id)) {
+            this.players.delete(id);
+            this.samples.delete(id);
+          }
+        }
+      }
       for (const [id, x, y, tx, ty, direction, state] of message.updates ?? []) {
         const old = this.players.get(id);
         if (old) this.record({ ...old, position: [x, y], tile: [tx, ty], direction, state }, now);

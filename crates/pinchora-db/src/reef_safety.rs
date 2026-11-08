@@ -59,6 +59,19 @@ impl Db {
         Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1))")
             .bind(sql_id(a)).bind(sql_id(b)).fetch_one(self.pool()).await?)
     }
+    /// Read current admission, sanctions and bilateral visibility in one database snapshot.
+    /// Guild membership is checked by the transport on commands and its periodic admission pass.
+    pub async fn reef_delivery_policy(
+        &self,
+        owner: u64,
+        idx: i16,
+        user: u64,
+        plaza: bool,
+    ) -> anyhow::Result<(bool, Vec<String>)> {
+        let (allowed, blocked): (bool, Vec<i64>) = sqlx::query_as("SELECT (CASE WHEN $4 THEN EXISTS(SELECT 1 FROM guilds WHERE id=$1) ELSE reef_house_admitted($1,$3) END) AND NOT EXISTS(SELECT 1 FROM reef_sanctions WHERE user_id=$3 AND expires_at>clock_timestamp() AND (owner_id IS NULL OR owner_id=$1) AND (room_idx IS NULL OR room_idx=$2) AND kind IN ('kick','ban')), ARRAY(SELECT blocked_id FROM guestbook_blocks WHERE host_id=$3 UNION SELECT host_id FROM guestbook_blocks WHERE blocked_id=$3)")
+            .bind(sql_id(owner)).bind(idx).bind(sql_id(user)).bind(plaza).fetch_one(self.pool()).await?;
+        Ok((allowed, blocked.into_iter().map(|id| id.to_string()).collect()))
+    }
     /// Site, house and room scopes all apply. Kicks prevent immediate reconnect for one minute.
     pub async fn reef_sanctioned(&self, user: u64, owner: u64, idx: i16, speaking: bool) -> anyhow::Result<bool> {
         Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_sanctions WHERE user_id=$1 AND expires_at>now() AND (owner_id IS NULL OR owner_id=$2) AND (room_idx IS NULL OR room_idx=$3) AND ($4 OR kind IN ('kick','ban')))")
@@ -260,6 +273,7 @@ impl Db {
                 .bind(now).execute(&mut *tx).await?.rows_affected();
             sqlx::query("DELETE FROM reef_sanctions WHERE id IN (SELECT id FROM reef_sanctions WHERE expires_at <= $1 LIMIT 500 FOR UPDATE SKIP LOCKED)").bind(now).execute(&mut *tx).await?;
             sqlx::query("DELETE FROM reef_moderator_audit WHERE id IN (SELECT id FROM reef_moderator_audit WHERE created_at < $1 - interval '90 days' LIMIT 500 FOR UPDATE SKIP LOCKED)").bind(now).execute(&mut *tx).await?;
+            sqlx::query("DELETE FROM reef_doorbells WHERE id IN (SELECT id FROM reef_doorbells WHERE expires_at <= $1 AND created_at < $1 - interval '1 minute' LIMIT 500 FOR UPDATE SKIP LOCKED)").bind(now).execute(&mut *tx).await?;
             // System actor 0; counts only, never message text or credentials.
             if count>0 { audit(&mut tx,0,None,"retention",Some(count as i64)).await?; }
             tx.commit().await?;

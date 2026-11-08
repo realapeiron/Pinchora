@@ -23,6 +23,7 @@ bought = "Bought **{name}** for {price}."
 costs = "**{name}** costs {price}."
 
 [house.edit]
+blocked = "You cannot apply this change. Reopen the editor and try again."
 start = "Pick furniture: it jumps to a free spot, then press **Place**."
 start-partner = "Pick furniture from your inventory: it jumps to a free spot, then press **Place**."
 expired = "This editor has expired. Run `/house edit` again."

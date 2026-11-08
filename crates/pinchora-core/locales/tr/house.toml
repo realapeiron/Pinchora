@@ -23,6 +23,7 @@ bought = "**{name}** satın alındı: {price}."
 costs = "**{name}** için {price} gerekiyor."
 
 [house.edit]
+blocked = "Bu değişiklik uygulanamıyor. Düzenleyiciyi yeniden açıp tekrar dene."
 start = "Bir mobilya seç: boş bir yere atlar, sonra **Yerleştir**'e bas."
 start-partner = "Envanterinden bir mobilya seç: boş bir yere atlar, sonra **Yerleştir**'e bas."
 expired = "Bu düzenleyicinin süresi doldu. `/house edit` ile yeniden aç."

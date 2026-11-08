@@ -30,6 +30,9 @@ pub struct Envelope {
 }
 impl Envelope {
     pub fn parse(text: &str) -> Option<Self> {
+        if text.len() > MAX_MESSAGE {
+            return None;
+        }
         let envelope: Self = serde_json::from_str(text).ok()?;
         // serde flatten cannot enforce deny_unknown_fields. Keep the wire surface explicit.
         let raw: Value = serde_json::from_str(text).ok()?;
@@ -405,6 +408,9 @@ mod tests {
     fn protocol_intentions_only() {
         let envelope = serde_json::json!({"protocol_version":1,"request_id":"1","room_epoch":"","sequence":1,"type":"authenticate","ticket":"test"});
         assert!(Envelope::parse(&envelope.to_string()).is_some());
+        let mut oversized = envelope.clone();
+        oversized["ticket"] = json!("a".repeat(MAX_MESSAGE));
+        assert!(Envelope::parse(&oversized.to_string()).is_none());
         let forged = serde_json::json!({"protocol_version":1,"request_id":"2","room_epoch":"e","sequence":2,"type":"move_to","tile":[1,1],"position":[8,8],"speed":99});
         assert!(Envelope::parse(&forged.to_string()).is_none());
         for command in ["chat", "game_action", "teleport"] {

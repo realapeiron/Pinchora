@@ -24,6 +24,16 @@ function include(key) {
 for (const [key, chunk] of Object.entries(build))
   if (chunk.isEntry || /ReefStage-/.test(chunk.file)) include(key);
 for (const name of files) if (/^prepare\.worker-.*\.js$/.test(name)) used.add(`assets/${name}`);
+// These panels must remain deferred from the playable room's static dependency graph.
+for (const key of [
+  "src/components/HouseEditor.tsx",
+  "src/reef/DecoratePanel.tsx",
+  "src/reef/SpacesPanel.tsx",
+]) {
+  const chunk = build[key];
+  if (!chunk || used.has(chunk.file))
+    throw new Error(`Optional editor/social code entered the cold path: ${key}`);
+}
 const code =
   [...used].reduce((n, f) => n + statSync(join(web, "dist", f)).size, 0) +
   statSync(join(web, "dist/index.html")).size;
@@ -75,10 +85,10 @@ console.log(
       catalogAllowance: catalog,
       reserve,
       conservativeColdBytes: bytes,
-      budget: 2_000_000,
+      budget: 1_970_000,
     },
     null,
     2,
   ),
 );
-if (bytes > 2_000_000) process.exitCode = 1;
+if (bytes > 1_970_000) process.exitCode = 1;

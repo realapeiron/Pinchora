@@ -157,8 +157,31 @@ impl Db {
                 .await?;
         let Some(author) = author else { return Ok(None) };
         lock_users(&mut tx, &[sql_id(host), sql_id(reader), author]).await?;
-        let id:Option<i64>=sqlx::query_scalar("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text,guestbook_note_id) SELECT host_id,0,author_id,body,id FROM guestbook_notes WHERE id=$1 AND host_id=$2 AND reef_house_admitted($2,$3) ON CONFLICT(guestbook_note_id) WHERE guestbook_note_id IS NOT NULL DO UPDATE SET guestbook_note_id=EXCLUDED.guestbook_note_id RETURNING id")
-            .bind(note).bind(sql_id(host)).bind(sql_id(reader)).fetch_optional(&mut *tx).await?;
+        // Recheck the reader/author block under the same ordered player locks as the evidence write.
+        let allowed: bool = sqlx::query_scalar("SELECT reef_house_admitted($1,$2) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$2 AND blocked_id=$3) OR (host_id=$3 AND blocked_id=$2))")
+            .bind(sql_id(host)).bind(sql_id(reader)).bind(author).fetch_one(&mut *tx).await?;
+        if !allowed {
+            return Ok(None);
+        }
+        let existing: Option<i64> =
+            sqlx::query_scalar("SELECT message_id FROM reef_guestbook_evidence WHERE note_id=$1")
+                .bind(note)
+                .fetch_optional(&mut *tx)
+                .await?;
+        let id = if existing.is_some() {
+            existing
+        } else {
+            let id: Option<i64> = sqlx::query_scalar("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text) SELECT host_id,0,author_id,body FROM guestbook_notes WHERE id=$1 AND host_id=$2 RETURNING id")
+                .bind(note).bind(sql_id(host)).fetch_optional(&mut *tx).await?;
+            if let Some(id) = id {
+                sqlx::query("INSERT INTO reef_guestbook_evidence(note_id,message_id) VALUES($1,$2)")
+                    .bind(note)
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            id
+        };
         if let Some(id) = id {
             sqlx::query("INSERT INTO reef_chat_recipients(message_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING")
                 .bind(id)
