@@ -138,12 +138,14 @@ pub(crate) async fn edit_message(
         return false;
     }
     let result = async {
+        let mut branded = embeds.unwrap_or_default().to_vec();
+        app.brand_embeds_in_channel(channel, &mut branded).await;
         let mut request = app.http.update_message(Id::new(channel), Id::new(message));
         if let Some(content) = content {
             request = request.content(Some(content));
         }
-        if let Some(embeds) = embeds {
-            request = request.embeds(Some(embeds));
+        if embeds.is_some() {
+            request = request.embeds(Some(&branded));
         }
         if let Some(components) = components {
             request = request.components(Some(components));

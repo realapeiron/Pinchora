@@ -40,6 +40,7 @@ const PRIVATE: &[&str] = &[
     "birthdays",
     "beachcomb",
     "bio",
+    "branding",
     "case",
     "character",
     "color",

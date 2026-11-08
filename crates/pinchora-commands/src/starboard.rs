@@ -439,7 +439,7 @@ async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Opti
             files.join("\n"),
         ));
     }
-    let embeds = [embed.build()];
+    let embeds = [app.brand_embed(board.guild_id as u64, embed.build()).await];
     if let Some(copy) = post.board_message_id.filter(|v| *v > 0) {
         match app
             .http

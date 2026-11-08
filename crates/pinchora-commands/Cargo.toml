@@ -11,6 +11,7 @@ pinchora-render.workspace = true
 pinchora-game.workspace = true
 image.workspace = true
 anyhow.workspace = true
+base64.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 feed-rs.workspace = true

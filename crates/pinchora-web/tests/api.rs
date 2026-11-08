@@ -76,6 +76,8 @@ mod feeds;
 mod anti_nuke;
 #[path = "api/birthdays.rs"]
 mod birthdays;
+#[path = "api/branding.rs"]
+mod branding;
 #[path = "api/events.rs"]
 mod events;
 #[path = "api/tempvoice.rs"]
@@ -135,6 +137,10 @@ struct Mock {
     codes: Arc<Mutex<HashMap<String, (String, String)>>>,
     /// Servers the bot is in.
     bot_guilds: Arc<Mutex<HashSet<u64>>>,
+    profile_patches: Arc<Mutex<Vec<Value>>>,
+    refuse_banner: Arc<AtomicBool>,
+    refuse_avatar: Arc<AtomicBool>,
+    refuse_profile: Arc<AtomicBool>,
     guild_owners: Arc<Mutex<HashMap<u64, u64>>>,
     /// Forms posted to the token endpoint, oldest first.
     token_forms: Arc<Mutex<Vec<HashMap<String, String>>>>,
@@ -398,6 +404,25 @@ async fn discord(
         json!({ "message": "401: Unauthorized", "code": 0 }).to_string(),
     );
     match (&method, parts.as_slice()) {
+        (&Method::PATCH, [.., "guilds", _, "members", "@me"]) => {
+            let value: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+            mock.profile_patches.lock().unwrap().push(value.clone());
+            if mock.refuse_profile.load(Ordering::SeqCst) {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    json!({"message":"Unauthorized","code":0}).to_string(),
+                );
+            }
+            if (mock.refuse_banner.load(Ordering::SeqCst) && value.get("banner").is_some())
+                || (mock.refuse_avatar.load(Ordering::SeqCst) && value.get("avatar").is_some())
+            {
+                return (
+                    StatusCode::FORBIDDEN,
+                    json!({"message":"Missing Access","code":50001}).to_string(),
+                );
+            }
+            (StatusCode::OK, "{}".to_owned())
+        }
         (&Method::GET, [.., "users", "@me"]) => {
             let users = mock.users.lock().unwrap();
             match bearer.and_then(|t| users.get(&t).cloned()) {

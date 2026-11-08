@@ -1058,3 +1058,46 @@ async fn a_responders_own_role_change_sets_off_no_other_responder() {
         posted.iter().map(|p| p.content()).collect::<Vec<_>>()
     );
 }
+
+#[tokio::test]
+async fn branding_colors_auto_responder_posts_but_never_direct_messages() {
+    let Some(sim) = Sim::new("branding_auto_dm").await else {
+        return;
+    };
+    let (member, lobby) = (unique(), unique());
+    sim.app
+        .db
+        .save_guild_branding(
+            sim.guild,
+            &pinchora_db::GuildBranding {
+                embed_color: Some(0x123456),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(
+        sim.app
+            .db
+            .claim_branding_apply(sim.guild, Some(0x123456))
+            .await
+            .unwrap()
+    );
+    let mut public = responder("member_join", "Public", lobby);
+    public.embed = Some(serde_json::from_value(json!({"description":"Welcome", "color":"#ABCDEF"})).unwrap());
+    let mut private = public.clone();
+    private.name = "private".into();
+    private.destination = serde_json::from_value(json!("dm")).unwrap();
+    private.channel_id = None;
+    stock_responders(&sim, &[public, private]).await;
+    sim.join(member, "Robin", false, None).await;
+    let posts = posts_after(&sim, |p| {
+        p.iter().any(|x| x.channel == lobby) && p.iter().any(|x| x.channel == member)
+    })
+    .await;
+    assert_eq!(in_channel(&posts, lobby)[0].body["embeds"][0]["color"], json!(0x123456));
+    assert_eq!(
+        in_channel(&posts, member)[0].body["embeds"][0]["color"],
+        json!(0xabcdef)
+    );
+}

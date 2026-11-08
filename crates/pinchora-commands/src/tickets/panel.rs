@@ -144,7 +144,7 @@ pub async fn post_panel(app: &Arc<App>, id: i64, lang: Lang) -> anyhow::Result<P
         return Ok(PanelPost::Gone);
     };
     let shown = app.guild_lang(panel.guild_id as u64).await;
-    let embeds = [panel_embed(&panel, shown)];
+    let embeds = [app.brand_embed(panel.guild_id as u64, panel_embed(&panel, shown)).await];
     let components = panel_components(&panel, shown);
     let channel = Id::new(panel.channel_id as u64);
     if let Some(message) = panel.message_id {

@@ -3,10 +3,22 @@ use super::*;
 use std::time::Duration;
 
 #[tokio::test]
-async fn roblox_profile_code_english_and_turkish() {
+async fn branding_roblox_profile_code_english_and_turkish() {
     let Some(mut sim) = Sim::new("roblox_profile_code_english_and_turkish").await else {
         return;
     };
+    sim.app
+        .db
+        .save_guild_branding(sim.guild, &pinchora_db::GuildBranding::default())
+        .await
+        .unwrap();
+    assert!(
+        sim.app
+            .db
+            .claim_branding_apply(sim.guild, Some(0x31b8d4))
+            .await
+            .unwrap()
+    );
     let description = Arc::new(Mutex::new(String::new()));
     let profile = description.clone();
     let banned = Arc::new(AtomicBool::new(false));
@@ -114,6 +126,7 @@ async fn roblox_profile_code_english_and_turkish() {
     *name.lock().unwrap() = "RenamedCrab".to_owned();
     let whois = sim.command(user, "roblox", json!([sub("whois", vec![])])).await;
     assert!(whois.ephemeral);
+    assert_eq!(whois.embeds[0].color, Some(0x31b8d4));
     assert_eq!(
         sim.app.db.roblox_link(user).await.unwrap().unwrap().roblox_name,
         "RenamedCrab"

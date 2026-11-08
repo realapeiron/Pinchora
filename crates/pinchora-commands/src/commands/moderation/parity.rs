@@ -214,7 +214,7 @@ pub(crate) async fn extra_log(app: &App, g: u64, actor: u64, kind: CaseKind, use
             .title(crate::server_log::title(lang, event))
             .description(format!("<@{user}> · <@{actor}>"))
             .build();
-        crate::server_log::post(app, channel, embed).await;
+        crate::server_log::post(app, g, channel, embed).await;
     }
 }
 async fn notes(cx: &Cx, c: Notes) -> anyhow::Result<()> {

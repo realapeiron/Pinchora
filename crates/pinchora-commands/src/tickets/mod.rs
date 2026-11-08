@@ -145,9 +145,9 @@ pub(crate) fn log_channel(settings: &TicketSettings, panel: Option<&TicketPanel>
 
 /// Posts `embed` (and `file`, a transcript) in the ticket log; a log that cannot be written to is only
 /// noted, it never stops the ticket.
-pub(crate) async fn log(app: &App, channel: Option<u64>, embed: Embed, file: Option<(String, Vec<u8>)>) {
+pub(crate) async fn log(app: &App, guild: u64, channel: Option<u64>, embed: Embed, file: Option<(String, Vec<u8>)>) {
     let Some(channel) = channel else { return };
-    let embeds = [embed];
+    let embeds = [app.brand_embed(guild, embed).await];
     let mentions = quiet();
     let request: CreateMessage<'_> = app
         .http

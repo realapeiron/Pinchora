@@ -346,9 +346,12 @@ async fn post(
             .replace("@everyone", "@\u{200B}everyone")
             .replace("@here", "@\u{200B}here")
     };
-    let embeds = embed
+    let mut embeds = embed
         .and_then(|v| serde_json::from_value::<pinchora_core::tags::EmbedSpec>(v.clone()).ok())
         .map(|e| vec![crate::custom::embed_of(&e)]);
+    if let Some(ref mut embeds) = embeds {
+        app.brand_embeds(guild, embeds).await;
+    }
     let mut request = app
         .http
         .create_message(Id::new(channel))

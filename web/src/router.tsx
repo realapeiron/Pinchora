@@ -86,6 +86,10 @@ export const router = createBrowserRouter([
       { index: true, element: <Overview /> },
       { path: "modules", element: <Modules /> },
       { path: "welcome", element: <Welcome /> },
+      {
+        path: "branding",
+        lazy: async () => ({ Component: (await import("./pages/Branding")).BrandingPage }),
+      },
       { path: "welcome-image", element: <WelcomeImage /> },
       { path: "leveling", element: <Leveling /> },
       { path: "points", element: <Points /> },

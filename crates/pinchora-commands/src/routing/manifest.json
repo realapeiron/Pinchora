@@ -215,6 +215,21 @@
     "slice": 8
   },
   {
+    "legacy": "branding apply",
+    "canonical": "setup branding apply",
+    "slice": 18
+  },
+  {
+    "legacy": "branding reset",
+    "canonical": "setup branding reset",
+    "slice": 18
+  },
+  {
+    "legacy": "branding show",
+    "canonical": "setup branding show",
+    "slice": 18
+  },
+  {
     "legacy": "case",
     "canonical": "mod case",
     "slice": 9

@@ -536,7 +536,7 @@ pub async fn on_modal(
                     .http
                     .create_message(twilight_model::id::Id::new(channel as u64))
                     .content(&content)
-                    .embeds(&[embed])
+                    .embeds(&[cx.app.brand_embed(guild, embed).await])
                     .components(&[row])
                     .allowed_mentions(Some(&mentions))
                     .await;

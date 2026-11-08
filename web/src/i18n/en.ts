@@ -1,4 +1,39 @@
 export const en = {
+  "Server branding": "Server branding",
+  "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.":
+    "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.",
+  "Branding settings": "Branding settings",
+  Profile: "Profile",
+  "Server nickname": "Server nickname",
+  Bio: "Bio",
+  "A little about this bot in your server": "A little about this bot in your server",
+  Banner: "Banner",
+  "Images use the welcome card upload limits and are converted to PNG.":
+    "Images use the welcome card upload limits and are converted to PNG.",
+  "Embed colour": "Embed colour",
+  "Hex colour": "Hex colour",
+  "This colour is used on Pinchora embeds throughout this server.":
+    "This colour is used on Pinchora embeds throughout this server.",
+  "Discord refused part of the last apply: {detail}": "Discord refused part of the last apply: {detail}",
+  "Some profile fields are unavailable to this app. The colour and available fields still work.":
+    "Some profile fields are unavailable to this app. The colour and available fields still work.",
+  "Image uploaded. Save changes to keep it.": "Image uploaded. Save changes to keep it.",
+  "Branding could not load.": "Branding could not load.",
+  "Changes saved.": "Changes saved.",
+  "Branding applied to Discord.": "Branding applied to Discord.",
+  "Apply in {minutes} min": "Apply in {minutes} min",
+  "Apply to Discord": "Apply to Discord",
+  "Reset branding": "Reset branding",
+  "Confirm reset": "Confirm reset",
+  "Clear the saved profile and colour for this server?":
+    "Clear the saved profile and colour for this server?",
+  "Branding reset.": "Branding reset.",
+  "Live preview": "Live preview",
+  Bot: "Bot",
+  "Welcome to {server}": "Welcome to {server}",
+  "Your server's colour appears on every Pinchora embed.":
+    "Your server's colour appears on every Pinchora embed.",
+  Branding: "Branding",
   pending: "Sending",
   delivered: "Delivered",
   failed: "Failed",
@@ -3587,4 +3622,10 @@ export const en = {
   "Add bind": "Add bind",
   "Role bind added.": "Role bind added.",
   "Roblox settings saved.": "Roblox settings saved.",
+  "Some profile fields could not be reset. Their previous values were kept.":
+    "Some profile fields could not be reset. Their previous values were kept.",
+  "Some profile fields could not be applied. Review the details below.":
+    "Some profile fields could not be applied. Review the details below.",
+  "Last accepted nickname: {name}": "Last accepted nickname: {name}",
+  "Last accepted bio: {bio}": "Last accepted bio: {bio}",
 } as const;

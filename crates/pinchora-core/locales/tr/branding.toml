@@ -1,0 +1,29 @@
+[branding]
+show = "Takma ad: **{nick}** · Renk: **{color}** · Biyografi: {bio}"
+invalid = "Marka ayarlarını kontrol et: {reason}"
+applied = "Sunucu marka ayarları uygulandı."
+cooldown = "Marka ayarlarını değiştirmek için 10 dakika bekle."
+partial = "Renk kaydedildi, ancak Discord şu profil alanlarını reddetti: {fields}. Uygulamanın profil erişimini ve bot izinlerini kontrol et."
+reset = "Sunucu marka ayarları sıfırlandı."
+reset-partial = "Bazı profil alanları sıfırlanamadı ve önceki değerleri korundu; uygulamanın profil erişimini kontrol et."
+
+[branding.error]
+nickname = "Takma ad 1–32 karakterlik düz metin olmalı; etiketleme, davet bağlantısı ve Markdown kullanma."
+bio = "Biyografi 1–190 karakterlik düz metin olmalı; etiketleme, davet bağlantısı ve Markdown kullanma."
+colour = "#FF6B4A gibi altı haneli bir renk kullan."
+upload = "Bu sunucuya yüklenmiş bir görsel seç."
+
+[branding.field]
+nickname = "takma ad"
+avatar = "avatar"
+banner = "kapak görseli"
+bio = "biyografi"
+
+[module]
+branding = "Marka kimliği"
+
+[module-blurb]
+branding = "Sunucu bot profili ve mesaj rengi"
+
+[config_backup.section]
+guild_branding = "Sunucu marka kimliği"

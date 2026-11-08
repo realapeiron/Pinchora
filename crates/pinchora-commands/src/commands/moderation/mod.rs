@@ -501,7 +501,9 @@ pub(crate) async fn post_case(app: &App, guild: u64, case: &CaseRow) {
     let Some(channel) = mod_log_channel(app, guild).await else {
         return;
     };
-    let embed = case_embed(case, app.guild_lang(guild).await);
+    let embed = app
+        .brand_embed(guild, case_embed(case, app.guild_lang(guild).await))
+        .await;
     let mentions = AllowedMentions::default();
     let posted = app
         .http
@@ -531,7 +533,12 @@ pub async fn refresh_post(app: &App, case: &CaseRow) {
     let (Some(channel), Some(message)) = (case.log_channel_id, case.log_message_id) else {
         return;
     };
-    let embed = case_embed(case, app.guild_lang(case.guild_id as u64).await);
+    let embed = app
+        .brand_embed(
+            case.guild_id as u64,
+            case_embed(case, app.guild_lang(case.guild_id as u64).await),
+        )
+        .await;
     if let Err(error) = app
         .http
         .update_message(Id::new((channel as u64).max(1)), Id::new((message as u64).max(1)))

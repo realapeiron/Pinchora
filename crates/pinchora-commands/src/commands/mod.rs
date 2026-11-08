@@ -4,6 +4,7 @@ pub(crate) mod automod;
 mod bio;
 pub(crate) mod birthdays;
 pub(crate) mod board;
+pub(crate) mod branding;
 pub(crate) mod character;
 pub(crate) mod collection;
 pub(crate) mod command_control;
@@ -142,6 +143,7 @@ commands!(
     community_pack::CountingCommand,
     community_pack::FormCommand,
     community_pack::ModmailCommand,
+    branding::BrandingCommand,
     achievements::AchievementsCommand,
     achievements::AchievementAdmin,
     ping::Ping,

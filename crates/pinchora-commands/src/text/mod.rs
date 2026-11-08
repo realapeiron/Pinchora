@@ -403,6 +403,7 @@ pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
     let started = std::time::Instant::now();
     let responder = Arc::new(Responder::text(
         app.clone(),
+        guild,
         message.channel_id,
         message.id,
         path.clone(),

@@ -44,7 +44,8 @@ pub(crate) async fn edit_card(
         return false;
     }
     let attachment = Attachment::from_bytes(filename.to_owned(), bytes, 1);
-    let embeds = [embed];
+    let mut embeds = [embed];
+    app.brand_embeds_in_channel(channel, &mut embeds).await;
     let no_pings = quiet();
     let result = async {
         let mut request = app
@@ -78,7 +79,8 @@ pub(crate) async fn post_card(
     components: &[Component],
 ) -> anyhow::Result<u64> {
     let attachment = Attachment::from_bytes(filename.to_owned(), bytes, 1);
-    let embeds = [embed];
+    let mut embeds = [embed];
+    app.brand_embeds_in_channel(channel, &mut embeds).await;
     let no_pings = quiet();
     let message = app
         .http

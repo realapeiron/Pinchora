@@ -12,8 +12,8 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 104);
-    assert_eq!(paths.len(), 365);
+    assert_eq!(tree.len(), 105);
+    assert_eq!(paths.len(), 368);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     assert_eq!(
@@ -46,7 +46,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 189);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 192);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -59,7 +59,7 @@ fn every_alias_preserves_handler_arguments_permissions_and_metadata() {
     let tree = crate::command_definitions();
     let setup = tree.iter().find(|c| c.name == "setup").unwrap();
     assert_eq!(setup.default_member_permissions, Some(Permissions::MANAGE_GUILD));
-    assert_eq!(setup.options.len(), 5);
+    assert_eq!(setup.options.len(), 6);
     assert!(tree.len() <= 100);
     for root in tree.iter().filter(|c| is_admin_path(&c.name)) {
         assert_eq!(root.default_member_permissions, Some(Permissions::MANAGE_GUILD));
@@ -204,6 +204,8 @@ fn validators_reject_argument_and_choice_overflows() {
     let mut argument: CommandOption =
         serde_json::from_value(json!({"type":3,"name":"argument","description":"An argument"})).unwrap();
     let setup = tree.iter_mut().find(|c| c.name == "setup").unwrap();
+    // Isolate the option limit from the complete root's independent character budget.
+    setup.options.truncate(1);
     setup.options[0].options.as_mut().unwrap()[0].options = Some(vec![argument.clone(); 26]);
     assert!(
         validate(&tree)
@@ -335,10 +337,12 @@ fn migration_covers_every_active_leaf_without_broadening_split_parents() {
         include_str!("../../../../migrations/0066_command_paths.sql"),
         include_str!("../../../../migrations/0074_mod_parity.sql")
     );
-    for route in MANIFEST
-        .iter()
-        .filter(|r| r.active() && !r.legacy.starts_with("community ") && !r.legacy.starts_with("roblox"))
-    {
+    for route in MANIFEST.iter().filter(|r| {
+        r.active()
+            && !r.legacy.starts_with("community ")
+            && !r.legacy.starts_with("roblox")
+            && !r.legacy.starts_with("branding ")
+    }) {
         assert!(
             sql.contains(&format!("('{}', '{}')", route.legacy, previous_path(route)))
                 || sql.contains(&format!("('{}', '{}')", route.legacy, route.canonical)),

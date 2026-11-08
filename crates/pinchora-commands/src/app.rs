@@ -143,6 +143,7 @@ pub struct App {
     render_slots: Arc<Semaphore>,
     preview_slots: Arc<Semaphore>,
     guild_settings: Moka<u64, Arc<GuildSettings>>,
+    pub(crate) branding_colors: Moka<u64, Option<i32>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
     permission_facts: Moka<u64, Arc<PermissionFacts>>,
     channel_rules: Moka<u64, Arc<ChannelRules>>,
@@ -156,6 +157,7 @@ pub struct App {
     pub(crate) antinuke_enabled: Moka<u64, bool>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
     channel_places: Moka<u64, ChannelPlace>,
+    pub(crate) channel_guilds: Moka<u64, Option<u64>>,
     channel_misses: Moka<u64, ()>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
@@ -210,6 +212,10 @@ impl App {
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
+            branding_colors: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
             guild_roles: Moka::builder()
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(60))
@@ -261,6 +267,10 @@ impl App {
                 .build(),
             channel_places: Moka::builder()
                 .max_capacity(500_000)
+                .time_to_live(CHANNEL_PLACE_KEPT)
+                .build(),
+            channel_guilds: Moka::builder()
+                .max_capacity(100_000)
                 .time_to_live(CHANNEL_PLACE_KEPT)
                 .build(),
             channel_misses: Moka::builder()
@@ -795,6 +805,7 @@ impl App {
 
     pub async fn forget_guild_settings(&self, guild_id: u64) {
         self.antinuke_enabled.invalidate(&guild_id).await;
+        self.branding_colors.invalidate(&guild_id).await;
         self.forget_automod_config(guild_id).await;
         self.guild_settings.invalidate(&guild_id).await;
         self.log_state.forget_config(guild_id).await;

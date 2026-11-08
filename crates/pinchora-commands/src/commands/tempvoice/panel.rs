@@ -86,6 +86,7 @@ pub(crate) fn message(lang: Lang, room: &TempRoom) -> (Embed, Vec<Component>) {
 /// Posts the panel of a new room where it belongs (`panel_channel`) and returns the message's id.
 pub(crate) async fn post(app: &App, lang: Lang, room: &TempRoom, panel_channel: u64) -> Option<u64> {
     let (embed, components) = message(lang, room);
+    let embed = app.brand_embed(room.guild_id as u64, embed).await;
     let sent = app
         .http
         .create_message(Id::new(panel_channel.max(1)))
@@ -109,6 +110,7 @@ pub(crate) async fn refresh(app: &App, room: &TempRoom) {
     };
     let lang = lang_of(app, room.guild_id as u64).await;
     let (embed, components) = message(lang, room);
+    let embed = app.brand_embed(room.guild_id as u64, embed).await;
     let edited = app
         .http
         .update_message(Id::new(channel as u64), Id::new(posted as u64))

@@ -549,7 +549,8 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
         roles: draft.ping_role.filter(|_| ping).map(Id::new).into_iter().collect(),
         ..AllowedMentions::default()
     };
-    let embeds: Vec<_> = message.embed.iter().map(|e| e.to_embed(draft.kind)).collect();
+    let mut embeds: Vec<_> = message.embed.iter().map(|e| e.to_embed(draft.kind)).collect();
+    app.brand_embeds(feed.guild_id as u64, &mut embeds).await;
     // Twilight 0.18 has `nonce` but omits Discord's `enforce_nonce` field. Its raw JSON
     // escape hatch sends the complete payload, including that field.
     let mut payload = delivery_payload(
@@ -781,6 +782,7 @@ pub async fn end_live(app: &App, feed: &FeedRow) {
         .url(vod)
         .color(0x6b7280)
         .build();
+    let embed = app.brand_embed(feed.guild_id as u64, embed).await;
     let body = serde_json::to_vec(&serde_json::json!({
         "content": "", "embeds": [embed], "components": [], "allowed_mentions": {"parse": []}
     }))

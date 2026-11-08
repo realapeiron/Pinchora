@@ -271,7 +271,7 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
         .app
         .http
         .create_message(channel)
-        .embeds(&[giveaway_embed(server_lang, &giveaway)])
+        .embeds(&[cx.app.brand_embed(guild, giveaway_embed(server_lang, &giveaway)).await])
         .components(&giveaway_components(server_lang, &giveaway))
         .allowed_mentions(quiet().as_ref())
         .await;

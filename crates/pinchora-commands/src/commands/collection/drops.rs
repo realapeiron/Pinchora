@@ -282,7 +282,7 @@ async fn post(
     buttons: Vec<Component>,
 ) -> anyhow::Result<bool> {
     let channel = row.channel_id as u64;
-    let embeds = [embed];
+    let embeds = [app.brand_embed(row.guild_id as u64, embed).await];
     let attachments = [Attachment::from_bytes(filename.to_owned(), png, 1)];
     let no_pings = quiet();
     let posted = app

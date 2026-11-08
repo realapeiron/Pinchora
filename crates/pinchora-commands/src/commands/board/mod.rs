@@ -101,12 +101,14 @@ pub(crate) async fn edit_card(app: &App, channel: u64, message: u64, data: &Inte
         return false;
     }
     let result = async {
+        let mut branded = data.embeds.clone().unwrap_or_default();
+        app.brand_embeds_in_channel(channel, &mut branded).await;
         let mut request = app.http.update_message(Id::new(channel), Id::new(message));
         if let Some(content) = &data.content {
             request = request.content(Some(content));
         }
-        if let Some(embeds) = &data.embeds {
-            request = request.embeds(Some(embeds));
+        if data.embeds.is_some() {
+            request = request.embeds(Some(&branded));
         }
         if let Some(components) = &data.components {
             request = request.components(Some(components));

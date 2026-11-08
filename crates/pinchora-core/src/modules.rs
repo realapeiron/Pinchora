@@ -149,11 +149,12 @@ pub enum Module {
     Forms,
     Modmail,
     Roblox,
+    Branding,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 52] = [
+    pub const ALL: [Self; 53] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -206,6 +207,7 @@ impl Module {
         Self::Forms,
         Self::Modmail,
         Self::Roblox,
+        Self::Branding,
     ];
 
     /// The key stored in the database and used in the API.
@@ -263,6 +265,7 @@ impl Module {
             Self::Forms => "forms",
             Self::Modmail => "modmail",
             Self::Roblox => "roblox",
+            Self::Branding => "branding",
         }
     }
 
@@ -324,6 +327,7 @@ impl Module {
             Self::Forms => "Application forms",
             Self::Modmail => "Modmail",
             Self::Roblox => "Roblox",
+            Self::Branding => "Branding",
         }
     }
 
@@ -408,6 +412,7 @@ impl Module {
             Self::AntiNuke => "Protect server structure, staff and VIP members.",
             Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",
             Self::Utility => "AFK notices, sticky posts and scheduled messages.",
+            Self::Branding => "Server bot profile and embed colour.",
         }
     }
 
@@ -452,6 +457,7 @@ impl Module {
             Self::CommandControl => Group::Server,
             Self::Qotd | Self::Counting | Self::Forms | Self::Modmail => Group::Community,
             Self::Roblox => Group::Feeds,
+            Self::Branding => Group::Server,
         }
     }
 
@@ -560,6 +566,7 @@ impl Module {
             "form" => Self::Forms,
             "modmail" => Self::Modmail,
             "roblox" | "robloxadmin" => Self::Roblox,
+            "branding" => Self::Branding,
             _ => return None,
         })
     }
@@ -609,6 +616,7 @@ impl Module {
             "fm" => Self::Forms,
             "mml" => Self::Modmail,
             "rx" | "rk" => Self::Roblox,
+            "wb" => Self::Branding,
             _ => return None,
         })
     }

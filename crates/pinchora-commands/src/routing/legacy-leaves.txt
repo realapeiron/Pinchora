@@ -41,6 +41,9 @@ birthday set
 birthday view
 birthdays preview
 birthdays settings
+branding apply
+branding reset
+branding show
 case
 character
 color list

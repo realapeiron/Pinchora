@@ -1,5 +1,6 @@
 mod app;
 mod auto;
+pub mod branding;
 mod card_images;
 mod catalog;
 mod commands;
