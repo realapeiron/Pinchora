@@ -173,6 +173,7 @@ const OPENS_FORM: &[&str] = &[
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator
 /// checks that every modal it sees opened comes from one of these.
 const OPENS_MODAL: &[&str] = &[
+    "cd:w",
     "d9p:answer",
     "d9s:answer",
     "d9c:answer",

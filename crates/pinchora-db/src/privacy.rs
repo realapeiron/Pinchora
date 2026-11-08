@@ -161,6 +161,11 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("party_players", "user_id"),
     ("party_games", "host_id"),
     ("dex_entries", "user_id"),
+    ("collection_wishlist", "user_id"),
+    ("collection_rolls", "user_id"),
+    ("collection_votes", "user_id"),
+    ("collection_word_attempts", "user_id"),
+    ("collection_shard_ledger", "user_id"),
     ("collection_players", "user_id"),
     ("user_accessories", "user_id"),
     ("character_outfits", "user_id"),
@@ -203,6 +208,8 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
 pub enum ListEdit {
     /// Replaced by 0, for lists that run in step with another one (a podium keeps its places).
     Blank,
+    /// Anonymous spent slot; zero would reopen a collection reward.
+    Taken,
     /// Taken out.
     Remove,
 }
@@ -214,7 +221,7 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
     ("contest_results", "winner_ids", ListEdit::Blank),
     ("giveaways", "winner_ids", ListEdit::Remove),
     // A critter drop's takers run in step with its cards.
-    ("collection_drops", "takers", ListEdit::Blank),
+    ("collection_drops", "takers", ListEdit::Taken),
     // Members the server log leaves alone.
     ("log_settings", "ignored_users", ListEdit::Remove),
 ];
@@ -232,6 +239,7 @@ pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
     ("suggestions", "decided_by"),
     ("confessions", "reviewer_id"),
     ("collection_drops", "host_id"),
+    ("collection_drops", "protected_user_id"),
     ("tickets", "claimed_by"),
     ("tickets", "closed_by"),
     ("events", "host_id"),
@@ -593,6 +601,7 @@ impl Db {
         for (table, column, edit) in ID_LISTS {
             let value = match edit {
                 ListEdit::Blank => format!("array_replace({column}, $1, 0)"),
+                ListEdit::Taken => format!("array_replace({column}, $1, -1)"),
                 ListEdit::Remove => format!("array_remove({column}, $1)"),
             };
             let sql = format!("UPDATE {table} SET {column} = {value} WHERE $1 = ANY({column})");
@@ -648,7 +657,7 @@ impl Db {
         let before = now - Duration::days(TOMBSTONE_DAYS);
         retry("forget_old_tombstones", || async move {
             // An annual birthday lock must not extend retention of unrelated cooldowns or ids.
-            sqlx::query("UPDATE deleted_users SET deleted_at='epoch', last_daily_at=NULL, last_rep_at=NULL, weekly_at=NULL, monthly_at=NULL, day=NULL, visits=0, liked='{}', wordle_day=NULL, walk_until=NULL, pet_wake_day=NULL, picross_day=NULL, comb_ready_at=NULL WHERE user_id IN (SELECT user_id FROM deleted_users WHERE deleted_at<$1 AND deleted_at<>'epoch' AND birthday_until>$2 FOR UPDATE SKIP LOCKED)")
+            sqlx::query("UPDATE deleted_users SET deleted_at='epoch', last_daily_at=NULL, last_rep_at=NULL, weekly_at=NULL, monthly_at=NULL, day=NULL, visits=0, liked='{}', wordle_day=NULL, walk_until=NULL, pet_wake_day=NULL, picross_day=NULL, comb_ready_at=NULL, collection_roll_until=NULL, collection_ping_until=NULL WHERE user_id IN (SELECT user_id FROM deleted_users WHERE deleted_at<$1 AND deleted_at<>'epoch' AND birthday_until>$2 FOR UPDATE SKIP LOCKED)")
                 .bind(before).bind(now).execute(self.pool()).await?;
             Ok(sqlx::query(
                 "WITH old AS MATERIALIZED (
@@ -845,6 +854,10 @@ async fn leave_tombstone(
     .bind(used.comb_ready_at)
     .execute(&mut **tx)
     .await?;
+    sqlx::query("UPDATE deleted_users SET
+        collection_roll_until=GREATEST(collection_roll_until, (SELECT rolled_at + interval '1 hour' FROM collection_rolls WHERE user_id=$1)),
+        collection_ping_until=GREATEST(collection_ping_until, (SELECT max(protected_until) + interval '1 hour' FROM collection_drops WHERE protected_user_id=$1))
+        WHERE user_id=$1").bind(id).execute(&mut **tx).await?;
     // Preserve only an expiry, not the erased birthday or server membership. A claimed celebration
     // stays spent until the next UTC year; an unclaimed date keeps its original 30-day change lock.
     sqlx::query("UPDATE deleted_users SET birthday_until=GREATEST(birthday_until, (SELECT max(locked_until) FROM birthday_gift_years WHERE user_id=$1), (SELECT make_date(max(utc_year)::int+1,1,1)::timestamp AT TIME ZONE 'UTC' FROM birthday_sent WHERE user_id=$1)) WHERE user_id=$1")

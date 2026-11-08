@@ -74,8 +74,9 @@ pub use branding::GuildBranding;
 pub use card_designs::{CardDesignRow, CardUploadRow};
 pub use character::OutfitRow;
 pub use collection::{
-    Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionSettings, Comb, Daily,
-    DexRow, DropRow, Grab, Granted, NewDrop, PotHaul, PotRow, PotUpgrade,
+    Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionRoll,
+    CollectionSettings, Comb, Daily, DexRow, DropRow, Grab, Granted, NewDrop, PotHaul, PotRow, PotUpgrade, RollClaim,
+    RollStart, VoteCard, WishlistRow,
 };
 pub use community::*;
 pub use contest::{ContestEntry, ContestResult};

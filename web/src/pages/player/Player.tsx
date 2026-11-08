@@ -12,6 +12,7 @@ import { Loading, Problem } from "../States";
 import { ProfileStudio } from "./ProfileStudio";
 import { CharacterStudio } from "./CharacterStudio";
 import { Friends, Guestbook, FishBook, Inventory, Pets, Quests, Stall } from "./Depth";
+import { CollectionBook, CollectionWishlist } from "./Collection";
 import "../../styles/web-player.css";
 import { EconomyPanels } from "./Economy";
 
@@ -30,6 +31,8 @@ export function PlayerRoutes() {
             <Route path="pets" element={<Pets />} />
             <Route path="stall" element={<Stall />} />
             <Route path="fishbook" element={<FishBook />} />
+            <Route path="collection" element={<CollectionBook />} />
+            <Route path="wishlist" element={<CollectionWishlist />} />
             <Route path="quests" element={<Quests />} />
             <Route path="guestbook" element={<Guestbook />} />
             <Route path="friends" element={<Friends />} />
@@ -56,6 +59,8 @@ function PlayerShell({ me, children }: { me: Me; children: ReactNode }) {
           <NavLink to="/me/pets">{t("Pets")}</NavLink>
           <NavLink to="/me/stall">{t("Stall")}</NavLink>
           <NavLink to="/me/fishbook">{t("Fish book")}</NavLink>
+          <NavLink to="/me/collection">{t("Collection book")}</NavLink>
+          <NavLink to="/me/wishlist">{t("Wishlist")}</NavLink>
           <NavLink to="/me/quests">{t("Quests")}</NavLink>
           <NavLink to="/me/guestbook">{t("Guestbook")}</NavLink>
           <NavLink to="/me/friends">{t("Friends")}</NavLink>

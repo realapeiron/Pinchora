@@ -1,5 +1,7 @@
 # Command tree release rehearsal
 
+D6 collection depth extends the existing `/dex` panel and `/critterdrop` interactions; it adds no slash root or child. The `/me/collection` and `/me/wishlist` player pages share the same database state. Migration **0084** only. No registration or deployment is performed here.
+
 D10 adds `/highlight`, `/checklist`, `/autopost`, `/anniversary` and `/confess` as feature roots. Existing `/giveaway`, `/poll`, `/suggestion` and `/remind` grow within their budgets. Registration now has **78 slash roots plus Report**. `/community` gains no children and stays under its 6,400-character budget. D10 uses migration 0079 only.
 
 F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`). Registration has

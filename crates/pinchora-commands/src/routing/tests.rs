@@ -468,6 +468,13 @@ fn quick_games_retain_paths_arguments_and_localizations() {
 #[test]
 fn registered_command_sizes_keep_growth_headroom() {
     let tree = crate::command_definitions();
+    // Collection depth lives in these existing roots; do not silently skip its budget check.
+    for name in ["dex", "critterdrop", "beachcomb", "crabpot"] {
+        let root = tree.iter().find(|c| c.name == name).expect("collection root exists");
+        let size = super::command_size(root);
+        eprintln!("/{name}: {size} characters (collection)");
+        assert!(size <= 6_650, "collection root /{name}: {size}");
+    }
     let mut sizes: Vec<_> = tree.iter().map(|c| (super::command_size(c), &c.name)).collect();
     sizes.sort_by(|a, b| b.cmp(a));
     for (size, name) in sizes.iter().take(10) {
@@ -475,6 +482,10 @@ fn registered_command_sizes_keep_growth_headroom() {
     }
     assert!(sizes[0].0 <= 6_650, "largest root must retain D8 headroom");
     for (size, name) in sizes {
+        if name == "collection" {
+            assert!(size <= 6_650, "collection root: {size}");
+        }
+        assert!(size <= 6_800, "{name}: {size}");
         if name == "community" {
             assert!(size <= COMMUNITY_SIZE_BUDGET);
         }

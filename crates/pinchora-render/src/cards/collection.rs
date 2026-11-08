@@ -213,6 +213,23 @@ impl DropCard {
             for (sx, sy) in stars.iter().take(card.sparkles.min(3) as usize) {
                 sprite(&mut s, STAR, *sx, *sy, 3.0, &t.gold, "#fff7d6");
             }
+            if card.sparkles == 4 {
+                // Four bright pixel corners and a second inset border identify Glimmer even at thumbnail size.
+                let _ = write!(
+                    s,
+                    r##"<rect x="{}" y="{}" width="280" height="304" fill="none" stroke="#e8fffa" stroke-width="4" stroke-dasharray="12 8"/>"##,
+                    x + 8.0,
+                    y + 8.0
+                );
+                for (sx, sy) in [
+                    (x + 22.0, y + 80.0),
+                    (x + 254.0, y + 76.0),
+                    (x + 26.0, y + 212.0),
+                    (x + 250.0, y + 214.0),
+                ] {
+                    sprite(&mut s, STAR, sx, sy, 3.0, "#8ff6e9", "#ffffff");
+                }
+            }
             text(
                 &mut s,
                 cx,
@@ -457,6 +474,17 @@ impl DexCard {
                 t.panel_edge.clone()
             };
             panel(&mut s, x, y, cw, ch, 4.0, &t.panel, &frame);
+            if cell.owned && cell.frame == 0x9af5ec {
+                let _ = write!(
+                    s,
+                    r##"<rect x="{}" y="{}" width="{}" height="{}" fill="none" stroke="#e8fffa" stroke-width="2" stroke-dasharray="6 4"/>"##,
+                    x + 5.0,
+                    y + 5.0,
+                    cw - 10.0,
+                    ch - 10.0
+                );
+                sprite(&mut s, STAR, x + 8.0, y + 40.0, 2.0, "#8ff6e9", "#ffffff");
+            }
             if cell.owned {
                 let _ = write!(
                     s,
@@ -606,6 +634,15 @@ impl HaulCard {
         );
         let frame = hex(tile.frame);
         panel(&mut s, 36.0, 92.0, 284.0, 240.0, 4.0, &t.panel, &frame);
+        if tile.frame == 0x9af5ec {
+            let _ = write!(
+                s,
+                r##"<rect x="42" y="98" width="272" height="228" fill="none" stroke="#e8fffa" stroke-width="4" stroke-dasharray="10 6"/>"##
+            );
+            for (x, y) in [(48.0, 156.0), (272.0, 120.0), (270.0, 258.0)] {
+                sprite(&mut s, STAR, x, y, 3.0, "#8ff6e9", "#ffffff");
+            }
+        }
         let _ = write!(s, r#"<rect x="40" y="96" width="276" height="6" fill="{frame}"/>"#);
         let cx = 36.0 + 142.0;
         pixel_shadow(&mut s, cx, 306.0, tile.art.w as f32 / 2.3, 8.0, 0.28);
@@ -715,6 +752,15 @@ impl HaulCard {
             let y = 92.0 + (i / 4) as f32 * 214.0;
             let frame = hex(tile.frame);
             panel(&mut s, x, y, 224.0, 202.0, 4.0, &t.panel, &frame);
+            if tile.frame == 0x9af5ec {
+                let _ = write!(
+                    s,
+                    r##"<rect x="{}" y="{}" width="212" height="190" fill="none" stroke="#e8fffa" stroke-width="3" stroke-dasharray="7 5"/>"##,
+                    x + 6.0,
+                    y + 6.0
+                );
+                sprite(&mut s, STAR, x + 188.0, y + 58.0, 2.0, "#8ff6e9", "#ffffff");
+            }
             let _ = write!(
                 s,
                 r#"<rect x="{}" y="{}" width="216" height="6" fill="{frame}"/>"#,
@@ -1005,6 +1051,46 @@ impl PotCard {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn glimmer_variants_have_a_visible_sparkle_frame() {
+        let card = DropCard {
+            title: "Critter drop".into(),
+            subtitle: String::new(),
+            cards: vec![DropCritter {
+                art: picture(),
+                name: "Glimmer crab".into(),
+                rarity: "Rare".into(),
+                frame: 0x9af5ec,
+                habitat: "Shore".into(),
+                sparkles: 4,
+            }],
+            footer: String::new(),
+            theme: Theme::reef(),
+        };
+        assert!(card.to_svg().contains("stroke-dasharray=\"12 8\""));
+        let dex = DexCard {
+            title: "Dex".into(),
+            tab: "CRITTERS".into(),
+            owner: "Sim".into(),
+            found: 1,
+            total: 1,
+            page: 0,
+            pages: 1,
+            cells: vec![DexCell {
+                number: 1,
+                name: "Glimmer crab".into(),
+                art: picture(),
+                frame: 0x9af5ec,
+                owned: true,
+                caught: 1,
+            }],
+            footer: String::new(),
+            lang: Lang::En,
+            theme: Theme::reef(),
+        };
+        assert!(dex.to_svg().contains("stroke-dasharray=\"6 4\""));
+    }
 
     fn picture() -> EntryPicture {
         EntryPicture {

@@ -64,6 +64,29 @@
 .player-depth-list li time {
   color: var(--muted);
 }
+.collection-wishlist-select {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.collection-wishlist-select select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--panel-edge);
+  padding: 8px;
+}
+.player-depth-list li.collection-glimmer {
+  border: 2px dashed #9af5ec;
+  box-shadow: inset 0 0 0 3px #e8fffa22;
+  padding-inline: 12px;
+}
+.collection-glimmer strong span {
+  color: #9af5ec;
+}
 .player-needs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
