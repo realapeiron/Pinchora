@@ -10,7 +10,7 @@ import { SOURCES, staffLine } from "../lib/moderation";
 import { useStaffLog } from "../lib/queries";
 import { timeAgo } from "../lib/text";
 import { useDebounced } from "../lib/useDebounced";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 export function StaffLog() {
@@ -21,13 +21,13 @@ export function StaffLog() {
   const log = useStaffLog(data.guild.id, { q, source });
   const rows = log.data?.pages.flatMap((p) => p.items) ?? [];
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("STAFF LOG")}
-        lead={spaTranslate(
-          "What staff did: moderation commands, changes made on this dashboard, and what Discord's audit log says was done by hand. Kept 180 days.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("STAFF LOG")}
+      lead={spaTranslate(
+        "What staff did: moderation commands, changes made on this dashboard, and what Discord's audit log says was done by hand. Kept 180 days.",
+      )}
+    >
       <Panel title={spaTranslate("FIND")}>
         <div className="filters">
           <Field
@@ -86,7 +86,7 @@ export function StaffLog() {
           </div>
         )}
       </Panel>
-    </div>
+    </SettingsPage>
   );
 }
 

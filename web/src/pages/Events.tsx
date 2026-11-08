@@ -18,7 +18,7 @@ import {
   useEvents,
   zonedInput,
 } from "../lib/events";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 const fresh = (tz: string): EventBody => {
@@ -118,14 +118,14 @@ export function Events() {
     }
   }
   return (
-    <div className="settings-page events-page">
-      <PageHead
-        title={t("EVENTS")}
-        lead={t("Plan a gathering, post one RSVP card, and keep the guest list in sync.")}
-        action={
-          <PixelButton onClick={() => setEditing({ body: fresh(zone) })}>{t("Create event")}</PixelButton>
-        }
-      />
+    <SettingsPage
+      className="settings-page events-page"
+      title={t("EVENTS")}
+      lead={t("Plan a gathering, post one RSVP card, and keep the guest list in sync.")}
+      action={
+        <PixelButton onClick={() => setEditing({ body: fresh(zone) })}>{t("Create event")}</PixelButton>
+      }
+    >
       {module && !module.enabled && (
         <p className="notice">
           <strong>{t("Events are off.")}</strong> {t("Enable Events so members can RSVP.")}{" "}
@@ -639,6 +639,6 @@ export function Events() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }

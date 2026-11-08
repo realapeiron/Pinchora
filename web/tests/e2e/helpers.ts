@@ -15,7 +15,7 @@ export interface Guild {
   permissions: string;
 }
 
-/** Session cookies by user, so each user logs in once per run: `/auth/*` allows ten tries a minute. */
+/** Reuse identical login fixtures within a worker; a restarted worker can log in again. */
 const sessions = new Map<string, Cookie[]>();
 
 /** Logs in through `/auth/dev-login` as `user` with `guilds` on their server list. */
@@ -23,7 +23,8 @@ export async function devLogin(page: Page, user: string, guilds: Guild[], userna
   await page.route("https://cdn.discordapp.com/**", (route) =>
     route.fulfill({ contentType: "image/svg+xml", body: AVATAR }),
   );
-  const known = sessions.get(user);
+  const sessionKey = JSON.stringify({ user, username, guilds });
+  const known = sessions.get(sessionKey);
   if (known) {
     await page.context().addCookies(known);
     if ((await page.request.get("/api/me")).ok()) return;
@@ -32,7 +33,7 @@ export async function devLogin(page: Page, user: string, guilds: Guild[], userna
     data: { user_id: user, username, guilds: guilds.map((g) => ({ ...g, icon: null })) },
   });
   expect(response.ok(), await response.text()).toBeTruthy();
-  sessions.set(user, await page.context().cookies());
+  sessions.set(sessionKey, await page.context().cookies());
 }
 
 export async function shot(page: Page, name: string, fullPage = false) {

@@ -4,7 +4,7 @@ import { Link, useOutletContext } from "react-router";
 import { locale, translate as t } from "../i18n";
 import { Panel } from "../components/Panel";
 import { ChannelPicker } from "../components/Pickers";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import { type Overview, api } from "../lib/api";
 import { useDiscord } from "../lib/queries";
@@ -15,6 +15,8 @@ import {
   type QotdSettings,
   useCommunityPack,
   questionText,
+  countingSettings,
+  applicationSettings,
 } from "../lib/community-pack";
 import "../styles/community-pack.css";
 
@@ -68,11 +70,16 @@ export function CommunityPack() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   useEffect(() => {
-    if (!query.data) return;
-    setQotd(query.data.qotd ?? emptyQotd);
-    setCounting(query.data.counting ?? emptyCounting);
-    setMail(query.data.modmail ?? emptyMail);
-  }, [query.data]);
+    setQotd(query.data?.qotd ?? emptyQotd);
+  }, [guild, query.data?.qotd]);
+  // Query structural sharing keeps unchanged sections stable. Saving QOTD must not replace a
+  // counting or modmail draft that the member edited while that request was in flight.
+  useEffect(() => {
+    setCounting(query.data?.counting ?? emptyCounting);
+  }, [guild, query.data?.counting]);
+  useEffect(() => {
+    setMail(query.data?.modmail ?? emptyMail);
+  }, [guild, query.data?.modmail]);
   async function write(path: string, method: "PUT" | "POST", body?: unknown) {
     setBusy(true);
     setNotice("");
@@ -89,13 +96,11 @@ export function CommunityPack() {
     }
   }
   return (
-    <div className="settings-page community-pack-page">
-      <PageHead
-        title={t("COMMUNITY PACK")}
-        lead={t(
-          "Give members a daily question, a counting channel, applications and a private path to staff.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page community-pack-page"
+      title={t("COMMUNITY PACK")}
+      lead={t("Give members a daily question, a counting channel, applications and a private path to staff.")}
+    >
       {notice && (
         <p className="notice" role="status">
           {notice}
@@ -273,7 +278,7 @@ export function CommunityPack() {
                 <button
                   className="pixel-button"
                   disabled={busy || !counting.channel_id}
-                  onClick={() => void write("/counting", "PUT", counting)}
+                  onClick={() => void write("/counting", "PUT", countingSettings(counting))}
                 >
                   {t("Save counting")}
                 </button>
@@ -401,9 +406,8 @@ export function CommunityPack() {
                         const path = form.id ? `/forms/${form.id}` : "/forms";
                         if (
                           await write(path, form.id ? "PUT" : "POST", {
-                            ...form,
+                            ...applicationSettings(form),
                             questions: form.questions.filter(Boolean),
-                            submit_channel_id: form.submit_channel_id,
                           })
                         )
                           setForm(null);
@@ -613,6 +617,6 @@ export function CommunityPack() {
           </p>
         </>
       )}
-    </div>
+    </SettingsPage>
   );
 }

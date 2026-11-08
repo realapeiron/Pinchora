@@ -11,7 +11,8 @@ test("anti-nuke draft, limits, safe preview, incident confirmation and responsiv
   await expect(page.getByRole("heading", { name: "Anti-nuke", exact: true })).toBeVisible();
   await page.getByLabel("Watch destructive actions").click();
   await page.getByRole("button", { name: "Run preview" }).click();
-  await expect(page.getByRole("status")).toContainText("Preview only");
+  // Slider <output> elements also have the status role; select the preview announcement.
+  await expect(page.getByRole("status").filter({ hasText: "Preview only" })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: "../output/playwright/anti-nuke-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

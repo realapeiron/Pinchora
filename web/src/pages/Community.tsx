@@ -13,7 +13,7 @@ import type { Community as CommunityData, ModuleEntry, Overview } from "../lib/a
 import { birthdayWords, useBirthdays } from "../lib/birthdays";
 import { CommunitySaveError, useCommunity, useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 
 const EVERY: Record<number, string> = {
   6: "Every 6 hours",
@@ -30,17 +30,17 @@ export function Community() {
   const birthdays = useBirthdays(guild);
   const t = birthdayWords(birthdays.data?.strings, birthdays.data?.language);
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("COMMUNITY")}
-        lead={t(
-          "Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("COMMUNITY")}
+      lead={t(
+        "Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations.",
+      )}
+    >
       {query.isPending && <Loading label={spaTranslate("Reading the settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <CommunityForm guild={guild} saved={query.data} modules={data.modules} />}
-    </div>
+    </SettingsPage>
   );
 }
 
@@ -50,8 +50,8 @@ function ModuleOff({ guild, modules, module }: { guild: string; modules: ModuleE
   if (!found || found.enabled) return null;
   return (
     <p className="notice" role="note">
-      <strong>{spaTranslate(found.label)}</strong>
-      {spaTranslate("is switched off in")} <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
+      <strong>{spaTranslate(found.label)}</strong> {spaTranslate("is switched off in")}{" "}
+      <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
       {spaTranslate(", so nothing here does anything until you switch it on.")}{" "}
     </p>
   );

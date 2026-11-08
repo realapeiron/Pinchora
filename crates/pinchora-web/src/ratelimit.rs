@@ -48,6 +48,9 @@ fn address_of(state: &WebState, request: &Request) -> String {
 
 /// Limits `/auth/*` per client address: the connection's, or what a trusted proxy says it is.
 pub async fn auth_by_address(State(state): State<WebState>, request: Request, next: Next) -> Response {
+    if state.settings.dev_login_unlimited && request.uri().path() == "/auth/dev-login" {
+        return next.run(request).await;
+    }
     let address = address_of(&state, &request);
     match check(
         &state.app.cache,

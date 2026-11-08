@@ -22,7 +22,7 @@ import {
   type AutoRule,
   type Words,
 } from "../lib/automod";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/automod.css";
 
@@ -48,8 +48,7 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
   const pending = save.isPending || profile.isPending;
   const observe = config.observe_until && Date.parse(config.observe_until) > Date.now();
   return (
-    <div className="settings-page automod-page">
-      <PageHead title={t("ui.title")} lead={t("ui.lead")} />
+    <SettingsPage className="settings-page automod-page" title={t("ui.title")} lead={t("ui.lead")}>
       <Panel title={t("ui.profiles")}>
         <div className="automod-profiles">
           {["relaxed", "standard", "strict", "off"].map((p) => (
@@ -335,7 +334,7 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
         }}
       />
       <Toast message={toast} onDone={clearToast} />
-    </div>
+    </SettingsPage>
   );
 }
 function RuleCard({

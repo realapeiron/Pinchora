@@ -10,7 +10,7 @@ import { Toast } from "../components/Toast";
 import type { CustomCommand, Overview } from "../lib/api";
 import { useDeleteTag, useTags, useToggleTag } from "../lib/queries";
 import { cooldownLabel, describeAction } from "../lib/tags";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 /** Custom commands: what members run with /tag. */
@@ -29,24 +29,24 @@ export function Commands() {
   const full = list.data ? list.data.items.length >= list.data.max : false;
 
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("CUSTOM COMMANDS")}
-        lead={spaTranslate(
-          "Members run these commands with {tag}: send a reply or embed, or give a role. Create simple commands in Discord with {setup}.",
-          { tag: "/tag", setup: "/setup commands" },
-        )}
-        action={
-          <PixelLink
-            href={`/g/${guild}/commands/new`}
-            aria-disabled={full}
-            className={full ? "is-disabled" : ""}
-          >
-            {" "}
-            {spaTranslate("New command")}{" "}
-          </PixelLink>
-        }
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("CUSTOM COMMANDS")}
+      lead={spaTranslate(
+        "Members run these commands with {tag}: send a reply or embed, or give a role. Create simple commands in Discord with {setup}.",
+        { tag: "/tag", setup: "/setup commands" },
+      )}
+      action={
+        <PixelLink
+          href={`/g/${guild}/commands/new`}
+          aria-disabled={full}
+          className={full ? "is-disabled" : ""}
+        >
+          {" "}
+          {spaTranslate("New command")}{" "}
+        </PixelLink>
+      }
+    >
       {list.isPending && <Loading label={spaTranslate("Reading the commands")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && (
@@ -174,6 +174,6 @@ export function Commands() {
         </div>
       )}
       <Toast message={toast} onDone={clearToast} />
-    </div>
+    </SettingsPage>
   );
 }

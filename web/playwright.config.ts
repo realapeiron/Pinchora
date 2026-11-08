@@ -57,6 +57,9 @@ export default defineConfig({
         PINCHORA_WEB__BIND: `127.0.0.1:${port}`,
         PINCHORA_WEB__PUBLIC_URL: `http://127.0.0.1:${port}`,
         PINCHORA_WEB__DEV_LOGIN: "true",
+        // Many isolated users share loopback. This override only works with debug-only dev login;
+        // OAuth login, callback and logout retain their normal limits.
+        PINCHORA_WEB__DEV_LOGIN_UNLIMITED: "true",
         PINCHORA_WEB__DISCORD_API_BASE: `http://127.0.0.1:${mockPort}/api/v10`,
         PINCHORA_WEB__STATIC_DIR: dist,
         PINCHORA_FEEDS__DEV_ENDPOINT: `127.0.0.1:${feedPort}`,

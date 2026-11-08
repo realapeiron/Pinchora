@@ -10,7 +10,7 @@ import { Toast } from "../components/Toast";
 import type { AutoResponder, Overview } from "../lib/api";
 import { useDeleteTag, useDiscord, useTags, useToggleTag } from "../lib/queries";
 import { TRIGGERS, cooldownLabel } from "../lib/tags";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 /** What fires a responder, in a few words: "A member gets @VIP", "A message has “good morning”". */
@@ -54,23 +54,23 @@ export function Responders() {
   const keywords = list.data?.items.filter((r) => r.trigger_kind === "keyword") ?? [];
 
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("AUTO-RESPONDERS")}
-        lead={spaTranslate(
-          "Messages the bot sends by itself: a greeting when someone joins, a cheer on a level-up, an answer to a keyword.",
-        )}
-        action={
-          <PixelLink
-            href={`/g/${guild}/responders/new`}
-            aria-disabled={full}
-            className={full ? "is-disabled" : ""}
-          >
-            {" "}
-            {spaTranslate("New responder")}{" "}
-          </PixelLink>
-        }
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("AUTO-RESPONDERS")}
+      lead={spaTranslate(
+        "Messages the bot sends by itself: a greeting when someone joins, a cheer on a level-up, an answer to a keyword.",
+      )}
+      action={
+        <PixelLink
+          href={`/g/${guild}/responders/new`}
+          aria-disabled={full}
+          className={full ? "is-disabled" : ""}
+        >
+          {" "}
+          {spaTranslate("New responder")}{" "}
+        </PixelLink>
+      }
+    >
       {locked && (
         <div className="notice" role="note" data-testid="keyword-lock">
           <strong>{spaTranslate("Keyword triggers are locked.")}</strong>{" "}
@@ -227,6 +227,6 @@ export function Responders() {
         </div>
       )}
       <Toast message={toast} onDone={clearToast} />
-    </div>
+    </SettingsPage>
   );
 }

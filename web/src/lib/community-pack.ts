@@ -79,3 +79,14 @@ export function useCommunityPack(guild: string) {
 export function questionText(question: Question, language: "en" | "tr"): string {
   return language === "tr" ? (question.text_tr ?? question.text) : question.text;
 }
+
+/** Only writable settings belong in the strict API payload, never counters or stored IDs. */
+export function countingSettings(value: Counting): Omit<Counting, "current" | "record"> {
+  const { channel_id, reset_on_fail, allow_math, fail_role_id } = value;
+  return { channel_id, reset_on_fail, allow_math, fail_role_id };
+}
+
+export function applicationSettings(value: ApplicationForm): Omit<ApplicationForm, "id" | "message_id"> {
+  const { name, questions, submit_channel_id, review_roles, accept_role_id, dm_result, open } = value;
+  return { name, questions, submit_channel_id, review_roles, accept_role_id, dm_result, open };
+}

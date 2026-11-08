@@ -17,7 +17,7 @@ import {
   type AntiNukeData,
   type AntiNukeConfig,
 } from "../lib/anti_nuke";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/anti_nuke.css";
 
@@ -63,8 +63,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
     />
   );
   return (
-    <div className="settings-page antinuke-page">
-      <PageHead title={t("ui.title")} lead={t("ui.lead")} />
+    <SettingsPage className="settings-page antinuke-page" title={t("ui.title")} lead={t("ui.lead")}>
       {!saved.can_edit && <p className="notice">{t("ui.readonly")}</p>}
       <Panel
         title={t("ui.protection")}
@@ -425,6 +424,6 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
           save.reset();
         }}
       />
-    </div>
+    </SettingsPage>
   );
 }

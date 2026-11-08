@@ -175,6 +175,9 @@ pub struct WebConfig {
     /// Allow `POST /auth/dev-login` (sign in as anyone, without Discord). Only honoured by debug
     /// builds on a loopback bind.
     pub dev_login: bool,
+    /// Skip the dev-login rate limit for local test suites. Only honoured when dev login is enabled
+    /// in a debug build on loopback; other authentication routes keep their production limits.
+    pub dev_login_unlimited: bool,
     /// Serve the SPA from this folder instead of the copy built into the binary.
     pub static_dir: Option<PathBuf>,
     /// Reverse proxies in front of the dashboard, as comma-separated addresses or CIDR ranges
@@ -195,6 +198,7 @@ impl Default for WebConfig {
             discord_api_base: "https://discord.com/api/v10".into(),
             cookie_secure: None,
             dev_login: false,
+            dev_login_unlimited: false,
             static_dir: None,
             trusted_proxies: String::new(),
             operator_ids: String::new(),

@@ -27,3 +27,38 @@ it("shows bundled questions in the selected language and preserves suggestions",
   expect(questionText(question, "tr")).toBe("Soru?");
   expect(questionText({ ...question, text_tr: null }, "tr")).toBe("Question?");
 });
+
+it("sends counting settings without read-only counters", async () => {
+  const { countingSettings } = await import("./community-pack");
+  expect(
+    countingSettings({
+      channel_id: "7001",
+      current: 42,
+      record: 100,
+      reset_on_fail: true,
+      allow_math: false,
+      fail_role_id: null,
+    }),
+  ).toEqual({
+    channel_id: "7001",
+    reset_on_fail: true,
+    allow_math: false,
+    fail_role_id: null,
+  });
+});
+
+it("sends both new and existing application settings without stored IDs", async () => {
+  const { applicationSettings } = await import("./community-pack");
+  const settings = {
+    name: "Helper",
+    questions: ["Why help?"],
+    submit_channel_id: "7001",
+    review_roles: ["9001"],
+    accept_role_id: null,
+    dm_result: true,
+    open: true,
+  };
+  for (const id of ["", "123"]) {
+    expect(applicationSettings({ ...settings, id, message_id: "456" })).toEqual(settings);
+  }
+});

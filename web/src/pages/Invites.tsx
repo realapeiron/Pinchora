@@ -22,7 +22,7 @@ import {
   useInvites,
 } from "../lib/invites";
 import { useDiscord } from "../lib/queries";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 export function Invites() {
@@ -46,36 +46,36 @@ function InvitesPage() {
   const closeToast = useCallback(() => setToast(null), []);
   const module = data.modules.find((m) => m.key === "invites");
   return (
-    <div className="settings-page inv-page">
-      <PageHead
-        title={t("INVITES")}
-        lead={t(
-          "See where new members came from, reward real invitations, and give members short-lived links for friends.",
-        )}
-        action={
-          <div className="inv-head-actions">
-            <PixelButton
-              variant="secondary"
-              onClick={() => {
-                void invites.query
-                  .refetch()
-                  .then(({ data }) =>
-                    setToast(
-                      data?.can_read_invites
-                        ? t("Invite list is available.")
-                        : t("Manage Server permission is missing for the bot."),
-                    ),
-                  );
-              }}
-            >
-              {t("Test tracking")}
-            </PixelButton>
-            <PixelLink href={inviteExportUrl(guild)} variant="secondary">
-              {t("Export CSV")}
-            </PixelLink>
-          </div>
-        }
-      />
+    <SettingsPage
+      className="settings-page inv-page"
+      title={t("INVITES")}
+      lead={t(
+        "See where new members came from, reward real invitations, and give members short-lived links for friends.",
+      )}
+      action={
+        <div className="inv-head-actions">
+          <PixelButton
+            variant="secondary"
+            onClick={() => {
+              void invites.query
+                .refetch()
+                .then(({ data }) =>
+                  setToast(
+                    data?.can_read_invites
+                      ? t("Invite list is available.")
+                      : t("Manage Server permission is missing for the bot."),
+                  ),
+                );
+            }}
+          >
+            {t("Test tracking")}
+          </PixelButton>
+          <PixelLink href={inviteExportUrl(guild)} variant="secondary">
+            {t("Export CSV")}
+          </PixelLink>
+        </div>
+      }
+    >
       {module && !module.enabled && (
         <p className="notice" role="note">
           <strong>{t("Invite tracking is off.")}</strong> {t("Switch it on in")}{" "}
@@ -125,7 +125,7 @@ function InvitesPage() {
         </>
       )}
       <Toast message={toast} onDone={closeToast} />
-    </div>
+    </SettingsPage>
   );
 }
 

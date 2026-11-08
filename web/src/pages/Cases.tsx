@@ -11,7 +11,7 @@ import { ApiError, type Case, type Overview } from "../lib/api";
 import { type CaseFilters, useCase, useCases, useSaveReason } from "../lib/queries";
 import { timeAgo } from "../lib/text";
 import { useDebounced } from "../lib/useDebounced";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 /** The tone of a kind of case, like the mod-log's colours. */
@@ -35,13 +35,13 @@ export function Cases() {
   const kinds = cases.data?.pages[0]?.kinds ?? [];
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("CASES")}
-        lead={spaTranslate(
-          "Every moderation action taken with Pinchora, numbered per server. Open one to see it whole and give it a better reason.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("CASES")}
+      lead={spaTranslate(
+        "Every moderation action taken with Pinchora, numbered per server. Open one to see it whole and give it a better reason.",
+      )}
+    >
       <Panel title={spaTranslate("FIND")}>
         <div className="filters">
           <Field
@@ -118,7 +118,7 @@ export function Cases() {
           </div>
         )}
       </Panel>
-    </div>
+    </SettingsPage>
   );
 }
 

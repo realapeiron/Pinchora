@@ -403,7 +403,7 @@ export const tr: { [K in keyof typeof en]: string } = {
   Starboard: "Yıldız panosu",
   Birthdays: "Doğum günleri",
   "Social feeds": "Sosyal akışlar",
-  Achievements: "Başarılar",
+  Achievements: "Başarımlar",
   "Switch server": "Sunucu değiştir",
   "Filter pages": "Sayfaları filtrele",
   "Server settings": "Sunucu ayarları",

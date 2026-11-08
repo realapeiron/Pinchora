@@ -12,7 +12,7 @@ async function login(page: Page) {
 test("birthdays settings, preview and phone layout", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/birthdays`);
-  await expect(page.getByRole("heading", { name: "BIRTHDAYS" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "BIRTHDAYS", exact: true })).toBeVisible();
   await expect(page.getByText("No shared birthdays in the next 30 days.")).toBeVisible();
   await shot(page, "birthdays-desktop", true);
   await page.getByRole("switch", { name: "Announce birthdays" }).click();
@@ -28,11 +28,11 @@ test("birthdays settings, preview and phone layout", async ({ page }) => {
   const data = await (await page.request.get(`/api/guilds/${guild}/birthdays`)).json();
   expect(data.settings).toMatchObject({ enabled: true, channel_id: "7001", shells_gift: 100, badge: true });
   await page.goto(`/g/${guild}/community`);
-  await expect(page.getByRole("heading", { name: "BIRTHDAYS" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "BIRTHDAYS", exact: true })).toBeVisible();
   await expect(page.getByText("Announcements on")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/g/${guild}/birthdays`);
-  await expect(page.getByRole("heading", { name: "BIRTHDAYS" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "BIRTHDAYS", exact: true })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(1);
   await shot(page, "birthdays-phone", true);
 });

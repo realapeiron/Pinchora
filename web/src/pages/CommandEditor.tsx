@@ -29,7 +29,7 @@ import {
   tidyName,
 } from "../lib/tags";
 import { useTagEditor } from "../lib/useTagEditor";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 /** What is sent to the server: names and texts tidied, an empty embed left out. */
@@ -103,21 +103,21 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
   };
 
   return (
-    <div className="settings-page">
-      <PageHead
-        title={id ? spaTranslate("EDIT COMMAND") : spaTranslate("NEW COMMAND")}
-        lead={
-          <>
-            {" "}
-            {spaTranslate("Members run it with")} <code>/tag {tidyName(draft.name) || "name"}</code>.
-          </>
-        }
-        action={
-          <PixelLink variant="secondary" href={`/g/${guild}/commands`}>
-            {spaTranslate("Back to the list")}
-          </PixelLink>
-        }
-      />
+    <SettingsPage
+      className="settings-page"
+      title={id ? spaTranslate("EDIT COMMAND") : spaTranslate("NEW COMMAND")}
+      lead={
+        <>
+          {" "}
+          {spaTranslate("Members run it with")} <code>/tag {tidyName(draft.name) || "name"}</code>.
+        </>
+      }
+      action={
+        <PixelLink variant="secondary" href={`/g/${guild}/commands`}>
+          {spaTranslate("Back to the list")}
+        </PixelLink>
+      }
+    >
       <div className="editor">
         <div className="editor-form">
           <Panel title={spaTranslate("BASICS")}>
@@ -336,6 +336,6 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
         onSave={onSave}
         onReset={editor.reset}
       />
-    </div>
+    </SettingsPage>
   );
 }
