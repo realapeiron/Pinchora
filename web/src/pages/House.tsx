@@ -40,7 +40,7 @@ export function MyHouse({ me }: { me: Me }) {
       : scope === "plaza" && params.get("guild")
         ? { kind: "plaza", guild: params.get("guild")! }
         : { kind: "own" };
-  return <House key={JSON.stringify(target)} me={me} target={target} />;
+  return <House me={me} target={target} />;
 }
 
 /** `/house/:userId`: another player's house, unless they locked it. */
@@ -65,7 +65,8 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
     };
   }, [playing]);
   const art = useArt(!playing);
-  const [editing, setEditing] = useState(false);
+  const [editMode, setEditing] = useState(false);
+  const editing = editMode && house.data?.editable !== false;
   const [phone, setPhone] = useState(() => window.matchMedia("(max-width: 767px)").matches);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 767px)");
@@ -78,6 +79,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   }, []);
   const guilds = useGuilds();
   const [guild, setGuild] = useState(target.kind === "plaza" ? target.guild : "");
+  const selectedGuild = target.kind === "plaza" ? target.guild : guild;
   const [grid, setGrid] = useState(false);
   const [compare, setCompare] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -185,13 +187,13 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                       onChange={(e) => {
                         const next = new URLSearchParams(params);
                         next.set("scope", e.target.value);
-                        if (e.target.value === "plaza") next.set("guild", guild);
+                        if (e.target.value === "plaza") next.set("guild", selectedGuild);
                         setParams(next);
                       }}
                     >
                       <option value="own">{t("My house")}</option>
                       <option value="partner">{t("Partner’s house")}</option>
-                      <option value="plaza" disabled={!/^\d{15,21}$/.test(guild)}>
+                      <option value="plaza" disabled={!/^\d{15,21}$/.test(selectedGuild)}>
                         {t("Server plaza")}
                       </option>
                     </select>
@@ -199,7 +201,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                   <label>
                     {t("Server plaza")}
                     <select
-                      value={guild}
+                      value={selectedGuild}
                       onChange={(e) => {
                         setGuild(e.target.value);
                         if (target.kind === "plaza") {
@@ -299,16 +301,21 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                 !art.isError && <Loading label={t("Drawing the room")} />}
               {room.isError && <Problem error={room.error} />}
               {!playing && art.isError && <Problem error={art.error} />}
-              {editing && !playing && room.data && art.data && sprites.isSuccess && (
-                <HouseEditor
-                  key={housePath(target, `/rooms/${idx}`)}
-                  target={target}
-                  initial={room.data}
-                  art={art.data}
-                  house={house.data}
-                  onExit={() => setEditing(false)}
-                />
-              )}
+              {editing &&
+                !playing &&
+                house.data.editable !== false &&
+                room.data &&
+                art.data &&
+                sprites.isSuccess && (
+                  <HouseEditor
+                    key={housePath(target, `/rooms/${idx}`)}
+                    target={target}
+                    initial={room.data}
+                    art={art.data}
+                    house={house.data}
+                    onExit={() => setEditing(false)}
+                  />
+                )}
               {drawn && summary && (
                 <>
                   <RoomStage

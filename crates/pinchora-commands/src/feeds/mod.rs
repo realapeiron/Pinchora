@@ -43,6 +43,8 @@ const WAKE: Duration = Duration::from_secs(30);
 /// Sources one step leases, and how many it fetches at once.
 const POLL_BATCH: i64 = 25;
 const POLL_AT_ONCE: usize = 4;
+/// Full batches one wake drains back to back before waiting for the next wake.
+const MAX_BATCHES_PER_WAKE: usize = 8;
 /// Posts one step sends.
 const POST_BATCH: i64 = 50;
 /// What a feed no longer shows is forgotten after this long.
@@ -838,8 +840,20 @@ pub fn spawn_ticker(app: Arc<App>) {
         let mut rounds = 0u32;
         loop {
             wake.tick().await;
-            if let Err(error) = Box::pin(tick(&app)).await {
-                tracing::warn!(%error, "feeds tick failed");
+            // A full batch may leave overdue sources behind. Drain those batches with the
+            // same bounded fetch concurrency instead of adding 30 seconds per 25 sources,
+            // up to a few batches per wake so a source that stays due cannot spin the loop.
+            for drained in 1..=MAX_BATCHES_PER_WAKE {
+                match Box::pin(tick(&app)).await {
+                    Ok(result) if result.polled == POLL_BATCH as usize && drained < MAX_BATCHES_PER_WAKE => {
+                        tokio::task::yield_now().await;
+                    }
+                    Ok(_) => break,
+                    Err(error) => {
+                        tracing::warn!(%error, "feeds tick failed");
+                        break;
+                    }
+                }
             }
             rounds = rounds.wrapping_add(1);
             if rounds.is_multiple_of(CLEANUP_EVERY) {

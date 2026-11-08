@@ -14,6 +14,7 @@ import { CharacterStudio } from "./CharacterStudio";
 import "../../styles/web-player.css";
 
 export function PlayerRoutes() {
+  useLocale();
   return (
     <RequireLogin>
       {(me) => (

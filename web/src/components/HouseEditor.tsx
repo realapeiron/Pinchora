@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps } from "react";
 import type { Art } from "../iso/art";
 import { anchor, bounds, renderRoom } from "../iso/render";
 import { buildScene, type RoomJson, type SceneItem } from "../iso/scene";
@@ -45,7 +45,6 @@ export function HouseEditor({
   const cursorStore = useMemo(() => new RoomCursor(), []);
   useEffect(() => () => cursorStore.dispose(), [cursorStore]);
   const [wall, setWall] = useState<"floor" | "right" | "left">("floor");
-  const [hover, setHover] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [rarity, setRarity] = useState("");
@@ -410,10 +409,8 @@ export function HouseEditor({
             {t("View mode")}
           </PixelButton>
         </div>
-        <RoomStage
+        <EditorStage
           rendered={drawn}
-          hover={hover}
-          onHover={setHover}
           label={t("Editable room")}
           editor={{
             overlay: (
@@ -658,6 +655,12 @@ export function HouseEditor({
     </section>
   );
 }
+// Pointer hover only redraws the stage outline, not the inventory and editor controls.
+function EditorStage(props: Omit<ComponentProps<typeof RoomStage>, "hover" | "onHover">) {
+  const [hover, setHover] = useState<number | null>(null);
+  return <RoomStage {...props} hover={hover} onHover={setHover} />;
+}
+
 function ItemThumb({ art, id }: { art: Art; id: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const sprite = art.item(id);

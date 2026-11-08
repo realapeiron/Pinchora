@@ -76,14 +76,17 @@ test("the welcome page shows the image the bot sends and opens the editor", asyn
 test("level roles refuse what the bot cannot give, and the sync runs", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/leveling`);
-  const roles = page.getByLabel("Role", { exact: true }).first();
+  const levelRoles = page.locator("section.panel").filter({
+    has: page.getByRole("heading", { name: "LEVEL ROLES", exact: true }),
+  });
+  const roles = levelRoles.getByLabel("Role", { exact: true });
   await expect(roles.locator("option", { hasText: "@Admin" })).toBeDisabled();
   await expect(roles.locator("option", { hasText: "@Admin" })).toContainText("above my role");
   await expect(roles.locator("option", { hasText: "@Server Booster" })).toBeDisabled();
 
   await page.getByLabel("Level", { exact: true }).fill("3");
   await roles.selectOption({ label: "@Fan" });
-  await page.getByRole("button", { name: "Add" }).first().click();
+  await levelRoles.getByRole("button", { name: "Add", exact: true }).click();
   const list = page.getByRole("list", { name: "Level roles" });
   await expect(list).toContainText("@Fan");
   await expect(list).toContainText("LV 3");

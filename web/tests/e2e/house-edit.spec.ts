@@ -141,14 +141,17 @@ test("switching plaza remounts the queue and keyboard placement targets the new 
   const rooms = new Map(guilds.map((id) => [id, { ...template, placements: [], fingerprint: id, undo: [] }]));
   await page.route("**/api/me/guilds", (route) =>
     route.fulfill({
-      json: guilds.map((id, i) => ({
-        id,
-        name: `Plaza ${i + 1}`,
-        icon: null,
-        bot_present: true,
-        owner: true,
-        permissions: "32",
-      })),
+      json: {
+        items: guilds.map((id, i) => ({
+          id,
+          name: `Plaza ${i + 1}`,
+          icon_url: null,
+          invite_url: null,
+          bot_present: true,
+          owner: true,
+          permissions: "32",
+        })),
+      },
     }),
   );
   await page.route("**/api/house**", async (route) => {
@@ -186,11 +189,13 @@ test("switching plaza remounts the queue and keyboard placement targets the new 
   await page.getByRole("button", { name: "Decorate house", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   const loaded = page.waitForResponse((r) => r.url().includes(`/rooms/0?scope=plaza&guild=${guilds[1]}`));
-  await page.getByLabel("Server plaza", { exact: true }).selectOption(guilds[1]!);
+  // Match the accessible name; the wrapping label's text also includes every option.
+  const plaza = page.getByRole("combobox", { name: "Server plaza", exact: true });
+  await plaza.selectOption(guilds[1]!);
   await loaded;
   await expect(page.locator(".house-stock button").first()).toBeVisible();
   // Both rooms are now cached: switching back must remount even without a loading gap.
-  await page.getByLabel("Server plaza", { exact: true }).selectOption(guilds[0]!);
+  await plaza.selectOption(guilds[0]!);
   await page.locator(".house-stock button").first().click();
   const viewport = page.locator(".room-viewport");
   await viewport.focus();

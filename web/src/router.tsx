@@ -1,5 +1,6 @@
 import { ModerationPage } from "./reef/ModerationPage";
-import { Navigate, createBrowserRouter } from "react-router";
+import { Navigate, Outlet, createBrowserRouter, type RouteObject } from "react-router";
+import { useLocale } from "./i18n";
 
 import { AuditLog } from "./pages/AuditLog";
 import { Cases } from "./pages/Cases";
@@ -33,7 +34,7 @@ import { StatusPage } from "./site/Status";
 // The public site (landing, commands, features, legal) sits under one layout, and the landing page is
 // the front door for everyone; the dashboard keeps its own paths. The rarer pages load on demand.
 // Admin pages live under /g/:guildId, one per sidebar entry (GuildLayout's NAV).
-export const router = createBrowserRouter([
+const localizedRoutes: RouteObject[] = [
   {
     element: <SiteLayout />,
     children: [
@@ -81,7 +82,6 @@ export const router = createBrowserRouter([
     lazy: async () => ({ Component: (await import("./pages/Feeds")).MyFeedsChannelsRoute }),
   },
   { path: "/reef/moderation", element: <RequireLogin>{() => <ModerationPage />}</RequireLogin> },
-  { path: "/me/*", lazy: async () => ({ Component: (await import("./pages/player/Player")).PlayerRoutes }) },
   { path: "/me/house", element: <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> },
   { path: "/house/:userId", element: <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> },
   {
@@ -150,5 +150,20 @@ export const router = createBrowserRouter([
       { path: "trackers", lazy: async () => ({ Component: (await import("./pages/Trackers")).Trackers }) },
       { path: "*", element: <NotFound /> },
     ],
+  },
+];
+
+// Legacy pages translate on mount. Keep their locale boundary below the router so
+// player studios can refresh their catalogs without losing unsaved editor state.
+function LocalizedPages() {
+  const language = useLocale();
+  return <Outlet key={language} />;
+}
+
+export const router = createBrowserRouter([
+  { Component: LocalizedPages, children: localizedRoutes },
+  {
+    path: "/me/*",
+    lazy: async () => ({ Component: (await import("./pages/player/Player")).PlayerRoutes }),
   },
 ]);

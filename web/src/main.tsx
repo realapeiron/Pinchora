@@ -50,7 +50,7 @@ function LocalizedRouter() {
     document.documentElement.lang = language;
     refreshMeta(router.state.location.pathname);
   }, [language]);
-  return <RouterProvider key={language} router={router} />;
+  return <RouterProvider router={router} />;
 }
 
 createRoot(document.getElementById("root")!).render(

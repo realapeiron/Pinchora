@@ -81,7 +81,9 @@ test("profile draft survives language changes and edits made while saving", asyn
   await devLogin(page, `${run}93`, []);
   await page.goto("/me/profile");
   await page.getByRole("button", { name: "Bio", exact: true }).click();
-  await page.getByLabel("Bio", { exact: true }).fill("A draft worth keeping");
+  // Textarea content becomes part of its wrapping label's text, but not its accessible name.
+  const bio = page.getByRole("textbox", { name: "Bio", exact: true });
+  await bio.fill("A draft worth keeping");
   await page.route("**/api/me/profile?lang=tr", (route) =>
     route.fulfill({
       status: 503,
@@ -91,10 +93,12 @@ test("profile draft survives language changes and edits made while saving", asyn
   );
   await page.getByRole("button", { name: "TR", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Fixture catalog unavailable", { timeout: 15000 });
-  await expect(page.getByLabel("Biyografi", { exact: true })).toHaveValue("A draft worth keeping");
+  await expect(page.getByRole("textbox", { name: "Biyografi", exact: true })).toHaveValue(
+    "A draft worth keeping",
+  );
   await page.unroute("**/api/me/profile?lang=tr");
   await page.getByRole("button", { name: "EN", exact: true }).click();
-  await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("A draft worth keeping");
+  await expect(bio).toHaveValue("A draft worth keeping");
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -106,9 +110,9 @@ test("profile draft survives language changes and edits made while saving", asyn
     await route.fulfill({ response });
   });
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await page.getByLabel("Bio", { exact: true }).fill("The next draft");
+  await bio.fill("The next draft");
   release?.();
-  await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("The next draft");
+  await expect(bio).toHaveValue("The next draft");
   await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeEnabled();
 });
 
