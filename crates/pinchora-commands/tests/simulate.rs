@@ -165,6 +165,8 @@ mod feeds;
 // Birthdays: opt-in confirmation, privacy and pixel card.
 #[path = "simulate/birthdays.rs"]
 mod birthdays;
+#[path = "simulate/trackers.rs"]
+mod trackers;
 // Temp voice: creators, rooms, the owner's controls and the panel.
 #[path = "simulate/info_xp.rs"]
 mod info_xp;

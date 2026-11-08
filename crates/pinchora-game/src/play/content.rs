@@ -16,10 +16,11 @@ pub enum TriviaCategory {
     Food,
     History,
     Home,
+    Minecraft,
 }
 
 impl TriviaCategory {
-    pub const ALL: [TriviaCategory; 8] = [
+    pub const ALL: [TriviaCategory; 9] = [
         Self::Ocean,
         Self::Animals,
         Self::Nature,
@@ -28,6 +29,7 @@ impl TriviaCategory {
         Self::Food,
         Self::History,
         Self::Home,
+        Self::Minecraft,
     ];
 
     pub fn key(self) -> &'static str {
@@ -40,6 +42,7 @@ impl TriviaCategory {
             Self::Food => "food",
             Self::History => "history",
             Self::Home => "home",
+            Self::Minecraft => "minecraft",
         }
     }
 
@@ -53,6 +56,7 @@ impl TriviaCategory {
             Self::Food => "Food",
             Self::History => "History",
             Self::Home => "Home",
+            Self::Minecraft => "Minecraft",
         }
     }
 
@@ -70,6 +74,7 @@ impl TriviaCategory {
             Self::Food => "Yemek",
             Self::History => "Tarih",
             Self::Home => "Ev",
+            Self::Minecraft => "Minecraft",
         }
     }
 
@@ -83,6 +88,7 @@ impl TriviaCategory {
             Self::Food => "🍰",
             Self::History => "📜",
             Self::Home => "🏡",
+            Self::Minecraft => "⛏️",
         }
     }
 

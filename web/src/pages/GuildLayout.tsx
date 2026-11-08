@@ -80,6 +80,7 @@ export const NAV: NavGroup[] = [
     pages: [
       { to: "feeds", label: "Social feeds" },
       { to: "roblox", label: "Roblox" },
+      { to: "trackers", label: "Game trackers" },
     ],
   },
   { group: "PLAYERS", pages: [{ to: "achievements", label: "Achievements" }] },

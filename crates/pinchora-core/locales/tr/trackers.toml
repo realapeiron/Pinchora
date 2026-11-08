@@ -1,0 +1,60 @@
+[trackers]
+unknown = "Bilinmiyor"
+no-riot-key = "League profilleri kullanılamıyor: botta Riot API anahtarı ayarlanmamış."
+bad-riot-id = "Player#EUW gibi bir Riot kimliği kullanın."
+riot-unavailable = "Riot şu anda bu profili yükleyemedi. Lütfen sonra tekrar deneyin."
+valorant-waiting = "Valorant profilleri Riot üretim ve RSO onayını bekliyor. Bu arada yama notlarını takip edebilirsiniz."
+unranked = "Derecesiz"
+region = "Bölge"
+solo-rank = "Tekli sıra"
+mastery = "Ustalık"
+league = "League of Legends"
+unlinked = "League bağlantınız kaldırıldı."
+minecraft = "Minecraft Java"
+version = "Sürüm"
+players = "Oyuncular"
+motd = "Mesaj"
+mc-unavailable = "Bu sunucuya ulaşılamadı veya adresi herkese açık değil."
+news-unavailable = "Minecraft haberlerine geçici olarak ulaşılamıyor."
+patch-channels = "Yama kanalları"
+saved = "Takip ayarları kaydedildi."
+latest-releases = "Son sürümler"
+new-patch = "Yeni resmî oyun güncellemesi"
+invalid-channel = "Geçerli bir metin kanalı seçin."
+invalid-host = "Geçerli bir herkese açık sunucu adresi girin."
+invalid-settings = "Takip ayarları geçersiz veya sınırı aşıyor."
+valorant-rso-required = "Valorant üretimde açıldı ancak profil erişimi için onaylı Riot oturum açma bağlantısı gerekiyor. Yama notları kullanılabilir."
+rank-tab = "Derece"
+mastery-tab = "Şampiyonlar"
+card-expired = "Bu profil kartının süresi doldu. /game lol profile komutunu yeniden çalıştırın."
+
+[module]
+game_trackers = "Oyun takipçileri"
+[module-blurb]
+game_trackers = "League profilleri, Minecraft sunucuları ve yama notları."
+
+[trackers.ui]
+'Game trackers' = 'Oyun takipçileri'
+'Follow official game updates and keep Minecraft servers in sight.' = 'Resmî oyun güncellemelerini takip edin ve Minecraft sunucularını izleyin.'
+'The Game trackers module is off.' = 'Oyun takipçileri modülü kapalı.'
+'Open modules' = 'Modülleri aç'
+'PATCH NOTES' = 'YAMA NOTLARI'
+'Official League, Valorant and Minecraft updates are posted once per release.' = 'League, Valorant ve Minecraft güncellemeleri her sürüm için bir kez paylaşılır.'
+'League of Legends' = 'League of Legends'
+'Minecraft' = 'Minecraft'
+'Valorant' = 'Valorant'
+'No channel' = 'Kanal yok'
+'MINECRAFT WATCH LIST' = 'MINECRAFT İZLEME LİSTESİ'
+'Status cards refresh every five minutes. Public Java servers only.' = 'Durum kartları beş dakikada bir yenilenir. Yalnızca herkese açık Java sunucuları.'
+'Remove' = 'Kaldır'
+'Server address' = 'Sunucu adresi'
+'Example: play.example.com:25565' = 'Örnek: play.example.com:25565'
+'Status channel' = 'Durum kanalı'
+'Pick a channel' = 'Kanal seçin'
+'Add server' = 'Sunucu ekle'
+'MINECRAFT NEWS' = 'MINECRAFT HABERLERİ'
+'Release channel' = 'Sürüm kanalı'
+'Tracker settings saved.' = 'Takip ayarları kaydedildi.'
+'Saving…' = 'Kaydediliyor…'
+'Save changes' = 'Değişiklikleri kaydet'
+'Discard changes' = 'Değişiklikleri at'

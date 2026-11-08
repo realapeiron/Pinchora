@@ -104,7 +104,7 @@ FORBIDDEN = re.compile(
 SNAKE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*\Z")
 HEX_COLOR = re.compile(r"#[0-9a-f]{6}\Z")
 WORD = re.compile(r"[a-z]+\Z")
-TRIVIA_CATEGORIES = ("ocean", "animals", "nature", "science", "geography", "food", "history", "home")
+TRIVIA_CATEGORIES = ("ocean", "animals", "nature", "science", "geography", "food", "history", "home", "minecraft")
 TRIVIA_DIFFICULTIES = ("easy", "medium", "hard")
 HANGMAN_CATEGORIES = ("sea_life", "house_items", "food", "nature", "pets")
 # Words a family friendly game must never accept or show.
@@ -1246,8 +1246,9 @@ def check_trivia_tr(raw, english):
         if twin not in ids:
             problem("trivia_tr.json", f"{item.get('id')!r} has no Turkish twin {twin!r}")
     for category in TRIVIA_CATEGORIES:
-        if per_category[category] < 55:
-            problem("trivia_tr.json", f"needs at least 55 {category} questions; found {per_category[category]}")
+        required = 40 if category == "minecraft" else 55
+        if per_category[category] < required:
+            problem("trivia_tr.json", f"needs at least {required} {category} questions; found {per_category[category]}")
     total = sum(slots.values())
     if total and min(slots[slot] for slot in range(4)) * 100 < total * 15:
         problem("trivia_tr.json", f"right answers are lopsided by option position: {dict(sorted(slots.items()))}")

@@ -3657,4 +3657,25 @@ export const tr: { [K in keyof typeof en]: string } = {
     "Bazı profil alanları uygulanamadı. Aşağıdaki ayrıntıları kontrol et.",
   "Last accepted nickname: {name}": "Son kabul edilen takma ad: {name}",
   "Last accepted bio: {bio}": "Son kabul edilen biyografi: {bio}",
+  "Game trackers": "Oyun takipçileri",
+  "Follow official game updates and keep Minecraft servers in sight.":
+    "Resmî oyun güncellemelerini takip edin ve Minecraft sunucularını izleyin.",
+  "The Game trackers module is off.": "Oyun takipçileri modülü kapalı.",
+  "Open modules": "Modülleri aç",
+  "PATCH NOTES": "YAMA NOTLARI",
+  "Official League, Valorant and Minecraft updates are posted once per release.":
+    "League, Valorant ve Minecraft güncellemeleri her sürüm için bir kez paylaşılır.",
+  "League of Legends": "League of Legends",
+  Minecraft: "Minecraft",
+  Valorant: "Valorant",
+  "MINECRAFT WATCH LIST": "MINECRAFT İZLEME LİSTESİ",
+  "Status cards refresh every five minutes. Public Java servers only.":
+    "Durum kartları beş dakikada bir yenilenir. Yalnızca herkese açık Java sunucuları.",
+  "Server address": "Sunucu adresi",
+  "Example: play.example.com:25565": "Örnek: play.example.com:25565",
+  "Status channel": "Durum kanalı",
+  "Add server": "Sunucu ekle",
+  "MINECRAFT NEWS": "MINECRAFT HABERLERİ",
+  "Release channel": "Sürüm kanalı",
+  "Tracker settings saved.": "Takip ayarları kaydedildi.",
 };

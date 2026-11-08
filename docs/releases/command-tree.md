@@ -1,7 +1,7 @@
 # Command tree release rehearsal
 
 F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`). Registration has
-**71 slash roots plus the Report message action** (72 total). `/ban`, `/kick`, `/warn`,
+**72 slash roots plus the Report message action** (73 total). `/ban`, `/kick`, `/warn`,
 `/timeout` and `/purge` remain direct roots with their D11 options and original Ban Members,
 Kick Members, Moderate Members and Manage Messages permissions. Secondary actions, including
 softban, stay under `/mod`. Old `/mod ban|kick|warn|timeout|purge` interactions and text aliases
@@ -14,12 +14,15 @@ F20 configuration now uses admin-only leaves on its four feature roots:
 text aliases, private replies, module ownership and saved parent/leaf restrictions.
 Manage Server is enforced per action; member leaves retain their existing permissions.
 Registration enforces **6,400 characters for `/community`** and **6,800 for every other root**.
-Current largest commands: `/community` **6,367**, `/setup` **6,234**, `/progression` **5,567**,
-`/safety` **4,767**, and `/integrations` **3,785**. No command exceeds its budget.
+The command-size test reports the five largest commands and rejects any root above its budget.
 
 F16 adds `/roblox verify|unverify|whois|update`, with administration under
 `/integrations roblox settings|bind-add|bind-remove|bind-list`. Migration **0073** is
-imported unchanged from the reviewed branch. There are **365 executable entries**.
+imported unchanged from the reviewed branch. The combined tree has **381 executable entries**.
+
+F14 adds `/setup branding show|apply|reset` and migration **0076**. F17 adds `/game` and
+`/integrations trackers`, with migration **0075**. Both migrations retain their reviewed numbers.
+`/setup` has **6** children and `/integrations` has **5**, within the 25-child limit.
 
 Slices 13–18 originally completed the transition from 95 registered roots to **66 roots** and 330 executable actions.
 The manifest is the action inventory; all 160 moved actions have one canonical destination. Old typed

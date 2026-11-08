@@ -42,6 +42,8 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("roblox_pending", "user_id"),
     ("roblox_links", "user_id"),
     ("roblox_sync", "user_id"),
+    ("riot_links", "user_id"),
+    ("tracker_cache", "user_id"),
     ("reef_layout_outbox", "owner_id"),
     ("reef_room_leases", "owner_id"),
     ("feed_channel_links", "user_id"),
@@ -246,6 +248,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "roblox_settings",
     "roblox_binds",
     "roblox_cache",
+    "tracker_settings",
+    "patch_seen",
     // Minimal, expiring moderation tombstones: deletion/rejoin must not bypass a sanction.
     // Actor is zeroed and house-owned sanctions are deleted with the owner; no raw text retained.
     "reef_sanctions",

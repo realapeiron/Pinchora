@@ -1,0 +1,37 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "./api";
+import { serverText } from "../i18n";
+
+export interface Watch {
+  host: string;
+  channel_id: string;
+  message_id?: string | null;
+}
+export interface TrackersData {
+  patch_channels: Record<string, string>;
+  mc_watch: Watch[];
+  mc_news_channel_id: string | null;
+  language: string;
+  strings: Record<string, string>;
+}
+export type TrackersDraft = Pick<TrackersData, "patch_channels" | "mc_watch" | "mc_news_channel_id">;
+const key = (guild: string) => [`/api/guilds/${guild}/trackers`];
+export function useTrackers(guild: string) {
+  return useQuery({
+    queryKey: key(guild),
+    queryFn: () => api<TrackersData>(`/api/guilds/${guild}/trackers`),
+  });
+}
+export function useSaveTrackers(guild: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: TrackersDraft) => api<TrackersData>(`/api/guilds/${guild}/trackers`, "PUT", draft),
+    onSuccess: async (data) => {
+      client.setQueryData(key(guild), data);
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
+    },
+  });
+}
+export function words(data: TrackersData | undefined) {
+  return (key: string) => serverText(key, data?.strings ?? {}, {}, data?.language ?? "en");
+}

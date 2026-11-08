@@ -22,6 +22,36 @@ fn differing(a: &RgbaImage, b: &RgbaImage) -> usize {
 }
 
 #[test]
+fn league_profile_card_matches_golden() {
+    let lang = Lang::En;
+    let card = InfoCard {
+        lang,
+        title: "Captain#EUW".into(),
+        subtitle: t!(lang, "trackers.league"),
+        rows: vec![
+            row(&t!(lang, "trackers.region"), "euw1"),
+            row(&t!(lang, "trackers.solo-rank"), "DIAMOND II · 68 LP"),
+        ],
+        image: Some(placeholder_avatar(17, 208)),
+        theme: Theme::reef(),
+    };
+    let png = Renderer::new().svg_to_png(&card.to_svg()).expect("renders");
+    let full = image::load_from_memory(&png).expect("PNG").to_rgba8();
+    let small = image::imageops::resize(&full, full.width() / 2, full.height() / 2, FilterType::Triangle);
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/game-lol-profile.png");
+    if std::env::var_os("PINCHORA_UPDATE_INFO_GOLDENS").is_some() {
+        small.save(&path).expect("saves golden");
+        return;
+    }
+    let golden = image::open(&path).expect("golden exists").to_rgba8();
+    let off = differing(&golden, &small);
+    assert!(
+        off * 200 <= (small.width() * small.height()) as usize,
+        "League profile: {off} pixels differ"
+    );
+}
+
+#[test]
 fn info_cards_match_goldens() {
     let mut cards = Vec::new();
     for lang in [Lang::En, Lang::Tr] {

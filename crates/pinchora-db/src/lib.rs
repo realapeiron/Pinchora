@@ -50,6 +50,7 @@ mod suggestions;
 mod tags;
 mod temp_voice;
 mod tickets;
+mod trackers;
 mod users;
 mod utility;
 mod xp;
@@ -133,6 +134,7 @@ pub use suggestions::{
 pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
 pub use temp_voice::{CreatorSave, NewTempRoom, RoomMake, TempRoom, VoiceCreator};
 pub use tickets::*;
+pub use trackers::{RiotLink, TrackerSettings};
 pub use users::UserRow;
 pub use utility::{AfkRow, ScheduledRow, UtilityStickyRow};
 pub use xp::{MAX_XP_RULES, XpTarget};

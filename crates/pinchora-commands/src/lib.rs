@@ -32,6 +32,8 @@ mod stats;
 pub mod status;
 mod text;
 mod tickets;
+mod trackers;
+pub use trackers::{spawn_ticker as spawn_trackers_ticker, tick as trackers_tick};
 mod util;
 mod utility;
 mod voice_xp;

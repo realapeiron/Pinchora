@@ -165,6 +165,8 @@ pub enum TriviaTopic {
     History,
     #[option(name = "Home", value = "home")]
     Home,
+    #[option(name = "Minecraft", value = "minecraft")]
+    Minecraft,
 }
 
 impl TriviaTopic {
@@ -178,6 +180,7 @@ impl TriviaTopic {
             Self::Food => TriviaCategory::Food,
             Self::History => TriviaCategory::History,
             Self::Home => TriviaCategory::Home,
+            Self::Minecraft => TriviaCategory::Minecraft,
         }
     }
 }

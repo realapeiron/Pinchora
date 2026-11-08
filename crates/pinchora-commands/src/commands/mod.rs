@@ -75,6 +75,7 @@ pub(crate) mod surge;
 pub(crate) mod tag;
 pub(crate) mod tempvoice;
 pub(crate) mod tickets;
+pub(crate) mod trackers;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
@@ -241,6 +242,8 @@ commands!(
     utility::AfkCommand,
     utility::StickyCommand,
     utility::ScheduleCommand,
+    trackers::GameCommand,
+    trackers::TrackersAdmin,
 );
 
 #[cfg(test)]

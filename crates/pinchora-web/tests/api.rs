@@ -82,6 +82,8 @@ mod branding;
 mod events;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
+#[path = "api/trackers.rs"]
+mod trackers;
 #[path = "api/utility.rs"]
 mod utility;
 #[path = "api/verification.rs"]

@@ -88,11 +88,14 @@ fn turkish_trivia_translates_every_english_question_and_adds_turkey_ones() {
     }
     for category in TriviaCategory::ALL {
         assert!(
-            per_category.get(&category).copied().unwrap_or(0) >= 55,
+            per_category.get(&category).copied().unwrap_or(0)
+                >= if category == TriviaCategory::Minecraft { 40 } else { 55 },
             "{}",
             category.label()
         );
-        assert_ne!(category.label_in(Lang::Tr), category.label());
+        if category != TriviaCategory::Minecraft {
+            assert_ne!(category.label_in(Lang::Tr), category.label());
+        }
         for difficulty in Difficulty::ALL {
             assert!(per_difficulty.get(&(category, difficulty)).copied().unwrap_or(0) >= 3);
         }

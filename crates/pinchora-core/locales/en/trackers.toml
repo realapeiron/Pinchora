@@ -1,0 +1,60 @@
+[trackers]
+unknown = "Unknown"
+no-riot-key = "League profiles are unavailable: this bot has no Riot API key configured."
+bad-riot-id = "Use a Riot ID like Player#EUW."
+riot-unavailable = "Riot could not load that profile right now. Please try again later."
+valorant-waiting = "Valorant profiles are waiting for Riot production and RSO approval. Patch notes are available in the meantime."
+unranked = "Unranked"
+region = "Region"
+solo-rank = "Solo rank"
+mastery = "Mastery"
+league = "League of Legends"
+unlinked = "Your League link was removed."
+minecraft = "Minecraft Java"
+version = "Version"
+players = "Players"
+motd = "Message"
+mc-unavailable = "This server could not be reached, or its address is not public."
+news-unavailable = "Minecraft news is temporarily unavailable."
+patch-channels = "Patch channels"
+saved = "Tracker settings saved."
+latest-releases = "Latest releases"
+new-patch = "New official game update"
+invalid-channel = "Choose a valid text channel."
+invalid-host = "Enter a valid public server address."
+invalid-settings = "Tracker settings are invalid or over the limit."
+valorant-rso-required = "Valorant is enabled for production, but profile access still needs approved Riot Sign On. Patch notes remain available."
+rank-tab = "Rank"
+mastery-tab = "Champions"
+card-expired = "This profile card expired. Run /game lol profile again."
+
+[module]
+game_trackers = "Game trackers"
+[module-blurb]
+game_trackers = "League profiles, Minecraft servers and patch notes."
+
+[trackers.ui]
+'Game trackers' = 'Game trackers'
+'Follow official game updates and keep Minecraft servers in sight.' = 'Follow official game updates and keep Minecraft servers in sight.'
+'The Game trackers module is off.' = 'The Game trackers module is off.'
+'Open modules' = 'Open modules'
+'PATCH NOTES' = 'PATCH NOTES'
+'Official League, Valorant and Minecraft updates are posted once per release.' = 'Official League, Valorant and Minecraft updates are posted once per release.'
+'League of Legends' = 'League of Legends'
+'Minecraft' = 'Minecraft'
+'Valorant' = 'Valorant'
+'No channel' = 'No channel'
+'MINECRAFT WATCH LIST' = 'MINECRAFT WATCH LIST'
+'Status cards refresh every five minutes. Public Java servers only.' = 'Status cards refresh every five minutes. Public Java servers only.'
+'Remove' = 'Remove'
+'Server address' = 'Server address'
+'Example: play.example.com:25565' = 'Example: play.example.com:25565'
+'Status channel' = 'Status channel'
+'Pick a channel' = 'Pick a channel'
+'Add server' = 'Add server'
+'MINECRAFT NEWS' = 'MINECRAFT NEWS'
+'Release channel' = 'Release channel'
+'Tracker settings saved.' = 'Tracker settings saved.'
+'Saving…' = 'Saving…'
+'Save changes' = 'Save changes'
+'Discard changes' = 'Discard changes'

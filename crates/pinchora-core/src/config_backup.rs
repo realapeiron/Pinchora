@@ -42,6 +42,12 @@ pub const SECTIONS: &[Section] = &[
     ),
     section!("guild_modules", "module,enabled,channel_mode,channels", "module", false),
     section!("command_control", "config", "", false),
+    section!(
+        "tracker_settings",
+        "patch_channels,mc_watch,mc_news_channel_id",
+        "",
+        false
+    ),
     // AFK policy is stored in guild_modules/command_control; member AFK records stay private.
     section!("utility_settings", "timezone", "", false),
     section!(

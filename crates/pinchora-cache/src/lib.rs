@@ -37,6 +37,37 @@ pub struct StoredSession {
 }
 
 impl Cache {
+    /// Reserve one Riot request in both shared application windows. All pods use the same Redis clock.
+    pub async fn reserve_riot(&self, region: &str) -> anyhow::Result<bool> {
+        let key = format!("{}:riot:{}", self.namespace, region);
+        let accepted: i64 = redis::Script::new(
+            "if redis.call('EXISTS',KEYS[4])==1 then return 0 end; \
+             local now=redis.call('TIME'); local ms=now[1]*1000+math.floor(now[2]/1000); \
+             redis.call('ZREMRANGEBYSCORE',KEYS[1],0,ms-1000); \
+             redis.call('ZREMRANGEBYSCORE',KEYS[2],0,ms-120000); \
+             if redis.call('ZCARD',KEYS[1])>=20 or redis.call('ZCARD',KEYS[2])>=100 then return 0 end; \
+             local n=redis.call('INCR',KEYS[3]); local member=tostring(ms)..':'..tostring(n); \
+             redis.call('ZADD',KEYS[1],ms,member); redis.call('ZADD',KEYS[2],ms,member); \
+             redis.call('PEXPIRE',KEYS[1],1000); redis.call('PEXPIRE',KEYS[2],120000); redis.call('PEXPIRE',KEYS[3],120000); return 1",
+        )
+        .key(format!("{key}:second"))
+        .key(format!("{key}:two_minute"))
+        .key(format!("{key}:nonce"))
+        .key(format!("{key}:blocked"))
+        .invoke_async(&mut self.conn())
+        .await?;
+        Ok(accepted == 1)
+    }
+
+    pub async fn block_riot(&self, region: &str, secs: u64) -> anyhow::Result<()> {
+        let key = format!("{}:riot:{}:blocked", self.namespace, region);
+        // Concurrent 429s must never shorten an existing shared backoff.
+        let millis = secs.max(1).saturating_mul(1000).min(i64::MAX as u64 / 2);
+        let _: i64 = redis::Script::new(
+            "local old=redis.call('PTTL',KEYS[1]); if old<tonumber(ARGV[1]) then redis.call('PSETEX',KEYS[1],ARGV[1],1) end; return redis.call('PTTL',KEYS[1])",
+        ).key(key).arg(millis).invoke_async(&mut self.conn()).await?;
+        Ok(())
+    }
     pub async fn connect(url: &str) -> anyhow::Result<Self> {
         let environment = std::env::var("PINCHORA_ENV").unwrap_or_else(|_| "default".into());
         Self::connect_scoped(url, &environment).await

@@ -150,11 +150,12 @@ pub enum Module {
     Modmail,
     Roblox,
     Branding,
+    GameTrackers,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 53] = [
+    pub const ALL: [Self; 54] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -208,6 +209,7 @@ impl Module {
         Self::Modmail,
         Self::Roblox,
         Self::Branding,
+        Self::GameTrackers,
     ];
 
     /// The key stored in the database and used in the API.
@@ -266,6 +268,7 @@ impl Module {
             Self::Modmail => "modmail",
             Self::Roblox => "roblox",
             Self::Branding => "branding",
+            Self::GameTrackers => "game_trackers",
         }
     }
 
@@ -328,6 +331,7 @@ impl Module {
             Self::Modmail => "Modmail",
             Self::Roblox => "Roblox",
             Self::Branding => "Branding",
+            Self::GameTrackers => "Game trackers",
         }
     }
 
@@ -402,6 +406,7 @@ impl Module {
             Self::Forms => "Application forms and reviews.",
             Self::Modmail => "Private member messages to server staff.",
             Self::Roblox => "Roblox profile verification, group binds and nicknames.",
+            Self::GameTrackers => "/game: League profiles and Minecraft status; patch and watch settings.",
             Self::Feeds => {
                 "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -444,6 +449,7 @@ impl Module {
             Self::Tickets => Group::Community,
             Self::AutoMod => Group::Safety,
             Self::Feeds => Group::Feeds,
+            Self::GameTrackers => Group::Feeds,
             Self::TempVoice => Group::Community,
             Self::Info => Group::Server,
             Self::Starboard => Group::Community,
@@ -469,6 +475,7 @@ impl Module {
             Self::AutoMod => Scope::Server,
             Self::AntiNuke => Scope::Server,
             Self::Feeds => Scope::Server,
+            Self::GameTrackers => Scope::Server,
             Self::TempVoice => Scope::Server,
             Self::Invites => Scope::Server,
             Self::Verification => Scope::Server,
@@ -520,6 +527,7 @@ impl Module {
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
             "feeds" => Self::Feeds,
+            "game" | "trackers" => Self::GameTrackers,
             "info" => Self::Info,
             "xp" => Self::Leveling,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
@@ -617,6 +625,7 @@ impl Module {
             "mml" => Self::Modmail,
             "rx" | "rk" => Self::Roblox,
             "wb" => Self::Branding,
+            "gt" | "mc" => Self::GameTrackers,
             _ => return None,
         })
     }

@@ -38,6 +38,7 @@ mod store;
 mod tag_common;
 mod temp_voice;
 mod tickets;
+mod trackers;
 mod utility;
 mod verification;
 mod xp_admin;
@@ -81,6 +82,7 @@ pub fn router(state: WebState) -> Router {
     let api = Router::new()
         .route("/api/me", get(me::me))
         .route("/api/me/language", post(me::language))
+        .route("/api/me/trackers", get(trackers::export))
         .route("/api/me/guilds", get(me::guilds))
         .route("/api/me/guilds/refresh", post(me::refresh_guilds))
         .nest("/api/guilds/{g}", guilds::router())

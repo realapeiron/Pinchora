@@ -14,9 +14,10 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
-The merged D11/F20 command tree has **65 slash roots plus the Report message action**,
-covering **357 executable entries**. D11 moves five existing roots under `/mod`,
-and F20 adds four member roots. `/setup` has five groups;
+The merged wave 3 and F14/F17 command tree has **72 slash roots plus the Report message action**,
+covering **381 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
+separate roots. F20 adds four member roots, F16 adds `/roblox`, and F17 adds `/game`.
+`/setup` has six groups and `/integrations` has five;
 `/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.
 Old prefix paths and server aliases resolve to the new paths, with a daily English/Turkish notice.
 Private setup actions redirect to slash. Existing colliding server aliases keep their text meaning;
@@ -538,11 +539,11 @@ The bot owner turns this on in two places: **Message Content Intent** on the Bot
 Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
 mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
 
-### Consolidated command tree (slices 1–18)
+### Consolidated command tree (slices 1–19)
 
-The original command tree and D11/F20 now occupy **65 slash roots plus Report**, including
-`/setup`, `/mod`, and `/rewards`. All **357 executable entries** are reachable, including the
-9 quick-game actions. The 173 moved actions call their original
+The merged command tree occupies **72 slash roots plus Report**, including
+`/setup`, `/mod`, `/rewards`, `/roblox`, and `/game`. All **381 executable entries** are reachable,
+including the 9 quick-game actions. The 198 moved actions call their original
 typed handlers. `/setup` adds Manage Server authorization on every action; `/mod` has no restrictive
 root default and preserves each action's existing authorization and feature module.
 Member panel buttons keep their custom IDs and authorization. Old prefix paths use longest-token
@@ -1034,7 +1035,23 @@ joined members about hourly.
 
 ### Game trackers
 
-<!-- F17: the Game trackers package replaces this heading's section; keep it one `###` section. -->
+`/game lol profile <name#tag> <region>` looks up a Riot ID, Solo Queue rank and top three
+champion masteries on pixel-card tabs. `/game lol link` saves the account on your profile and `/game lol unlink`
+deletes the link. Set `PINCHORA_TRACKERS__RIOT_API_KEY` to enable Riot lookups; the shared Redis
+limiter caps them at 20 requests per second and 100 per two minutes per region. Valorant profile
+lookups wait for Riot production and RSO approval, even when `PINCHORA_TRACKERS__RIOT_PRODUCTION`
+is enabled.
+
+`/game mc status <host[:port]>` pings a public Minecraft Java server. The Rust ping resolves DNS
+before connecting, refuses local and reserved addresses, caps packets and times out after three
+seconds. `/game mc news` shows Java releases from Mojang's manifest and official launcher news; `/game mc trivia`
+starts a round from 40 Minecraft questions in English or Turkish. Manager controls live under
+`/integrations trackers`: `patch-add`, `patch-remove`, `patch-list`, `mc-watch`, `mc-unwatch`
+and `mc-news-channel`. The Trackers dashboard page has the same settings. A five-minute ticker
+updates watch messages and posts newly discovered official patch links, Minecraft releases and launcher news.
+Settings and cached source data use migration 0075; Riot links participate in `/privacy` deletion.
+
+Personal tracker export: authenticated `GET /api/me/trackers` returns only the caller's Riot links and cached cards. Unlink and account deletion also remove owned card data. Minecraft watch probes share a five-minute cache across guilds and pods; SRV redirects are not followed. Patch dispatch uses persistent per-destination claims for at-most-once delivery: an ambiguous send failure or crash can skip a post instead of duplicating it.
 
 ### Info commands
 
@@ -1050,7 +1067,7 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### Community pack
 
-The Community pack adds four member roots. Together with D11, the tree has 65 slash roots plus Report:
+The Community pack adds four member roots:
 `/qotd suggest`, `/counting stats`, `/form list|open` and
 `/modmail close|block|snippet-add|snippet-use|snippet-list`. Manage Server
 configuration uses `/qotd settings|queue`, `/counting setup|reset`,

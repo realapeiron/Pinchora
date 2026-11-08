@@ -760,6 +760,41 @@
     "slice": 0
   },
   {
+    "legacy": "game lol link",
+    "canonical": "game lol link",
+    "slice": 0
+  },
+  {
+    "legacy": "game lol profile",
+    "canonical": "game lol profile",
+    "slice": 0
+  },
+  {
+    "legacy": "game lol unlink",
+    "canonical": "game lol unlink",
+    "slice": 0
+  },
+  {
+    "legacy": "game mc news",
+    "canonical": "game mc news",
+    "slice": 0
+  },
+  {
+    "legacy": "game mc status",
+    "canonical": "game mc status",
+    "slice": 0
+  },
+  {
+    "legacy": "game mc trivia",
+    "canonical": "game mc trivia",
+    "slice": 0
+  },
+  {
+    "legacy": "game valorant profile",
+    "canonical": "game valorant profile",
+    "slice": 0
+  },
+  {
     "legacy": "gift",
     "canonical": "gift",
     "slice": 0
@@ -1668,6 +1703,36 @@
     "legacy": "timeout",
     "canonical": "timeout",
     "slice": 18
+  },
+  {
+    "legacy": "trackers mc-news-channel",
+    "canonical": "integrations trackers mc-news-channel",
+    "slice": 19
+  },
+  {
+    "legacy": "trackers mc-unwatch",
+    "canonical": "integrations trackers mc-unwatch",
+    "slice": 19
+  },
+  {
+    "legacy": "trackers mc-watch",
+    "canonical": "integrations trackers mc-watch",
+    "slice": 19
+  },
+  {
+    "legacy": "trackers patch-add",
+    "canonical": "integrations trackers patch-add",
+    "slice": 19
+  },
+  {
+    "legacy": "trackers patch-list",
+    "canonical": "integrations trackers patch-list",
+    "slice": 19
+  },
+  {
+    "legacy": "trackers patch-remove",
+    "canonical": "integrations trackers patch-remove",
+    "slice": 19
   },
   {
     "legacy": "unban",
