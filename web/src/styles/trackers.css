@@ -3,7 +3,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
 }
-.trackers-page .panel {
+.trackers-page .panel,
+.trackers-page .field,
+.trackers-watch-list span {
   min-width: 0;
 }
 .trackers-page .field {
@@ -30,12 +32,15 @@
   gap: 0.2rem;
   overflow-wrap: anywhere;
 }
+.trackers-watch-list button {
+  flex-shrink: 0;
+}
 .trackers-watch-list small {
   color: var(--muted, #a4b5c9);
 }
 .trackers-add {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 .trackers-actions {
@@ -47,6 +52,6 @@
 @media (max-width: 850px) {
   .trackers-page .trackers-grid,
   .trackers-add {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

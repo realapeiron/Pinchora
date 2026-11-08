@@ -15,7 +15,7 @@ import {
   type Branding,
   type BrandingDraft,
 } from "../lib/branding";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/branding.css";
 
@@ -64,13 +64,7 @@ export function BrandingPage() {
       .then((value) => {
         if (!current) return;
         setSaved(value);
-        setDraft({
-          nickname: value.nickname,
-          avatar_upload_id: value.avatar_upload_id,
-          banner_upload_id: value.banner_upload_id,
-          bio: value.bio,
-          embed_color: value.embed_color,
-        });
+        setDraft(brandingDraft(value));
         setAvatar(value.avatar_url);
         setBanner(value.banner_url);
       })
@@ -103,18 +97,19 @@ export function BrandingPage() {
   };
   if (loading) return <Loading />;
   if (!saved) return <Problem error={error ?? new Error(t("Branding could not load."))} />;
+  const changed = JSON.stringify(brandingDraft(draft)) !== JSON.stringify(brandingDraft(saved));
   const color = /^#[0-9a-fA-F]{6}$/.test(draft.embed_color ?? "") ? draft.embed_color! : "#FF6B4A";
   const wait = saved.applied_at
     ? Math.max(0, 600 - Math.floor((now - new Date(saved.applied_at).getTime()) / 1000))
     : 0;
   return (
-    <div className="settings-page branding-page">
-      <PageHead
-        title={t("Server branding")}
-        lead={t(
-          "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page branding-page"
+      title={t("Server branding")}
+      lead={t(
+        "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.",
+      )}
+    >
       <div className="branding-grid">
         <section className="branding-editor" aria-label={t("Branding settings")}>
           <h2>{t("Profile")}</h2>
@@ -203,11 +198,14 @@ export function BrandingPage() {
           {notice && <p role="status">{notice}</p>}
           <div className="branding-actions">
             <PixelButton
-              disabled={busy}
+              disabled={busy || !changed}
               onClick={() =>
                 void run(async () => {
                   const value = await saveBranding(guild.id, draft);
                   setSaved(value);
+                  setDraft(brandingDraft(value));
+                  setAvatar(value.avatar_url);
+                  setBanner(value.banner_url);
                   setNotice(t("Changes saved."));
                 })
               }
@@ -219,7 +217,7 @@ export function BrandingPage() {
               disabled={busy || wait > 0}
               onClick={() =>
                 void run(async () => {
-                  await saveBranding(guild.id, draft);
+                  if (changed) await saveBranding(guild.id, draft);
                   const value = await applyBranding(guild.id);
                   setSaved(value);
                   setDraft(brandingDraft(value));
@@ -290,6 +288,6 @@ export function BrandingPage() {
           </div>
         </aside>
       </div>
-    </div>
+    </SettingsPage>
   );
 }

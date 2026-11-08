@@ -28,14 +28,14 @@ export type BrandingDraft = Pick<
 export const brandingPath = (guild: string) => `/api/guilds/${guild}/branding`;
 export const getBranding = (guild: string) => api<Branding>(brandingPath(guild));
 export const saveBranding = (guild: string, draft: BrandingDraft) =>
-  api<Branding>(brandingPath(guild), "PUT", draft);
+  api<Branding>(brandingPath(guild), "PUT", brandingDraft(draft));
 export const applyBranding = (guild: string) => api<Branding>(`${brandingPath(guild)}/apply`, "POST");
 export const resetBranding = (guild: string) =>
   api<{ branding: Branding; discord_failed: string[] }>(`${brandingPath(guild)}/reset`, "POST");
 export const uploadBrandingImage = (guild: string, file: File) =>
   apiUpload<{ id: string; url: string }>(`/api/guilds/${guild}/cards/uploads`, file);
 
-export function brandingDraft(value: Branding): BrandingDraft {
+export function brandingDraft(value: BrandingDraft): BrandingDraft {
   return {
     nickname: value.nickname,
     bio: value.bio,

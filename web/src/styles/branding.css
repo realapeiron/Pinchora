@@ -6,6 +6,8 @@
 }
 .branding-editor,
 .branding-preview {
+  min-width: 0;
+  overflow-wrap: anywhere;
   border: 1px solid var(--line, #32445b);
   border-radius: 12px;
   background: var(--surface, #182334);
@@ -44,10 +46,16 @@
 }
 .branding-images {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
+.branding-editor label,
+.branding-editor input,
+.branding-editor textarea {
+  min-width: 0;
+}
 .branding-images input {
+  width: 100%;
   max-width: 100%;
   font-weight: 400;
 }
@@ -163,12 +171,12 @@
 }
 @media (max-width: 820px) {
   .branding-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .branding-preview {
     position: static;
   }
   .branding-images {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

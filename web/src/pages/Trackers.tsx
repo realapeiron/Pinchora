@@ -6,10 +6,17 @@ import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
 import { Toast } from "../components/Toast";
 import { type Overview } from "../lib/api";
-import { type TrackersData, type TrackersDraft, useTrackers, useSaveTrackers, words } from "../lib/trackers";
+import {
+  type TrackersData,
+  type TrackersDraft,
+  useTrackers,
+  useSaveTrackers,
+  trackersDraft,
+  words,
+} from "../lib/trackers";
 import { useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import "../styles/trackers.css";
 
 const games = ["lol", "valorant", "mc"] as const;
@@ -31,21 +38,11 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
   const t = words(data);
   const discord = useDiscord(guild);
   const save = useSaveTrackers(guild);
-  const [draft, setDraft] = useState<TrackersDraft>({
-    patch_channels: data.patch_channels,
-    mc_watch: data.mc_watch,
-    mc_news_channel_id: data.mc_news_channel_id,
-  });
+  const [draft, setDraft] = useState<TrackersDraft>(() => trackersDraft(data));
   const [newHost, setNewHost] = useState("");
   const [newChannel, setNewChannel] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const changed =
-    JSON.stringify(draft) !==
-    JSON.stringify({
-      patch_channels: data.patch_channels,
-      mc_watch: data.mc_watch,
-      mc_news_channel_id: data.mc_news_channel_id,
-    });
+  const changed = JSON.stringify(trackersDraft(draft)) !== JSON.stringify(trackersDraft(data));
   const addWatch = () => {
     const host = newHost.trim();
     if (
@@ -60,11 +57,11 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
     setNewChannel(null);
   };
   return (
-    <div className="settings-page trackers-page">
-      <PageHead
-        title={t("Game trackers")}
-        lead={t("Follow official game updates and keep Minecraft servers in sight.")}
-      />
+    <SettingsPage
+      className="settings-page trackers-page"
+      title={t("Game trackers")}
+      lead={t("Follow official game updates and keep Minecraft servers in sight.")}
+    >
       {!enabled && (
         <div className="notice notice-heart" role="note">
           {t("The Game trackers module is off.")} <Link to={`/g/${guild}/modules`}>{t("Open modules")}</Link>
@@ -170,11 +167,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
           onClick={() =>
             save.mutate(draft, {
               onSuccess: (result) => {
-                setDraft({
-                  patch_channels: result.patch_channels,
-                  mc_watch: result.mc_watch,
-                  mc_news_channel_id: result.mc_news_channel_id,
-                });
+                setDraft(trackersDraft(result));
                 setNotice(t("Tracker settings saved."));
               },
               onError: (error) => setNotice(error.message),
@@ -186,19 +179,14 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
         {changed && (
           <PixelButton
             variant="ghost"
-            onClick={() =>
-              setDraft({
-                patch_channels: data.patch_channels,
-                mc_watch: data.mc_watch,
-                mc_news_channel_id: data.mc_news_channel_id,
-              })
-            }
+            disabled={save.isPending}
+            onClick={() => setDraft(trackersDraft(data))}
           >
             {t("Discard changes")}
           </PixelButton>
         )}
       </div>
       {notice && <Toast message={notice} onDone={() => setNotice(null)} />}
-    </div>
+    </SettingsPage>
   );
 }
