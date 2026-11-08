@@ -58,6 +58,7 @@ async fn web_player_shared_profile_matches_discord_after_studio_save() {
                 guild: None,
                 viewer: id,
                 lang,
+                preview: false,
             },
         )
         .await

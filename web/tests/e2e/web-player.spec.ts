@@ -24,7 +24,9 @@ test("ordinary player edits badges, accent, background and saves at desktop and 
   await page.getByRole("link", { name: "Edit profile card", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Profile studio", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Profile card preview" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Save changes", exact: true, includeHidden: true }),
+  ).toBeDisabled();
   const pick = page.getByRole("button", { name: "Select badge", exact: true });
   await pick.first().click();
   await pick.first().click();
@@ -108,4 +110,38 @@ test("profile draft survives language changes and edits made while saving", asyn
   release?.();
   await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("The next draft");
   await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeEnabled();
+});
+
+test("player pages have one title and fit at 390px in EN and TR", async ({ page }) => {
+  await devLogin(page, `${run}94`, []);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const language of ["EN", "TR"]) {
+    for (const path of ["/me", "/me/profile", "/me/character", "/me/wallet"]) {
+      await page.goto(path);
+      await page.getByRole("button", { name: language, exact: true }).click();
+      await expect(page.locator("h1:visible")).toHaveCount(1);
+      await expect(
+        page.locator(".player-card, .player-wallet, .player-character-stage img").first(),
+      ).toBeVisible();
+      expect(await overflow(page)).toBeLessThanOrEqual(1);
+    }
+  }
+});
+
+test("unchanged or blank outfit names cannot be saved", async ({ page }) => {
+  await devLogin(page, `${run}95`, []);
+  await page.goto("/me/character");
+  await page.getByRole("button", { name: "Outfits", exact: true }).click();
+  const name = page.getByLabel("Outfit name 1", { exact: true });
+  const save = page.getByRole("button", { name: "Save to slot", exact: true }).first();
+  await name.fill("Reef day");
+  await save.click();
+  await expect(page.getByText("Outfit collection updated.")).toBeVisible();
+  await expect(save).toBeDisabled();
+  await name.fill("  Reef day  ");
+  await expect(save).toBeDisabled();
+  await name.fill("");
+  await expect(save).toBeDisabled();
+  await name.fill("New reef");
+  await expect(save).toBeEnabled();
 });

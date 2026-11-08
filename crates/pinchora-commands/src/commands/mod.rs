@@ -19,7 +19,7 @@ pub(crate) mod decorate;
 pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
-pub use economy::wallet_card_for;
+pub use economy::{wallet_card_for, wallet_preview_for};
 pub(crate) mod events;
 pub(crate) mod feeds;
 pub(crate) mod fish;

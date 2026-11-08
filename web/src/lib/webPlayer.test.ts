@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   changeCharacterColor,
+  characterKey,
+  outfitChanged,
   profileChanges,
+  playerPreviewResponse,
   reorderBadge,
   toggleBadge,
   wearAccessory,
@@ -55,4 +58,30 @@ describe("player studio drafts", () => {
       "tidewalker.1.1.0.2.0.0+bag",
     );
   });
+});
+
+it("ignores cosmetic encoding differences and trimmed outfit names", () => {
+  expect(characterKey("tidewalker.1.2.3.4.5.6+hat+bag")).toBe(characterKey("tidewalker.1.2.3.4.5.6+bag+hat"));
+  expect(profileChanges({ ...profile, accent: "#ABCDEF" }, { ...profile, accent: "#abcdef" })).toBe(0);
+  for (const accent of ["#abc", "ABC", " aabbcc ", "##abc"]) {
+    expect(profileChanges({ ...profile, accent: "#aabbcc" }, { ...profile, accent })).toBe(0);
+  }
+  const saved = { spec: "tidewalker.1.2.3.4.5.6+hat+bag", name: "Reef" };
+  expect(outfitChanged(saved, saved.spec, "  Reef  ")).toBe(false);
+  expect(outfitChanged(saved, saved.spec, "")).toBe(false);
+  expect(outfitChanged(saved, saved.spec, " ")).toBe(false);
+  expect(outfitChanged(saved, saved.spec, "x".repeat(33))).toBe(false);
+  expect(outfitChanged(saved, saved.spec, "New reef")).toBe(true);
+  expect(outfitChanged(undefined, saved.spec, "Reef")).toBe(true);
+});
+
+it("shows a friendly error for empty or non-JSON preview refusals", async () => {
+  for (const response of [new Response(null, { status: 414 }), new Response("busy", { status: 503 })]) {
+    await expect(playerPreviewResponse(response)).rejects.toThrow(
+      "Preview unavailable. Check your choices and try again.",
+    );
+  }
+  await expect(
+    playerPreviewResponse(new Response(JSON.stringify({ error: { message: "Locked" } }), { status: 422 })),
+  ).rejects.toThrow("Locked");
 });

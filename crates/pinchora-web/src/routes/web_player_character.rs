@@ -105,7 +105,7 @@ async fn preview(
     let sprites = state.app.sprites.clone();
     let bytes = state
         .app
-        .render(move |_| {
+        .render_preview(move |_| {
             let img = sprites.character(&c);
             pinchora_render::encode_png(&image::imageops::resize(
                 img.as_ref(),
@@ -114,7 +114,8 @@ async fn preview(
                 image::imageops::FilterType::Nearest,
             ))
         })
-        .await?;
+        .await
+        .map_err(|e| render_error(e.into()))?;
     Ok(png(bytes))
 }
 async fn randomise(State(state): State<WebState>, current: CurrentSession) -> ApiResult<Json<Value>> {
@@ -171,20 +172,25 @@ async fn outfit_save(
         .await?
         .into_iter()
         .find(|o| o.slot == slot)
-        .map(|o| json!({"spec":o.code,"name":o.name}));
+        .map(|o| json!({"slot":slot,"spec":o.code,"name":o.name}));
+    let code = c.encode();
+    let name = v
+        .name
+        .as_deref()
+        .map(str::trim)
+        .map(str::to_owned)
+        .or_else(|| before.as_ref().and_then(|v| v["name"].as_str()).map(str::to_owned))
+        .unwrap_or_else(|| t!(l, "web-player.outfit-name", slot = slot));
+    let after = json!({"slot":slot,"spec":code,"name":name});
+    if before.as_ref() == Some(&after) {
+        return Ok(StatusCode::NO_CONTENT);
+    }
     state
         .app
         .db
-        .save_player_outfit(s.user_id, slot, &c.encode(), v.name.as_deref())
+        .save_player_outfit(s.user_id, slot, &code, Some(&name))
         .await?;
-    finish(
-        &state,
-        s,
-        "player.outfit.save",
-        json!(before),
-        json!({"slot":slot,"spec":c.encode(),"name":v.name}),
-    )
-    .await;
+    finish(&state, s, "player.outfit.save", json!(before), after).await;
     Ok(StatusCode::NO_CONTENT)
 }
 async fn outfit_delete(

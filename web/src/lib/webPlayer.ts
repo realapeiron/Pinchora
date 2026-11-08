@@ -109,10 +109,43 @@ export function reorderBadge(ids: string[], from: number, to: number): string[] 
 export function toggleBadge(ids: string[], id: string): string[] {
   return ids.includes(id) ? ids.filter((v) => v !== id) : ids.length < 6 ? [...ids, id] : ids;
 }
+function accentKey(value: string | null): string | null {
+  if (value === null) return null;
+  const hex = value.trim().replace(/^#+/, "").toLowerCase();
+  if (/^[a-f0-9]{3}$/.test(hex)) return `#${[...hex].map((c) => c + c).join("")}`;
+  return /^[a-f0-9]{6}$/.test(hex) ? `#${hex}` : value;
+}
+export function characterKey(code: string): string {
+  const [base = "", ...accessories] = code.toLowerCase().split("+");
+  // The server orders accessories by slot; changing the editing order is not a new look.
+  return [base, ...accessories.sort()].join("+");
+}
+export function outfitChanged(
+  saved: { spec: string; name: string } | undefined,
+  spec: string,
+  name: string,
+): boolean {
+  const trimmed = name.trim();
+  return (
+    [...trimmed].length > 0 &&
+    [...trimmed].length <= 32 &&
+    (!saved || characterKey(saved.spec) !== characterKey(spec) || saved.name !== trimmed)
+  );
+}
 export function profileChanges(a: ProfileDraft, b: ProfileDraft): number {
-  return (Object.keys(a) as (keyof ProfileDraft)[]).filter(
-    (k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]),
+  return (Object.keys(a) as (keyof ProfileDraft)[]).filter((k) =>
+    k === "accent"
+      ? accentKey(a.accent) !== accentKey(b.accent)
+      : JSON.stringify(a[k]) !== JSON.stringify(b[k]),
   ).length;
+}
+export async function playerPreviewResponse(response: Response): Promise<Blob> {
+  if (!response.ok) {
+    // URI limits and upstream failures may have an empty or non-JSON response body.
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error?.message ?? t("Preview unavailable. Check your choices and try again."));
+  }
+  return response.blob();
 }
 export function usePlayerPreview(path: string) {
   const language = useLocale();
@@ -129,11 +162,7 @@ export function usePlayerPreview(path: string) {
         credentials: "same-origin",
         signal,
       });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error?.message ?? t("Preview unavailable. Check your choices and try again."));
-      }
-      return response.blob();
+      return playerPreviewResponse(response);
     },
     retry: false,
     staleTime: 0,

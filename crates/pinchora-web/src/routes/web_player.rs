@@ -9,8 +9,9 @@ use crate::{
 };
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{DefaultBodyLimit, Path, Query, Request, State},
     http::{StatusCode, header},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post, put},
 };
@@ -50,6 +51,32 @@ pub fn router() -> Router<WebState> {
         .route("/title", put(save_title))
         .route("/{kind}/{id}/buy", post(buy))
         .nest("/character", character::router())
+        .layer(DefaultBodyLimit::max(16 * 1024))
+        .layer(middleware::from_fn(bounded_query))
+}
+
+// Bound the raw URI before serde allocates decoded strings, including unknown/duplicate fields.
+async fn bounded_query(request: Request, next: Next) -> Response {
+    if request.uri().query().is_some_and(|q| q.len() > 16 * 1024) {
+        return StatusCode::URI_TOO_LONG.into_response();
+    }
+    next.run(request).await
+}
+
+pub(super) fn render_error(error: anyhow::Error) -> ApiError {
+    if error
+        .downcast_ref::<pinchora_commands::PreviewError>()
+        .is_some_and(|e| {
+            matches!(
+                e,
+                pinchora_commands::PreviewError::Busy | pinchora_commands::PreviewError::TooSlow
+            )
+        })
+    {
+        ApiError::too_many(2)
+    } else {
+        ApiError::internal(error)
+    }
 }
 
 pub(super) async fn lang(state: &WebState, s: &Session) -> Lang {
@@ -215,13 +242,23 @@ async fn titles(State(state): State<WebState>, current: CurrentSession) -> ApiRe
 async fn seen_badges(State(state): State<WebState>, current: CurrentSession) -> ApiResult<StatusCode> {
     let db = &state.app.db;
     let id = current.session.user_id;
-    db.user(id).await?;
+    let before = db.user(id).await?.badges_seen;
     let earned: Vec<String> = Content::get()
         .earned_badges(&db.player_stats(id).await?, &db.owned_badges(id).await?)
         .iter()
         .map(|b| b.id.clone())
         .collect();
-    db.mark_badges_seen(id, &earned).await?;
+    if before.as_ref() != Some(&earned) {
+        db.mark_badges_seen(id, &earned).await?;
+        finish(
+            &state,
+            &current.session,
+            "player.badges.seen",
+            json!(before),
+            json!(earned),
+        )
+        .await;
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -400,9 +437,11 @@ async fn preview(
             guild: None,
             viewer: s.user_id,
             lang: l,
+            preview: true,
         },
     )
-    .await?))
+    .await
+    .map_err(render_error)?))
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -578,11 +617,12 @@ async fn wallet_preview(
 ) -> ApiResult<Response> {
     let s = &current.session;
     render_limit(&state, s).await?;
-    Ok(png(pinchora_commands::wallet_card_for(
+    Ok(png(pinchora_commands::wallet_preview_for(
         &state.app,
         &discord_user(s)?,
         s.display_name().into(),
         locale.lang.unwrap_or(lang(&state, s).await),
     )
-    .await?))
+    .await
+    .map_err(render_error)?))
 }

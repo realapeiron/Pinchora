@@ -47,6 +47,26 @@ pub async fn wallet_card_for(
     name: String,
     lang: pinchora_core::i18n::Lang,
 ) -> anyhow::Result<Vec<u8>> {
+    wallet_card(app, user, name, lang, false).await
+}
+
+/// Wallet preview with the shared bounded renderer; assembly stays identical to Discord.
+pub async fn wallet_preview_for(
+    app: &crate::App,
+    user: &twilight_model::user::User,
+    name: String,
+    lang: pinchora_core::i18n::Lang,
+) -> anyhow::Result<Vec<u8>> {
+    wallet_card(app, user, name, lang, true).await
+}
+
+async fn wallet_card(
+    app: &crate::App,
+    user: &twilight_model::user::User,
+    name: String,
+    lang: pinchora_core::i18n::Lang,
+    preview: bool,
+) -> anyhow::Result<Vec<u8>> {
     let row = app.db.user(user.id.get()).await?;
     let now = Utc::now();
     let streak = match row.last_daily_at {
@@ -75,27 +95,29 @@ pub async fn wallet_card_for(
     let background = row.background.as_deref().and_then(|id| Content::get().background(id));
     let cosmetics = Cosmetics::new(&app.sprites, background, &[]);
     let theme = theme(&row, background);
-    let png = app
-        .render(move |r| {
-            r.wallet_card(&WalletCard {
-                lang,
-                display_name: &name,
-                avatar_png: &avatar,
-                shells: row.credits,
-                pearls: row.pearls,
-                streak,
-                next_daily: &next_daily,
-                next_weekly: &next_weekly,
-                next_monthly: &next_monthly,
-                pets,
-                fish_found,
-                fish_total,
-                backdrop: cosmetics.backdrop(),
-                theme,
-            })
+    let draw = move |r: &pinchora_render::Renderer| {
+        r.wallet_card(&WalletCard {
+            lang,
+            display_name: &name,
+            avatar_png: &avatar,
+            shells: row.credits,
+            pearls: row.pearls,
+            streak,
+            next_daily: &next_daily,
+            next_weekly: &next_weekly,
+            next_monthly: &next_monthly,
+            pets,
+            fish_found,
+            fish_total,
+            backdrop: cosmetics.backdrop(),
+            theme,
         })
-        .await?;
-    Ok(png)
+    };
+    if preview {
+        Ok(app.render_preview(draw).await?)
+    } else {
+        app.render(draw).await
+    }
 }
 
 #[derive(CommandModel, CreateCommand)]

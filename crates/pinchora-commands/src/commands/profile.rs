@@ -44,6 +44,7 @@ impl Profile {
                 guild: cx.guild_id(),
                 viewer: cx.author()?.id.get(),
                 lang: cx.lang(),
+                preview: false,
             },
         )
         .await?;
@@ -88,6 +89,7 @@ pub(crate) async fn card_with(
             guild: cx.guild_id(),
             viewer: cx.author()?.id.get(),
             lang: cx.lang(),
+            preview: false,
         },
     )
     .await
@@ -99,6 +101,8 @@ pub struct ProfileContext {
     pub guild: Option<u64>,
     pub viewer: u64,
     pub lang: pinchora_core::i18n::Lang,
+    /// Web renders use the bounded preview queue and time budget.
+    pub preview: bool,
 }
 
 /// The single profile assembler used by Discord and the web. Overrides are a validated draft
@@ -110,10 +114,18 @@ pub async fn profile_card_for(
     overrides: Option<UserRow>,
     context: ProfileContext,
 ) -> anyhow::Result<Vec<u8>> {
+    anyhow::ensure!(
+        context.viewer == user.id.get() || !app.db.privacy(user.id.get()).await?.hide_profile,
+        "private profile"
+    );
     let row = match overrides {
         Some(row) => row,
         None => app.db.user(user.id.get()).await?,
     };
+    anyhow::ensure!(
+        row.id == user.id.get() as i64,
+        "profile snapshot belongs to another player"
+    );
     let background = row.background.as_deref().and_then(|id| Content::get().background(id));
     let badges = customize::worn_badges(app, user.id.get(), &row).await?;
     let showcase = Showcase::load(app, user.id.get(), &row, context.lang).await?;
@@ -181,7 +193,7 @@ async fn assemble(
     } else {
         false
     };
-    app.render(move |r| {
+    let draw = move |r: &pinchora_render::Renderer| {
         let art = character
             .map(|c| scaled_png(&sprites.character(&c), ProfileCard::CHARACTER_SCALE))
             .transpose()?;
@@ -212,6 +224,10 @@ async fn assemble(
             birthday_today,
             theme,
         })
-    })
-    .await
+    };
+    if context.preview {
+        Ok(app.render_preview(draw).await?)
+    } else {
+        app.render(draw).await
+    }
 }

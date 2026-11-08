@@ -7,6 +7,8 @@ import { t } from "../../i18n";
 import { api } from "../../lib/api";
 import {
   changeCharacterColor,
+  characterKey,
+  outfitChanged,
   usePlayerStudio,
   usePlayerPreview,
   wearAccessory,
@@ -83,10 +85,11 @@ function Editor({ data }: { data: CharacterData }) {
           ? {}
           : {
               spec: draft,
-              name:
-                names[slot] ||
-                data.outfits.find((o) => o.slot === slot)?.name ||
-                t("Outfit {slot}", { slot }),
+              name: (
+                names[slot] ??
+                data.outfits.find((o) => o.slot === slot)?.name ??
+                t("Outfit {slot}", { slot })
+              ).trim(),
             },
       ),
     onSuccess: () => {
@@ -311,8 +314,11 @@ function Editor({ data }: { data: CharacterData }) {
                             outfit.isPending ||
                             preview.pending ||
                             !!preview.error ||
-                            (savedOutfit?.spec === draft &&
-                              (names[slot] ?? savedOutfit.name) === savedOutfit.name)
+                            !outfitChanged(
+                              savedOutfit,
+                              draft,
+                              names[slot] ?? savedOutfit?.name ?? t("Outfit {slot}", { slot }),
+                            )
                           }
                           onClick={() => outfit.mutate({ slot, remove: false })}
                         >
@@ -354,7 +360,7 @@ function Editor({ data }: { data: CharacterData }) {
         </div>
       </div>
       <SaveBar
-        count={draft === saved ? 0 : 1}
+        count={characterKey(draft) === characterKey(saved) ? 0 : 1}
         saving={save.isPending}
         blocked={preview.pending || !!preview.error}
         error={save.error?.message}

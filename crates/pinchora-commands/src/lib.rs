@@ -266,4 +266,4 @@ pub use roblox::spawn_ticker as spawn_roblox_ticker;
 pub use commands::character::randomise as randomise_character;
 pub use commands::profile::{ProfileContext, profile_card_for};
 
-pub use commands::wallet_card_for;
+pub use commands::{wallet_card_for, wallet_preview_for};
