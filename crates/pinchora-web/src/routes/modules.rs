@@ -137,6 +137,9 @@ pub async fn put_module(
     if enabled.is_none() && channels.is_none() {
         return Ok(Json(module_json(module, &before)));
     }
+    if enabled == Some(true) || before.enabled && channels.is_some() {
+        crate::dashboard_access::check_module_roles(&state, &managed, module).await?;
+    }
     if module == Module::AntiNuke && enabled == Some(true) && !before.enabled {
         state
             .app

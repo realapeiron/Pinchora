@@ -356,13 +356,13 @@ fn trimmed(text: Option<Option<String>>) -> Option<String> {
     text.flatten().map(|t| t.trim().to_owned()).filter(|t| !t.is_empty())
 }
 
-/// A role panel as the editor sent it, checked like the commands check one. `already` are the roles the
-/// panel has now: a role that is on it keeps its place even when the bot could not give it any more.
+/// Validate every role in the submitted panel against current bot and actor permissions,
+/// including roles retained from the previous version.
 fn check_panel(
     body: PanelBody,
     info: &GuildInfo,
     grantor: pinchora_core::settings::Grantor,
-    already: &HashSet<u64>,
+    _already: &HashSet<u64>,
 ) -> Result<PanelDoc, Vec<FieldError>> {
     let mut errors = Vec::new();
     let title = body.title.trim().to_owned();
@@ -443,9 +443,7 @@ fn check_panel(
                 format!("Every label is 1 to {LABEL_MAX} characters."),
             ));
         }
-        if !already.contains(&role)
-            && let Err(error) = info.check_grant("roles", role, grantor)
-        {
+        if let Err(error) = info.check_grant("roles", role, grantor) {
             errors.push(error);
         }
         let emoji = trimmed(entry.emoji);
@@ -653,6 +651,21 @@ pub async fn post_panel(
     let info = guild_info::get_with(&state, guild, |info| info.channel(channel).is_some()).await?;
     info.check_post_channel("channel_id", channel)
         .map_err(|error| ApiError::invalid(vec![error]))?;
+    // Recheck every publisher, including full managers, against current role hierarchy.
+    {
+        let live = guild_info::live(&state, guild).await?;
+        let grantor = guild_info::grantor(&state, &managed, &live.roles, true).await?;
+        let panel_roles = state.app.db.panel_roles(panel.id).await?;
+        crate::dashboard_access::check_role_access(
+            &state,
+            &managed,
+            &panel_roles.iter().map(|r| r.role_id).collect::<Vec<_>>(),
+        )
+        .await?;
+        for role in panel_roles {
+            live.check_grant("roles", role.role_id as u64, grantor)?;
+        }
+    }
     let posted = post_role_panel(&state.app, guild, &panel, channel)
         .await
         .map_err(post_refusal)?;

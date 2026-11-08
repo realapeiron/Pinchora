@@ -97,6 +97,15 @@ async fn add_reminder(
     else {
         return Err(bad("text", "You can have 25 recurring reminders."));
     };
+    audited(
+        &state,
+        &guild,
+        "community.personal.add_reminder",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"id":row.to_string()})))
 }
 async fn remove_reminder(
@@ -113,6 +122,15 @@ async fn remove_reminder(
     if n == 0 {
         return Err(ApiError::not_found());
     }
+    audited(
+        &state,
+        &guild,
+        "community.personal.remove_reminder",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"ok":true})))
 }
 #[derive(Deserialize)]
@@ -133,6 +151,15 @@ async fn add_checklist(
     let Some(row) = state.app.db.add_checklist_item(user as u64, &text).await? else {
         return Err(bad("text", "Your checklist has 50 open items."));
     };
+    audited(
+        &state,
+        &guild,
+        "community.personal.add_checklist",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"id":row.to_string()})))
 }
 async fn complete_checklist(
@@ -149,6 +176,15 @@ async fn complete_checklist(
     if n == 0 {
         return Err(ApiError::not_found());
     }
+    audited(
+        &state,
+        &guild,
+        "community.personal.complete_checklist",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"ok":true})))
 }
 async fn remove_checklist(
@@ -165,6 +201,15 @@ async fn remove_checklist(
     if n == 0 {
         return Err(ApiError::not_found());
     }
+    audited(
+        &state,
+        &guild,
+        "community.personal.remove_checklist",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"ok":true})))
 }
 #[derive(Deserialize)]
@@ -188,6 +233,15 @@ async fn add_highlight(
     if !state.app.db.add_keyword_highlight(guild.id, user as u64, &word).await? {
         return Err(bad("word", "You can follow 10 words in this server."));
     }
+    audited(
+        &state,
+        &guild,
+        "community.personal.add_highlight",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"word":word})))
 }
 async fn remove_highlight(
@@ -205,6 +259,15 @@ async fn remove_highlight(
     if n == 0 {
         return Err(ApiError::not_found());
     }
+    audited(
+        &state,
+        &guild,
+        "community.personal.remove_highlight",
+        None,
+        Value::Null,
+        json!({"changed":true}),
+    )
+    .await;
     Ok(Json(json!({"ok":true})))
 }
 

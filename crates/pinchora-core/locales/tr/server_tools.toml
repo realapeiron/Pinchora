@@ -1,0 +1,4 @@
+[server_tools]
+access-invalid = "En fazla 25 farklı sunucu rolü seçin (everyone ve entegrasyon rolleri hariç); her role en az bir geçerli alan verin."
+audit-invalid = "Pozitif kullanıcı ve kayıt kimlikleri, geçerli bir alan, ileriye doğru bir tarih aralığı ve en fazla 200 arama karakteri kullanın."
+export-limit = "Dışa aktarım 10.000 değişiklik, 100.000 incelenen kayıt, 8 MiB veya 10 saniye sınırında durdu. Kalan değişiklikler için filtreleri daraltın."

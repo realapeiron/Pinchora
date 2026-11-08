@@ -338,6 +338,19 @@ pub async fn test(
         kind = kind.key(),
         "card test posted"
     );
+    audit::finish(
+        &state,
+        session,
+        Change {
+            guild,
+            action: "cards.test",
+            target: Some(kind.key()),
+            before: Value::Null,
+            after: json!({"channel_id": channel.to_string()}),
+        },
+        None,
+    )
+    .await;
     Ok(Json(json!({ "posted": true })))
 }
 

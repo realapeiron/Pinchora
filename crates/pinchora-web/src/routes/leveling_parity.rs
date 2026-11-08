@@ -155,6 +155,9 @@ async fn save_settings(
         return Err(ApiError::limit("This leaderboard URL name is already in use."));
     }
     let old = state.app.db.leveling_parity(managed.id).await?;
+    if config.curve != old.curve {
+        crate::dashboard_access::check_level_rewards(&state, &managed).await?;
+    }
     if config != old {
         state.app.db.save_leveling_parity(managed.id, &config).await?;
         audit::finish(
@@ -415,6 +418,7 @@ async fn apply(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<ApplyBody>,
 ) -> ApiResult<Json<Value>> {
+    crate::dashboard_access::check_level_rewards(&state, &managed).await?;
     if body.preview_id.len() != 32 || !body.preview_id.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(ApiError::malformed("Invalid preview ID."));
     }

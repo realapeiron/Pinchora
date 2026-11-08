@@ -262,6 +262,7 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "dashboard_managers",
     "community_auto_channels",
     "anniversary_settings",
     "confession_settings",

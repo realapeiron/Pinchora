@@ -127,6 +127,7 @@ async fn edit_member(
         .guild_member(Id::new(managed.id), Id::new(user))
         .await
         .map_err(|_| ApiError::not_found())?;
+    crate::dashboard_access::check_level_rewards(&state, &managed).await?;
     let (old, new) = state.app.db.edit_member_xp(managed.id, user, edit, body.amount).await?;
     audit::finish(
         &state,
@@ -187,6 +188,7 @@ async fn start_import(
 ) -> ApiResult<(StatusCode, Json<Value>)> {
     let lang = state.app.guild_lang(managed.id).await;
     let mode = ImportMode::parse(&body.mode).ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.mode")))?;
+    crate::dashboard_access::check_level_rewards(&state, &managed).await?;
     let guild = managed.id;
     if let Some(left) = mee6_resting(&state.app, guild).await? {
         return Err(ApiError::resting(t!(lang, "xp.web.resting"), left.as_secs()));

@@ -10,6 +10,7 @@ mod client_ip;
 #[cfg(test)]
 mod commands_catalog;
 mod config;
+mod dashboard_access;
 mod discord;
 mod error;
 mod extract;

@@ -1664,3 +1664,33 @@ Automatic level rewards recheck live role hierarchy and dangerous permissions be
 The aquarium appears with authorized house visits and on the web house page; owners also
 see garden status there. All commands/cards are EN/TR. Migration **0078** only; balance,
 privacy, artwork and retention details are in [GAME_DESIGN.md](docs/GAME_DESIGN.md#d7--fishhousepet-long-loop-migration-0078).
+
+
+### W7 Web server tools
+
+`/g/:guildId/access` grants up to 25 Discord roles chosen dashboard areas: configuration, roles,
+safety, community, feeds, stats and audit. Held-role grants combine. `ManagedGuild` reads current
+membership and stored grants on every request; full Discord permissions are refreshed too. The guild
+router enforces this before every handler; unlisted routes fail closed. Owners,
+Administrators and Manage Server retain full access. Access, backups and command controls cannot be
+delegated. Role grants never bypass Discord role hierarchy or feature-specific checks. The picker
+includes delegated servers; the sidebar and overview show only allowed areas. Access changes and their
+before/after audit entry commit together; no-op saves do not add audit entries.
+
+The audit page filters actor ID, action area, UTC dates and literal text across actors/actions/targets/
+values; expands nested before/after changes; and downloads a streamed CSV via
+`/api/guilds/:guildId/audit-tools/export`. Keyset batches return up to 50 matches after inspecting at most 500 indexed guild rows.
+Empty batches can have an older-page cursor; searches continue without skipping rows. Credential fields
+and webhook URLs are redacted from JSON, CSV and search, including historic records. Large diff values
+are replaced by a truncation marker. CSV escapes spreadsheet
+formulas and stops at 10,000 rows, 100,000 inspected rows, 8 MiB or 10 seconds, with an explicit final limit row. Narrow filters to export
+remaining records. The existing `/audit` API remains compatible.
+
+Migration **0080** adds only `dashboard_managers`, rejects null areas, and does not lock the live audit
+table to build an index. Bounded searches use the existing `(guild_id, id DESC)` index. No new slash roots.
+The existing Roles editor already handles button/menu/reaction panels, v2 fields, emoji, limits,
+preview and shared `post_role_panel(&App, …)` publication/update, so W7 reuses it. Leveling now has an
+explicit public-board switch using D3's existing optional slug and `/lb/:slug`; switching off and
+saving clears the slug and makes the old public URL return 404. D10 community pages are reused.
+Reef explicitly excludes guild plazas (`web/src/reef/README.md`), so no Reef plaza editor is added;
+the pre-existing house editor's separate plaza scope remains available.

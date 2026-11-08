@@ -46,6 +46,10 @@ use twilight_model::{
 
 #[path = "api/achievements.rs"]
 mod achievements;
+#[path = "api/server_tools.rs"]
+mod server_tools;
+#[path = "api/server_tools_review.rs"]
+mod server_tools_review;
 #[path = "api/web_i18n.rs"]
 mod web_i18n;
 
@@ -516,6 +520,9 @@ async fn discord(
                 let gone = json!({ "message": "Unknown Guild", "code": 10004 });
                 (StatusCode::NOT_FOUND, gone.to_string())
             }
+        }
+        (&Method::PATCH, [.., "channels", channel, "messages", message]) => {
+            server_tools::updated_message(channel, message)
         }
         (&Method::POST, [.., "channels", channel, "messages"]) => {
             let channel = channel.parse::<u64>().unwrap_or(1);
@@ -2384,6 +2391,9 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
         )
         .await;
     assert_eq!(tested.status, StatusCode::OK, "{}", tested.text());
+    let logged = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(logged[0].action, "cards.test");
+    assert_eq!(logged[0].target.as_deref(), Some("welcome"));
     let posts = std::mem::take(&mut *h.mock.posts.lock().unwrap());
     assert_eq!(posts.len(), 2, "the image, then the text");
     assert!(posts.iter().all(|(channel, _)| *channel == GENERAL));

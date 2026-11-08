@@ -110,7 +110,13 @@ pub fn router(state: WebState) -> Router {
         .route("/api/me/trackers", get(trackers::export))
         .route("/api/me/guilds", get(me::guilds))
         .route("/api/me/guilds/refresh", post(me::refresh_guilds))
-        .nest("/api/guilds/{g}", guilds::router())
+        .nest(
+            "/api/guilds/{g}",
+            guilds::router().route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                crate::dashboard_access::guard,
+            )),
+        )
         .nest("/api/house", house::router())
         .nest("/api/reef", reef::router())
         .nest("/api/verify", verification::member_router())
@@ -193,3 +199,6 @@ mod csp_tests {
     }
 }
 mod reef_loop;
+
+mod access;
+mod audit_tools;

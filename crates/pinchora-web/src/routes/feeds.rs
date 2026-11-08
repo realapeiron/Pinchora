@@ -469,6 +469,17 @@ pub async fn replace(
         }
     }
     let current = state.app.db.feed(guild, id).await?;
+    if let Some(feed) = &current
+        && edit.enabled.unwrap_or(feed.enabled)
+    {
+        let role = edit.live_role.unwrap_or(feed.live_role_id.map(|r| r as u64));
+        crate::dashboard_access::check_role_access(
+            &state,
+            &managed,
+            &role.into_iter().map(|r| r as i64).collect::<Vec<_>>(),
+        )
+        .await?;
+    }
     let guard = feeds::before_live_change(&state.app, current.as_ref(), Some(&edit))
         .await
         .map_err(|_| ApiError::blocked(t!(lang, "feeds.link.role-retry")))?;
@@ -568,11 +579,24 @@ pub async fn test(
         .first()
         .ok_or_else(|| ApiError::blocked(t!(lang, "feeds.test-empty")))?;
     match feeds::send(&state.app, &feed, item, false).await {
-        PostOutcome::Sent => Ok(Json(json!({
-            "posted": true,
-            "channel_id": feed.channel_id.to_string(),
-            "item": item_json(item),
-        }))),
+        PostOutcome::Sent => {
+            audit::finish(
+                &state,
+                &managed.current.session,
+                Change {
+                    guild,
+                    action: "feeds.test",
+                    target: Some(&id.to_string()),
+                    before: Value::Null,
+                    after: json!({"channel_id": feed.channel_id.to_string()}),
+                },
+                None,
+            )
+            .await;
+            Ok(Json(
+                json!({"posted": true, "channel_id": feed.channel_id.to_string(), "item": item_json(item)}),
+            ))
+        }
         PostOutcome::Refused(code) | PostOutcome::Retry(code) => Err(ApiError::blocked(t!(
             lang,
             "feeds.api.post-refused",

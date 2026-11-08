@@ -19,6 +19,8 @@ use crate::state::WebState;
 
 pub fn router() -> Router<WebState> {
     Router::new()
+        .nest("/access", super::access::router())
+        .nest("/audit-tools", super::audit_tools::router())
         .nest("/mod-parity", super::mod_parity::router())
         .route("/", get(overview::overview))
         .route("/discord", get(discord_info::discord))
@@ -220,7 +222,8 @@ pub struct AuditView {
 }
 
 impl From<AuditRow> for AuditView {
-    fn from(row: AuditRow) -> Self {
+    fn from(mut row: AuditRow) -> Self {
+        row.redact();
         let parse = |raw: Option<String>| raw.and_then(|r| serde_json::from_str(&r).ok()).unwrap_or(Value::Null);
         Self {
             id: row.id.to_string(),

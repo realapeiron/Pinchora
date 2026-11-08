@@ -17,17 +17,27 @@ pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> A
     let lang = state.app.guild_lang(managed.id).await;
     let db = &state.app.db;
     let settings = db.guild_settings(managed.id).await?;
-    let audit: Vec<AuditView> = db
-        .audit_page(managed.id, None, RECENT_CHANGES)
-        .await?
-        .into_iter()
-        .map(AuditView::from)
-        .collect();
+    let has_area = |area: &str| {
+        managed
+            .areas
+            .as_ref()
+            .is_none_or(|areas| areas.iter().any(|a| a == area))
+    };
+    let audit: Vec<AuditView> = if has_area("audit") {
+        db.audit_page(managed.id, None, RECENT_CHANGES)
+            .await?
+            .into_iter()
+            .map(AuditView::from)
+            .collect()
+    } else {
+        Vec::new()
+    };
     Ok(Json(json!({
         "guild": GuildView::new(managed.id, &managed.guild.name, managed.guild.icon.as_deref()),
-        "settings": SettingsView::from(settings),
+        "settings": has_area("configuration").then(|| SettingsView::from(settings)),
+        "access": { "full": managed.areas.is_none(), "areas": managed.areas },
         "language": lang.code(),
-        "modules": module_list(&state, managed.id).await?,
+        "modules": if has_area("configuration") { module_list(&state, managed.id).await? } else { Vec::new() },
         "audit": audit,
         "navigation": {
             "utility": t!(lang, "module.utility"),

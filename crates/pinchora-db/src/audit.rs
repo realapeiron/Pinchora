@@ -76,8 +76,8 @@ pub(crate) async fn insert_in(
     .bind(entry.source.key())
     .bind(entry.action)
     .bind(entry.target)
-    .bind(entry.before)
-    .bind(entry.after)
+    .bind(entry.before.map(validated_audit_json).transpose()?)
+    .bind(entry.after.map(validated_audit_json).transpose()?)
     .fetch_one(&mut **tx)
     .await?)
 }
@@ -106,5 +106,97 @@ impl Db {
             .execute(self.pool())
             .await?
             .rows_affected())
+    }
+}
+
+/// Defence in depth for historic rows as well as new audit writers. Search sees the same safe data.
+impl AuditRow {
+    pub fn redact(&mut self) {
+        self.before = self.before.take().map(|s| redacted_json(&s));
+        self.after = self.after.take().map(|s| redacted_json(&s));
+    }
+}
+
+fn validated_audit_json(raw: &str) -> Result<String, serde_json::Error> {
+    // Preserve transaction rollback on invalid input; redaction must not turn a
+    // malformed audit event into a successful write, even above the display cap.
+    serde_json::from_str::<serde::de::IgnoredAny>(raw)?;
+    Ok(redacted_json(raw))
+}
+
+fn redacted_json(raw: &str) -> String {
+    if raw.len() > 65536 {
+        return r#"{"truncated":true}"#.into();
+    }
+    fn clean(value: &mut serde_json::Value) {
+        match value {
+            serde_json::Value::Object(fields) => {
+                for (key, value) in fields {
+                    let key: String = key
+                        .chars()
+                        .filter(|c| c.is_ascii_alphanumeric())
+                        .flat_map(char::to_lowercase)
+                        .collect();
+                    if [
+                        "token",
+                        "secret",
+                        "password",
+                        "authorization",
+                        "cookie",
+                        "apikey",
+                        "privatekey",
+                        "credential",
+                        "webhookurl",
+                    ]
+                    .iter()
+                    .any(|s| key.contains(s))
+                    {
+                        *value = serde_json::json!("[REDACTED]");
+                    } else {
+                        clean(value);
+                    }
+                }
+            }
+            serde_json::Value::Array(values) => values.iter_mut().for_each(clean),
+            serde_json::Value::String(text)
+                if text.contains("/api/webhooks/")
+                    || text.starts_with("Bearer ")
+                    || text.starts_with("Bot ")
+                    || pinchora_core::config_backup::redact_url_credentials(text).is_some() =>
+            {
+                *text = "[REDACTED]".into();
+            }
+            _ => {}
+        }
+    }
+    let Ok(mut value) = serde_json::from_str(raw) else {
+        return "null".into();
+    };
+    clean(&mut value);
+    value.to_string()
+}
+
+#[cfg(test)]
+mod redaction_tests {
+    use super::*;
+    #[test]
+    fn invalid_audit_writes_fail_before_redaction_or_truncation() {
+        assert!(validated_audit_json("invalid JSON").is_err());
+        assert!(validated_audit_json(&"x".repeat(65537)).is_err());
+        assert_eq!(
+            validated_audit_json(r#"{"token":"SECRET"}"#).unwrap(),
+            r#"{"token":"[REDACTED]"}"#
+        );
+    }
+
+    #[test]
+    fn nested_credentials_and_webhook_urls_are_never_exposed() {
+        let raw = r#"{"access_token":"TOKEN","nested":[{"clientSecret":"SECRET","safe":true}],"url":"https://discord.com/api/webhooks/id/KEY","source":"https://user:PASS@feed.example/?api%5Fkey=QUERY_SECRET"}"#;
+        let clean = redacted_json(raw);
+        for secret in ["TOKEN", "SECRET", "KEY", "PASS", "QUERY_SECRET"] {
+            assert!(!clean.contains(secret));
+        }
+        assert!(clean.contains("safe"));
+        assert_eq!(redacted_json("invalid secret"), "null");
     }
 }
