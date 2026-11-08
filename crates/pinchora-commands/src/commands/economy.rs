@@ -35,58 +35,67 @@ impl Balance {
         if privacy::private_profile(cx, user.id.get()).await? {
             return Ok(());
         }
-        let row = cx.app.db.user(user.id.get()).await?;
-        let now = Utc::now();
-        let streak = match row.last_daily_at {
-            Some(t) if now - t <= DAILY_STREAK_WINDOW => row.daily_streak,
-            _ => 0,
-        };
-        let lang = cx.lang();
-        let next_daily = ready_in(row.last_daily_at, DAILY_COOLDOWN, now, lang);
-        // The weekly and monthly rewards run on the game clock like their commands do.
-        let game_now = cx.app.now();
-        let next_weekly = ready_in(
-            cx.app.db.period_claimed_at(user.id.get(), Period::Weekly).await?,
-            Period::Weekly.cooldown(),
-            game_now,
-            lang,
-        );
-        let next_monthly = ready_in(
-            cx.app.db.period_claimed_at(user.id.get(), Period::Monthly).await?,
-            Period::Monthly.cooldown(),
-            game_now,
-            lang,
-        );
-        let pets = cx.app.db.pets(user.id.get()).await?.len() as i64;
-        let fish_found = cx.app.db.fish_book_count(user.id.get()).await?;
-        let fish_total = pinchora_game::Content::get().fish.len() as i64;
-        let avatar = cx.app.avatar(&user, WalletCard::AVATAR_SIZE, Some(34)).await;
-        let background = row.background.as_deref().and_then(|id| Content::get().background(id));
-        let cosmetics = Cosmetics::new(&cx.app.sprites, background, &[]);
-        let theme = theme(&row, background);
-        let png = cx
-            .app
-            .render(move |r| {
-                r.wallet_card(&WalletCard {
-                    lang,
-                    display_name: &name,
-                    avatar_png: &avatar,
-                    shells: row.credits,
-                    pearls: row.pearls,
-                    streak,
-                    next_daily: &next_daily,
-                    next_weekly: &next_weekly,
-                    next_monthly: &next_monthly,
-                    pets,
-                    fish_found,
-                    fish_total,
-                    backdrop: cosmetics.backdrop(),
-                    theme,
-                })
-            })
-            .await?;
+        let png = wallet_card_for(&cx.app, &user, name, cx.lang()).await?;
         cx.reply_png("wallet.png", png).await
     }
+}
+
+/// The same wallet picture for Discord and the player's web wallet.
+pub async fn wallet_card_for(
+    app: &crate::App,
+    user: &twilight_model::user::User,
+    name: String,
+    lang: pinchora_core::i18n::Lang,
+) -> anyhow::Result<Vec<u8>> {
+    let row = app.db.user(user.id.get()).await?;
+    let now = Utc::now();
+    let streak = match row.last_daily_at {
+        Some(t) if now - t <= DAILY_STREAK_WINDOW => row.daily_streak,
+        _ => 0,
+    };
+    let next_daily = ready_in(row.last_daily_at, DAILY_COOLDOWN, now, lang);
+    // The weekly and monthly rewards run on the game clock like their commands do.
+    let game_now = app.now();
+    let next_weekly = ready_in(
+        app.db.period_claimed_at(user.id.get(), Period::Weekly).await?,
+        Period::Weekly.cooldown(),
+        game_now,
+        lang,
+    );
+    let next_monthly = ready_in(
+        app.db.period_claimed_at(user.id.get(), Period::Monthly).await?,
+        Period::Monthly.cooldown(),
+        game_now,
+        lang,
+    );
+    let pets = app.db.pets(user.id.get()).await?.len() as i64;
+    let fish_found = app.db.fish_book_count(user.id.get()).await?;
+    let fish_total = pinchora_game::Content::get().fish.len() as i64;
+    let avatar = app.avatar(user, WalletCard::AVATAR_SIZE, Some(34)).await;
+    let background = row.background.as_deref().and_then(|id| Content::get().background(id));
+    let cosmetics = Cosmetics::new(&app.sprites, background, &[]);
+    let theme = theme(&row, background);
+    let png = app
+        .render(move |r| {
+            r.wallet_card(&WalletCard {
+                lang,
+                display_name: &name,
+                avatar_png: &avatar,
+                shells: row.credits,
+                pearls: row.pearls,
+                streak,
+                next_daily: &next_daily,
+                next_weekly: &next_weekly,
+                next_monthly: &next_monthly,
+                pets,
+                fish_found,
+                fish_total,
+                backdrop: cosmetics.backdrop(),
+                theme,
+            })
+        })
+        .await?;
+    Ok(png)
 }
 
 #[derive(CommandModel, CreateCommand)]

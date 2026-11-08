@@ -1377,9 +1377,54 @@ landing page come from the registered command tree and the content files, in `we
 `cargo test -p pinchora-web commands_catalog -- --ignored write_site_data` rewrites them. A new command needs an area in
 `/help`'s `AREAS`, and then shows on the site by itself.
 
+### Player home and studios (W5)
+
+Open **My world** (`/me`) for shells, level progress, pets, the house thumbnail and Discord links.
+The player area requires only login; owning or managing a server is unnecessary.
+`/me/profile` edits the bio, background, title, readable accent, opacity, level-locked frame,
+showcase and up to six earned badges. Badges have locked/progress descriptions, automatic mode,
+drag ordering, move buttons and Alt + Up/Down ordering. Backgrounds can be tried before buying.
+The debounced PNG uses `profile_card_for`, the same assembler as `/profile`; the studio shows
+its global view (server rank and server birthdays belong to Discord's server context).
+
+`/me/character` offers looks, six colour channels, custom hex, presets, owned accessories and their
+shop, server-side randomisation, draft undo and three named outfit slots. Loading a slot edits the
+draft; saving the character applies it everywhere. `/me/wallet` shows the bot's wallet card,
+balances and the latest 50 shell transactions. Every purchase uses the existing `Db::buy_*`
+transaction; the browser cannot supply a price or balance.
+
+The player UI preserves the shared pixel system: `tokens.css` supplies the dark panel, ink,
+muted and coral accent colours, Silkscreen headings and Noto Sans body text; shared `Panel`,
+`PixelButton`/`PixelLink` and `SaveBar` components retain their existing shapes and states.
+Artwork stays pixelated. Desktop studios place a sticky preview beside section controls;
+at 850 px and below they stack preview-first, and collections become one column at 440 px.
+Navigation and actions wrap, selected choices expose pressed states, and keyboard focus uses
+the accent outline. Badge order supports dragging, Earlier/Later buttons and Alt + Up/Down
+on the named reorder handle.
+
+Drafts remain in the mounted editor across section changes, collection refreshes and language
+changes, including failed language reloads. Purchases refresh the collection without applying
+the draft; Save commits it and Reset restores the last saved version. Edits made while a save
+is in flight remain unsaved afterward. The shared save bar guards leaving with unsaved changes;
+drafts are not stored across a full page reload. Preview errors offer retry and prevent saving
+until the current draft preview is ready.
+
+Player APIs live under `/api/me`: `home`, `profile`, `badges`, `backgrounds`, `titles`, `style`,
+`showcase`, `background`, `title`, `wallet`, `character`, and the profile/wallet PNG previews.
+Profile `PUT` accepts only the editable fields, atomically; single-section routes are available too.
+Character specs use W15's encoded character string in `{spec}`; its decoder and renderer remain
+shared with Discord. Writes require CSRF and use the session's user id. Audit events use guild 0
+as a global-player scope, omit target player ids and retain only lengths for free text; existing
+privacy anonymisation applies. No new tables, columns, migrations or command roots.
+
+Verification: `api::web_player` covers session/CSRF, invalid ownership and frame locks, badge ordering,
+concurrent purchase charging, outfits and EN/TR preview parity. `simulate::web_player` compares
+actual `/profile` PNG bytes after a studio save. Playwright's `web-player.spec.ts` seeds a funded
+test player and covers buying/equipping, keyboard/drag ordering, draft persistence, and 390 px captures.
+
 ### House viewer (read-only)
 
-Players open **My house** (`/me/house`, in the top bar) to look at their rooms, and any player's unlocked
+Players open **My house** (`/me/house`, via My world) to look at their rooms, and any player's unlocked
 house at `/house/<player id>` (a locked or hidden house answers with the same sentence `/house visit` does, hidden
 first; a server's plaza is never served by id). Pick a room, pan,
 zoom in whole steps, hover or tap a piece to see its name, switch the tile grid on, and press **Compare

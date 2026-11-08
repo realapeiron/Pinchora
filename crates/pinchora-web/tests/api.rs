@@ -3980,3 +3980,6 @@ async fn public_bot_status_has_safe_cached_numbers() {
 
 #[path = "api/mod_parity.rs"]
 mod mod_parity;
+
+#[path = "api/web_player.rs"]
+mod web_player;

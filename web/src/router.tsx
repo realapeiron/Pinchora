@@ -77,6 +77,7 @@ export const router = createBrowserRouter([
     lazy: async () => ({ Component: (await import("./pages/Feeds")).MyFeedsChannelsRoute }),
   },
   { path: "/reef/moderation", element: <RequireLogin>{() => <ModerationPage />}</RequireLogin> },
+  { path: "/me/*", lazy: async () => ({ Component: (await import("./pages/player/Player")).PlayerRoutes }) },
   { path: "/me/house", element: <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> },
   { path: "/house/:userId", element: <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> },
   {

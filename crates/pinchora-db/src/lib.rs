@@ -204,3 +204,6 @@ pub use reef_realtime::ReefFence;
 mod mod_parity;
 mod roblox;
 pub use roblox::*;
+
+mod web_player;
+pub use web_player::*;

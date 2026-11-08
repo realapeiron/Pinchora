@@ -41,6 +41,7 @@ mod tickets;
 mod trackers;
 mod utility;
 mod verification;
+mod web_player;
 mod xp_admin;
 
 use std::time::Instant;
@@ -81,6 +82,7 @@ pub fn router(state: WebState) -> Router {
         ));
     let api = Router::new()
         .route("/api/me", get(me::me))
+        .nest("/api/me", web_player::router())
         .route("/api/me/language", post(me::language))
         .route("/api/me/trackers", get(trackers::export))
         .route("/api/me/guilds", get(me::guilds))

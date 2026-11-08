@@ -262,3 +262,8 @@ pub use commands::moderation::parity::review as review_mod_parity;
 pub use mod_parity::seed_voice as seed_mod_parity_voice;
 pub mod roblox;
 pub use roblox::spawn_ticker as spawn_roblox_ticker;
+
+pub use commands::character::randomise as randomise_character;
+pub use commands::profile::{ProfileContext, profile_card_for};
+
+pub use commands::wallet_card_for;
