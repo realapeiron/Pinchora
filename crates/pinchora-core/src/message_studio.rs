@@ -51,6 +51,12 @@ pub struct KitOption {
 
 pub fn validate(mut kit: MessageKit) -> Result<MessageKit, Vec<FieldError>> {
     let mut errors = Vec::new();
+    if !valid_template(&kit.content) || kit.variants.iter().any(|text| !valid_template(text)) {
+        errors.push(FieldError::new(
+            "content",
+            "Use balanced, non-nested if/else conditions in at most 2,000 characters.",
+        ));
+    }
     kit.name = kit.name.trim().to_owned();
     if kit.name.is_empty() || kit.name.chars().count() > KIT_NAME_MAX {
         errors.push(FieldError::new("name", "Use 1 to 60 characters for the kit name."));
@@ -78,6 +84,13 @@ pub fn validate(mut kit: MessageKit) -> Result<MessageKit, Vec<FieldError>> {
     }
     let mut cleaned = Vec::new();
     for embed in kit.embeds {
+        if [&embed.url, &embed.image, &embed.thumbnail]
+            .into_iter()
+            .flatten()
+            .any(|url| !valid_web_url(url))
+        {
+            errors.push(FieldError::new("embeds", "Use a valid HTTPS URL without credentials."));
+        }
         match clean_embed(Some(embed)) {
             Ok(Some(value)) => cleaned.push(value),
             Ok(None) => {}
@@ -91,7 +104,7 @@ pub fn validate(mut kit: MessageKit) -> Result<MessageKit, Vec<FieldError>> {
             "Add content, a random variant, or an embed.",
         ));
     }
-    if kit.components.len() > 5 {
+    if component_rows(&kit.components).len() > 5 {
         errors.push(FieldError::new("components", "A message has at most 5 component rows."));
     }
     for component in &kit.components {
@@ -103,13 +116,12 @@ pub fn validate(mut kit: MessageKit) -> Result<MessageKit, Vec<FieldError>> {
                         "A button needs a label and exactly one HTTPS link or reply.",
                     ));
                 }
-                if url.as_ref().is_some_and(|u| {
-                    u.len() > 512
-                        || u.contains(char::is_whitespace)
-                        || !url::Url::parse(u).is_ok_and(|parsed| parsed.scheme() == "https" && parsed.host().is_some())
-                }) || response
+                if url
                     .as_ref()
-                    .is_some_and(|r| r.trim().is_empty() || r.chars().count() > 2000)
+                    .is_some_and(|u| u.len() > 512 || u.contains(char::is_whitespace) || !valid_web_url(u))
+                    || response
+                        .as_ref()
+                        .is_some_and(|r| r.trim().is_empty() || r.chars().count() > 2000)
                 {
                     errors.push(FieldError::new(
                         "components",
@@ -151,8 +163,83 @@ pub fn validate(mut kit: MessageKit) -> Result<MessageKit, Vec<FieldError>> {
     if errors.is_empty() { Ok(kit) } else { Err(errors) }
 }
 
+/// Pack adjacent buttons into rows of five; each select occupies its own row.
+pub fn component_rows(components: &[KitComponent]) -> Vec<std::ops::Range<usize>> {
+    let mut rows = Vec::new();
+    let mut start = 0;
+    while start < components.len() {
+        let mut end = start + 1;
+        if matches!(components[start], KitComponent::Button { .. }) {
+            while end < components.len() && end - start < 5 && matches!(components[end], KitComponent::Button { .. }) {
+                end += 1;
+            }
+        }
+        rows.push(start..end);
+        start = end;
+    }
+    rows
+}
+
+// Embed URLs are passed to Discord, never fetched by this server.
+pub fn valid_web_url(raw: &str) -> bool {
+    raw.len() <= 512
+        && !raw.contains(char::is_whitespace)
+        && url::Url::parse(raw).is_ok_and(|url| {
+            url.scheme() == "https" && url.host().is_some() && url.username().is_empty() && url.password().is_none()
+        })
+}
+
+/// Deliberately one level: no recursion, evaluation, or unbounded template input.
+fn valid_template(text: &str) -> bool {
+    if text.chars().count() > 2000 {
+        return false;
+    }
+    let mut rest = text;
+    let mut open = false;
+    let mut otherwise = false;
+    while let Some(at) = rest.find("{{") {
+        rest = &rest[at + 2..];
+        let Some(end) = rest.find("}}") else {
+            return false;
+        };
+        let token = &rest[..end];
+        if let Some(condition) = token.strip_prefix("if ") {
+            if open
+                || !(matches!(condition, "booster" | "returning")
+                    || condition
+                        .strip_prefix("account_age_days>=")
+                        .is_some_and(|s| s.parse::<u32>().is_ok())
+                    || condition
+                        .strip_prefix("ordinal>=")
+                        .is_some_and(|s| s.parse::<u64>().is_ok()))
+            {
+                return false;
+            }
+            open = true;
+            otherwise = false;
+        } else if token == "else" {
+            if !open || otherwise {
+                return false;
+            }
+            otherwise = true;
+        } else if token == "end" {
+            if !open {
+                return false;
+            }
+            open = false;
+        } else {
+            return false;
+        }
+        rest = &rest[end + 2..];
+    }
+    !open
+}
+
 /// A small, bounded conditional language for member data. Unknown conditions stay literal.
 pub fn conditional(text: &str, booster: bool, returning: bool, account_age_days: u32, ordinal: Option<u64>) -> String {
+    if !valid_template(text) {
+        return text.chars().take(2000).collect();
+    }
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(at) = rest.find("{{if ") {
@@ -212,14 +299,50 @@ pub fn render_content(kit: &MessageKit, variant: usize, data: &MemberData<'_>) -
     } else {
         &kit.variants[variant % kit.variants.len()]
     };
-    conditional(raw, data.booster, data.returning, data.account_age_days, data.ordinal)
-        .replace("{user}", data.user)
-        .replace("{server}", data.server)
-        .replace("{level}", &data.level.map_or_else(String::new, |n| n.to_string()))
-        .replace("{ordinal}", &data.ordinal.map_or_else(String::new, |n| n.to_string()))
-        .chars()
-        .take(2000)
-        .collect()
+    let template = conditional(raw, data.booster, data.returning, data.account_age_days, data.ordinal);
+    let level = data.level.map_or_else(String::new, |n| n.to_string());
+    let ordinal = data.ordinal.map_or_else(String::new, |n| n.to_string());
+    let mut rest = template.as_str();
+    let mut output = String::new();
+    let mut remaining = 2000;
+    // Scan the template once. Replacement values are data, never more template source.
+    while !rest.is_empty() && remaining > 0 {
+        let replacement = [
+            ("{user}", data.user),
+            ("{server}", data.server),
+            ("{level}", level.as_str()),
+            ("{ordinal}", ordinal.as_str()),
+        ]
+        .into_iter()
+        .find(|(token, _)| rest.starts_with(token));
+        if let Some((token, value)) = replacement {
+            // Event handlers provide a generated user mention. It cannot grant a mass ping,
+            // and allowed_mentions still controls whether that individual user is notified.
+            let user_mention = value
+                .strip_prefix("<@")
+                .and_then(|s| s.strip_suffix('>'))
+                .is_some_and(|s| s.strip_prefix('!').unwrap_or(s).parse::<u64>().is_ok_and(|id| id > 0));
+            for c in value.chars() {
+                if remaining == 0 {
+                    break;
+                }
+                output.push(c);
+                remaining -= 1;
+                // Untrusted names cannot turn an approved template into a mass ping.
+                if c == '@' && remaining > 0 && !user_mention {
+                    output.push('\u{200b}');
+                    remaining -= 1;
+                }
+            }
+            rest = &rest[token.len()..];
+        } else {
+            let c = rest.chars().next().unwrap();
+            output.push(c);
+            remaining -= 1;
+            rest = &rest[c.len_utf8()..];
+        }
+    }
+    output
 }
 
 /// Discord snowflake creation time, rounded down to whole days.
@@ -335,5 +458,180 @@ mod tests {
                 .count(),
             2
         );
+    }
+    #[test]
+    fn template_replacements_are_literal_bounded_and_cannot_inject_pings() {
+        let mut sample = kit();
+        sample.content = "{user} {server} {level}".into();
+        let data = MemberData {
+            user: "{server}@everyone",
+            server: "{level}",
+            level: Some(9),
+            booster: false,
+            returning: false,
+            account_age_days: 0,
+            ordinal: None,
+        };
+        assert_eq!(render_content(&sample, 0, &data), "{server}@\u{200b}everyone {level} 9");
+        let mention = MemberData { user: "<@42>", ..data };
+        assert_eq!(render_content(&sample, 0, &mention), "<@42> {level} 9");
+        let role = MemberData { user: "<@&42>", ..data };
+        assert_eq!(render_content(&sample, 0, &role), "<@\u{200b}&42> {level} 9");
+        sample.content = "{user}".repeat(333);
+        let enormous = "{server}".repeat(100_000);
+        let data = MemberData {
+            user: &enormous,
+            ..data
+        };
+        assert_eq!(render_content(&sample, 0, &data).chars().count(), 2000);
+    }
+
+    #[test]
+    fn rejects_nested_malformed_and_unknown_conditions() {
+        for text in [
+            "{{if booster}}{{if returning}}x{{end}}{{end}}",
+            "{{else}}x",
+            "{{end}}",
+            "{{if booster}}x",
+            "{{if booster}}x{{else}}y{{else}}z{{end}}",
+            "{{if exec(1)}}x{{end}}",
+        ] {
+            let mut sample = kit();
+            sample.content = text.into();
+            assert!(validate(sample).is_err(), "{text}");
+            assert_eq!(conditional(text, true, true, 0, None), text);
+        }
+        assert_eq!(conditional(&"x".repeat(100_000), false, false, 0, None).len(), 2000);
+    }
+
+    #[test]
+    fn button_rows_and_select_limits_are_enforced() {
+        let button = KitComponent::Button {
+            label: "Open".into(),
+            url: None,
+            response: Some("OK".into()),
+        };
+        let mut sample = kit();
+        sample.components = vec![button.clone(); 25];
+        assert!(validate(sample.clone()).is_ok());
+        assert_eq!(
+            component_rows(&sample.components),
+            vec![0..5, 5..10, 10..15, 15..20, 20..25]
+        );
+        sample.components.push(button.clone());
+        assert!(validate(sample).is_err());
+        let mut sample = kit();
+        let options: Vec<_> = (0..25)
+            .map(|n| KitOption {
+                label: n.to_string(),
+                value: n.to_string(),
+                response: "OK".into(),
+            })
+            .collect();
+        sample.components = vec![
+            KitComponent::Select {
+                placeholder: "Pick".into(),
+                options: options.clone()
+            };
+            5
+        ];
+        assert!(validate(sample.clone()).is_ok());
+        sample.components.push(button);
+        assert!(validate(sample).is_err());
+        let mut options = options;
+        options.push(KitOption {
+            label: "26".into(),
+            value: "26".into(),
+            response: "OK".into(),
+        });
+        let mut sample = kit();
+        sample.components = vec![KitComponent::Select {
+            placeholder: "Pick".into(),
+            options,
+        }];
+        assert!(validate(sample).is_err());
+    }
+
+    #[test]
+    fn embed_urls_require_a_real_https_host_without_credentials() {
+        for url in [
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "https://#fragment",
+            "https://user:secret@example.com",
+            "https://[broken",
+        ] {
+            let mut sample = kit();
+            sample.embeds = vec![EmbedSpec {
+                image: Some(url.into()),
+                ..Default::default()
+            }];
+            assert!(validate(sample).is_err(), "{url}");
+        }
+        assert!(valid_web_url("https://example.com/image.png"));
+    }
+
+    #[test]
+    fn all_discord_embed_and_content_boundaries_are_enforced() {
+        use crate::tags::EmbedFieldSpec;
+        let mut sample = kit();
+        sample.content = "x".repeat(2000);
+        assert!(validate(sample.clone()).is_ok());
+        sample.content.push('x');
+        assert!(validate(sample).is_err());
+        for (field, max) in [("title", 256), ("description", 4096), ("author", 256), ("footer", 2048)] {
+            let mut value = serde_json::json!({"description":"OK"});
+            value[field] = serde_json::json!("x".repeat(max));
+            let mut sample = kit();
+            sample.embeds = vec![serde_json::from_value(value.clone()).unwrap()];
+            assert!(validate(sample.clone()).is_ok());
+            value[field] = serde_json::json!("x".repeat(max + 1));
+            sample.embeds = vec![serde_json::from_value(value).unwrap()];
+            assert!(validate(sample).is_err(), "{field}");
+        }
+        let field = EmbedFieldSpec {
+            name: "x".repeat(256),
+            value: "x".repeat(1024),
+            inline: false,
+        };
+        let mut sample = kit();
+        sample.embeds = vec![EmbedSpec {
+            fields: vec![field],
+            ..Default::default()
+        }];
+        assert!(validate(sample.clone()).is_ok());
+        sample.embeds[0].fields[0].name.push('x');
+        assert!(validate(sample.clone()).is_err());
+        sample.embeds[0].fields[0].name = "x".into();
+        sample.embeds[0].fields[0].value.push('x');
+        assert!(validate(sample.clone()).is_err());
+        sample.embeds[0].fields = vec![
+            EmbedFieldSpec {
+                name: "n".into(),
+                value: "v".into(),
+                inline: false
+            };
+            26
+        ];
+        assert!(validate(sample).is_err());
+        let mut sample = kit();
+        sample.embeds = vec![
+            EmbedSpec {
+                description: Some("x".repeat(600)),
+                ..Default::default()
+            };
+            10
+        ];
+        assert!(validate(sample.clone()).is_ok());
+        sample.embeds[0].description.as_mut().unwrap().push('x');
+        assert!(validate(sample.clone()).is_err());
+        sample.embeds = vec![
+            EmbedSpec {
+                description: Some("x".into()),
+                ..Default::default()
+            };
+            11
+        ];
+        assert!(validate(sample).is_err());
     }
 }

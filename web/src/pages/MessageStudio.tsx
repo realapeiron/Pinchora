@@ -7,23 +7,13 @@ import { MessagePreview } from "../components/MessagePreview";
 import { Panel } from "../components/Panel";
 import { ChannelPicker } from "../components/Pickers";
 import { PixelButton } from "../components/PixelButton";
-import { ApiError, api, type EmbedSpec, type Overview } from "../lib/api";
+import { api, type EmbedSpec, type Overview } from "../lib/api";
 import { blankEmbed } from "../lib/tags";
 import { useDiscord } from "../lib/queries";
 import { SettingsPage } from "./PageHead";
+import { importKit, componentRows, studioError, type Component, type Kit } from "../lib/messageStudio";
 import "../styles/message-studio.css";
 
-type Component =
-  | { type: "button"; label: string; url: string | null; response: string | null }
-  | { type: "select"; placeholder: string; options: { label: string; value: string; response: string }[] };
-interface Kit {
-  name: string;
-  content: string;
-  variants: string[];
-  embeds: EmbedSpec[];
-  components: Component[];
-  allow_mass_mentions: boolean;
-}
 interface Saved {
   key: string;
   name: string;
@@ -90,6 +80,10 @@ const starter = (kind: "welcome" | "announcement" | "faq"): Kit => {
 
 export function MessageStudio() {
   const { guild } = useOutletContext<Overview>();
+  return <StudioEditor key={guild.id} guild={guild} />;
+}
+
+function StudioEditor({ guild }: { guild: Overview["guild"] }) {
   const discord = useDiscord(guild.id);
   const [kits, setKits] = useState<Saved[]>([]);
   const [key, setKey] = useState("");
@@ -121,6 +115,8 @@ export function MessageStudio() {
     void refresh().catch(() => setError(t("Could not load message kits.")));
   }, [path]);
   useEffect(() => {
+    let active = true;
+    setPreview(null);
     const timer = window.setTimeout(() => {
       if (!draft.content && draft.variants.length === 0 && draft.embeds.length === 0) {
         setPreview(null);
@@ -128,15 +124,20 @@ export function MessageStudio() {
       }
       void api<Rendered>(`${path}/preview`, "POST", { payload: draft, variant })
         .then((data) => {
+          if (!active) return;
           setPreview(data);
           setError("");
         })
         .catch((cause) => {
+          if (!active) return;
           setPreview(null);
-          setError(cause instanceof ApiError ? cause.message : t("Preview failed."));
+          setError(studioError(cause, t("Preview failed.")));
         });
     }, 400);
-    return () => window.clearTimeout(timer);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [path, payload, variant]);
 
   const choose = (item: Saved) => {
@@ -175,7 +176,7 @@ export function MessageStudio() {
       await refreshHistory(item.key);
       setNotice(t("Kit saved."));
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("Save failed."));
+      setError(studioError(cause, t("Save failed.")));
     } finally {
       setBusy(false);
     }
@@ -194,7 +195,7 @@ export function MessageStudio() {
       setMessageId(result.message_id);
       setNotice(t("Discord message sent. Its ID is {arg1}.", { arg1: result.message_id }));
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("Discord did not accept the message."));
+      setError(studioError(cause, t("Discord did not accept the message.")));
     } finally {
       setBusy(false);
     }
@@ -210,7 +211,7 @@ export function MessageStudio() {
       await refreshHistory(key);
       setNotice(t("Version restored."));
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("Restore failed."));
+      setError(studioError(cause, t("Restore failed.")));
     } finally {
       setBusy(false);
     }
@@ -221,21 +222,12 @@ export function MessageStudio() {
       return;
     }
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw Error();
-      const value = parsed as Partial<Kit>;
-      if (
-        typeof value.name !== "string" ||
-        typeof value.content !== "string" ||
-        !Array.isArray(value.embeds) ||
-        !Array.isArray(value.components)
-      )
-        throw Error();
-      setDraft({
-        ...empty(),
-        ...value,
-        variants: Array.isArray(value.variants) ? value.variants : [],
-      } as Kit);
+      const imported = await importKit(await file.text(), (value) =>
+        api<Kit>(`${path}/validate`, "POST", value),
+      );
+      setDraft(imported);
+      setRevisions([]);
+      setMessageId("");
       setKey("");
       setSaved(null);
       setNotice(t("JSON imported. Review and save it."));
@@ -262,7 +254,7 @@ export function MessageStudio() {
       setBindings((old) => ({ ...old, [kind]: selected }));
       setNotice(t("Event message updated."));
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("Event message could not be updated."));
+      setError(studioError(cause, t("Event message could not be updated.")));
     }
   };
 
@@ -435,7 +427,7 @@ export function MessageStudio() {
       </Panel>
       <Panel
         title={t("BUTTONS AND SELECTS")}
-        aside={<span className="counter">{draft.components.length}/5</span>}
+        aside={<span className="counter">{componentRows(draft.components).length}/5</span>}
       >
         {draft.components.map((component, index) => (
           <div className="studio-component" key={index}>
@@ -588,7 +580,7 @@ export function MessageStudio() {
         <div className="studio-actions">
           <PixelButton
             variant="secondary"
-            disabled={draft.components.length >= 5}
+            disabled={componentRows([...draft.components, { type: "button" }]).length > 5}
             onClick={() =>
               set("components", [
                 ...draft.components,
@@ -600,7 +592,7 @@ export function MessageStudio() {
           </PixelButton>
           <PixelButton
             variant="secondary"
-            disabled={draft.components.length >= 5}
+            disabled={componentRows([...draft.components, { type: "select" }]).length > 5}
             onClick={() =>
               set("components", [
                 ...draft.components,
@@ -656,7 +648,7 @@ export function MessageStudio() {
             onChange={(event) => setMessageId(event.target.value)}
             placeholder={t("Message ID to edit (optional)")}
           />
-          <PixelButton disabled={!channel || !key || dirty || busy} onClick={() => void send()}>
+          <PixelButton disabled={!channel || !key || dirty || busy || !preview} onClick={() => void send()}>
             {messageId ? t("Update message") : t("Send message")}
           </PixelButton>
         </div>

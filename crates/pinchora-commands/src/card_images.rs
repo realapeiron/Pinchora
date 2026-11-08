@@ -171,7 +171,11 @@ pub async fn deliver(
     match (delivery, text, image) {
         (_, None, None) => {}
         (Delivery::BeforeMessage, Some(text), Some(image)) => {
-            app.http.create_message(channel).attachments(&attach(image)).await?;
+            app.http
+                .create_message(channel)
+                .attachments(&attach(image))
+                .allowed_mentions(Some(&AllowedMentions::default()))
+                .await?;
             app.http
                 .create_message(channel)
                 .content(text)

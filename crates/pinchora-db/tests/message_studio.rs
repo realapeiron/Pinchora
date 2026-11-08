@@ -35,3 +35,50 @@ async fn card_revisions_are_durable_bounded_and_returning_is_per_member() {
     );
     assert_eq!(versions[0].actor_id, actor as i64);
 }
+
+#[tokio::test]
+async fn migration_0082_preserves_live_cards_and_enforces_guild_binding() {
+    let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let db = Db::connect_waiting(&url, 2, Duration::from_secs(60)).await.unwrap();
+    let mut tx = db.pool().begin().await.unwrap();
+    // Exercise the exact unreleased migration over a pre-D4 schema, isolated from real tables.
+    sqlx::query("SET LOCAL search_path TO pg_temp")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::raw_sql(include_str!("../../../migrations/0043_card_designs.sql"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO card_designs (guild_id,kind,design,delivery) VALUES (1,'welcome','{\"legacy\":true}','dm')",
+    )
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    sqlx::raw_sql(include_str!("../../../migrations/0082_message_studio.sql"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let legacy: (serde_json::Value, String) =
+        sqlx::query_as("SELECT design,delivery FROM card_designs WHERE guild_id=1 AND kind='welcome'")
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(legacy, (serde_json::json!({"legacy":true}), "dm".into()));
+    sqlx::query("INSERT INTO card_designs (guild_id,kind,delivery) VALUES (1,'boost','text_only'),(1,'level_up','with_message')")
+        .execute(&mut *tx).await.unwrap();
+    sqlx::query("INSERT INTO message_kits (guild_id,key,name,payload) VALUES (1,'test','Test','{}')")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    assert!(
+        sqlx::query("INSERT INTO message_event_kits (guild_id,kind,kit_key) VALUES (2,'welcome','test')")
+            .execute(&mut *tx)
+            .await
+            .is_err()
+    );
+    tx.rollback().await.unwrap();
+}

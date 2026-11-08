@@ -4218,4 +4218,43 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Block author": "Yazarı engelle",
   "Unblock author": "Yazarın engelini kaldır",
   Reports: "Bildirimler",
+  "Use balanced, non-nested if/else conditions in at most 2,000 characters.":
+    "En fazla 2.000 karakterlik, iç içe geçmeyen ve kapanışları tamamlanmış if/else koşulları kullan.",
+  "Use 1 to 60 characters for the kit name.": "Kit adı 1–60 karakter olmalı.",
+  "Content and each of at most 10 random variants must fit Discord's 2,000 characters.":
+    "İçerik ve en fazla 10 rastgele varyantın her biri Discord'un 2.000 karakter sınırına uymalı.",
+  "A message has at most 10 embeds.": "Bir mesajda en fazla 10 gömülü mesaj olabilir.",
+  "All embeds together have at most 6,000 characters.":
+    "Gömülü mesajların toplamı en fazla 6.000 karakter olabilir.",
+  "Use a valid HTTPS URL without credentials.":
+    "Kullanıcı adı veya parola içermeyen geçerli bir HTTPS adresi kullan.",
+  "Add content, a random variant, or an embed.": "İçerik, rastgele varyant veya gömülü mesaj ekle.",
+  "A message has at most 5 component rows.": "Bir mesajda en fazla 5 bileşen satırı olabilir.",
+  "A button needs a label and exactly one HTTPS link or reply.":
+    "Düğmeye bir etiket ve yalnızca bir HTTPS bağlantısı ya da yanıt ekle.",
+  "Use an HTTPS link under 512 characters or a reply under 2,000 characters.":
+    "512 karakterden kısa bir HTTPS bağlantısı veya 2.000 karakterden kısa bir yanıt kullan.",
+  "A select needs 1 to 25 labeled choices with short values and replies.":
+    "Seçim menüsüne kısa değer ve yanıtları olan 1–25 etiketli seçenek ekle.",
+  "A saved kit is at most 32 KiB of JSON.": "Kaydedilen kitin JSON boyutu en fazla 32 KiB olabilir.",
+  "Choose welcome, goodbye, boost or level up.": "Karşılama, veda, takviye veya seviye atlamayı seç.",
+  "Save the kit before assigning it.": "Atamadan önce kiti kaydet.",
+  "Event text kits cannot have embeds or components.":
+    "Etkinlik metin kitleri gömülü mesaj veya bileşen içeremez.",
+  "Use a short lowercase kit key with letters, numbers, _ or -.":
+    "Harf, rakam, _ veya - içeren kısa ve küçük harfli bir kit anahtarı kullan.",
+  "A kit is at most 32 KiB of JSON.": "Kitin JSON boyutu en fazla 32 KiB olabilir.",
+  "Check the kit JSON fields and types.": "Kitin JSON alanlarını ve veri türlerini kontrol et.",
+  "A kit assigned to an event cannot have embeds or components.":
+    "Etkinliğe atanmış bir kit gömülü mesaj veya bileşen içeremez.",
+  "Only a server administrator can allow everyone and role mentions.":
+    "Herkes ve rol etiketlemelerine yalnızca sunucu yöneticisi izin verebilir.",
+  "A server can save 50 kits.": "Bir sunucuda en fazla 50 kit kaydedilebilir.",
+  "That kit version is no longer available.": "Kitin bu sürümü artık mevcut değil.",
+  "Save this kit before posting it.": "Göndermeden önce bu kiti kaydet.",
+  "Enter a message ID.": "Bir mesaj kimliği gir.",
+  "Image alt text is at most 1024 characters.": "Görselin alternatif metni en fazla 1024 karakter olabilir.",
+  "That saved version no longer exists.": "Kaydedilen bu sürüm artık mevcut değil.",
+  "Discord could not open your direct messages.": "Discord özel mesaj kanalını açamadı.",
+  "Check this kit's fields and Discord limits.": "Bu kitin alanlarını ve Discord sınırlarını kontrol et.",
 };

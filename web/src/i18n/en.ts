@@ -4185,4 +4185,40 @@ export const en = {
   "Block author": "Block author",
   "Unblock author": "Unblock author",
   Reports: "Reports",
+  "Use balanced, non-nested if/else conditions in at most 2,000 characters.":
+    "Use balanced, non-nested if/else conditions in at most 2,000 characters.",
+  "Use 1 to 60 characters for the kit name.": "Use 1 to 60 characters for the kit name.",
+  "Content and each of at most 10 random variants must fit Discord's 2,000 characters.":
+    "Content and each of at most 10 random variants must fit Discord's 2,000 characters.",
+  "A message has at most 10 embeds.": "A message has at most 10 embeds.",
+  "All embeds together have at most 6,000 characters.": "All embeds together have at most 6,000 characters.",
+  "Use a valid HTTPS URL without credentials.": "Use a valid HTTPS URL without credentials.",
+  "Add content, a random variant, or an embed.": "Add content, a random variant, or an embed.",
+  "A message has at most 5 component rows.": "A message has at most 5 component rows.",
+  "A button needs a label and exactly one HTTPS link or reply.":
+    "A button needs a label and exactly one HTTPS link or reply.",
+  "Use an HTTPS link under 512 characters or a reply under 2,000 characters.":
+    "Use an HTTPS link under 512 characters or a reply under 2,000 characters.",
+  "A select needs 1 to 25 labeled choices with short values and replies.":
+    "A select needs 1 to 25 labeled choices with short values and replies.",
+  "A saved kit is at most 32 KiB of JSON.": "A saved kit is at most 32 KiB of JSON.",
+  "Choose welcome, goodbye, boost or level up.": "Choose welcome, goodbye, boost or level up.",
+  "Save the kit before assigning it.": "Save the kit before assigning it.",
+  "Event text kits cannot have embeds or components.": "Event text kits cannot have embeds or components.",
+  "Use a short lowercase kit key with letters, numbers, _ or -.":
+    "Use a short lowercase kit key with letters, numbers, _ or -.",
+  "A kit is at most 32 KiB of JSON.": "A kit is at most 32 KiB of JSON.",
+  "Check the kit JSON fields and types.": "Check the kit JSON fields and types.",
+  "A kit assigned to an event cannot have embeds or components.":
+    "A kit assigned to an event cannot have embeds or components.",
+  "Only a server administrator can allow everyone and role mentions.":
+    "Only a server administrator can allow everyone and role mentions.",
+  "A server can save 50 kits.": "A server can save 50 kits.",
+  "That kit version is no longer available.": "That kit version is no longer available.",
+  "Save this kit before posting it.": "Save this kit before posting it.",
+  "Enter a message ID.": "Enter a message ID.",
+  "Image alt text is at most 1024 characters.": "Image alt text is at most 1024 characters.",
+  "That saved version no longer exists.": "That saved version no longer exists.",
+  "Discord could not open your direct messages.": "Discord could not open your direct messages.",
+  "Check this kit's fields and Discord limits.": "Check this kit's fields and Discord limits.",
 } as const;

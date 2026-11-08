@@ -1,5 +1,6 @@
 import { translate as spaTranslate } from "../i18n";
 import type { EmbedSpec, Preview } from "../lib/api";
+import { componentRows } from "../lib/messageStudio";
 import { RichText } from "./RichText";
 
 function EmbedCard({ embed }: { embed: EmbedSpec }) {
@@ -74,19 +75,21 @@ export function MessagePreview({
       {(preview.embeds ?? (preview.embed ? [preview.embed] : [])).map((embed, index) => (
         <EmbedCard key={index} embed={embed} />
       ))}
-      {preview.components?.map((component, index) => (
+      {componentRows(preview.components ?? []).map((row, index) => (
         <div className="studio-component-preview" key={index}>
-          {component.type === "button" ? (
-            <button type="button" disabled>
-              {component.label}
-            </button>
-          ) : (
-            <select disabled aria-label={component.placeholder}>
-              <option>{component.placeholder}</option>
-              {component.options.map((option, i) => (
-                <option key={i}>{option.label}</option>
-              ))}
-            </select>
+          {row.map((component, child) =>
+            component.type === "button" ? (
+              <button key={child} type="button" disabled>
+                {component.label}
+              </button>
+            ) : (
+              <select key={child} disabled aria-label={component.placeholder}>
+                <option>{component.placeholder}</option>
+                {component.options.map((option, i) => (
+                  <option key={i}>{option.label}</option>
+                ))}
+              </select>
+            ),
           )}
         </div>
       ))}

@@ -113,6 +113,7 @@ async fn joins_and_leaves_send_the_saved_designs_the_chosen_way() {
         panic!("expected two messages, got {}", posts.len());
     };
     assert_eq!((picture(image), image.content()), ((1200, 400), ""));
+    assert_eq!(image.body["allowed_mentions"]["parse"], json!([]));
     assert_eq!(text.content(), format!("Hi <@{ben}>!"));
     assert!(text.files.is_empty());
     assert_eq!(text.body["allowed_mentions"]["users"], json!([ben.to_string()]));

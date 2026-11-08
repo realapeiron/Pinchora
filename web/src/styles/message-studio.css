@@ -79,3 +79,26 @@
     max-width: 100%;
   }
 }
+
+.message-studio,
+.message-studio > *,
+.message-studio .panel,
+.message-studio .embed-main {
+  min-width: 0;
+}
+.message-studio .discord,
+.studio-save {
+  overflow-wrap: anywhere;
+}
+.studio-component-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.studio-component-preview button,
+.studio-component-preview select {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

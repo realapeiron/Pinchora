@@ -2,7 +2,7 @@
 
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     routing::{get, post, put},
 };
 use pinchora_core::{
@@ -34,10 +34,49 @@ pub fn router() -> Router<WebState> {
         .route("/events", get(events))
         .route("/events/{kind}", put(bind_event))
         .route("/preview", post(preview))
+        .route("/validate", post(validate_import))
         .route("/send", post(send))
         .route("/{key}", put(save))
         .route("/{key}/history", get(history))
         .route("/{key}/rollback/{version}", post(rollback))
+        .layer(DefaultBodyLimit::max(message_studio::KIT_BYTES_MAX + 1024))
+}
+
+async fn validate_import(_managed: ManagedGuild, ApiJson(value): ApiJson<Value>) -> ApiResult<Json<MessageKit>> {
+    Ok(Json(checked(value)?))
+}
+
+async fn lock_guild(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, guild: u64) -> ApiResult<()> {
+    // Also serialize first inserts, quota checks, and event binding against kit edits.
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+        .bind(format!("message-studio:{guild}"))
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
+}
+
+async fn audit_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    managed: &ManagedGuild,
+    action: &str,
+    target: &str,
+    before: Value,
+    after: Value,
+) -> ApiResult<()> {
+    sqlx::query(
+        "INSERT INTO dashboard_audit (guild_id,actor_id,actor_name,source,action,target,before,after)
+        VALUES ($1,$2,$3,'web',$4,$5,$6,$7)",
+    )
+    .bind(managed.id as i64)
+    .bind(managed.current.session.user_id as i64)
+    .bind(managed.current.session.display_name())
+    .bind(action)
+    .bind(target)
+    .bind(before)
+    .bind(after)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
 }
 
 async fn events(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Json<Value>> {
@@ -64,18 +103,20 @@ async fn bind_event(
 ) -> ApiResult<Json<Value>> {
     let kind =
         CardKind::parse(&raw).ok_or_else(|| FieldError::new("kind", "Choose welcome, goodbye, boost or level up."))?;
+    let mut tx = state.app.db.pool().begin().await?;
+    lock_guild(&mut tx, managed.id).await?;
     let before: Option<(String,)> =
         sqlx::query_as("SELECT kit_key FROM message_event_kits WHERE guild_id=$1 AND kind=$2")
             .bind(managed.id as i64)
             .bind(kind.key())
-            .fetch_optional(state.app.db.pool())
+            .fetch_optional(&mut *tx)
             .await?;
     if let Some(ref selected) = body.key {
         let selected = key(selected)?;
         let payload: (Value,) = sqlx::query_as("SELECT payload FROM message_kits WHERE guild_id=$1 AND key=$2")
             .bind(managed.id as i64)
             .bind(selected)
-            .fetch_optional(state.app.db.pool())
+            .fetch_optional(&mut *tx)
             .await?
             .ok_or_else(|| FieldError::new("key", "Save the kit before assigning it."))?;
         let kit = checked(payload.0)?;
@@ -89,30 +130,28 @@ async fn bind_event(
         .bind(managed.id as i64)
         .bind(kind.key())
         .bind(selected)
-        .execute(state.app.db.pool())
+        .execute(&mut *tx)
         .await?;
     } else {
         sqlx::query("DELETE FROM message_event_kits WHERE guild_id=$1 AND kind=$2")
             .bind(managed.id as i64)
             .bind(kind.key())
-            .execute(state.app.db.pool())
+            .execute(&mut *tx)
             .await?;
     }
     if before.as_ref().map(|r| &r.0) != body.key.as_ref() {
-        audit::finish(
-            &state,
-            &managed.current.session,
-            Change {
-                guild: managed.id,
-                action: "message_kit.bind_event",
-                target: Some(kind.key()),
-                before: json!(before.map(|r| r.0)),
-                after: json!(body.key),
-            },
-            None,
+        audit_in(
+            &mut tx,
+            &managed,
+            "message_kit.bind_event",
+            kind.key(),
+            json!(before.map(|r| r.0)),
+            json!(body.key),
         )
-        .await;
+        .await?;
     }
+    tx.commit().await?;
+
     Ok(Json(json!({"kind":kind.key(),"key":body.key})))
 }
 
@@ -158,37 +197,43 @@ async fn save(
     Path((_, raw)): Path<(String, String)>,
     ApiJson(value): ApiJson<Value>,
 ) -> ApiResult<Json<Value>> {
+    save_kit(state, managed, raw, value, "message_kit.save").await
+}
+
+async fn save_kit(
+    state: WebState,
+    managed: ManagedGuild,
+    raw: String,
+    value: Value,
+    action: &str,
+) -> ApiResult<Json<Value>> {
     let key = key(&raw)?;
     let kit = checked(value)?;
+    let mut tx = state.app.db.pool().begin().await?;
+    lock_guild(&mut tx, managed.id).await?;
     let bound: (bool,) =
         sqlx::query_as("SELECT EXISTS(SELECT 1 FROM message_event_kits WHERE guild_id=$1 AND kit_key=$2)")
             .bind(managed.id as i64)
             .bind(key)
-            .fetch_one(state.app.db.pool())
+            .fetch_one(&mut *tx)
             .await?;
     if bound.0 && (!kit.embeds.is_empty() || !kit.components.is_empty()) {
         return Err(FieldError::new("kit", "A kit assigned to an event cannot have embeds or components.").into());
     }
     let payload = serde_json::to_value(&kit).map_err(anyhow::Error::from)?;
-    let mut tx = state.app.db.pool().begin().await?;
     let before: Option<(Value, i64)> =
         sqlx::query_as("SELECT payload,version FROM message_kits WHERE guild_id=$1 AND key=$2 FOR UPDATE")
             .bind(managed.id as i64)
             .bind(key)
             .fetch_optional(&mut *tx)
             .await?;
-    let was_allowed = before
-        .as_ref()
-        .and_then(|(value, _)| value.get("allow_mass_mentions"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
     let admin = managed.guild.owner
         || managed
             .guild
             .permissions
             .parse::<u64>()
             .is_ok_and(|bits| bits & crate::discord::ADMINISTRATOR != 0);
-    if kit.allow_mass_mentions && !was_allowed && !admin {
+    if kit.allow_mass_mentions && !admin {
         return Err(FieldError::new(
             "allow_mass_mentions",
             "Only a server administrator can allow everyone and role mentions.",
@@ -196,6 +241,10 @@ async fn save(
         .into());
     }
     if before.as_ref().is_some_and(|(old, _)| old == &payload) {
+        if action == "message_kit.rollback" {
+            audit_in(&mut tx, &managed, action, key, payload.clone(), payload.clone()).await?;
+            tx.commit().await?;
+        }
         return Ok(Json(
             json!({"key":key,"name":kit.name,"payload":payload,"version":before.unwrap().1}),
         ));
@@ -232,20 +281,16 @@ async fn save(
     .bind(key)
     .execute(&mut *tx)
     .await?;
-    tx.commit().await?;
-    audit::finish(
-        &state,
-        &managed.current.session,
-        Change {
-            guild: managed.id,
-            action: "message_kit.save",
-            target: Some(key),
-            before: before.map_or(Value::Null, |(v, _)| v),
-            after: payload.clone(),
-        },
-        None,
+    audit_in(
+        &mut tx,
+        &managed,
+        action,
+        key,
+        before.map_or(Value::Null, |(v, _)| v),
+        payload.clone(),
     )
-    .await;
+    .await?;
+    tx.commit().await?;
     Ok(Json(
         json!({"key":key,"name":kit.name,"payload":payload,"version":version}),
     ))
@@ -278,13 +323,7 @@ async fn rollback(
             .fetch_optional(state.app.db.pool())
             .await?
             .ok_or_else(|| ApiError::malformed("That kit version is no longer available."))?;
-    save(
-        State(state),
-        managed,
-        Path((String::new(), key.to_owned())),
-        ApiJson(payload),
-    )
-    .await
+    save_kit(state, managed, key.to_owned(), payload, "message_kit.rollback").await
 }
 
 #[derive(Deserialize)]
@@ -311,6 +350,16 @@ fn content(kit: &MessageKit, variant: usize, user: &str, server: &str) -> String
     )
 }
 
+fn render(mut kit: MessageKit, variant: usize, user: &str, server: &str, brand: u32) -> MessageKit {
+    kit.content = content(&kit, variant, user, server);
+    for embed in &mut kit.embeds {
+        if embed.color.is_none() {
+            embed.color = Some(format!("#{brand:06x}"));
+        }
+    }
+    kit
+}
+
 async fn preview(
     State(state): State<WebState>,
     managed: ManagedGuild,
@@ -318,22 +367,24 @@ async fn preview(
 ) -> ApiResult<Json<Value>> {
     let kit = checked(body.payload)?;
     let brand = state.app.brand_color(managed.id).await?;
-    let mut embeds = kit.embeds.clone();
-    for embed in &mut embeds {
-        if embed.color.is_none() {
-            embed.color = Some(format!("#{brand:06x}"));
-        }
-    }
+    let kit = render(
+        kit,
+        body.variant,
+        managed.current.session.display_name(),
+        &managed.guild.name,
+        brand,
+    );
     Ok(Json(json!({
-        "content": content(&kit, body.variant, managed.current.session.display_name(), &managed.guild.name),
-        "embeds": embeds,
+        "content": kit.content,
+        "embeds": kit.embeds,
         "components": kit.components,
         "allowed_mentions": if kit.allow_mass_mentions { "everyone and roles allowed" } else { "none" },
     })))
 }
 
 fn components(kit: &MessageKit, key: &str, version: i64) -> Vec<Component> {
-    kit.components
+    let individual: Vec<Component> = kit
+        .components
         .iter()
         .enumerate()
         .map(|(i, component)| match component {
@@ -382,6 +433,21 @@ fn components(kit: &MessageKit, key: &str, version: i64) -> Vec<Component> {
                 })],
             }),
         })
+        .collect();
+    message_studio::component_rows(&kit.components)
+        .into_iter()
+        .map(|range| {
+            Component::ActionRow(ActionRow {
+                id: None,
+                components: individual[range]
+                    .iter()
+                    .flat_map(|row| match row {
+                        Component::ActionRow(row) => row.components.clone(),
+                        _ => Vec::new(),
+                    })
+                    .collect(),
+            })
+        })
         .collect()
 }
 
@@ -421,15 +487,16 @@ async fn send(
     } else {
         rand::random_range(0..kit.variants.len())
     };
-    let text = content(&kit, index, managed.current.session.display_name(), &managed.guild.name);
-    let embeds = kit.embeds.iter().map(pinchora_commands::embed_of).collect::<Vec<_>>();
-    let mut embeds = embeds;
     let brand = state.app.brand_color(managed.id).await?;
-    for (embed, spec) in embeds.iter_mut().zip(&kit.embeds) {
-        if spec.color.is_none() {
-            embed.color = Some(brand);
-        }
-    }
+    let kit = render(
+        kit,
+        index,
+        managed.current.session.display_name(),
+        &managed.guild.name,
+        brand,
+    );
+    let text = &kit.content;
+    let embeds = kit.embeds.iter().map(pinchora_commands::embed_of).collect::<Vec<_>>();
     let components = components(&kit, key, version);
     let mentions = if kit.allow_mass_mentions {
         AllowedMentions {
@@ -447,7 +514,7 @@ async fn send(
             .app
             .http
             .update_message(channel, Id::new(message))
-            .content(Some(&text))
+            .content(Some(text))
             .embeds(Some(&embeds))
             .components(Some(&components))
             .allowed_mentions(Some(&mentions))
@@ -461,7 +528,7 @@ async fn send(
             .components(&components)
             .allowed_mentions(Some(&mentions));
         if !text.is_empty() {
-            request = request.content(&text);
+            request = request.content(text);
         }
         request.await
     }

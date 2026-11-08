@@ -139,6 +139,7 @@ type Account = (Value, Vec<Value>);
 /// What the mock Discord knows: users by access token, the codes it handed out, where the bot is.
 #[derive(Clone, Default)]
 struct Mock {
+    dm_opens: Arc<AtomicUsize>,
     absent_leveling_members: Arc<Mutex<HashSet<(u64, u64)>>>,
     /// Access token → the account.
     users: Arc<Mutex<HashMap<String, Account>>>,
@@ -520,6 +521,7 @@ async fn discord(
             }
         }
         (&Method::POST, [.., "users", "@me", "channels"]) => {
+            mock.dm_opens.fetch_add(1, Ordering::SeqCst);
             let request: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
             let recipient = request["recipient_id"].as_str().unwrap_or("0");
             (

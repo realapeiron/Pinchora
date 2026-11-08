@@ -32,6 +32,20 @@ pub async fn check(cache: &Cache, scope: &str, who: &str, limit: i64, window: Du
     }
 }
 
+/// Side-effecting tests must not bypass quotas during a Redis outage.
+pub async fn check_strict(cache: &Cache, scope: &str, who: &str, limit: i64, window: Duration) -> Result<(), ApiError> {
+    let now = chrono::Utc::now().timestamp().max(0) as u64;
+    let span = window.as_secs().max(1);
+    let hits = cache
+        .incr(&format!("web:rl:{scope}:{who}:{}", now / span), window)
+        .await
+        .map_err(ApiError::internal)?;
+    if hits > limit {
+        return Err(ApiError::too_many(span - now % span));
+    }
+    Ok(())
+}
+
 /// Who a request comes from: the connection's address, or what a trusted proxy says it is.
 fn address_of(state: &WebState, request: &Request) -> String {
     request.extensions().get::<ConnectInfo<SocketAddr>>().map_or_else(

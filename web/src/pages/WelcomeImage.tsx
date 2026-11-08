@@ -45,6 +45,7 @@ import { cardsKey, useAtlasIndex, useCards, useDiscord, useMe } from "../lib/que
 import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
+import { studioError } from "../lib/messageStudio";
 import "../styles/card-editor.css";
 
 /** One image in the editor: its design, how it is sent, and whether it is the server's own design. */
@@ -773,7 +774,7 @@ function Editor({
                     await refreshRevisions(kind);
                     setToast(spaTranslate("Version restored."));
                   } catch (error) {
-                    setErrors([error instanceof ApiError ? error.message : spaTranslate("Restore failed.")]);
+                    setErrors([studioError(error, spaTranslate("Restore failed."))]);
                   }
                 }}
               >

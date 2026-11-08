@@ -372,6 +372,22 @@ pub async fn test(
     let delivery = card_design::check_delivery(kind, &body.delivery)?;
     let design = design_of(&body.design)?;
     check_upload(&state, guild, &design).await?;
+    ratelimit::check_strict(
+        &state.app.cache,
+        "card-test",
+        &guild.to_string(),
+        TESTS_PER_MINUTE,
+        Duration::from_secs(60),
+    )
+    .await?;
+    ratelimit::check_strict(
+        &state.app.cache,
+        "card-test-user",
+        &managed.current.session.user_id.to_string(),
+        TESTS_PER_MINUTE,
+        Duration::from_secs(60),
+    )
+    .await?;
     let channel = if body.dm {
         pinchora_commands::open_private_channel(&state.app, managed.current.session.user_id)
             .await
@@ -383,14 +399,6 @@ pub async fn test(
         info.check_post_channel("channel_id", channel)?;
         Id::new(channel)
     };
-    ratelimit::check(
-        &state.app.cache,
-        "card-test",
-        &guild.to_string(),
-        TESTS_PER_MINUTE,
-        Duration::from_secs(60),
-    )
-    .await?;
     let session = &managed.current.session;
     let subject = sample_subject(session, &managed.guild.name);
     let settings = state.app.db.guild_settings(guild).await?;
@@ -448,6 +456,19 @@ pub async fn test(
                 "Discord did not take the test message. Check that the bot can send messages and attach files there.",
             )
         })?;
+    audit::finish(
+        &state,
+        session,
+        Change {
+            guild,
+            action: "card.test",
+            target: Some(kind.key()),
+            before: Value::Null,
+            after: json!({"dm": body.dm, "channel_id": channel.get().to_string()}),
+        },
+        None,
+    )
+    .await;
     tracing::info!(
         guild,
         channel = channel.get(),
