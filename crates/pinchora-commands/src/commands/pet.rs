@@ -111,7 +111,7 @@ impl PetCommand {
 
 /// A pet's needs as of `now`. They drift from `needs_at`; a pet on a trip has its `needs_at` in
 /// the future, so they stay as they were when it left.
-fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
+pub fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
     let hours = (now - pet.needs_at).num_seconds().max(0) as f32 / 3600.0;
     Needs {
         hunger: pet.hunger,
@@ -124,7 +124,7 @@ fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
 
 /// Whether the pet fell asleep: nobody looked after it from the day its hunger, fun and hygiene
 /// all ran out until a day later. Worked out from the stored needs, so no job has to watch for it.
-pub(crate) fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
+pub fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
     if pet.is_away(now) {
         return false;
     }
@@ -250,7 +250,7 @@ fn scaled_sprite(sprites: &Sprites, species: &str, bx: u32, by: u32) -> anyhow::
 }
 
 /// The pet's status card.
-async fn pet_png(app: &App, lang: Lang, pet: &PetRow) -> anyhow::Result<Vec<u8>> {
+pub async fn pet_png(app: &App, lang: Lang, pet: &PetRow) -> anyhow::Result<Vec<u8>> {
     let content = Content::get();
     let species = content.pet(&pet.species);
     let now = app.now();
@@ -494,39 +494,40 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             ))
             .await;
     }
-    if action == Care::Feed && cx.app.db.spend_shells(user, FOOD_PRICE, "pet_food").await?.is_none() {
-        return cx
-            .reply_ephemeral(t!(lang, "pet.care.food-price", price = FOOD_PRICE))
-            .await;
-    }
     let needs = current_needs(&pet, now);
     let Some(after) = action.apply(needs) else {
+        cx.app.cache.release_cooldown(&key).await?;
         return cx
             .reply_ephemeral(t!(lang, "pet.care.too-tired", name = pet.name))
             .await;
     };
     let progress = pets::add_xp(pet.level, pet.xp, action.xp());
+    let found = if action == Care::Walk {
+        pets::walk_shells(pet.level, rand::random::<f64>())
+    } else {
+        0
+    };
     let saved = cx
         .app
         .db
-        .save_pet(
+        .care_pet(
             user,
             &pet,
             [after.hunger, after.fun, after.energy, after.hygiene],
             progress.level,
             progress.xp,
             now,
+            if action == Care::Feed { -FOOD_PRICE } else { found },
         )
         .await?;
-    if !saved {
-        // The pet changed between the read and the write (a trip started, a claim paid, another
-        // click got in first); nothing was cared for, so the food is refunded and the action's
-        // cooldown, started above, does not count either.
-        if action == Care::Feed {
-            cx.app.db.earn_shells(user, FOOD_PRICE, "pet_food_refund").await?;
-        }
+    if saved != pinchora_db::PetCare::Saved {
         if let Err(error) = cx.app.cache.release_cooldown(&key).await {
             tracing::debug!(%error, pet = pet_id, "care cooldown not given back");
+        }
+        if saved == pinchora_db::PetCare::Poor {
+            return cx
+                .reply_ephemeral(t!(lang, "pet.care.food-price", price = FOOD_PRICE))
+                .await;
         }
         let left = cx
             .app
@@ -557,8 +558,6 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     };
     // Walks turn up a few shells on the beach; a higher level finds more.
     if action == Care::Walk {
-        let found = pets::walk_shells(pet.level, rand::random::<f64>());
-        cx.app.db.earn_shells(user, found, "pet_walk").await?;
         note.push_str(&t!(lang, "pet.care.found", found = found));
     }
     if progress.gained > 0 {

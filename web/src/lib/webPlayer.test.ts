@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  petRename,
   changeCharacterColor,
   characterKey,
   outfitChanged,
@@ -84,4 +85,13 @@ it("shows a friendly error for empty or non-JSON preview refusals", async () => 
   await expect(
     playerPreviewResponse(new Response(JSON.stringify({ error: { message: "Locked" } }), { status: 422 })),
   ).rejects.toThrow("Locked");
+});
+
+it("enables pet renames only for normalized changes and sends only the writable field", () => {
+  expect(petRename("Sea Pip", undefined)).toBeNull();
+  expect(petRename("Sea Pip", "  Sea   Pip  ")).toBeNull();
+  expect(petRename("Pip", " ")).toBeNull();
+  expect(petRename("Pip", "x".repeat(21))).toBeNull();
+  expect(petRename("Pip", "🐚".repeat(20))).toEqual({ name: "🐚".repeat(20) });
+  expect(petRename("Pip", "  Sea   Pip  ")).toEqual({ name: "Sea Pip" });
 });

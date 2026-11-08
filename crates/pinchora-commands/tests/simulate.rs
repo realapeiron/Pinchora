@@ -145,6 +145,8 @@ mod turkish_pets;
 mod turkish_remind;
 #[path = "simulate/turkish_shop.rs"]
 mod turkish_shop;
+#[path = "simulate/web_player_depth.rs"]
+mod web_player_depth;
 // The roles pack: auto roles, sticky roles, role panels, expiring roles and colour roles.
 #[path = "simulate/roles.rs"]
 mod roles;

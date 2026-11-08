@@ -27,6 +27,8 @@ use twilight_model::user::User;
 
 #[path = "web_player_character.rs"]
 mod character;
+#[path = "web_player_depth.rs"]
+mod depth;
 
 #[derive(Default, Deserialize)]
 pub(super) struct Locale {
@@ -51,6 +53,7 @@ pub fn router() -> Router<WebState> {
         .route("/title", put(save_title))
         .route("/{kind}/{id}/buy", post(buy))
         .nest("/character", character::router())
+        .merge(depth::router())
         .layer(DefaultBodyLimit::max(16 * 1024))
         .layer(middleware::from_fn(bounded_query))
 }
@@ -121,7 +124,7 @@ pub(super) async fn render_limit(state: &WebState, s: &Session) -> ApiResult<()>
         &state.app.cache,
         "player-render",
         &s.user_id.to_string(),
-        60,
+        30,
         Duration::from_secs(60),
     )
     .await
@@ -147,12 +150,16 @@ async fn home(State(state): State<WebState>, current: CurrentSession) -> ApiResu
     let row = state.app.db.user(id).await?;
     let pets = state.app.db.pets(id).await?;
     let house = state.app.db.house_preview(id).await?;
+    let birthday = state.app.db.birthday(id).await?;
+    let roblox = state.app.db.roblox_link(id).await?;
     let progress = leveling::progress(row.xp);
     Ok(Json(
         json!({"shells":row.credits, "pearls":row.pearls, "level":progress.level,
         "xp_current":progress.current, "xp_needed":progress.needed, "streak":state.app.db.player_stats(id).await?.streak,
         "pets":pets.iter().map(|p| json!({"id":p.id.to_string(),"name":p.name,"species":p.species})).collect::<Vec<_>>(),
         "house":house.map(|h| json!({"name":h.house.name,"room":h.room.idx})),
+        "birthday":birthday.map(|b|json!({"month":b.month,"day":b.day,"year":b.year,"tz":b.tz,"public":b.public})),
+        "roblox":roblox.map(|r|json!({"name":r.roblox_name,"id":r.roblox_id.to_string(),"method":r.method})),
         "discord_url":format!("discord://-/users/{}",state.app.application_id)}),
     ))
 }

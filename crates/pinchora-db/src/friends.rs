@@ -13,6 +13,7 @@ pub const MAX_FRIENDS: i64 = 100;
 pub enum BefriendOutcome {
     Added,
     AlreadyFriends,
+    Blocked,
     /// This user has [`MAX_FRIENDS`] already.
     Full {
         user: u64,
@@ -72,6 +73,12 @@ impl Db {
         let mut tx = self.pool().begin().await?;
         // Other pairings of either player wait here: the players' locks, taken in id order.
         lock_users(&mut tx, &[low, high]).await?;
+        let blocked: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1))",
+        ).bind(low).bind(high).fetch_one(&mut *tx).await?;
+        if blocked {
+            return Ok(BefriendOutcome::Blocked);
+        }
         let (already,): (bool,) =
             sqlx::query_as("SELECT EXISTS (SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2)")
                 .bind(sql_id(a))

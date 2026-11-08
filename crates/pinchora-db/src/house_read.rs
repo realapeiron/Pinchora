@@ -42,4 +42,14 @@ impl Db {
         .fetch_all(self.pool())
         .await?)
     }
+
+    /// Item counts by room for the player's inventory view.
+    pub async fn item_placements(&self, user_id: u64) -> anyhow::Result<Vec<(String, i16, i64)>> {
+        Ok(sqlx::query_as::<_, (String, i16, i64)>(
+            "SELECT item_id, room_idx, COUNT(*) FROM placements WHERE user_id = $1 GROUP BY item_id, room_idx ORDER BY item_id, room_idx",
+        )
+        .bind(sql_id(user_id))
+        .fetch_all(self.pool())
+        .await?)
+    }
 }

@@ -116,7 +116,7 @@ pub use party_games::{
     PartyVote, Pay, PlayerChange, PollChoice,
 };
 pub use periodic::PeriodOutcome;
-pub use pets::{PetRow, TripClaim, TripPayout, Wake};
+pub use pets::{PetCare, PetRow, TripClaim, TripPayout, Wake};
 pub use polls::{MAX_OPEN_POLLS, NewPoll, PollOpen, PollRow, PollVote};
 pub use privacy::{
     ANONYMISED, CLEARED_COLUMNS, DAILY_LIMITS, DELETED_NAME, Deleted, Hide, ID_LISTS, ListEdit, OTHER_TABLES, Privacy,

@@ -2459,3 +2459,55 @@ async fn book_milestones_pay_once_and_selling_keeps_the_book() {
     assert_eq!((cleared.fish, cleared.shells, cleared.balance), (1, 0, credits));
     assert_eq!(db.bucket(alice).await.unwrap().len(), 1);
 }
+
+#[tokio::test]
+async fn care_commits_payment_and_pet_together_under_races_and_refusals() {
+    use pinchora_db::PetCare;
+    let Some(db) = db().await else { return };
+    let [owner] = ids();
+    let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
+    let now = chrono::Utc::now();
+    assert_eq!(
+        db.care_pet(owner, &pet, [90; 4], 1, 15, now, -10).await.unwrap(),
+        PetCare::Poor
+    );
+    let unchanged = db.pets(owner).await.unwrap().remove(0);
+    assert_eq!(unchanged.xp, pet.xp);
+    assert_eq!(unchanged.needs_at, pet.needs_at);
+    db.earn_shells(owner, 100, "test").await.unwrap();
+    let (first, second) = tokio::join!(
+        db.care_pet(owner, &pet, [90; 4], 1, 15, now, -10),
+        db.care_pet(owner, &pet, [90; 4], 1, 15, now, -10),
+    );
+    let outcomes = [first.unwrap(), second.unwrap()];
+    assert_eq!(outcomes.iter().filter(|v| **v == PetCare::Saved).count(), 1);
+    assert_eq!(outcomes.iter().filter(|v| **v == PetCare::Stale).count(), 1);
+    assert_eq!(db.user(owner).await.unwrap().credits, 90);
+    assert_eq!(db.pets(owner).await.unwrap()[0].xp, 15);
+    let ledger: Vec<(i64, String)> =
+        sqlx::query_as("SELECT delta, reason FROM credit_ledger WHERE user_id=$1 AND reason LIKE 'pet_%'")
+            .bind(owner as i64)
+            .fetch_all(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(ledger, vec![(-10, "pet_food".into())]);
+    // A stale walk cannot pay a reward either.
+    assert_eq!(
+        db.care_pet(owner, &pet, [90; 4], 1, 40, now, 30).await.unwrap(),
+        PetCare::Stale
+    );
+    assert_eq!(db.user(owner).await.unwrap().credits, 90);
+}
+
+#[tokio::test]
+async fn friendship_respects_blocks_in_both_directions() {
+    let Some(db) = db().await else { return };
+    let [a, b] = ids();
+    assert!(db.befriend(a, a).await.is_err());
+    db.block_signer(a, b, "B").await.unwrap();
+    assert_eq!(db.befriend(a, b).await.unwrap(), BefriendOutcome::Blocked);
+    assert_eq!(db.befriend(b, a).await.unwrap(), BefriendOutcome::Blocked);
+    assert!(!db.are_friends(a, b).await.unwrap());
+    db.unblock_signer(a, b).await.unwrap();
+    assert_eq!(db.befriend(a, b).await.unwrap(), BefriendOutcome::Added);
+}

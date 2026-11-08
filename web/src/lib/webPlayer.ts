@@ -56,6 +56,8 @@ export interface HomeData {
   pets: (Choice & { species: string })[];
   house: { name: string; room: number } | null;
   discord_url: string;
+  birthday: { month: number; day: number; year: number | null; tz: string; public: boolean } | null;
+  roblox: { name: string; id: string; method: string } | null;
 }
 export interface WalletData {
   shells: number;
@@ -86,7 +88,7 @@ export function usePlayer<T>(path: string) {
   const language = useLocale();
   return useQuery({
     queryKey: ["player", path, language],
-    queryFn: () => api<T>(`/api/me/${path}?lang=${language}`),
+    queryFn: () => api<T>(`/api/me/${path}${path.includes("?") ? "&" : "?"}lang=${language}`),
     placeholderData: (previous) => previous,
   });
 }
@@ -200,4 +202,10 @@ export function wearAccessory(
   const next = worn.filter((v) => catalog.find((a) => a.id === v.split("*")[0])?.slot !== slot);
   if (id) next.push(id + (tint ? `*${tint}` : ""));
   return [base, ...next].join("+");
+}
+
+/** Match the pet-name normalization used by both player transports. */
+export function petRename(saved: string, draft: string | undefined): { name: string } | null {
+  const name = (draft ?? saved).trim().replace(/\s+/gu, " ");
+  return name && [...name].length <= 20 && name !== saved ? { name } : null;
 }

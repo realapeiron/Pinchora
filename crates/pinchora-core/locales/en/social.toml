@@ -41,6 +41,7 @@ left = "💔 You and {partner} are not partners anymore."
 not-partners = "You are not partners with them anymore."
 
 [friends]
+blocked = "This friend request is unavailable."
 not-self = "Friends are other people. Try someone from the server!"
 already = "You and {user} are already friends."
 you-full = "You have {max} friends, the most there can be. Make room with `/friends remove`."

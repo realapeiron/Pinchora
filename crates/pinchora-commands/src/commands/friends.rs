@@ -72,6 +72,9 @@ impl FriendsCommand {
                 if other.bot || to == me {
                     return cx.reply_ephemeral(t!(cx.lang(), "friends.not-self")).await;
                 }
+                if cx.app.db.socially_blocked(me, to).await? {
+                    return cx.reply_ephemeral(t!(cx.lang(), "friends.blocked")).await;
+                }
                 if cx.app.db.are_friends(me, to).await? {
                     return cx
                         .reply_ephemeral(t!(cx.lang(), "friends.already", user = mention(to)))
@@ -378,6 +381,7 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             })
             .await
         }
+        BefriendOutcome::Blocked => closed(cx, t!(public_lang, "friends.blocked")).await,
         BefriendOutcome::AlreadyFriends => {
             closed(cx, t!(public_lang, "friends.already-pair", from = from, to = to)).await
         }
