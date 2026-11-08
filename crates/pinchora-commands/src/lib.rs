@@ -271,3 +271,6 @@ pub use commands::character::randomise as randomise_character;
 pub use commands::profile::{ProfileContext, profile_card_for};
 
 pub use commands::{wallet_card_for, wallet_preview_for};
+pub mod house_edit;
+pub mod undo;
+pub use commands::house::Who;

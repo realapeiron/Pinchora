@@ -1,11 +1,4 @@
-//! A house, read-only: the rooms with what stands in them, as data the browser draws itself (see
-//! `web/src/iso`), the catalogue and the sprite sheet it draws with, and the bot's own picture of a
-//! room for comparing. Nothing here writes, so looking at a house never moves anyone in.
-//!
-//! `/api/house` is the logged-in player's house. `/api/house/visit/{user}` is any other player's, unless
-//! they hid it or locked it, exactly as `/house visit` turns visitors away. A server's plaza is not a
-//! player's house and is never served here.
-
+//! House views and the bot renderer; editing is routed through house_edit.
 use std::{sync::LazyLock, time::Duration};
 
 use axum::{
@@ -41,6 +34,7 @@ const SCALES: std::ops::RangeInclusive<u32> = 1..=4;
 
 pub fn router() -> Router<WebState> {
     Router::new()
+        .merge(super::house_edit::router())
         .route("/", get(own_house))
         .route("/content", get(content))
         .route("/character.png", get(character))
@@ -63,7 +57,13 @@ fn etag(bytes: &[u8]) -> String {
 }
 
 /// A body kept under a strong ETag, answered with 304 when the browser already has it.
-fn cached(headers: &HeaderMap, content_type: &'static str, cache: &'static str, tag: &str, body: Vec<u8>) -> Response {
+pub(super) fn cached(
+    headers: &HeaderMap,
+    content_type: &'static str,
+    cache: &'static str,
+    tag: &str,
+    body: Vec<u8>,
+) -> Response {
     let fresh = headers
         .get(header::IF_NONE_MATCH)
         .and_then(|v| v.to_str().ok())
@@ -107,6 +107,34 @@ async fn atlas_json(headers: HeaderMap) -> Response {
 /// The catalogue as JSON text with the versions of the sprite sheet, built once.
 static CONTENT: LazyLock<(Vec<u8>, String)> = LazyLock::new(|| {
     let mut catalog = house_catalog();
+    let content = pinchora_game::Content::get();
+    let tr = pinchora_core::i18n::Lang::Tr;
+    let names: serde_json::Map<String, Value> = content
+        .items()
+        .map(|item| {
+            let id = item.id();
+            (id.clone(), json!(content.name(&id, tr)))
+        })
+        .collect();
+    catalog["names_tr"] = json!(names);
+    if let Some(rows) = catalog["furniture"].as_array_mut() {
+        for (row, furniture) in rows.iter_mut().zip(&content.furniture) {
+            row["category_name"] = json!(furniture.category.label());
+            row["category_name_tr"] = json!(furniture.category.label_in(tr));
+            row["rarity_name_tr"] = json!(furniture.rarity.label_in(tr));
+        }
+    }
+
+    for field in ["wallpapers", "floors"] {
+        if let Some(rows) = catalog[field].as_array_mut() {
+            for row in rows {
+                if let Some(id) = row["id"].as_str() {
+                    row["name_tr"] = json!(content.name(id, tr));
+                }
+            }
+        }
+    }
+
     catalog["assets"] = json!({
         "atlas_png": format!("/assets/atlas.png?v={}", ATLAS_TAG.trim_matches('"')),
         "atlas_json": format!("/assets/atlas.json?v={}", ATLAS_JSON_TAG.trim_matches('"')),
@@ -125,7 +153,7 @@ async fn content(headers: HeaderMap) -> Response {
 
 /// Whose house is being looked at.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Whose {
+pub(super) enum Whose {
     Own(u64),
     Visit { owner: u64, guest: u64 },
 }
@@ -219,7 +247,7 @@ fn user_id(raw: &str) -> ApiResult<u64> {
         .ok_or_else(|| ApiError::malformed("That is not a player id."))
 }
 
-async fn overview(state: &WebState, current: &CurrentSession, whose: Whose) -> ApiResult<Json<Value>> {
+pub(super) async fn overview(state: &WebState, current: &CurrentSession, whose: Whose) -> ApiResult<Json<Value>> {
     let (house, rooms) = open(state, whose).await?;
     let owner = whose.owner();
     let counts = state.app.db.placement_counts(owner).await?;
@@ -230,6 +258,7 @@ async fn overview(state: &WebState, current: &CurrentSession, whose: Whose) -> A
     };
     Ok(Json(json!({
         "scope": whose.scope(),
+        "whose": owner.to_string(),
         "owner": { "id": owner.to_string(), "name": name, "you": whose.scope() == "own" },
         "house": {
             "name": house.name,
@@ -251,7 +280,7 @@ async fn overview(state: &WebState, current: &CurrentSession, whose: Whose) -> A
     })))
 }
 
-async fn room_data(state: &WebState, whose: Whose, idx: &str) -> ApiResult<RoomData> {
+pub(super) async fn room_data(state: &WebState, whose: Whose, idx: &str) -> ApiResult<RoomData> {
     let idx = room_index(idx)?;
     let (house, rooms) = open(state, whose).await?;
     RoomData::load(&state.app, whose.owner(), &house, &rooms, idx)
@@ -260,9 +289,34 @@ async fn room_data(state: &WebState, whose: Whose, idx: &str) -> ApiResult<RoomD
 }
 
 /// `GET /api/house`: your house: its tier, its rooms and how full each is.
-async fn own_house(State(state): State<WebState>, current: CurrentSession) -> ApiResult<Json<Value>> {
-    let me = current.session.user_id;
-    overview(&state, &current, Whose::Own(me)).await
+async fn own_house(
+    State(state): State<WebState>,
+    mut current: CurrentSession,
+    Query(query): Query<super::house_edit::Scope>,
+) -> ApiResult<Json<Value>> {
+    let who = super::house_edit::resolve(&state, &mut current, &query, false).await?;
+    let Json(mut value) = overview(&state, &current, Whose::Own(who.owner)).await?;
+    value["scope"] = json!(query.scope);
+    value["whose"] = json!(who.owner.to_string());
+    value["owner"]["you"] = json!(who.owner == current.session.user_id);
+    value["editable"] = json!(
+        query.scope != "plaza"
+            || crate::discord::user_guilds(&state, &mut current, false)
+                .await?
+                .iter()
+                .any(|g| g.id() == Some(who.owner) && g.can_manage())
+    );
+    if who.owner != current.session.user_id {
+        value["owner"]["name"] = json!(owner_name(&state, who.owner).await);
+    }
+    let n = value["house"]["tier"].as_i64().unwrap_or(1) as i16;
+    value["next"] = if n < 6 {
+        let t = tier(n + 1);
+        json!({"name":t.name,"price":t.price,"rooms":t.rooms,"width":t.width,"depth":t.depth})
+    } else {
+        Value::Null
+    };
+    Ok(Json(value))
 }
 
 /// `GET /api/house/rooms/{idx}`: one of your rooms with everything in it.
@@ -270,9 +324,20 @@ async fn own_room(
     State(state): State<WebState>,
     current: CurrentSession,
     Path(idx): Path<String>,
+    Query(query): Query<super::house_edit::Scope>,
 ) -> ApiResult<Json<Value>> {
-    let data = room_data(&state, Whose::Own(current.session.user_id), &idx).await?;
-    Ok(Json(data.json()))
+    let mut current = current;
+    let who = super::house_edit::resolve(&state, &mut current, &query, false).await?;
+    let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
+    let mut value = data.json();
+    let extra = pinchora_commands::house_edit::snapshot(&state.app, who, data.room.idx, &data.placements).await;
+    value
+        .as_object_mut()
+        .expect("room object")
+        .extend(extra.as_object().expect("snapshot object").clone());
+    value["scope"] = json!(query.scope);
+    value["whose"] = json!(who.owner.to_string());
+    Ok(Json(value))
 }
 
 /// `GET /api/house/visit/{user}`: somebody's house, unless they locked it.
@@ -302,13 +367,17 @@ async fn visit_room(
     Ok(Json(room_data(&state, whose, &idx).await?.json()))
 }
 
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
 struct RenderQuery {
+    #[serde(flatten)]
+    scope: super::house_edit::Scope,
     /// Where the pets stand: the number the room's JSON carries. The ten-minute window of now when missing.
     seed: Option<u64>,
     /// Whole pixels per art pixel; 2, as in Discord, when missing.
     scale: Option<u32>,
+    cursor: Option<String>,
+    selected: Option<i64>,
+    grid: Option<u8>,
 }
 
 async fn render(
@@ -330,7 +399,40 @@ async fn render(
         return Err(ApiError::malformed("The scale is 1, 2, 3 or 4."));
     }
     data.seed = query.seed.unwrap_or_else(|| house_seed_at(state.app.now()));
-    let png = render_room_png(&state.app, data.view(), scale).await?;
+    let mut view = data.view();
+    view.selected = query.selected;
+    view.edit = query.grid == Some(1);
+    if let Some(cursor) = query.cursor {
+        let parts: Vec<_> = cursor.split(',').collect();
+        let x = parts.first().and_then(|s| s.parse::<u32>().ok());
+        let y = parts.get(1).and_then(|s| s.parse::<u32>().ok());
+        let (Some(x), Some(y)) = (x, y) else {
+            return Err(ApiError::malformed("Invalid cursor."));
+        };
+        let wall = match parts.get(2).copied().unwrap_or("floor") {
+            "floor" | "f" => None,
+            "right" | "r" => Some(pinchora_render::room::WallSide::Right),
+            "left" | "l" => Some(pinchora_render::room::WallSide::Left),
+            _ => return Err(ApiError::malformed("Invalid cursor.")),
+        };
+        if x >= if matches!(wall, Some(pinchora_render::room::WallSide::Left)) {
+            data.depth
+        } else {
+            data.width
+        } || y >= if wall.is_some() { 3 } else { data.depth }
+        {
+            return Err(ApiError::malformed("Invalid cursor."));
+        }
+        view.cursor = Some(pinchora_render::room::Cursor {
+            x,
+            y,
+            w: 1,
+            d: 1,
+            wall,
+            ok: true,
+        });
+    }
+    let png = render_room_png(&state.app, view, scale).await?;
     let mut response = png.into_response();
     let h = response.headers_mut();
     h.insert(header::CONTENT_TYPE, HeaderValue::from_static("image/png"));
@@ -345,7 +447,9 @@ async fn own_render(
     Path(idx): Path<String>,
     Query(query): Query<RenderQuery>,
 ) -> ApiResult<Response> {
-    let data = room_data(&state, Whose::Own(current.session.user_id), &idx).await?;
+    let mut current = current;
+    let who = super::house_edit::resolve(&state, &mut current, &query.scope, false).await?;
+    let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
     render(&state, &current, data, query).await
 }
 

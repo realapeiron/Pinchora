@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
+import { HouseEditor } from "../components/HouseEditor";
 import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
 import { RoomStage } from "../components/RoomStage";
@@ -9,8 +10,19 @@ import { TopBar } from "../components/TopBar";
 import { decodePng } from "../iso/png";
 import { renderRoom } from "../iso/render";
 import { buildScene } from "../iso/scene";
+import { useGuilds } from "../lib/queries";
 import type { Me } from "../lib/api";
-import { type HouseTarget, loadCharacters, renderUrl, useArt, useHouse, useRoom } from "../lib/house";
+import {
+  housePath,
+  roomLabel,
+  tierLabel,
+  type HouseTarget,
+  loadCharacters,
+  renderUrl,
+  useArt,
+  useHouse,
+  useRoom,
+} from "../lib/house";
 import { t } from "../reef/i18n";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
@@ -20,7 +32,15 @@ const ReefStage = lazy(() => import("../reef/ReefStage"));
 
 /** `/me/house`: the logged-in player's house. */
 export function MyHouse({ me }: { me: Me }) {
-  return <House me={me} target={{ kind: "own" }} />;
+  const [params] = useSearchParams();
+  const scope = params.get("scope");
+  const target: HouseTarget =
+    scope === "partner"
+      ? { kind: "partner" }
+      : scope === "plaza" && params.get("guild")
+        ? { kind: "plaza", guild: params.get("guild")! }
+        : { kind: "own" };
+  return <House key={JSON.stringify(target)} me={me} target={target} />;
 }
 
 /** `/house/:userId`: another player's house, unless they locked it. */
@@ -45,6 +65,19 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
     };
   }, [playing]);
   const art = useArt(!playing);
+  const [editing, setEditing] = useState(false);
+  const [phone, setPhone] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      setPhone(media.matches);
+      if (media.matches) setEditing(false);
+    };
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  const guilds = useGuilds();
+  const [guild, setGuild] = useState(target.kind === "plaza" ? target.guild : "");
   const [grid, setGrid] = useState(false);
   const [compare, setCompare] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -71,10 +104,10 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   // The bot's picture has no grid, so comparing draws without one.
   const edit = grid && !compare;
   const drawn = useMemo(() => {
-    if (playing || !art.data || !room.data || !sprites.isSuccess) return null;
+    if (playing || editing || !art.data || !room.data || !sprites.isSuccess) return null;
     const scene = buildScene(art.data.content, art.data, room.data, { edit, characterLabel: owner });
     return { scene, rendered: renderRoom(scene) };
-  }, [art.data, room.data, sprites.isSuccess, edit, owner, playing]);
+  }, [art.data, room.data, sprites.isSuccess, edit, owner, playing, editing]);
 
   useEffect(() => setHover(null), [drawn]);
 
@@ -98,11 +131,11 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
               title={title}
               lead={
                 house.data
-                  ? t("{tier} · {rooms} rooms · {likes} likes", {
-                      tier: house.data.house.tier_name,
+                  ? `${house.data.house.name} · ${t("{tier} · {rooms} rooms · {likes} likes", {
+                      tier: tierLabel(house.data.house.tier, house.data.house.tier_name),
                       rooms: house.data.rooms.length,
                       likes: house.data.house.likes,
-                    })
+                    })}`
                   : target.kind === "own"
                     ? t("Your rooms, as they stand.")
                     : t("Somebody else's rooms, as they stand.")
@@ -143,6 +176,66 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
           {house.isError && <Problem error={house.error} />}
           {house.isSuccess && (
             <>
+              {!playing && target.kind !== "visit" && (
+                <div className="house-options">
+                  <label>
+                    {t("House scope")}
+                    <select
+                      value={target.kind}
+                      onChange={(e) => {
+                        const next = new URLSearchParams(params);
+                        next.set("scope", e.target.value);
+                        if (e.target.value === "plaza") next.set("guild", guild);
+                        setParams(next);
+                      }}
+                    >
+                      <option value="own">{t("My house")}</option>
+                      <option value="partner">{t("Partner’s house")}</option>
+                      <option value="plaza" disabled={!/^\d{15,21}$/.test(guild)}>
+                        {t("Server plaza")}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    {t("Server plaza")}
+                    <select
+                      value={guild}
+                      onChange={(e) => {
+                        setGuild(e.target.value);
+                        if (target.kind === "plaza") {
+                          const next = new URLSearchParams(params);
+                          next.set("guild", e.target.value);
+                          setParams(next);
+                        }
+                      }}
+                    >
+                      <option value="">{t("Choose a server")}</option>
+                      {guilds.data
+                        ?.filter((g) => g.bot_present)
+                        .map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  {!phone && house.data.editable !== false && (
+                    <PixelButton
+                      disabled={room.isPending || !room.data?.fingerprint}
+                      aria-pressed={editing}
+                      onClick={() => {
+                        setEditing(!editing);
+                        setCompare(false);
+                      }}
+                    >
+                      {editing ? t("View mode") : t("Decorate house")}
+                    </PixelButton>
+                  )}
+                  {phone && (
+                    <span className="muted">{t("View mode on phones. Decorate on a larger screen.")}</span>
+                  )}
+                </div>
+              )}
               {!playing && house.data.rooms.length > 1 && (
                 <div className="house-tabs" role="tablist" aria-label={t("Rooms")}>
                   {house.data.rooms.map((r) => (
@@ -162,7 +255,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                         )
                       }
                     >
-                      {r.name} <span className="house-tab-count">{r.items}</span>
+                      {roomLabel(r.room_type, r.name)} <span className="house-tab-count">{r.items}</span>
                     </PixelButton>
                   ))}
                 </div>
@@ -206,13 +299,26 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                 !art.isError && <Loading label={t("Drawing the room")} />}
               {room.isError && <Problem error={room.error} />}
               {!playing && art.isError && <Problem error={art.error} />}
+              {editing && !playing && room.data && art.data && sprites.isSuccess && (
+                <HouseEditor
+                  key={housePath(target, `/rooms/${idx}`)}
+                  target={target}
+                  initial={room.data}
+                  art={art.data}
+                  house={house.data}
+                  onExit={() => setEditing(false)}
+                />
+              )}
               {drawn && summary && (
                 <>
                   <RoomStage
                     rendered={drawn.rendered}
                     hover={hover}
                     onHover={setHover}
-                    label={t("{name}, {count} items", { name: summary.name, count: summary.items })}
+                    label={t("{name}, {count} items", {
+                      name: roomLabel(summary.room_type, summary.name),
+                      count: summary.items,
+                    })}
                     botPicture={compare && bot.url ? bot.url : null}
                   />
                   <div className="house-info" aria-live="polite">
@@ -223,7 +329,11 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                       </>
                     ) : (
                       <span className="muted">
-                        {t("Hover or tap a piece to see what it is. Drag to pan, Ctrl + wheel to zoom.")}
+                        {t(
+                          phone
+                            ? "Drag to explore. Use + and − to zoom."
+                            : "Hover or tap a piece to see what it is. Drag to pan, Ctrl + wheel to zoom.",
+                        )}
                       </span>
                     )}
                   </div>
@@ -241,7 +351,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                       aria-pressed={compare}
                       onClick={() => setCompare(!compare)}
                     >
-                      {compare ? t("Back to this view") : t("Compare with Discord")}
+                      {compare ? t("Back to room") : t("Compare with Discord")}
                     </PixelButton>
                     {compare && (
                       <span className="muted" role="status">

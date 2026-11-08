@@ -94,7 +94,32 @@ pub enum UpgradeOutcome {
     WrongTier { tier: i16 },
 }
 
+/// Holds an editor's cross-pod serialization lock until its Redis history has been saved.
+/// A separate connection is reserved; the semaphore leaves capacity for the actual transactions.
+pub struct HouseEditorGuard {
+    _transaction: sqlx::Transaction<'static, sqlx::Postgres>,
+    _slot: tokio::sync::OwnedSemaphorePermit,
+}
+
 impl Db {
+    pub async fn house_editor(&self, owner: u64) -> anyhow::Result<HouseEditorGuard> {
+        anyhow::ensure!(
+            self.pool().options().get_max_connections() >= 2,
+            "house editing requires two database connections"
+        );
+        let slot = self.editor_slots.clone().acquire_owned().await?;
+        let mut tx = self.pool().begin().await?;
+        // This lock never holds player rows. All mutation transactions still take lock_users first.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('house-editor:' || $1::text, 0))")
+            .bind(owner.to_string())
+            .execute(&mut *tx)
+            .await?;
+        Ok(HouseEditorGuard {
+            _transaction: tx,
+            _slot: slot,
+        })
+    }
+
     /// The player's house, created with `starter` as its first room when missing.
     pub async fn house(&self, user_id: u64, starter: &NewRoom) -> anyhow::Result<(HouseRow, Vec<RoomRow>, bool)> {
         retry("house", || self.house_once(user_id, starter)).await
@@ -383,7 +408,54 @@ impl Db {
         let mut retry = Retry::new("restore_for");
         loop {
             let result = self
-                .restore_for_once(owner, editor, room_idx, changes, &mut check)
+                .restore_for_once(
+                    owner,
+                    owner,
+                    editor,
+                    room_idx,
+                    changes,
+                    None,
+                    &mut |_| Ok(()),
+                    &mut check,
+                )
+                .await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// The shared restore transaction with an initial version check and explicit inventory routing.
+    /// The initial check also runs for an empty change list, while holding the house lock.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn edit_room<F, G>(
+        &self,
+        owner: u64,
+        stock: u64,
+        refund: u64,
+        room: i16,
+        changes: &[RoomChange],
+        partnership: Option<(u64, i64)>,
+        mut initial: G,
+        mut check: F,
+    ) -> anyhow::Result<RestoreOutcome>
+    where
+        F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
+        G: FnMut(&[PlacementRow]) -> Result<(), String>,
+    {
+        let mut retry = Retry::new("edit_room");
+        loop {
+            let result = self
+                .restore_for_once(
+                    owner,
+                    stock,
+                    refund,
+                    room,
+                    changes,
+                    partnership,
+                    &mut initial,
+                    &mut check,
+                )
                 .await;
             if !retry.again(&result).await {
                 return result;
@@ -392,24 +464,42 @@ impl Db {
     }
 
     /// One attempt of [`Db::restore_for`].
-    async fn restore_for_once<F>(
+    #[allow(clippy::too_many_arguments)]
+    async fn restore_for_once<F, G>(
         &self,
         owner: u64,
+        stock: u64,
         editor: u64,
         room_idx: i16,
         changes: &[RoomChange],
+        partnership: Option<(u64, i64)>,
+        initial: &mut G,
         check: &mut F,
     ) -> anyhow::Result<RestoreOutcome>
     where
         F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
+        G: FnMut(&[PlacementRow]) -> Result<(), String>,
     {
         let (id, refund) = (sql_id(owner), sql_id(editor));
         let mut tx = self.pool().begin().await?;
-        lock_users(&mut tx, &[id, refund]).await?;
+        lock_users(&mut tx, &[id, refund, sql_id(stock)]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
             .await?;
+        if let Some((guest, bond)) = partnership {
+            let pair: Option<(chrono::DateTime<chrono::Utc>,)> =
+                sqlx::query_as("SELECT since FROM partners WHERE user_a=$1 AND user_b=$2 FOR SHARE")
+                    .bind(sql_id(owner.min(guest)))
+                    .bind(sql_id(owner.max(guest)))
+                    .fetch_optional(&mut *tx)
+                    .await?;
+            if !pair.is_some_and(|(since,)| since.timestamp_micros() == bond) {
+                return Ok(RestoreOutcome::Refused(Refusal::Blocked(
+                    "You are no longer partners.".into(),
+                )));
+            }
+        }
         let mut current = sqlx::query_as::<_, PlacementRow>(
             "SELECT id, room_idx, item_id, x, y, flipped FROM placements
              WHERE user_id = $1 AND room_idx = $2 ORDER BY id",
@@ -418,6 +508,9 @@ impl Db {
         .bind(room_idx)
         .fetch_all(&mut *tx)
         .await?;
+        if let Err(reason) = initial(&current) {
+            return Ok(RestoreOutcome::Refused(Refusal::Blocked(reason)));
+        }
         let mut added = Vec::new();
         for change in changes {
             if let RoomChange::Remove(p) | RoomChange::Flip(p) = change
@@ -454,11 +547,14 @@ impl Db {
                     }
                 }
                 RoomChange::Add(p) => {
+                    if stock != owner && is_soulbound(&p.item_id) {
+                        return Ok(RestoreOutcome::Refused(Refusal::Blocked(SOULBOUND_GUEST.to_owned())));
+                    }
                     let taken = sqlx::query(
                         "UPDATE inventory SET quantity = quantity - 1
                          WHERE user_id = $1 AND item_id = $2 AND quantity > 0",
                     )
-                    .bind(id)
+                    .bind(sql_id(stock))
                     .bind(&p.item_id)
                     .execute(&mut *tx)
                     .await?
@@ -493,12 +589,23 @@ impl Db {
 
     /// Flips a placed item. The caller checks the turned footprint still fits first.
     pub async fn flip_placement(&self, user_id: u64, placement_id: i64) -> anyhow::Result<bool> {
+        retry("flip_placement", || self.flip_placement_once(user_id, placement_id)).await
+    }
+
+    async fn flip_placement_once(&self, user_id: u64, placement_id: i64) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user_id)]).await?;
+        sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
+            .bind(sql_id(user_id))
+            .execute(&mut *tx)
+            .await?;
         let n = sqlx::query("UPDATE placements SET flipped = NOT flipped WHERE id = $1 AND user_id = $2")
             .bind(placement_id)
             .bind(sql_id(user_id))
-            .execute(self.pool())
+            .execute(&mut *tx)
             .await?
             .rows_affected();
+        tx.commit().await?;
         Ok(n == 1)
     }
 

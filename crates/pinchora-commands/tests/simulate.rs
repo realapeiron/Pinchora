@@ -15364,5 +15364,7 @@ mod command_control;
 #[path = "simulate/mod_parity.rs"]
 mod mod_parity;
 
+#[path = "simulate/web_house_edit.rs"]
+mod web_house_edit;
 #[path = "simulate/web_player.rs"]
 mod web_player;

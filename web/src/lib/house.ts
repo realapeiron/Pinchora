@@ -2,6 +2,9 @@
 // the browser draws with, and the character sprites only the server can draw.
 
 import { useQuery } from "@tanstack/react-query";
+import roomNames from "../../../content/i18n/tr/rooms.json";
+import terms from "../../../content/i18n/tr/terms.json";
+import { locale } from "../i18n";
 
 import { Art } from "../iso/art";
 import { loadAtlas } from "../iso/atlas";
@@ -11,7 +14,11 @@ import type { RoomJson } from "../iso/scene";
 import { api } from "./api";
 
 /** Whose house a page shows: the logged-in player's, or another player's. */
-export type HouseTarget = { kind: "own" } | { kind: "visit"; userId: string };
+export type HouseTarget =
+  | { kind: "own" }
+  | { kind: "partner" }
+  | { kind: "plaza"; guild: string }
+  | { kind: "visit"; userId: string };
 
 export interface RoomSummary {
   idx: number;
@@ -24,7 +31,9 @@ export interface RoomSummary {
 }
 
 export interface HouseOverview {
-  scope: "own" | "visit";
+  editable?: boolean;
+  scope: "own" | "partner" | "plaza" | "visit";
+  next?: { name: string; price: number; rooms: number; width: number; depth: number } | null;
   owner: { id: string; name: string; you: boolean };
   house: { name: string; tier: number; tier_name: string; likes: number; locked: boolean };
   width: number;
@@ -34,8 +43,18 @@ export interface HouseOverview {
 
 type CatalogResponse = Catalog & { assets: { atlas_png: string; atlas_json: string } };
 
-const base = (target: HouseTarget) =>
-  target.kind === "own" ? "/api/house" : `/api/house/visit/${encodeURIComponent(target.userId)}`;
+export function housePath(target: HouseTarget, path = "") {
+  const root =
+    target.kind === "visit" ? `/api/house/visit/${encodeURIComponent(target.userId)}` : "/api/house";
+  const query =
+    target.kind === "partner"
+      ? "?scope=partner"
+      : target.kind === "plaza"
+        ? `?scope=plaza&guild=${encodeURIComponent(target.guild)}`
+        : "";
+  return `${root}${path}${query}`;
+}
+const base = (target: HouseTarget) => housePath(target);
 
 export function useHouse(target: HouseTarget) {
   return useQuery({
@@ -45,20 +64,22 @@ export function useHouse(target: HouseTarget) {
   });
 }
 
-/** One room. Refetched every minute so the pets move on with the ten-minute window the server picks them by. */
+/** One room. Visible tabs refresh every ten seconds; edits still use the last confirmed fingerprint. */
 export function useRoom(target: HouseTarget, idx: number | null, refresh = true) {
   return useQuery({
-    queryKey: [`${base(target)}/rooms/${idx}`],
-    queryFn: () => api<RoomJson>(`${base(target)}/rooms/${idx}`),
+    queryKey: [housePath(target, `/rooms/${idx}`)],
+    queryFn: () => api<RoomJson>(housePath(target, `/rooms/${idx}`)),
     enabled: idx !== null,
-    refetchInterval: refresh ? 60_000 : false,
+    refetchInterval: refresh ? 10_000 : false,
+    refetchIntervalInBackground: false,
     retry: false,
   });
 }
 
 /** The URL of the bot's own picture of a room, for comparing. */
 export function renderUrl(target: HouseTarget, idx: number, seed: number, scale = 2): string {
-  return `${base(target)}/rooms/${idx}/render.png?scale=${scale}&seed=${seed}`;
+  const path = housePath(target, `/rooms/${idx}/render.png`);
+  return `${path}${path.includes("?") ? "&" : "?"}scale=${scale}&seed=${seed}`;
 }
 
 /** The catalogue and the atlas, read once: the art every room is drawn from. */
@@ -94,4 +115,16 @@ export async function loadCharacters(art: Art, codes: string[]): Promise<void> {
         }
       }),
   );
+}
+
+/** Use the same Turkish content names as Discord; user-authored house names stay untouched. */
+export function roomLabel(id: string, fallback: string) {
+  return locale() === "tr"
+    ? ((roomNames as Record<string, { name: string }>)[id]?.name ?? fallback)
+    : fallback;
+}
+export function tierLabel(tier: number, fallback: string) {
+  return locale() === "tr"
+    ? ((terms as Record<string, { name: string }>)[`tier.${tier}`]?.name ?? fallback)
+    : fallback;
 }

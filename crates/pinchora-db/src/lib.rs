@@ -19,7 +19,10 @@ mod giveaways;
 mod guestbook;
 mod guilds;
 mod house;
+pub use house::HouseEditorGuard;
 mod house_read;
+mod house_settings;
+pub use house_settings::{HouseUpdate, HouseUpdateOutcome};
 mod interactions;
 mod invites;
 mod language;
@@ -146,6 +149,7 @@ pub use xp_admin::XpEdit;
 #[derive(Clone, Debug)]
 pub struct Db {
     pool: PgPool,
+    editor_slots: std::sync::Arc<tokio::sync::Semaphore>,
 }
 
 impl Db {
@@ -162,7 +166,10 @@ impl Db {
             .acquire_timeout(acquire_timeout)
             .connect(url)
             .await?;
-        Ok(Self { pool })
+        Ok(Self {
+            pool,
+            editor_slots: std::sync::Arc::new(tokio::sync::Semaphore::new((max_connections / 2) as usize)),
+        })
     }
 
     pub async fn migrate(&self) -> anyhow::Result<()> {

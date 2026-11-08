@@ -8,8 +8,8 @@ use pinchora_db::{PlacementRow, RoomChange};
 use pinchora_game::{Content, Layer};
 use serde::{Deserialize, Serialize};
 
-use super::house::Who;
 use crate::App;
+use crate::Who;
 
 /// Steps kept per room.
 const KEEP: usize = 10;
@@ -18,16 +18,16 @@ const TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// A piece as it stands, or stood, in the room.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct Piece {
-    pub(crate) id: i64,
-    pub(crate) item: String,
-    pub(crate) x: i16,
-    pub(crate) y: i16,
-    pub(crate) flipped: bool,
+pub struct Piece {
+    pub id: i64,
+    pub item: String,
+    pub x: i16,
+    pub y: i16,
+    pub flipped: bool,
 }
 
 impl Piece {
-    pub(crate) fn of(p: &PlacementRow) -> Self {
+    pub fn of(p: &PlacementRow) -> Self {
         Self {
             id: p.id,
             item: p.item_id.clone(),
@@ -50,7 +50,7 @@ impl Piece {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum Kind {
+pub enum Kind {
     Place,
     /// Taken up and put down somewhere else.
     Move,
@@ -66,23 +66,23 @@ pub(crate) enum Kind {
 
 /// One editor action and what undoing it takes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Step {
-    pub(crate) kind: Kind,
+pub struct Step {
+    pub kind: Kind,
     /// The piece's name; the room's for a clear.
-    pub(crate) name: String,
+    pub name: String,
     /// Pieces the action put in the room; undo takes them back to the inventory.
     #[serde(default)]
-    pub(crate) added: Vec<Piece>,
+    pub added: Vec<Piece>,
     /// Pieces the action took out of the room; undo puts them back where they stood.
     #[serde(default)]
-    pub(crate) removed: Vec<Piece>,
+    pub removed: Vec<Piece>,
     /// A piece turned in place, as it stands now; undo turns it back.
     #[serde(default)]
-    pub(crate) turned: Option<Piece>,
+    pub turned: Option<Piece>,
 }
 
 impl Step {
-    pub(crate) fn new(kind: Kind, name: impl Into<String>) -> Self {
+    pub fn new(kind: Kind, name: impl Into<String>) -> Self {
         Self {
             kind,
             name: name.into(),
@@ -93,7 +93,7 @@ impl Step {
     }
 
     /// "moving **Oak Chair**", as in "Undid moving **Oak Chair**."
-    pub(crate) fn describe(&self) -> String {
+    pub fn describe(&self) -> String {
         let verb = match self.kind {
             Kind::Place => "placing",
             Kind::Move => "moving",
@@ -111,7 +111,7 @@ impl Step {
 
     /// What undoing it does to the room, in order: take back what it added, turn back what it
     /// turned, then put back what it removed, rugs and floor pieces before what stands on them.
-    pub(crate) fn reverse(&self, content: &Content, room: i16) -> Vec<RoomChange> {
+    pub fn reverse(&self, content: &Content, room: i16) -> Vec<RoomChange> {
         let rank = |p: &&Piece| match content.item(&p.item).map(|i| i.base.layer) {
             Some(Layer::Rug) => 0,
             Some(Layer::Floor) => 1,
@@ -131,7 +131,7 @@ impl Step {
 
     /// Where the cursor goes once this is undone: the piece put back, the piece turned back, or
     /// the spot a taken-back piece stood on; as that piece stands after the undo.
-    pub(crate) fn focus(&self) -> Option<Piece> {
+    pub fn focus(&self) -> Option<Piece> {
         if let Some(p) = self.removed.first() {
             return Some(p.clone());
         }
@@ -147,7 +147,7 @@ impl Step {
 
 /// A room's undo steps, oldest first.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct History {
+pub struct History {
     /// [`fingerprint`] of the room as the newest step left it. When the room differs, it was
     /// changed outside the editor and the steps may no longer apply.
     room: u64,
@@ -155,14 +155,20 @@ pub(crate) struct History {
     /// Changed since it was loaded, so it needs saving.
     #[serde(skip)]
     dirty: bool,
+    #[serde(skip)]
+    observed: Option<String>,
 }
 
 impl History {
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn steps(&self) -> &[Step] {
+        &self.steps
+    }
+
+    pub fn is_empty(&self) -> bool {
         self.steps.is_empty()
     }
 
-    pub(crate) fn push(&mut self, step: Step) {
+    pub fn push(&mut self, step: Step) {
         self.steps.push(step);
         if self.steps.len() > KEEP {
             self.steps.remove(0);
@@ -170,7 +176,7 @@ impl History {
         self.dirty = true;
     }
 
-    pub(crate) fn pop(&mut self) -> Option<Step> {
+    pub fn pop(&mut self) -> Option<Step> {
         let step = self.steps.pop();
         self.dirty |= step.is_some();
         step
@@ -178,7 +184,7 @@ impl History {
 
     /// Records a placement. Right after Move lifted the same item, it completes that move, so
     /// one undo puts the piece back where it came from.
-    pub(crate) fn placed(&mut self, piece: Piece, name: &str) {
+    pub fn placed(&mut self, piece: Piece, name: &str) {
         if let Some(top) = self.steps.last_mut()
             && top.kind == Kind::Lift
             && top.removed.first().is_some_and(|p| p.item == piece.item)
@@ -194,7 +200,7 @@ impl History {
     }
 
     /// An undo put the piece that had id `old` back as `new`; older steps follow it there.
-    pub(crate) fn renumber(&mut self, old: i64, new: i64) {
+    pub fn renumber(&mut self, old: i64, new: i64) {
         let pieces = self.steps.iter_mut().flat_map(|s| {
             s.added
                 .iter_mut()
@@ -209,7 +215,7 @@ impl History {
 }
 
 /// A hash of the room's placements (FNV-1a, in id order); any change to the room changes it.
-pub(crate) fn fingerprint(placements: &[PlacementRow]) -> u64 {
+pub fn fingerprint(placements: &[PlacementRow]) -> u64 {
     let mut rows: Vec<&PlacementRow> = placements.iter().collect();
     rows.sort_by_key(|p| p.id);
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
@@ -240,7 +246,7 @@ fn key(owner: u64, editor: u64, bond: i64, room: i16) -> String {
 }
 
 /// The room's undo history; empty when the room changed since the editor last saved it.
-pub(crate) async fn load(app: &App, who: Who, room: i16, placements: &[PlacementRow]) -> History {
+pub async fn load(app: &App, who: Who, room: i16, placements: &[PlacementRow]) -> History {
     let raw = app
         .cache
         .get(&key(who.owner, who.stock, who.bond, room))
@@ -249,35 +255,51 @@ pub(crate) async fn load(app: &App, who: Who, room: i16, placements: &[Placement
             tracing::debug!(%error, "undo history not read");
             None
         });
-    let Some(history) = raw.and_then(|r| serde_json::from_str::<History>(&r).ok()) else {
-        return History::default();
+    let Some(mut history) = raw.as_deref().and_then(|r| serde_json::from_str::<History>(r).ok()) else {
+        return History {
+            observed: raw,
+            ..History::default()
+        };
     };
+    history.observed = raw.clone();
     if history.room == fingerprint(placements) {
         history
     } else {
-        // Saving this empty history deletes the stale one.
+        // A read-only refresh must not race a writer between its DB commit and history save.
+        // The next actual edit replaces the stale history.
         History {
-            dirty: true,
+            observed: raw,
             ..History::default()
         }
     }
 }
 
 /// Saves the history, if it changed, against the room as it is now.
-pub(crate) async fn save(app: &App, who: Who, room: i16, history: &mut History, placements: &[PlacementRow]) {
+pub async fn save(app: &App, who: Who, room: i16, history: &mut History, placements: &[PlacementRow]) {
     if !history.dirty {
         return;
     }
-    history.dirty = false;
     history.room = fingerprint(placements);
     let key = key(who.owner, who.stock, who.bond, room);
-    let saved = if history.steps.is_empty() {
-        app.cache.forget(&key).await
-    } else {
-        match serde_json::to_string(history) {
-            Ok(json) => app.cache.put(&key, &json, TTL).await,
-            Err(error) => Err(error.into()),
-        }
+    // Empty histories are tombstones too, so a late save cannot resurrect an undone step.
+    let saved = match serde_json::to_string(history) {
+        Ok(json) => match app
+            .cache
+            .compare_put(&key, history.observed.as_deref(), &json, TTL)
+            .await
+        {
+            Ok(true) => {
+                history.observed = Some(json);
+                history.dirty = false;
+                Ok(())
+            }
+            Ok(false) => {
+                history.dirty = false;
+                Ok(())
+            }
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error.into()),
     };
     if let Err(error) = saved {
         tracing::warn!(%error, "undo history not saved");

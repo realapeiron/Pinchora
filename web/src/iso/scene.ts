@@ -64,6 +64,8 @@ export interface Scene {
 
 /** One room as `GET /api/house/rooms/{idx}` answers. */
 export interface RoomJson {
+  fingerprint?: string;
+  undo?: { kind: string; describe: string }[];
   idx: number;
   room_type: string;
   width: number;
