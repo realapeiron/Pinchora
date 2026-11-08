@@ -22,6 +22,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("member_voice_levels", "user_id"),
     ("mod_booster_roles", "user_id"),
     ("mod_notes", "user_id"),
     ("mod_notes", "author_id"),
@@ -239,6 +240,9 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "guild_leveling_parity",
+    "guild_leveling_highlight_posts",
+    "voice_level_roles",
     "mod_parity_settings",
     "qotd_settings",
     "counting_channels",

@@ -505,9 +505,19 @@
     "slice": 4
   },
   {
+    "legacy": "config xp curve",
+    "canonical": "progression leveling xp-curve",
+    "slice": 20
+  },
+  {
     "legacy": "config xp multiplier",
     "canonical": "progression leveling xp-multiplier",
     "slice": 4
+  },
+  {
+    "legacy": "config xp public",
+    "canonical": "progression leveling xp-public",
+    "slice": 20
   },
   {
     "legacy": "config xp show",
@@ -515,9 +525,34 @@
     "slice": 4
   },
   {
+    "legacy": "config xp sources",
+    "canonical": "progression leveling xp-sources",
+    "slice": 20
+  },
+  {
+    "legacy": "config xp tuning",
+    "canonical": "progression leveling xp-tuning",
+    "slice": 20
+  },
+  {
     "legacy": "config xp voice",
     "canonical": "progression leveling xp-voice",
     "slice": 4
+  },
+  {
+    "legacy": "config xp voice-role-add",
+    "canonical": "progression leveling xp-voice-role-add",
+    "slice": 20
+  },
+  {
+    "legacy": "config xp voice-role-list",
+    "canonical": "progression leveling xp-voice-role-list",
+    "slice": 20
+  },
+  {
+    "legacy": "config xp voice-role-remove",
+    "canonical": "progression leveling xp-voice-role-remove",
+    "slice": 20
   },
   {
     "legacy": "counters add",

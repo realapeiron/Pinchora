@@ -387,8 +387,29 @@ pub(crate) async fn on_vote<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -
         return tell(cx, t!(cx.lang(), "suggest.gone")).await;
     }
     let user = cx.author()?.id.get();
-    if cx.app.db.vote_suggestion(id, user, up).await? == SuggestionVote::Closed {
+    let vote = cx.app.db.vote_suggestion(id, user, up).await?;
+    if vote == SuggestionVote::Closed {
         return tell(cx, t!(cx.lang(), "suggest.closed")).await;
+    }
+    if vote == SuggestionVote::Voted
+        && let Some(channel) = found.as_ref().and_then(|s| s.channel_id)
+    {
+        let held: Vec<u64> = cx
+            .interaction
+            .member
+            .as_ref()
+            .map(|m| m.roles.iter().map(|r| r.get()).collect())
+            .unwrap_or_default();
+        crate::leveling_parity::award_vote(
+            &cx.app,
+            guild.unwrap_or_default(),
+            user,
+            channel as u64,
+            &held,
+            "suggestion",
+            id,
+        )
+        .await;
     }
     let Some(now) = cx.app.db.suggestion(id).await? else {
         return tell(cx, t!(cx.lang(), "suggest.gone")).await;

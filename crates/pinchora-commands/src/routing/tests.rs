@@ -13,7 +13,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
     assert_eq!(tree.len(), 107);
-    assert_eq!(paths.len(), 381);
+    assert_eq!(paths.len(), 388);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
     assert_eq!(
@@ -46,7 +46,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 198);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 205);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -515,7 +515,10 @@ fn size_counts_longest_localizations_unicode_choices_and_nested_options() {
 fn previous_setup_paths_keep_arguments_and_migrate_flat_constraints() {
     use pinchora_core::command_control::{Config, Rule};
     for route in MANIFEST.iter().filter(|r| {
-        previous_path(r).starts_with("setup ") && previous_path(r) != r.canonical && !r.legacy.starts_with("modtools ")
+        r.slice <= 19
+            && previous_path(r).starts_with("setup ")
+            && previous_path(r) != r.canonical
+            && !r.legacy.starts_with("modtools ")
     }) {
         let previous = previous_path(route);
         assert_eq!(canonical(&previous), route.canonical);

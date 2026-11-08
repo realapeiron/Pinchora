@@ -33,6 +33,8 @@ pub enum Board {
     ServerPoints,
     #[option(name = "Weekly XP", value = "weekly")]
     Weekly,
+    #[option(name = "Voice XP", value = "voice")]
+    Voice,
     #[option(name = "Weekly catch", value = "catch")]
     WeeklyCatch,
     #[option(name = "Global (XP)", value = "xp")]
@@ -47,6 +49,7 @@ impl Board {
             "server" => Some(Self::Server),
             "points" => Some(Self::ServerPoints),
             "weekly" => Some(Self::Weekly),
+            "voice" => Some(Self::Voice),
             "catch" => Some(Self::WeeklyCatch),
             "xp" => Some(Self::GlobalXp),
             "shells" => Some(Self::GlobalShells),
@@ -69,9 +72,10 @@ impl Leaderboard {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let guild = cx.guild_id();
         let board = match (self.board, guild) {
-            (Some(Board::Server | Board::ServerPoints | Board::Weekly | Board::WeeklyCatch) | None, None) => {
-                Board::GlobalXp
-            }
+            (
+                Some(Board::Server | Board::ServerPoints | Board::Weekly | Board::WeeklyCatch | Board::Voice) | None,
+                None,
+            ) => Board::GlobalXp,
             (Some(b), _) => b,
             (None, Some(_)) => Board::Server,
         };
@@ -177,7 +181,9 @@ async fn page(
     let offset = i64::from(page) * PAGE_SIZE;
     // The server boards need a server; anywhere else a stale button shows global XP.
     let board = match (board, guild) {
-        (Board::Server | Board::ServerPoints | Board::Weekly | Board::WeeklyCatch, None) => Board::GlobalXp,
+        (Board::Server | Board::ServerPoints | Board::Weekly | Board::WeeklyCatch | Board::Voice, None) => {
+            Board::GlobalXp
+        }
         (b, _) => b,
     };
     // Fetch one extra row to know whether a next page exists.
@@ -210,6 +216,10 @@ async fn page(
         (Board::Server, Some(g)) => (
             app.db.guild_leaderboard(g, PAGE_SIZE + 1, offset).await?,
             t!(lang, "leaderboard.server"),
+        ),
+        (Board::Voice, Some(g)) => (
+            app.db.voice_level_board(g, PAGE_SIZE + 1, offset).await?,
+            t!(lang, "leaderboard.voice"),
         ),
         (Board::ServerPoints, Some(g)) => {
             points_name = app.guild_settings(g).await?.points_name.clone();
@@ -246,6 +256,11 @@ async fn page(
         })
         .collect();
     let mut entries = Vec::with_capacity(rows.len());
+    let curve = if matches!(board, Board::Server | Board::Voice) {
+        Some(app.db.leveling_parity(guild.expect("server board")).await?)
+    } else {
+        None
+    };
     for (i, (row, person)) in rows.iter().zip(people).enumerate() {
         let (user, avatar) = person.await?;
         let (value, detail) = match board {
@@ -270,7 +285,13 @@ async fn page(
                 )
             }
             _ => (
-                t!(lang, "leaderboard.level", level = leveling::level_of(row.value)),
+                t!(
+                    lang,
+                    "leaderboard.level",
+                    level = curve
+                        .as_ref()
+                        .map_or_else(|| leveling::level_of(row.value), |c| c.level_of(row.value))
+                ),
                 t!(lang, "leaderboard.xp", xp = thousands_in(lang, row.value)),
             ),
         };
@@ -306,6 +327,7 @@ async fn page(
         Board::Server => "server",
         Board::ServerPoints => "points",
         Board::Weekly => "weekly",
+        Board::Voice => "voice",
         Board::WeeklyCatch => "catch",
         Board::GlobalXp => "xp",
         Board::GlobalShells => "shells",

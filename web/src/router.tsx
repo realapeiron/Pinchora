@@ -40,6 +40,10 @@ export const router = createBrowserRouter([
       { path: "/", element: <Landing /> },
       { path: "/status", element: <StatusPage /> },
       {
+        path: "/lb/:slug",
+        lazy: async () => ({ Component: (await import("./site/Leaderboard")).PublicLeaderboard }),
+      },
+      {
         path: "/commands",
         lazy: async () => ({ Component: (await import("./site/Commands")).Commands }),
       },

@@ -13,8 +13,9 @@ use std::{
 };
 
 use pinchora_core::{
-    leveling::{VoicePresence, level_of, scale, voice_earners, week_start},
+    leveling::{LevelReward, LevelUpMode, VoicePresence, scale, voice_earners, week_start},
     modules::Module,
+    t,
 };
 use pinchora_db::GuildSettings;
 use tokio::{
@@ -31,7 +32,79 @@ use crate::{
     App,
     app::ChannelPlace,
     leveling::{self, LevelUp},
+    roles,
 };
+
+async fn announce_voice_level(
+    app: &Arc<App>,
+    settings: &GuildSettings,
+    guild: u64,
+    user: u64,
+    level: u32,
+    record: &Record,
+) {
+    let result = async {
+        let rewards: Vec<LevelReward> = app
+            .db
+            .voice_level_roles(guild)
+            .await?
+            .into_iter()
+            .map(|row| LevelReward {
+                level: row.level as u32,
+                role_id: row.role_id as u64,
+            })
+            .collect();
+        let (given, _) = roles::apply_level_roles(
+            app,
+            guild,
+            user,
+            level,
+            &record.roles,
+            &rewards,
+            settings.level_roles_stack,
+        )
+        .await;
+        let role = rewards
+            .iter()
+            .filter(|row| given.contains(&row.role_id))
+            .max_by_key(|row| row.level)
+            .map(|row| row.role_id);
+        let mode = LevelUpMode::parse(&settings.levelup_mode);
+        let here = Id::new(record.channel.max(1));
+        let channel = match mode {
+            LevelUpMode::Off => return anyhow::Ok(()),
+            LevelUpMode::Current => here,
+            LevelUpMode::Channel => match settings.levelup_channel_id {
+                Some(ch) if app.module_allowed(guild, Some(ch as u64), Module::Leveling).await => Id::new(ch as u64),
+                _ => here,
+            },
+            LevelUpMode::Dm => match leveling::private_channel(app, user).await {
+                Some(ch) => ch,
+                None => return Ok(()),
+            },
+        };
+        let lang = if mode == LevelUpMode::Dm {
+            crate::server_events::dm_lang(app, user, guild).await
+        } else {
+            app.guild_lang(guild).await
+        };
+        let content = if let Some(role) = role {
+            t!(lang, "xp.voice-levelup-role", user = user, level = level, role = role)
+        } else {
+            t!(lang, "xp.voice-levelup", user = user, level = level)
+        };
+        let payload = serde_json::json!({"content": content, "allowed_mentions": {"parse": []}});
+        app.http
+            .create_message(channel)
+            .payload_json(&serde_json::to_vec(&payload)?)
+            .await?;
+        anyhow::Ok(())
+    }
+    .await;
+    if let Err(error) = result {
+        tracing::warn!(%error, guild, user, "voice level-up failed");
+    }
+}
 
 /// The guilds that have somebody in voice, as a set; each guild's members are a hash.
 const GUILDS: &str = "vc:guilds";
@@ -416,6 +489,10 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
     if !view.settings.leveling_enabled {
         return Ok(0);
     }
+    let parity = app.leveling_parity(guild).await?;
+    if !parity.voice {
+        return Ok(0);
+    }
     let stored = app.cache.map_all(&key).await?;
     if stored.is_empty() {
         forget_guild(app, guild, &key).await?;
@@ -485,14 +562,18 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
             grants.push((*user, xp));
         }
     }
-    let gains = app.db.add_voice_xp(guild, &grants, week_start(now)).await?;
+    let gains = if parity.separate_voice_level {
+        app.db.add_separate_voice_xp(guild, &grants, week_start(now)).await?
+    } else {
+        app.db.add_voice_xp(guild, &grants, week_start(now)).await?
+    };
     for (user, _) in &gains {
         crate::commands::achievements::on_message(app, guild, *user).await;
     }
     metrics::counter!("pinchora_voice_xp_granted_total").increment(grants.iter().map(|(_, xp)| *xp as u64).sum());
     let climbs: Vec<(u64, u32, u32)> = gains
         .iter()
-        .map(|(user, gain)| (*user, level_of(gain.old_xp), level_of(gain.new_xp)))
+        .map(|(user, gain)| (*user, parity.level_of(gain.old_xp), parity.level_of(gain.new_xp)))
         .filter(|(_, before, after)| after > before)
         .collect();
     if !climbs.is_empty() {
@@ -501,7 +582,11 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
             Ok(settings) => {
                 for (user, before, after) in climbs {
                     if let Some((_, record)) = here.iter().find(|(u, _)| *u == user) {
-                        announce(app, &settings, guild, user, (before, after), record).await;
+                        if parity.separate_voice_level {
+                            announce_voice_level(app, &settings, guild, user, after, record).await;
+                        } else {
+                            announce(app, &settings, guild, user, (before, after), record).await;
+                        }
                     }
                 }
             }

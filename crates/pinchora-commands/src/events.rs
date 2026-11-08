@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use pinchora_core::{
     card_design::{CardKind, Delivery},
     i18n::Lang,
-    leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of, scale, week_start},
+    leveling::{scale, week_start},
     modules::Module,
     settings::MessageKind,
     t,
@@ -74,14 +74,16 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     // Leveling and points can also be switched off in some channels (`/config modules`). Where neither
     // counts the minute is not spent, so chatting in such a channel never costs the XP of the next message
     // somewhere else.
-    let leveling_on = settings.leveling_enabled && app.module_allowed(g, here, Module::Leveling).await;
+    let parity = app.leveling_parity(g).await?;
+    let leveling_on =
+        settings.leveling_enabled && parity.messages && app.module_allowed(g, here, Module::Leveling).await;
     let points_on = settings.points_enabled && app.module_allowed(g, here, Module::Points).await;
     let author_nick = msg.member.as_ref().and_then(|m| m.nick.as_deref());
     if !leveling_on && !points_on {
         server_log::note_names(&app, g, &msg.author, author_nick).await;
         return Ok(());
     }
-    let cooldown = Duration::from_secs(MESSAGE_XP_COOLDOWN_SECS);
+    let cooldown = Duration::from_secs(parity.message_cooldown_secs);
     if app
         .cache
         .try_cooldown(&format!("xp:{g}:{u}"), cooldown)
@@ -113,7 +115,10 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         }
         return Ok(());
     }
-    let amount = rand::random_range(MESSAGE_XP);
+    let mut amount = rand::random_range(parity.message_min..=parity.message_max);
+    if parity.effort && (msg.content.chars().count() >= 200 || !msg.attachments.is_empty()) {
+        amount += parity.effort_bonus;
+    }
     let grant = XpGrant {
         server_xp: scale(amount, multiplier),
         global_xp: amount,
@@ -127,7 +132,7 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
     }
 
-    let (before, after) = (level_of(gain.old_xp), level_of(gain.new_xp));
+    let (before, after) = (parity.level_of(gain.old_xp), parity.level_of(gain.new_xp));
     if after <= before {
         return Ok(());
     }

@@ -25,6 +25,7 @@ pub fn router() -> Router<WebState> {
         .route("/settings", patch(settings::patch))
         .route("/audit", get(audit_log::audit))
         .route("/xp-rules", get(leveling::xp_rules).delete(leveling::clear_xp_rules))
+        .nest("/leveling-parity", super::leveling_parity::router())
         .route(
             "/xp-rules/{kind}/{target}",
             put(leveling::put_xp_rule).delete(leveling::delete_xp_rule),

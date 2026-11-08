@@ -27,6 +27,7 @@ import { jobProgress, jobText, rememberJob, rememberedJob } from "../lib/syncJob
 import { useSettingsForm } from "../lib/useSettingsForm";
 import { SettingsPage } from "./PageHead";
 import { XpAdmin } from "./XpAdmin";
+import { LevelingParityPanel } from "./LevelingParity";
 
 const MODES = [
   {
@@ -161,6 +162,7 @@ export function Leveling() {
       </Panel>
 
       <Multipliers guild={guild} info={discord.data} />
+      <LevelingParityPanel guild={guild} info={discord.data} />
 
       <LevelRoles
         guild={guild}

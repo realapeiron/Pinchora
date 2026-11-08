@@ -98,6 +98,7 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
 
 /// A member left or was removed, before the goodbye.
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
+    crate::leveling_parity::on_member_leave(app, event);
     crate::verification::on_member_leave(app, event).await;
     if let Err(error) = app
         .db
@@ -116,6 +117,7 @@ pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
 
 /// A reaction changed on a message in a server.
 pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
+    crate::leveling_parity::on_reaction(app, event);
     // F2 reaction roles.
     crate::commands::roles_pack::on_reaction(app, event).await;
     // F5 starboard counts stars.

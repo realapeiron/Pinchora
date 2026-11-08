@@ -34,9 +34,11 @@ mod text;
 mod tickets;
 mod trackers;
 pub use trackers::{spawn_ticker as spawn_trackers_ticker, tick as trackers_tick};
+mod leveling_parity;
 mod util;
 mod utility;
 mod voice_xp;
+pub use leveling_parity::spawn_ticker as spawn_leveling_parity_ticker;
 mod xp_admin;
 pub use utility::{
     bot_permissions as utility_bot_permissions, creator_may_ping as utility_creator_may_ping,

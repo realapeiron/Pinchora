@@ -94,6 +94,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         .await
         .unwrap();
     db.guild_settings(guild).await.unwrap();
+    sqlx::query("INSERT INTO member_voice_levels (guild_id,user_id,xp) VALUES ($1,$2,1)")
+        .bind(guild as i64)
+        .bind(user as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
     db.set_birthday(
         user,
         &pinchora_db::BirthdayInput {

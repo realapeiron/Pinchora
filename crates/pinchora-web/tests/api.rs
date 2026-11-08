@@ -80,6 +80,8 @@ mod birthdays;
 mod branding;
 #[path = "api/events.rs"]
 mod events;
+#[path = "api/leveling_parity.rs"]
+mod leveling_parity;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 #[path = "api/trackers.rs"]

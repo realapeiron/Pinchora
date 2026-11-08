@@ -261,7 +261,7 @@ pub async fn sync_member_roles(app: &App, guild: u64, user: u64) -> anyhow::Resu
         Err(error) => return Err(error.into()),
     };
     let xp = app.db.member_rank(guild, user).await?.map_or(0, |r| r.xp);
-    let level = leveling::level_of(xp);
+    let level = app.db.leveling_parity(guild).await?.level_of(xp);
     let stack = app.db.guild_settings(guild).await?.level_roles_stack;
     let held: Vec<_> = member.roles.iter().map(|r| r.get()).collect();
     let (wanted, _) = leveling::role_changes(&rewards, level, stack, &[]);

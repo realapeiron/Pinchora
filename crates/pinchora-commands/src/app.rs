@@ -14,6 +14,7 @@ use pinchora_cache::Cache;
 use pinchora_core::{
     automod::Config as AutoModConfig,
     leveling::XpRules,
+    leveling_parity::LevelingParity,
     modules::{Access, GuildModules, Module},
 };
 use pinchora_db::{Db, GuildSettings};
@@ -151,6 +152,7 @@ pub struct App {
     saved_overrides: Moka<u64, Option<Arc<CommandOverrides>>>,
     command_overrides: Moka<u64, Arc<CommandOverrides>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
+    leveling_parity: Moka<u64, Arc<LevelingParity>>,
     command_control: Moka<u64, Arc<pinchora_core::command_control::Config>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
     automod_configs: Moka<u64, Arc<AutoModConfig>>,
@@ -241,6 +243,10 @@ impl App {
                 .time_to_live(Duration::from_secs(300))
                 .build(),
             xp_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            leveling_parity: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
@@ -415,6 +421,20 @@ impl App {
             .try_get_with(guild_id, async { self.db.xp_rules(guild_id).await.map(Arc::new) })
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// A server's leveling policy, cached for a minute like its XP multipliers.
+    pub async fn leveling_parity(&self, guild_id: u64) -> anyhow::Result<Arc<LevelingParity>> {
+        self.leveling_parity
+            .try_get_with(guild_id, async {
+                self.db.leveling_parity(guild_id).await.map(Arc::new)
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    pub async fn forget_leveling_parity(&self, guild_id: u64) {
+        self.leveling_parity.invalidate(&guild_id).await;
     }
 
     pub async fn forget_xp_rules(&self, guild_id: u64) {
@@ -808,6 +828,7 @@ impl App {
         self.branding_colors.invalidate(&guild_id).await;
         self.forget_automod_config(guild_id).await;
         self.guild_settings.invalidate(&guild_id).await;
+        self.leveling_parity.invalidate(&guild_id).await;
         self.log_state.forget_config(guild_id).await;
         self.module_rules.invalidate(&guild_id).await;
         self.command_control.invalidate(&guild_id).await;

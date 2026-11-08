@@ -118,7 +118,7 @@ describe("the committed command list", () => {
 
 it("finds canonical commands by their old names without duplicate slash entries", () => {
   const commands = catalog.areas.flatMap((a) => a.commands);
-  expect(commands).toHaveLength(381);
+  expect(commands).toHaveLength(388);
   expect(new Set(commands.map((c) => c.path.split(" ")[0])).size).toBe(73);
   for (const command of commands) {
     for (const alias of command.aliases ?? []) {

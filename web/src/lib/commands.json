@@ -25,10 +25,15 @@
               "description": "Whose rank to show (default: you)",
               "name": "user",
               "required": false
+            },
+            {
+              "description": "Show the separate voice level instead of chat level",
+              "name": "voice",
+              "required": false
             }
           ],
           "path": "rank",
-          "usage": "/rank [user]"
+          "usage": "/rank [user] [voice]"
         },
         {
           "aliases": [],
@@ -40,6 +45,7 @@
                 "This server (XP)",
                 "This server (points)",
                 "Weekly XP",
+                "Voice XP",
                 "Weekly catch",
                 "Global (XP)",
                 "Global (shells)"
@@ -6779,6 +6785,37 @@
         },
         {
           "aliases": [
+            "config xp curve"
+          ],
+          "description": "Choose the level XP curve",
+          "manager": true,
+          "options": [
+            {
+              "description": "classic, linear, mee6 or custom",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Base XP per level",
+              "name": "base",
+              "required": false
+            },
+            {
+              "description": "Linear XP coefficient",
+              "name": "linear",
+              "required": false
+            },
+            {
+              "description": "Quadratic XP coefficient",
+              "name": "quadratic",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-curve",
+          "usage": "/progression leveling xp-curve <kind> [base] [linear] [quadratic]"
+        },
+        {
+          "aliases": [
             "config xp multiplier"
           ],
           "description": "Scale the XP and points a channel or role earns",
@@ -6805,6 +6842,27 @@
         },
         {
           "aliases": [
+            "config xp public"
+          ],
+          "description": "Set highlights channel and leaderboard URL",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for weekly highlights",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Lowercase path for the public leaderboard; off to remove",
+              "name": "slug",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-public",
+          "usage": "/progression leveling xp-public [channel] [slug]"
+        },
+        {
+          "aliases": [
             "config xp show"
           ],
           "description": "Show the multipliers and voice XP settings",
@@ -6812,6 +6870,93 @@
           "options": [],
           "path": "progression leveling xp-show",
           "usage": "/progression leveling xp-show"
+        },
+        {
+          "aliases": [
+            "config xp sources"
+          ],
+          "description": "Switch XP sources and leave reset",
+          "manager": true,
+          "options": [
+            {
+              "description": "Award XP for messages",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Award XP for reactions",
+              "name": "reactions",
+              "required": false
+            },
+            {
+              "description": "Award XP for eligible voice time",
+              "name": "voice",
+              "required": false
+            },
+            {
+              "description": "Bonus for long or attached messages",
+              "name": "effort",
+              "required": false
+            },
+            {
+              "description": "Award XP for votes where supported",
+              "name": "votes",
+              "required": false
+            },
+            {
+              "description": "Track a separate voice level",
+              "name": "separate_voice_level",
+              "required": false
+            },
+            {
+              "description": "Reset server XP when a member leaves",
+              "name": "reset_on_leave",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-sources",
+          "usage": "/progression leveling xp-sources [messages] [reactions] [voice] [effort] [votes] [separate_voice_level] [reset_on_leave]"
+        },
+        {
+          "aliases": [
+            "config xp tuning"
+          ],
+          "description": "Set XP amounts and message cooldown",
+          "manager": true,
+          "options": [
+            {
+              "description": "Minimum XP per message",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "Maximum XP per message",
+              "name": "max",
+              "required": false
+            },
+            {
+              "description": "Seconds between XP messages",
+              "name": "cooldown",
+              "required": false
+            },
+            {
+              "description": "XP per reaction",
+              "name": "reaction",
+              "required": false
+            },
+            {
+              "description": "Bonus XP for effort",
+              "name": "effort",
+              "required": false
+            },
+            {
+              "description": "XP per supported vote",
+              "name": "vote",
+              "required": false
+            }
+          ],
+          "path": "progression leveling xp-tuning",
+          "usage": "/progression leveling xp-tuning [min] [max] [cooldown] [reaction] [effort] [vote]"
         },
         {
           "aliases": [
@@ -6833,6 +6978,53 @@
           ],
           "path": "progression leveling xp-voice",
           "usage": "/progression leveling xp-voice [enabled] [amount]"
+        },
+        {
+          "aliases": [
+            "config xp voice-role-add"
+          ],
+          "description": "Give a role at a voice level",
+          "manager": true,
+          "options": [
+            {
+              "description": "Voice level that earns the role",
+              "name": "level",
+              "required": true
+            },
+            {
+              "description": "Role to give",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "progression leveling xp-voice-role-add",
+          "usage": "/progression leveling xp-voice-role-add <level> <role>"
+        },
+        {
+          "aliases": [
+            "config xp voice-role-list"
+          ],
+          "description": "List voice level roles",
+          "manager": true,
+          "options": [],
+          "path": "progression leveling xp-voice-role-list",
+          "usage": "/progression leveling xp-voice-role-list"
+        },
+        {
+          "aliases": [
+            "config xp voice-role-remove"
+          ],
+          "description": "Remove a voice level role",
+          "manager": true,
+          "options": [
+            {
+              "description": "Role to remove",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "progression leveling xp-voice-role-remove",
+          "usage": "/progression leveling xp-voice-role-remove <role>"
         },
         {
           "aliases": [
@@ -7320,5 +7512,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 381
+  "count": 388
 }
