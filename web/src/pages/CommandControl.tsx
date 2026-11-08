@@ -14,7 +14,7 @@ import {
 import { PixelButton } from "../components/PixelButton";
 import { Panel } from "../components/Panel";
 import { Field } from "../components/Field";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/command-control.css";
 export function CommandControl() {
@@ -34,8 +34,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
   const [target, setTarget] = useState("");
   const commands = filteredCommands(data.commands, search);
   return (
-    <div className="settings-page command-control-page">
-      <PageHead title={t("ui.title")} lead={t("ui.lead")} />
+    <SettingsPage className="settings-page command-control-page" title={t("ui.title")} lead={t("ui.lead")}>
       <p className="muted">{t("ui.migration")}</p>
       <Field label={t("ui.search")} htmlFor="command-search">
         <input
@@ -213,7 +212,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
           }
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }
 function CommandDrawer({

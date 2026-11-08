@@ -16,7 +16,7 @@ import { DELIVERY_LABELS } from "../lib/card";
 import { useCards, useDiscord } from "../lib/queries";
 import { checkMessage } from "../lib/rules";
 import { useSettingsForm } from "../lib/useSettingsForm";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 
 function check(value: Settings): (FieldError | null)[] {
   const fail = <T,>(c: { ok: true; value: T } | { ok: false; field: string; message: string }) =>
@@ -37,14 +37,13 @@ export function Welcome() {
   const cards = useCards(guild);
 
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("WELCOME")}
-        lead={spaTranslate(
-          "Greet new members with a card, give them a role, and say goodbye when someone leaves.",
-        )}
-      />
-
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("WELCOME")}
+      lead={spaTranslate(
+        "Greet new members with a card, give them a role, and say goodbye when someone leaves.",
+      )}
+    >
       <Panel title={spaTranslate("WELCOME MESSAGES")}>
         <SwitchRow
           title={spaTranslate("Welcome cards")}
@@ -196,6 +195,6 @@ export function Welcome() {
         onReset={form.reset}
       />
       <Toast message={form.toast} onDone={form.clearToast} />
-    </div>
+    </SettingsPage>
   );
 }

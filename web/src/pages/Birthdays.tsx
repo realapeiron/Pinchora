@@ -12,22 +12,24 @@ import { ApiError, type Overview } from "../lib/api";
 import { birthdayWords, type BirthdaySettings, useBirthdays, useSaveBirthdays } from "../lib/birthdays";
 import { useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import "../styles/birthdays.css";
 
 export function Birthdays() {
   const overview = useOutletContext<Overview>();
   const guild = overview.guild.id;
   const query = useBirthdays(guild);
+  const save = useSaveBirthdays(guild);
+  const [toast, setToast] = useState<string | null>(null);
   const t = birthdayWords(query.data?.strings, query.data?.language);
   return (
-    <div className="settings-page birthdays-page">
-      <PageHead
-        title={t("BIRTHDAYS")}
-        lead={t(
-          "A small celebration for members who choose to share their day. Their birth year stays private.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page birthdays-page"
+      title={t("BIRTHDAYS")}
+      lead={t(
+        "A small celebration for members who choose to share their day. Their birth year stays private.",
+      )}
+    >
       {query.isPending && <Loading label={t("Reading birthdays")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && (
@@ -37,11 +39,14 @@ export function Birthdays() {
           language={query.data.language}
           strings={query.data.strings}
           saved={query.data.settings}
+          save={save}
+          onSave={(draft) => save.mutate(draft, { onSuccess: () => setToast(t("Birthday settings saved.")) })}
           upcoming={query.data.upcoming}
           enabled={overview.modules.find((m) => m.key === "birthdays")?.enabled ?? true}
         />
       )}
-    </div>
+      <Toast message={toast} onDone={() => setToast(null)} />
+    </SettingsPage>
   );
 }
 function BirthdayBody({
@@ -49,6 +54,8 @@ function BirthdayBody({
   strings,
   guild,
   saved,
+  save,
+  onSave,
   upcoming,
   enabled,
 }: {
@@ -56,15 +63,15 @@ function BirthdayBody({
   strings: Record<string, string>;
   guild: string;
   saved: BirthdaySettings;
+  save: ReturnType<typeof useSaveBirthdays>;
+  onSave: (draft: BirthdaySettings) => void;
   upcoming: { user_id: string; name: string; date: string; month: number; day: number }[];
   enabled: boolean;
 }) {
   const t = birthdayWords(strings, language);
   const discord = useDiscord(guild);
-  const save = useSaveBirthdays(guild);
   const [draft, setDraft] = useState(saved);
   const [preview, setPreview] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const change = <K extends keyof BirthdaySettings>(key: K, value: BirthdaySettings[K]) =>
     setDraft((old) => ({ ...old, [key]: value }));
   const count = (Object.keys(saved) as (keyof BirthdaySettings)[]).filter(
@@ -287,9 +294,8 @@ function BirthdayBody({
           setDraft(saved);
           save.reset();
         }}
-        onSave={() => save.mutate(draft, { onSuccess: () => setToast(t("Birthday settings saved.")) })}
+        onSave={() => onSave(draft)}
       />
-      <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );
 }

@@ -58,7 +58,8 @@ test("the welcome page shows the image the bot sends and opens the editor", asyn
   expect(await page.locator(".preview-image").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(
     1100,
   );
-  await expect(page.getByText("The classic card, sent with the text, in one message.")).toBeVisible();
+  // The summary uses the current delivery label from the editor.
+  await expect(page.getByText("The classic card, with the text, in one message.")).toBeVisible();
   await page.locator(".designer").scrollIntoViewIfNeeded();
   await shot(page, "welcome-designer");
 

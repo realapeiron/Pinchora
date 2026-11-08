@@ -25,7 +25,7 @@ import {
 } from "../lib/rules";
 import { jobProgress, jobText, rememberJob, rememberedJob } from "../lib/syncJob";
 import { useSettingsForm } from "../lib/useSettingsForm";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { XpAdmin } from "./XpAdmin";
 
 const MODES = [
@@ -58,14 +58,13 @@ export function Leveling() {
   const { value, set, errors } = form;
 
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("LEVELING")}
-        lead={spaTranslate(
-          "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.",
-        )}
-      />
-
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("LEVELING")}
+      lead={spaTranslate(
+        "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.",
+      )}
+    >
       <Panel title={spaTranslate("CHAT XP")}>
         <SwitchRow
           title={spaTranslate("Leveling")}
@@ -182,7 +181,7 @@ export function Leveling() {
         onReset={form.reset}
       />
       <Toast message={form.toast} onDone={form.clearToast} />
-    </div>
+    </SettingsPage>
   );
 }
 

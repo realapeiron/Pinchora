@@ -19,30 +19,49 @@ import {
   useRobloxWrite,
 } from "../lib/roblox";
 import { Loading, Problem } from "./States";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import "../styles/roblox.css";
 
 export function Roblox() {
   const overview = useOutletContext<Overview>();
   const guild = overview.guild.id;
   const query = useRoblox(guild);
+  const { save } = useRobloxWrite(guild);
+  const [notice, setNotice] = useState("");
   return (
-    <div className="settings-page roblox-page">
-      <PageHead
-        title={t("Roblox verification")}
-        lead={t("Link Roblox profiles, then assign safe roles from group membership and ranks.")}
-      />
+    <SettingsPage
+      className="settings-page roblox-page"
+      title={t("Roblox verification")}
+      lead={t("Link Roblox profiles, then assign safe roles from group membership and ranks.")}
+    >
       {query.isPending && <Loading />}
       {query.isError && <Problem error={query.error} />}
       {query.data && (
-        <RobloxEditor key={JSON.stringify(query.data.settings)} guild={guild} data={query.data} />
+        <RobloxEditor
+          key={`${guild}:${JSON.stringify(query.data.settings)}`}
+          guild={guild}
+          data={query.data}
+          save={save}
+          onSave={(draft) => save.mutate(draft, { onSuccess: () => setNotice(t("Roblox settings saved.")) })}
+        />
       )}
-    </div>
+      {notice && <p role="status">{notice}</p>}
+    </SettingsPage>
   );
 }
-function RobloxEditor({ guild, data }: { guild: string; data: RobloxData }) {
+function RobloxEditor({
+  guild,
+  data,
+  save,
+  onSave,
+}: {
+  guild: string;
+  data: RobloxData;
+  save: ReturnType<typeof useRobloxWrite>["save"];
+  onSave: (draft: RobloxSettings) => void;
+}) {
   const discord = useDiscord(guild).data;
-  const { save, add, remove } = useRobloxWrite(guild);
+  const { add, remove } = useRobloxWrite(guild);
   const [draft, setDraft] = useState<RobloxSettings>(data.settings);
   const [kind, setKind] = useState<NewBind["kind"]>("verified");
   const [role, setRole] = useState<string | null>(null);
@@ -283,7 +302,7 @@ function RobloxEditor({ guild, data }: { guild: string; data: RobloxData }) {
         count={dirty ? 1 : 0}
         saving={save.isPending}
         error={save.error?.message}
-        onSave={() => save.mutate(draft, { onSuccess: () => setNotice(t("Roblox settings saved.")) })}
+        onSave={() => onSave(draft)}
         onReset={() => setDraft(data.settings)}
       />
     </>

@@ -17,7 +17,7 @@ import {
 } from "../lib/achievements";
 import { ApiError, type Overview } from "../lib/api";
 import { useAtlasIndex, useDiscord } from "../lib/queries";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/achievements.css";
 
@@ -139,16 +139,16 @@ export function Achievements() {
     .filter((id) => id.startsWith("b_"))
     .slice(0, 80);
   return (
-    <div className="settings-page ach-page">
-      <PageHead
-        title={t("ACHIEVEMENTS")}
-        lead={t("Create milestones that celebrate what members do in your server.")}
-        action={
-          <PixelButton onClick={() => open()} disabled={data.items.length >= data.max}>
-            {t("Add achievement")}
-          </PixelButton>
-        }
-      />
+    <SettingsPage
+      className="settings-page ach-page"
+      title={t("ACHIEVEMENTS")}
+      lead={t("Create milestones that celebrate what members do in your server.")}
+      action={
+        <PixelButton onClick={() => open()} disabled={data.items.length >= data.max}>
+          {t("Add achievement")}
+        </PixelButton>
+      }
+    >
       <div className="ach-summary">
         <span className="pixel-label">{t("Achievements")}</span>
         <strong>
@@ -394,7 +394,7 @@ export function Achievements() {
         ))}
       </div>
       <Toast message={toast} onDone={closeToast} />
-    </div>
+    </SettingsPage>
   );
 }
 

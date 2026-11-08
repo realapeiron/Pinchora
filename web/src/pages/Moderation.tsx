@@ -12,7 +12,7 @@ import { Toast } from "../components/Toast";
 import { ApiError, type LadderAction, type ModerationSettings, type Overview } from "../lib/api";
 import { type DraftRung, draftLadder, moderationPatch } from "../lib/moderation";
 import { useDiscord, useModeration } from "../lib/queries";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 const ACTIONS: { key: LadderAction; label: string }[] = [
@@ -31,17 +31,17 @@ export function Moderation() {
   const data = useOutletContext<Overview>();
   const { query } = useModeration(data.guild.id);
   return (
-    <div className="settings-page mod-page">
-      <PageHead
-        title={spaTranslate("MODERATION")}
-        lead={spaTranslate(
-          "Where the cases of /ban, /kick, /timeout, /warn and the others are posted, whether members hear about them, and what enough warns bring.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page mod-page"
+      title={spaTranslate("MODERATION")}
+      lead={spaTranslate(
+        "Where the cases of /ban, /kick, /timeout, /warn and the others are posted, whether members hear about them, and what enough warns bring.",
+      )}
+    >
       {query.isPending && <Loading label={spaTranslate("Reading the settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <ModerationForm guild={data.guild.id} saved={query.data} />}
-    </div>
+    </SettingsPage>
   );
 }
 

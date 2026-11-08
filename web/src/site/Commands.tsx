@@ -89,7 +89,9 @@ export function Commands() {
     else copy.delete("q");
     if (managers) copy.set("managers", "1");
     else copy.delete("managers");
-    setParams(copy, { replace: true, preventScrollReset: true });
+    // These URL values control native inputs; a deferred router transition restores the old
+    // checked/value state at the end of the input event before the navigation commits.
+    setParams(copy, { replace: true, preventScrollReset: true, flushSync: true });
   };
 
   // "/" jumps to the search, as on most sites with a lot to look through.

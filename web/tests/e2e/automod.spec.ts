@@ -16,8 +16,14 @@ test("AutoMod profiles, rule editing, safe preview, and responsive layouts", asy
   await caps.getByText("Configure rule").click();
   await caps.getByLabel("Threshold", { exact: true }).fill("90");
   await caps.getByRole("switch", { name: "Log only", exact: true }).click();
+  // The button says "Saving…" while PUT is pending, so its old name disappearing is not a save.
+  const savedResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/guilds/${guild}/automod`) && response.request().method() === "PUT",
+  );
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+  expect((await savedResponse).ok()).toBeTruthy();
+  await expect(page.getByRole("region", { name: "Unsaved changes" })).toHaveCount(0);
   const response = await page.request.get(`/api/guilds/${guild}/automod`);
   expect(response.ok()).toBeTruthy();
   const data = await response.json();

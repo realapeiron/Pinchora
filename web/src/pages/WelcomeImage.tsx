@@ -42,7 +42,7 @@ import {
   unknownPlaceholders,
 } from "../lib/card";
 import { cardsKey, useAtlasIndex, useCards, useDiscord, useMe } from "../lib/queries";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 import "../styles/card-editor.css";
@@ -408,14 +408,13 @@ function Editor({
   const ordered = [...design.layers].reverse();
 
   return (
-    <div className="settings-page card-editor">
-      <PageHead
-        title={spaTranslate("WELCOME IMAGE")}
-        lead={spaTranslate(
-          "Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; Try it, further down, shows the picture the bot really draws.",
-        )}
-      />
-
+    <SettingsPage
+      className="settings-page card-editor"
+      title={spaTranslate("WELCOME IMAGE")}
+      lead={spaTranslate(
+        "Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; Try it, further down, shows the picture the bot really draws.",
+      )}
+    >
       <div className="card-toolbar" role="toolbar" aria-label={spaTranslate("Editor")}>
         <div className="segmented" role="tablist" aria-label={spaTranslate("Which image")}>
           {KINDS.map((k) => (
@@ -828,6 +827,6 @@ function Editor({
         onReset={reset}
       />
       <Toast message={toast} onDone={clearToast} />
-    </div>
+    </SettingsPage>
   );
 }

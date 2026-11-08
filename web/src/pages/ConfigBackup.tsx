@@ -7,7 +7,7 @@ import { useBackup, type BackupData, type BackupDocument, type ImportRequest } f
 import { Field } from "../components/Field";
 import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/command-control.css";
 export function ConfigBackup() {
@@ -33,8 +33,7 @@ function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
     setFileError(null);
   };
   return (
-    <div className="settings-page command-control-page">
-      <PageHead title={t("ui.title")} lead={t("ui.lead")} />
+    <SettingsPage className="settings-page command-control-page" title={t("ui.title")} lead={t("ui.lead")}>
       <Panel title={t("ui.export")}>
         <p className="muted">{t("ui.export_hint")}</p>
         <a className="pixel-button pixel-button-primary" href={exportUrl} download>
@@ -198,6 +197,6 @@ function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
           </div>
         ))}
       </Panel>
-    </div>
+    </SettingsPage>
   );
 }

@@ -21,7 +21,7 @@ import {
   withMode,
 } from "../lib/modules";
 import { ModuleSaveError, useDiscord, useModules, useSaveModules } from "../lib/queries";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 const MODES: { value: ChannelMode; title: string; detail: string }[] = [
@@ -39,17 +39,17 @@ export function Modules() {
   const guild = data.guild.id;
   const query = useModules(guild);
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("MODULES")}
-        lead={spaTranslate(
-          "Switch parts of Pinchora off for the whole server, or keep them to some channels. Switched-off commands answer privately that the feature is off.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("MODULES")}
+      lead={spaTranslate(
+        "Switch parts of Pinchora off for the whole server, or keep them to some channels. Switched-off commands answer privately that the feature is off.",
+      )}
+    >
       {query.isPending && <Loading label={spaTranslate("Reading the modules")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <ModulesForm guild={guild} data={query.data} />}
-    </div>
+    </SettingsPage>
   );
 }
 
