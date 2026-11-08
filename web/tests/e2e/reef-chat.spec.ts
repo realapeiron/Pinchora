@@ -39,7 +39,9 @@ test("two contexts chat, report with receipt, moderate and block", async ({ brow
     await guest.getByLabel("Message", { exact: true }).fill(text);
     await guest.getByRole("button", { name: "Send", exact: true }).click();
     const line = host.getByLabel("Chat transcript").getByRole("article").filter({ hasText: text });
-    await expect(line).toContainText("delivered");
+    // Delivery labels are localized display text, with an initial capital in English.
+    await expect(line).toHaveAttribute("data-delivery", "delivered");
+    await expect(line).toContainText("Delivered");
     await expect(host.locator(".reef-chat-bubble").filter({ hasText: text })).toBeVisible();
     await line.getByRole("button", { name: "Report", exact: true }).click();
     await expect(host.getByRole("form", { name: "Report message" })).toContainText(text);

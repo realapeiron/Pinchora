@@ -11,7 +11,7 @@ import { PixelToggle } from "../components/PixelToggle";
 import { type GuildInfo, type Overview } from "../lib/api";
 import { useDiscord } from "../lib/queries";
 import { type Board, type VoteChannel, newBoard, newVote, useStarboard } from "../lib/starboard";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 const maxBoards = 3;
@@ -26,13 +26,13 @@ export function Starboard() {
   const [notice, setNotice] = useState<string | null>(null);
   const module = data.modules.find((m) => m.key === "starboard");
   return (
-    <div className="settings-page starboard-page">
-      <PageHead
-        title={spaTranslate("STARBOARD")}
-        lead={spaTranslate(
-          "Give the best posts a place of their own. Stars move a post onto a board; vote channels add reactions to every new message.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page starboard-page"
+      title={spaTranslate("STARBOARD")}
+      lead={spaTranslate(
+        "Give the best posts a place of their own. Stars move a post onto a board; vote channels add reactions to every new message.",
+      )}
+    >
       {module && !module.enabled && (
         <p className="notice">
           <strong>{spaTranslate("Starboard is off.")}</strong> {spaTranslate("Turn it on in")}{" "}
@@ -181,7 +181,7 @@ export function Starboard() {
           )}
         </>
       )}
-    </div>
+    </SettingsPage>
   );
 }
 

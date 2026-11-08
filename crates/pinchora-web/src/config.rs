@@ -26,6 +26,7 @@ pub struct WebSettings {
     /// Whether `POST /auth/dev-login` works: asked for, on a loopback bind, in a debug build (a
     /// release build never has it: a loopback bind is still reachable through a same-host proxy).
     pub dev_login: bool,
+    pub dev_login_unlimited: bool,
     pub static_dir: Option<PathBuf>,
     /// Whether the gateway runs with the privileged Message Content intent, without which the bot cannot
     /// read chat and keyword auto-responders stay locked. Read from the same `gateway.message_content`.
@@ -52,6 +53,7 @@ impl WebSettings {
         if client_secret.is_none() {
             missing.push("PINCHORA_WEB__CLIENT_SECRET");
         }
+        let dev_login = cfg!(debug_assertions) && web.dev_login && web.bind.ip().is_loopback();
         Ok(Self {
             bind: web.bind,
             redirect_uri: format!("{}/auth/callback", web.public_url.trim_end_matches('/')),
@@ -61,7 +63,8 @@ impl WebSettings {
             discord_api_base: web.discord_api_base.trim_end_matches('/').to_owned(),
             authorize_url: format!("{}/oauth2/authorize", api.origin().ascii_serialization()),
             cookie_secure: web.cookie_secure.unwrap_or(public.scheme() == "https"),
-            dev_login: cfg!(debug_assertions) && web.dev_login && web.bind.ip().is_loopback(),
+            dev_login,
+            dev_login_unlimited: dev_login && web.dev_login_unlimited,
             static_dir: web.static_dir.clone(),
             message_content: false,
             trusted_proxies: TrustedProxies::parse(&web.trusted_proxies)?,
@@ -138,6 +141,22 @@ mod tests {
             cfg!(debug_assertions),
             "release builds never have it"
         );
+    }
+
+    #[test]
+    fn unlimited_dev_login_requires_explicit_debug_loopback_login() {
+        let mut config = web();
+        assert!(!WebSettings::resolve(&config, 1).unwrap().dev_login_unlimited);
+        config.dev_login_unlimited = true;
+        config.bind = ([127, 0, 0, 1], 8090).into();
+        assert!(!WebSettings::resolve(&config, 1).unwrap().dev_login_unlimited);
+        config.dev_login = true;
+        assert_eq!(
+            WebSettings::resolve(&config, 1).unwrap().dev_login_unlimited,
+            cfg!(debug_assertions)
+        );
+        config.bind = ([0, 0, 0, 0], 8090).into();
+        assert!(!WebSettings::resolve(&config, 1).unwrap().dev_login_unlimited);
     }
 
     #[test]

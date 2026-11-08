@@ -31,7 +31,7 @@ import {
   useTickets,
   when,
 } from "../lib/tickets";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import { CategoryPicker, TicketPanels } from "./TicketPanels";
 import { TicketView } from "./TicketView";
@@ -52,13 +52,13 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
   const clearToast = useCallback(() => setToast(null), []);
   const module = modules.find((m) => m.key === "tickets");
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("TICKETS")}
-        lead={spaTranslate(
-          "Members open a private ticket from a panel: a channel or thread just for them and your staff, closed with a transcript.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("TICKETS")}
+      lead={spaTranslate(
+        "Members open a private ticket from a panel: a channel or thread just for them and your staff, closed with a transcript.",
+      )}
+    >
       {module && !module.enabled && (
         <p className="notice" role="note">
           <strong>{spaTranslate(module.label)}</strong> {spaTranslate("is switched off in")}{" "}
@@ -97,7 +97,7 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
         </>
       )}
       <Toast message={toast} onDone={clearToast} />
-    </div>
+    </SettingsPage>
   );
 }
 

@@ -31,7 +31,7 @@ import {
   tidyEmbed,
 } from "../lib/tags";
 import { useTagEditor } from "../lib/useTagEditor";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 function tidyResponder(draft: ResponderDef): ResponderDef {
@@ -124,16 +124,16 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
 
   const hearsChat = kind === "keyword" || kind === "level_up";
   return (
-    <div className="settings-page">
-      <PageHead
-        title={id ? spaTranslate("EDIT RESPONDER") : spaTranslate("NEW RESPONDER")}
-        lead={spaTranslate("Sent by the bot by itself when the trigger happens.")}
-        action={
-          <PixelLink variant="secondary" href={`/g/${guild}/responders`}>
-            {spaTranslate("Back to the list")}
-          </PixelLink>
-        }
-      />
+    <SettingsPage
+      className="settings-page"
+      title={id ? spaTranslate("EDIT RESPONDER") : spaTranslate("NEW RESPONDER")}
+      lead={spaTranslate("Sent by the bot by itself when the trigger happens.")}
+      action={
+        <PixelLink variant="secondary" href={`/g/${guild}/responders`}>
+          {spaTranslate("Back to the list")}
+        </PixelLink>
+      }
+    >
       <div className="editor">
         <div className="editor-form">
           <Panel title={spaTranslate("BASICS")}>
@@ -450,6 +450,6 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
         onSave={onSave}
         onReset={editor.reset}
       />
-    </div>
+    </SettingsPage>
   );
 }

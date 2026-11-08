@@ -22,7 +22,7 @@ test("boards and vote channels save and fit desktop and phone", async ({ page })
   const saved = await (await page.request.get(`/api/guilds/${guild}/starboard`)).json();
   expect(saved.boards[0]).toMatchObject({ name: "Best of Reef", channel_id: "7001", threshold: 2 });
   await page.getByRole("button", { name: "Add vote channel" }).click();
-  await page.getByLabel("Channel", { exact: true }).selectOption({ label: "#general" });
+  await page.getByRole("combobox", { name: "Channel", exact: true }).selectOption({ label: "#general" });
   await page.getByRole("button", { name: "Save vote channel" }).click();
   await expect(page.getByText("#general").first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });

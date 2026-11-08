@@ -1459,6 +1459,48 @@ async fn login_attempts_are_rate_limited_per_address() {
 
 // /Settings pages (P2)
 
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn test_login_override_only_bypasses_dev_login_and_is_opt_in() {
+    for unlimited in [false, true] {
+        let Some(h) = Harness::with("dev_login_limit", |web| {
+            web.bind = ([127, 0, 0, 1], 8090).into();
+            web.dev_login = true;
+            web.dev_login_unlimited = unlimited;
+        })
+        .await
+        else {
+            return;
+        };
+        let mut browser = h.browser();
+        let mut statuses = Vec::new();
+        for _ in 0..21 {
+            statuses.push(
+                browser
+                    .write(
+                        Method::POST,
+                        "/auth/dev-login",
+                        json!({"user_id": "5", "username": "dev", "guilds": []}),
+                    )
+                    .await
+                    .status,
+            );
+        }
+        if unlimited {
+            assert!(statuses.iter().all(|status| *status == StatusCode::OK), "{statuses:?}");
+            let mut auth_statuses = Vec::new();
+            for _ in 0..21 {
+                auth_statuses.push(browser.get("/auth/login").await.status);
+            }
+            assert_eq!(auth_statuses[0], StatusCode::SEE_OTHER);
+            assert!(auth_statuses.contains(&StatusCode::TOO_MANY_REQUESTS));
+        } else {
+            assert_eq!(statuses[0], StatusCode::OK);
+            assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+        }
+    }
+}
+
 #[tokio::test]
 async fn the_server_lists_mark_what_the_bot_can_hand_out() {
     let Some(h) = Harness::new("discord_lists").await else {

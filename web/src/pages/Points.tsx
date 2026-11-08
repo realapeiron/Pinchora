@@ -22,7 +22,7 @@ import {
   problem,
 } from "../lib/rules";
 import { useSettingsForm } from "../lib/useSettingsForm";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 
 function check(value: Settings): (FieldError | null)[] {
   const out = [checkPointsName(value.points_name), checkPointsEmoji(value.points_emoji)];
@@ -40,14 +40,13 @@ export function Points() {
   const number = (raw: string) => (raw === "" ? Number.NaN : Number(raw));
 
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("POINTS")}
-        lead={spaTranslate(
-          "A currency for this server only: members earn it by chatting and spend it on roles in /store.",
-        )}
-      />
-
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("POINTS")}
+      lead={spaTranslate(
+        "A currency for this server only: members earn it by chatting and spend it on roles in /store.",
+      )}
+    >
       <Panel title={spaTranslate("SERVER POINTS")}>
         <SwitchRow
           title={spaTranslate("Earn points for chatting")}
@@ -142,7 +141,7 @@ export function Points() {
         onReset={form.reset}
       />
       <Toast message={form.toast} onDone={form.clearToast} />
-    </div>
+    </SettingsPage>
   );
 }
 

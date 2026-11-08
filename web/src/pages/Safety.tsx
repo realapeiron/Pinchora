@@ -10,7 +10,7 @@ import { PixelToggle } from "../components/PixelToggle";
 import { PixelButton } from "../components/PixelButton";
 import { ChannelPicker, RolePicker } from "../components/Pickers";
 import { SafetySaveBar } from "./SafetySaveBar";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/verification.css";
 export function Safety() {
@@ -89,8 +89,7 @@ function Editor({ guild, saved }: { guild: string; saved: SafetyData }) {
   );
   const error = save.error ?? raid.error ?? post.error ?? preview.error;
   return (
-    <div className="settings-page safety-page">
-      <PageHead title={t("title")} lead={t("lead")} />
+    <SettingsPage className="settings-page safety-page" title={t("title")} lead={t("lead")}>
       <section className={`safety-status ${active ? "is-active" : ""}`} aria-label={t("status")}>
         <div>
           <h2 className="pixel-title">{t(active ? "active" : "calm")}</h2>
@@ -351,6 +350,6 @@ function Editor({ guild, saved }: { guild: string; saved: SafetyData }) {
           save.reset();
         }}
       />
-    </div>
+    </SettingsPage>
   );
 }

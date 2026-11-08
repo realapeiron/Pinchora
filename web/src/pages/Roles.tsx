@@ -25,7 +25,7 @@ import {
 } from "../lib/roles";
 import "../styles/roles.css";
 import { ColorRoles } from "./ColorRoles";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { RolePanels } from "./RolePanels";
 import { Loading, Problem } from "./States";
 
@@ -46,13 +46,13 @@ export function Roles() {
   if (roles.isError) return <Problem error={roles.error} />;
   const view = roles.data;
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("ROLES")}
-        lead={spaTranslate(
-          "Roles members get on their own, panels where they pick their own, and colours for their names.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("ROLES")}
+      lead={spaTranslate(
+        "Roles members get on their own, panels where they pick their own, and colours for their names.",
+      )}
+    >
       {discord.data && !discord.data.bot.manage_roles && (
         <p className="notice notice-heart">
           <RichText text="The bot lacks **Manage Roles**, so it can't hand out any role yet." />
@@ -61,7 +61,7 @@ export function Roles() {
       <AutoRoles guild={guild} info={discord.data} view={view} />
       <RolePanels guild={guild} info={discord.data} view={view} />
       <ColorRoles guild={guild} info={discord.data} view={view} />
-    </div>
+    </SettingsPage>
   );
 }
 

@@ -13,24 +13,24 @@ import { ApiError, type GuildInfo, type LogSettings, type Overview } from "../li
 import { isDiscordId } from "../lib/ids";
 import { type LogDraft, logDraft, logsPatch } from "../lib/moderation";
 import { useDiscord, useLogs } from "../lib/queries";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 export function ServerLog() {
   const data = useOutletContext<Overview>();
   const { query } = useLogs(data.guild.id);
   return (
-    <div className="settings-page mod-page">
-      <PageHead
-        title={spaTranslate("SERVER LOG")}
-        lead={spaTranslate(
-          "A channel (or one per category) where the bot notes who came and went, what was edited or deleted, and what staff changed.",
-        )}
-      />
+    <SettingsPage
+      className="settings-page mod-page"
+      title={spaTranslate("SERVER LOG")}
+      lead={spaTranslate(
+        "A channel (or one per category) where the bot notes who came and went, what was edited or deleted, and what staff changed.",
+      )}
+    >
       {query.isPending && <Loading label={spaTranslate("Reading the log settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <LogForm guild={data.guild.id} saved={query.data} />}
-    </div>
+    </SettingsPage>
   );
 }
 

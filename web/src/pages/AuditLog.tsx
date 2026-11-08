@@ -7,7 +7,7 @@ import { PixelButton } from "../components/PixelButton";
 import type { AuditEntry, Overview } from "../lib/api";
 import { useAudit, useNames } from "../lib/queries";
 import { type Names, describeChange, fieldLabel, showValue, targetLabel, timeAgo } from "../lib/text";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 export function AuditLog() {
@@ -16,11 +16,11 @@ export function AuditLog() {
   const names = useNames(data.guild.id);
   const rows = audit.data?.pages.flatMap((p) => p.items) ?? [];
   return (
-    <div className="settings-page">
-      <PageHead
-        title={spaTranslate("AUDIT LOG")}
-        lead={spaTranslate("Every change made on the dashboard: who, what, and when. Kept 180 days.")}
-      />
+    <SettingsPage
+      className="settings-page"
+      title={spaTranslate("AUDIT LOG")}
+      lead={spaTranslate("Every change made on the dashboard: who, what, and when. Kept 180 days.")}
+    >
       <Panel title={spaTranslate("CHANGES")}>
         {audit.isPending && <Loading label={spaTranslate("Reading the log")} />}
         {audit.isError && <Problem error={audit.error} />}
@@ -48,7 +48,7 @@ export function AuditLog() {
           </div>
         )}
       </Panel>
-    </div>
+    </SettingsPage>
   );
 }
 

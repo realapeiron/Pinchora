@@ -8,7 +8,8 @@ const user = `${Date.now()}7`;
 test("Roblox configuration saves and fits phone", async ({ page }) => {
   await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/roblox`);
-  await expect(page.getByRole("heading", { name: "Roblox verification" })).toBeVisible();
+  // The setting "Enable Roblox verification" is a separate, legitimate subsection heading.
+  await expect(page.getByRole("heading", { name: "Roblox verification", exact: true })).toBeVisible();
   await page.getByRole("switch", { name: "Enable Roblox verification" }).click();
   await page.getByLabel("Nickname template").fill("{discord-name} ({roblox-name})");
   await expect(page.getByText("DiscordMember (RobloxPlayer)")).toBeVisible();

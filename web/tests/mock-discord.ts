@@ -145,7 +145,7 @@ function memberJson(user: string, roles: string[]) {
   };
 }
 
-/** Names for the members the ticket seed (`seed_demo_tickets`) uses; anyone else is `member` and a number. */
+/** Stable names for ticket fixtures, plus the rotating names used by temp voice rooms. */
 const NAMES: Record<string, string> = {
   "770000000000000101": "Sam",
   "770000000000000102": "Mia",
@@ -154,11 +154,13 @@ const NAMES: Record<string, string> = {
 };
 
 function userJson(id: string) {
+  const names = ["Mira", "Tavi", "Juno", "Kestrel", "Pip"];
+  const name = NAMES[id] ?? names[Number(id.slice(-1)) % names.length] ?? "Mira";
   return {
     id,
-    username: `member${id.slice(-3)}`,
+    username: name.toLowerCase(),
     discriminator: "0",
-    global_name: NAMES[id] ?? null,
+    global_name: name,
     avatar: null,
   };
 }
@@ -206,18 +208,6 @@ createServer((req, res) => {
     return botIn(id)
       ? send(res, 200, guildJson(id))
       : send(res, 404, { message: "Unknown Guild", code: 10004 });
-  }
-  if (api === "api" && resource === "users" && id && !sub && req.method === "GET") {
-    // Members have names: whoever owns a temp voice room shows up in the live list by one of these.
-    const names = ["Mira", "Tavi", "Juno", "Kestrel", "Pip"];
-    const name = names[Number(id.slice(-1)) % names.length] ?? "Mira";
-    return send(res, 200, {
-      id,
-      username: name.toLowerCase(),
-      discriminator: "0",
-      global_name: name,
-      avatar: null,
-    });
   }
   if (api === "api" && resource === "channels" && id && sub === "messages" && req.method === "POST") {
     return send(res, 200, messageJson(id));

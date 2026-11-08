@@ -26,7 +26,7 @@ import {
   firstRunUtc,
   newRecurrence,
 } from "../lib/utility";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 
 const UtilityWords = createContext({ t: catalogWords(), language: "en" });
@@ -87,13 +87,13 @@ export function Utility() {
     );
   return (
     <UtilityWords.Provider value={{ t, language }}>
-      <div className="settings-page utility-page">
-        <PageHead
-          title={t("MESSAGES")}
-          lead={t(
-            "Keep an important note visible, or send a message at the right time. AFK notices are set by each member with /afk set.",
-          )}
-        />
+      <SettingsPage
+        className="settings-page utility-page"
+        title={t("MESSAGES")}
+        lead={t(
+          "Keep an important note visible, or send a message at the right time. AFK notices are set by each member with /afk set.",
+        )}
+      >
         {module && !module.enabled && (
           <p className="notice">
             <strong>{t("Messages are off.")}</strong>{" "}
@@ -356,7 +356,7 @@ export function Utility() {
           </div>
         )}
         {showError(removeSticky.error || removeScheduled.error || enableScheduled.error)}
-      </div>
+      </SettingsPage>
     </UtilityWords.Provider>
   );
 }

@@ -10,7 +10,7 @@ import { Panel } from "../components/Panel";
 import { Field } from "../components/Field";
 import { ChannelPicker, RolePicker } from "../components/Pickers";
 import { PixelButton } from "../components/PixelButton";
-import { PageHead } from "./PageHead";
+import { PageHead, SettingsPage } from "./PageHead";
 import { RequireLogin } from "./RequireLogin";
 import { Loading, Problem } from "./States";
 
@@ -18,11 +18,11 @@ export function ModParity() {
   const { guild } = useOutletContext<Overview>();
   const { query } = useModParity(guild.id);
   return (
-    <div className="settings-page mod-parity">
-      <PageHead
-        title={t("Moderation desk")}
-        lead={t("Review member reports and appeals, and configure restrictions and role rules.")}
-      />
+    <SettingsPage
+      className="settings-page mod-parity"
+      title={t("Moderation desk")}
+      lead={t("Review member reports and appeals, and configure restrictions and role rules.")}
+    >
       {query.isPending && <Loading />}
       {query.isError && <Problem error={query.error} />}
       {query.data && (
@@ -33,7 +33,7 @@ export function ModParity() {
           appeals={query.data.queues.appeals}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }
 function Desk({

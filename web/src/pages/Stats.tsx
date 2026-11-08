@@ -38,7 +38,7 @@ import {
   useGuildStats,
   useSetPublic,
 } from "../lib/stats";
-import { PageHead } from "./PageHead";
+import { SettingsPage } from "./PageHead";
 import { Loading, Problem } from "./States";
 import "../styles/stats.css";
 
@@ -67,14 +67,14 @@ export function Stats() {
   const [days, setDays] = useState<Days>(30);
   const stats = useGuildStats(guild, days);
   return (
-    <div className="settings-page stats-page">
-      <PageHead
-        title={spaTranslate("STATS")}
-        lead={spaTranslate(
-          "What happens in your server, counted without reading anyone's messages. Days and hours are in UTC.",
-        )}
-        action={<PeriodTabs days={days} onChange={setDays} />}
-      />
+    <SettingsPage
+      className="settings-page stats-page"
+      title={spaTranslate("STATS")}
+      lead={spaTranslate(
+        "What happens in your server, counted without reading anyone's messages. Days and hours are in UTC.",
+      )}
+      action={<PeriodTabs days={days} onChange={setDays} />}
+    >
       {stats.isPending && <Loading label={spaTranslate("Counting")} />}
       {stats.isError && <Problem error={stats.error} />}
       {stats.data && (
@@ -88,7 +88,7 @@ export function Stats() {
       )}
       <CounterChannels guild={guild} />
       <Sharing guild={guild} days={days} isPublic={stats.data?.public ?? false} />
-    </div>
+    </SettingsPage>
   );
 }
 
