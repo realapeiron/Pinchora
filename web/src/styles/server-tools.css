@@ -1,0 +1,95 @@
+.access-grants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.access-grant {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--panel-edge);
+}
+.access-role,
+.access-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+.access-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  border: 0;
+  padding: 0.75rem 0;
+  margin: 0;
+  min-width: 0;
+}
+.access-areas legend {
+  font-weight: 600;
+}
+.access-areas label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.access-areas input {
+  accent-color: var(--accent);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.audit-filters .field {
+  min-width: 0;
+}
+.audit-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+.audit-diff {
+  margin: 0;
+  padding: 0.5rem 1rem 1rem;
+}
+.audit-diff-row {
+  margin-top: 1rem;
+  min-width: 0;
+}
+.audit-diff-row dt {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.audit-diff-row dd {
+  margin: 0.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.audit-diff-row pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0.5rem 0;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.audit-entry .audit-text {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .audit-filters,
+  .audit-diff-row dd {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .audit-filter-actions > * {
+    flex: 1 1 auto;
+  }
+}

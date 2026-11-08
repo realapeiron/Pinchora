@@ -653,6 +653,14 @@ pub async fn post_panel(
     let info = guild_info::get_with(&state, guild, |info| info.channel(channel).is_some()).await?;
     info.check_post_channel("channel_id", channel)
         .map_err(|error| ApiError::invalid(vec![error]))?;
+    // A delegated editor cannot republish an owner's privileged panel to bypass the save checks.
+    if managed.areas.is_some() {
+        let live = guild_info::live(&state, guild).await?;
+        let grantor = guild_info::grantor(&state, &managed, &live.roles, true).await?;
+        for role in state.app.db.panel_roles(panel.id).await? {
+            live.check_grant("roles", role.role_id as u64, grantor)?;
+        }
+    }
     let posted = post_role_panel(&state.app, guild, &panel, channel)
         .await
         .map_err(post_refusal)?;

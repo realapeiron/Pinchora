@@ -19,6 +19,8 @@ use crate::state::WebState;
 
 pub fn router() -> Router<WebState> {
     Router::new()
+        .nest("/access", super::access::router())
+        .nest("/audit-tools", super::audit_tools::router())
         .nest("/mod-parity", super::mod_parity::router())
         .route("/", get(overview::overview))
         .route("/discord", get(discord_info::discord))

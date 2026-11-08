@@ -86,7 +86,9 @@ struct GuildEntry {
 /// `GET /api/me/guilds`: the servers the user manages, the ones with the bot first.
 pub async fn guilds(State(state): State<WebState>, mut current: CurrentSession) -> ApiResult<Json<Value>> {
     let list = discord::user_guilds(&state, &mut current, false).await?;
-    Ok(Json(json!({ "items": entries(&state, list).await })))
+    Ok(Json(
+        json!({ "items": entries(&state, list, current.session.user_id).await? }),
+    ))
 }
 
 /// `POST /api/me/guilds/refresh`: asks Discord again now, at most once per ten seconds.
@@ -96,15 +98,20 @@ pub async fn refresh_guilds(State(state): State<WebState>, mut current: CurrentS
         return Err(ApiError::too_many(left.as_secs() + 1));
     }
     let list = discord::user_guilds(&state, &mut current, true).await?;
-    Ok(Json(json!({ "items": entries(&state, list).await })))
+    Ok(Json(
+        json!({ "items": entries(&state, list, current.session.user_id).await? }),
+    ))
 }
 
-async fn entries(state: &WebState, list: Vec<UserGuild>) -> Vec<GuildEntry> {
-    let managed: Vec<(u64, UserGuild)> = list
-        .into_iter()
-        .filter(UserGuild::can_manage)
-        .filter_map(|g| Some((g.id()?, g)))
-        .collect();
+async fn entries(state: &WebState, list: Vec<UserGuild>, user: u64) -> ApiResult<Vec<GuildEntry>> {
+    let mut managed = Vec::new();
+    for guild in list {
+        if let Some(id) = guild.id()
+            && (guild.can_manage() || !crate::dashboard_access::areas(state, id, user).await?.is_empty())
+        {
+            managed.push((id, guild));
+        }
+    }
     let ids: Vec<u64> = managed.iter().map(|(id, _)| *id).collect();
     let present = discord::bots_present(state, &ids).await;
     let mut entries: Vec<GuildEntry> = managed
@@ -125,7 +132,7 @@ async fn entries(state: &WebState, list: Vec<UserGuild>) -> Vec<GuildEntry> {
             .cmp(&a.bot_present)
             .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
-    entries
+    Ok(entries)
 }
 
 /// A server's icon on Discord's CDN.

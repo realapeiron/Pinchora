@@ -1,5 +1,59 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.":
+    "En fazla 25 farklı sunucu rolü seçin (everyone ve entegrasyon rolleri hariç); her role en az bir geçerli alan verin.",
+  "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.":
+    "Pozitif kullanıcı ve kayıt kimlikleri, geçerli bir alan, ileriye doğru bir tarih aralığı ve en fazla 200 arama karakteri kullanın.",
+  "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes.":
+    "Dışa aktarma 10.000 değişiklik veya 8 MiB sınırında durdu. Kalan değişiklikler için filtreleri daraltın.",
+
+  ACCESS: "ERİŞİM",
+  Access: "Erişim",
+  "Loading access…": "Erişim yükleniyor…",
+  "Give server roles access to chosen dashboard areas. Discord permissions and role safety still apply.":
+    "Sunucu rollerine seçtiğiniz panel alanları için erişim verin. Discord izinleri ve rol güvenliği kuralları geçerliliğini korur.",
+  "Preview access": "Erişimi önizle",
+  "The owner, Administrators and members with Manage Server always have full access. Only they can change access, backups and command controls.":
+    "Sunucu sahibi, Yöneticiler ve Sunucuyu Yönet izni olan üyeler her zaman tam erişime sahiptir. Erişim, yedekler ve komut denetimlerini yalnızca onlar değiştirebilir.",
+  "MANAGER ROLES": "YÖNETİCİ ROLLERİ",
+  "Grants from all held roles combine. Removing a grant or a Discord role takes effect on the next request.":
+    "Üyenin tüm rollerinden gelen izinler birleşir. Bir izin veya Discord rolü kaldırıldığında değişiklik bir sonraki istekte geçerli olur.",
+  "No delegated roles. Only Discord server managers can use this dashboard.":
+    "Yetki verilen rol yok. Bu paneli yalnızca Discord sunucu yöneticileri kullanabilir.",
+  "Remove access for {role}": "{role} rolünün erişimini kaldır",
+  "Allowed areas": "İzin verilen alanlar",
+  "Choose at least one area or remove this role.": "En az bir alan seçin veya bu rolü kaldırın.",
+  "Configuration includes welcome, leveling, points, modules, branding, custom commands and responders. Audit access includes all server dashboard changes.":
+    "Yapılandırma; karşılama, seviye, puan, modül, marka, özel komut ve otomatik yanıt ayarlarını kapsar. Denetim erişimi, sunucu panelindeki tüm değişiklikleri gösterir.",
+  "Add manager role": "Yönetici rolü ekle",
+  "ACCESS PREVIEW": "ERİŞİM ÖNİZLEMESİ",
+  "Unsaved preview. Each role can open these areas; other pages are denied.":
+    "Kaydedilmemiş önizleme. Her rol bu alanları açabilir; diğer sayfalara erişemez.",
+  "No areas selected": "Alan seçilmedi",
+  "Access saved.": "Erişim kaydedildi.",
+  "Area not granted": "Bu alan için izin yok",
+  "Ask a server manager to grant your role access to this area.":
+    "Bir sunucu yöneticisinden rolünüze bu alan için erişim vermesini isteyin.",
+  "Your dashboard areas for this server.": "Bu sunucuda erişebildiğiniz panel alanları.",
+  "FILTER CHANGES": "DEĞİŞİKLİKLERİ FİLTRELE",
+  "Actor ID": "İşlemi yapan kullanıcı kimliği",
+  Area: "Alan",
+  "Action prefix, for example roles, settings or access.":
+    "İşlem öneki; örneğin roles, settings veya access.",
+  "From date (UTC)": "Başlangıç tarihi (UTC)",
+  "Through date (UTC)": "Bitiş tarihi (UTC)",
+  "Search changes": "Değişikliklerde ara",
+  "Search actors, actions, targets and before/after values.":
+    "Kullanıcı, işlem, hedef ve önceki/sonraki değerlerde arayın.",
+  "Apply filters": "Filtreleri uygula",
+  "Clear filters": "Filtreleri temizle",
+  "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.":
+    "CSV, uygulanan filtreleri kullanır. Sınır 10.000 değişiklik veya 8 MiB; sınıra ulaşılırsa son satırda belirtilir.",
+  "No changes match these filters.": "Bu filtrelerle eşleşen değişiklik yok.",
+  "Public leaderboard": "Herkese açık sıralama",
+  "Anyone with the link can view this board. Turning it off removes the public URL when you save.":
+    "Bağlantıya sahip herkes bu sıralamayı görebilir. Kapatıp kaydettiğinizde herkese açık bağlantı kaldırılır.",
+
   "{size} cm": "{size} cm",
   "Aquarium and garden": "Akvaryum ve bahçe",
   "{count}/6 fish at home": "Evde {count}/6 balık",

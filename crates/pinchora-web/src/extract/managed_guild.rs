@@ -1,23 +1,26 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::{FromRequestParts, Path},
+    extract::{FromRequestParts, OriginalUri, Path},
     http::request::Parts,
 };
 
 use crate::{
+    dashboard_access,
     discord::{self, UserGuild},
     error::ApiError,
     extract::CurrentSession,
     state::WebState,
 };
 
-/// A server from the `{g}` path segment that the user may manage: on their list with Manage Server
-/// (or owner/Administrator), and with the bot in it. 403 `not_manager` or `bot_missing` otherwise.
+/// A server with the bot present and full Discord management rights or a current role grant for
+/// this endpoint. The latter is checked for every read and write; unknown areas fail closed.
 pub struct ManagedGuild {
     pub id: u64,
     pub guild: UserGuild,
     pub current: CurrentSession,
+    /// None means full Discord management rights; Some lists delegated areas.
+    pub areas: Option<Vec<String>>,
 }
 
 impl FromRequestParts<WebState> for ManagedGuild {
@@ -36,12 +39,33 @@ impl FromRequestParts<WebState> for ManagedGuild {
         let guilds = discord::user_guilds(state, &mut current, false).await?;
         let guild = guilds
             .into_iter()
-            .find(|g| g.id() == Some(id) && g.can_manage())
+            .find(|g| g.id() == Some(id))
             .ok_or_else(ApiError::not_manager)?;
+        let areas = if guild.can_manage() {
+            None
+        } else {
+            let areas = dashboard_access::areas(state, id, current.session.user_id).await?;
+            let uri = parts
+                .extensions
+                .get::<OriginalUri>()
+                .map(|u| &u.0)
+                .unwrap_or(&parts.uri);
+            let prefix = format!("/api/guilds/{id}");
+            let path = uri.path().strip_prefix(&prefix).ok_or_else(ApiError::not_manager)?;
+            if !dashboard_access::permitted(path, parts.method.is_safe(), &areas) {
+                return Err(ApiError::not_manager());
+            }
+            Some(areas)
+        };
         if !discord::bot_present(state, id).await {
             let invite = discord::invite_url(&state.settings, state.app.application_id.get(), id);
             return Err(ApiError::bot_missing(invite));
         }
-        Ok(Self { id, guild, current })
+        Ok(Self {
+            id,
+            guild,
+            current,
+            areas,
+        })
     }
 }

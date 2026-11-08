@@ -46,6 +46,8 @@ use twilight_model::{
 
 #[path = "api/achievements.rs"]
 mod achievements;
+#[path = "api/server_tools.rs"]
+mod server_tools;
 #[path = "api/web_i18n.rs"]
 mod web_i18n;
 
@@ -516,6 +518,9 @@ async fn discord(
                 let gone = json!({ "message": "Unknown Guild", "code": 10004 });
                 (StatusCode::NOT_FOUND, gone.to_string())
             }
+        }
+        (&Method::PATCH, [.., "channels", channel, "messages", message]) => {
+            server_tools::updated_message(channel, message)
         }
         (&Method::POST, [.., "channels", channel, "messages"]) => {
             let channel = channel.parse::<u64>().unwrap_or(1);

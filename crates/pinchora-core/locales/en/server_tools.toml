@@ -1,0 +1,4 @@
+[server_tools]
+access-invalid = "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each."
+audit-invalid = "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters."
+export-limit = "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes."

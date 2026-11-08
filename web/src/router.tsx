@@ -90,6 +90,7 @@ const localizedRoutes: RouteObject[] = [
     children: [
       { index: true, element: <Overview /> },
       { path: "modules", element: <Modules /> },
+      { path: "access", lazy: async () => ({ Component: (await import("./pages/Access")).Access }) },
       { path: "welcome", element: <Welcome /> },
       {
         path: "branding",

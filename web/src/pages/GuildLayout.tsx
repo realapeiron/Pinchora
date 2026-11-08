@@ -1,6 +1,8 @@
+import { ServerToolsOutlet } from "./ServerToolsOutlet";
+import { canOpenPage } from "../lib/server-tools";
 import { translate as spaTranslate } from "../i18n";
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation, useParams } from "react-router";
+import { NavLink, useLocation, useParams } from "react-router";
 
 import { PixelLink } from "../components/PixelButton";
 import { Panel } from "../components/Panel";
@@ -28,6 +30,7 @@ export const NAV: NavGroup[] = [
       { to: "command-control", label: "Commands" },
       { to: "backup", label: "Backup" },
       { to: "audit", label: "Audit log" },
+      { to: "access", label: "Access" },
       { to: "stats", label: "Stats" },
       { to: "invites", label: "Invites" },
       { to: "utility", label: "Messages" },
@@ -109,10 +112,12 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const shown = visibleNav(
     NAV.map((group) => ({
       ...group,
-      pages: group.pages.map((page) => ({
-        ...page,
-        label: translate(overview.data?.navigation?.[page.to] ?? page.label),
-      })),
+      pages: group.pages
+        .filter((page) => canOpenPage(overview.data, page.to))
+        .map((page) => ({
+          ...page,
+          label: translate(overview.data?.navigation?.[page.to] ?? page.label),
+        })),
     })),
     filter,
   );
@@ -178,7 +183,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
         <main className="content">
           {overview.isPending && <Loading label={t("Opening the server")} />}
           {overview.isError && <GuildProblem error={overview.error} />}
-          {overview.isSuccess && <Outlet context={overview.data} />}
+          {overview.isSuccess && <ServerToolsOutlet data={overview.data} nav={NAV} />}
         </main>
       </div>
     </div>

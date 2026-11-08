@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { translate as tr } from "../i18n";
-import { Field } from "../components/Field";
+import { Field, SwitchRow } from "../components/Field";
 import { Panel } from "../components/Panel";
 import { PixelButton } from "../components/PixelButton";
 import { PixelToggle } from "../components/PixelToggle";
@@ -85,6 +85,7 @@ export function LevelingParityPanel({ guild, info }: { guild: string; info: Guil
   return (
     <Editor
       key={JSON.stringify(data.query.data)}
+      guild={guild}
       saved={data.query.data}
       data={data}
       info={info}
@@ -95,17 +96,20 @@ export function LevelingParityPanel({ guild, info }: { guild: string; info: Guil
 
 type Data = ReturnType<typeof useLevelingParity>;
 function Editor({
+  guild,
   saved,
   data,
   info,
   messageContent,
 }: {
+  guild: string;
   saved: LevelingParity;
   data: Data;
   info: GuildInfo | undefined;
   messageContent: boolean;
 }) {
   const [draft, setDraft] = useState(saved);
+  const [lastSlug, setLastSlug] = useState(saved.vanity_slug ?? "");
   const [file, setFile] = useState("");
   const fileVersion = useRef(0);
   const previewVersion = useRef(0);
@@ -189,7 +193,7 @@ function Editor({
     draft.message_cooldown_secs < 5 ||
     draft.message_cooldown_secs > 3600 ||
     [draft.reaction_xp, draft.effort_bonus, draft.vote_xp].some((v) => v < 1 || v > 100) ||
-    (!!draft.vanity_slug && !/^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/.test(draft.vanity_slug));
+    (draft.vanity_slug !== null && !/^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/.test(draft.vanity_slug));
   return (
     <>
       <Panel title={tr("XP OPTIONS")}>
@@ -298,19 +302,37 @@ function Editor({
               onChange={(id) => set("highlights_channel_id", id)}
             />
           </Field>
+          <SwitchRow
+            title={tr("Public leaderboard")}
+            control={
+              <PixelToggle
+                label={tr("Public leaderboard")}
+                checked={draft.vanity_slug !== null}
+                onChange={(on) => {
+                  if (!on) setLastSlug(draft.vanity_slug ?? "");
+                  set("vanity_slug", on ? lastSlug || `server-${guild}` : null);
+                }}
+              />
+            }
+          >
+            {tr(
+              "Anyone with the link can view this board. Turning it off removes the public URL when you save.",
+            )}
+          </SwitchRow>
           <Field label={tr("Leaderboard URL name")} htmlFor="parity-vanity">
             <input
               id="parity-vanity"
               className="pixel-input"
               maxLength={32}
               value={draft.vanity_slug ?? ""}
-              onChange={(e) => set("vanity_slug", e.target.value || null)}
+              disabled={draft.vanity_slug === null}
+              onChange={(e) => set("vanity_slug", e.target.value)}
             />
           </Field>
         </div>
-        {draft.vanity_slug && (
+        {saved.vanity_slug && (
           <p style={{ overflowWrap: "anywhere" }}>
-            <a href={`/lb/${draft.vanity_slug}`}>{`${window.location.origin}/lb/${draft.vanity_slug}`}</a>
+            <a href={`/lb/${saved.vanity_slug}`}>{`${window.location.origin}/lb/${saved.vanity_slug}`}</a>
           </p>
         )}
         {invalid && (

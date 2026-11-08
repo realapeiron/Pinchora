@@ -1,4 +1,58 @@
 export const en = {
+  "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.":
+    "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.",
+  "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.":
+    "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.",
+  "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes.":
+    "Export stopped at 10,000 changes or 8 MiB. Narrow the filters to export the remaining changes.",
+
+  ACCESS: "ACCESS",
+  Access: "Access",
+  "Loading access…": "Loading access…",
+  "Give server roles access to chosen dashboard areas. Discord permissions and role safety still apply.":
+    "Give server roles access to chosen dashboard areas. Discord permissions and role safety still apply.",
+  "Preview access": "Preview access",
+  "The owner, Administrators and members with Manage Server always have full access. Only they can change access, backups and command controls.":
+    "The owner, Administrators and members with Manage Server always have full access. Only they can change access, backups and command controls.",
+  "MANAGER ROLES": "MANAGER ROLES",
+  "Grants from all held roles combine. Removing a grant or a Discord role takes effect on the next request.":
+    "Grants from all held roles combine. Removing a grant or a Discord role takes effect on the next request.",
+  "No delegated roles. Only Discord server managers can use this dashboard.":
+    "No delegated roles. Only Discord server managers can use this dashboard.",
+  "Remove access for {role}": "Remove access for {role}",
+  "Allowed areas": "Allowed areas",
+  "Choose at least one area or remove this role.": "Choose at least one area or remove this role.",
+  "Configuration includes welcome, leveling, points, modules, branding, custom commands and responders. Audit access includes all server dashboard changes.":
+    "Configuration includes welcome, leveling, points, modules, branding, custom commands and responders. Audit access includes all server dashboard changes.",
+  "Add manager role": "Add manager role",
+  "ACCESS PREVIEW": "ACCESS PREVIEW",
+  "Unsaved preview. Each role can open these areas; other pages are denied.":
+    "Unsaved preview. Each role can open these areas; other pages are denied.",
+  "No areas selected": "No areas selected",
+  "Access saved.": "Access saved.",
+  "Area not granted": "Area not granted",
+  "Ask a server manager to grant your role access to this area.":
+    "Ask a server manager to grant your role access to this area.",
+  "Your dashboard areas for this server.": "Your dashboard areas for this server.",
+  "FILTER CHANGES": "FILTER CHANGES",
+  "Actor ID": "Actor ID",
+  Area: "Area",
+  "Action prefix, for example roles, settings or access.":
+    "Action prefix, for example roles, settings or access.",
+  "From date (UTC)": "From date (UTC)",
+  "Through date (UTC)": "Through date (UTC)",
+  "Search changes": "Search changes",
+  "Search actors, actions, targets and before/after values.":
+    "Search actors, actions, targets and before/after values.",
+  "Apply filters": "Apply filters",
+  "Clear filters": "Clear filters",
+  "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.":
+    "CSV uses applied filters. Limited to 10,000 changes or 8 MiB; a final row marks a reached limit.",
+  "No changes match these filters.": "No changes match these filters.",
+  "Public leaderboard": "Public leaderboard",
+  "Anyone with the link can view this board. Turning it off removes the public URL when you save.":
+    "Anyone with the link can view this board. Turning it off removes the public URL when you save.",
+
   "{size} cm": "{size} cm",
   "Aquarium and garden": "Aquarium and garden",
   "{count}/6 fish at home": "{count}/6 fish at home",

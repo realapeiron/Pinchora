@@ -1,0 +1,52 @@
+import { describe, expect, it } from "vitest";
+import {
+  auditDiff,
+  auditParams,
+  canOpenPage,
+  canonicalGrants,
+  EMPTY_FILTERS,
+  type AccessOverview,
+} from "./server-tools";
+
+describe("dashboard delegation", () => {
+  const access = { access: { full: false, areas: ["roles"] } } as AccessOverview;
+  it("keeps the shell and granted area, denies unknown, adjacent and privileged pages", () => {
+    expect(canOpenPage(access, "")).toBe(true);
+    expect(canOpenPage(access, "roles")).toBe(true);
+    for (const page of ["access", "backup", "command-control", "role", "audit", "new-feature", "leveling"])
+      expect(canOpenPage(access, page)).toBe(false);
+    expect(canOpenPage({ access: { full: true, areas: null } } as AccessOverview, "access")).toBe(true);
+  });
+  it("compares grants without ordering noise and keeps snowflakes as strings", () => {
+    const id = "999999999999999999";
+    expect(canonicalGrants([{ role_id: id, areas: ["roles", "audit", "roles"] }])).toEqual([
+      { role_id: id, areas: ["audit", "roles"] },
+    ]);
+  });
+});
+describe("audit filters and nested diffs", () => {
+  it("includes the last calendar day across month and year boundaries in UTC", () => {
+    const params = auditParams({
+      ...EMPTY_FILTERS,
+      from: "2026-12-01",
+      until: "2026-12-31",
+      text: "  100%_literal  ",
+    });
+    expect(params.get("from")).toBe("2026-12-01T00:00:00.000Z");
+    expect(params.get("until")).toBe("2027-01-01T00:00:00.000Z");
+    expect(params.get("text")).toBe("100%_literal");
+    expect(params.has("actor")).toBe(false);
+  });
+  it("shows nested changes, deleted fields and arrays without unchanged noise", () => {
+    expect(
+      auditDiff({ a: { keep: 1, remove: 2 }, roles: ["one"] }, { a: { keep: 1 }, roles: ["two"] }),
+    ).toEqual([
+      { path: "a.remove", before: 2, after: undefined },
+      { path: "roles", before: ["one"], after: ["two"] },
+    ]);
+    expect(auditDiff({ value: { nested: true } }, { value: "disabled" })).toEqual([
+      { path: "value", before: { nested: true }, after: "disabled" },
+    ]);
+    expect(auditDiff(null, { enabled: true })).toEqual([{ path: "enabled", before: undefined, after: true }]);
+  });
+});
