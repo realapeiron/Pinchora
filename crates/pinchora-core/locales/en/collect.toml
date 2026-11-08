@@ -166,7 +166,7 @@ wishlist-full = "Your wishlist holds up to 10 critters or finds. Remove one firs
 no-spare = "Keep one copy for your book. There is no spare to recycle."
 not-enough-shards = "Crafting needs {cost} shards. Recycle a spare critter first."
 claim-slow = "Wait a moment before claiming another card."
-type-word = "Type **{word}** to claim a card."
+type-word = "Type the code shown in the image. Three attempts per drop."
 word-label = "Type the word"
 word-title = "Barnacle code"
 wrong-word = "That word does not match. Try the card again."
@@ -197,3 +197,8 @@ crafted = "Crafted bound {name}. You have {left} shards left."
 rolled = "Your roll is {glimmer}{name}. Claim it within ten minutes."
 claimed = "Claimed {glimmer}{name} for your collection."
 glimmer = "GLIMMER"
+
+recycle-confirm = "Recycle one spare {name}? This cannot be undone."
+confirm = "Confirm recycle"
+
+anonymous-claim = "Already claimed"

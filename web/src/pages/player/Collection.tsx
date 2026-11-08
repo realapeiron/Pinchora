@@ -65,6 +65,8 @@ function useCollectionAction() {
 export function CollectionBook() {
   const q = usePlayer<Book>("collection/book");
   const action = useCollectionAction();
+  const [recycle, setRecycle] = useState<{ entry: Entry; request: string } | null>(null);
+  const [craftRequest, setCraftRequest] = useState<string | null>(null);
   const [kind, setKind] = useState("critter");
   return (
     <>
@@ -117,7 +119,14 @@ export function CollectionBook() {
                 {number(q.data.shards)} {t("Shards")} · {number(q.data.fragments)} {t("Fragments")}
               </p>
               <PixelButton
-                onClick={() => action.mutate({ path: "craft", method: "POST" })}
+                onClick={() => {
+                  const request = craftRequest ?? crypto.randomUUID();
+                  setCraftRequest(request);
+                  action.mutate(
+                    { path: "craft", method: "POST", body: { request_id: request } },
+                    { onSuccess: () => setCraftRequest(null) },
+                  );
+                }}
                 disabled={action.isPending || q.data.shards < q.data.craft_cost}
               >
                 {t("Craft bound loot")} · {number(q.data.craft_cost)} {t("Shards")}
@@ -164,12 +173,10 @@ export function CollectionBook() {
                     <span>
                       {e.rarity} · {number(e.caught)} {t("caught")} · {number(e.kept)} {t("held")}
                     </span>
-                    {e.kept > Math.max(e.glimmer, 1) && (
+                    {e.kept > e.glimmer + 1 && (
                       <PixelButton
                         variant="secondary"
-                        onClick={() =>
-                          action.mutate({ path: "recycle", method: "POST", body: { entry_id: e.id } })
-                        }
+                        onClick={() => setRecycle({ entry: e, request: crypto.randomUUID() })}
                         disabled={action.isPending}
                       >
                         {t("Recycle spare")}
@@ -179,6 +186,31 @@ export function CollectionBook() {
                 ))}
             </ul>
           </Panel>
+          {recycle && (
+            <div role="dialog" aria-modal="false" aria-label={t("Confirm recycle")} className="notice">
+              <p>
+                {recycle.entry.name} — {t("Recycle one spare? This cannot be undone.")}
+              </p>
+              <PixelButton
+                disabled={action.isPending}
+                onClick={() =>
+                  action.mutate(
+                    {
+                      path: "recycle",
+                      method: "POST",
+                      body: { entry_id: recycle.entry.id, confirmed: true, request_id: recycle.request },
+                    },
+                    { onSuccess: () => setRecycle(null) },
+                  )
+                }
+              >
+                {t("Confirm recycle")}
+              </PixelButton>
+              <PixelButton variant="secondary" disabled={action.isPending} onClick={() => setRecycle(null)}>
+                {t("Cancel")}
+              </PixelButton>
+            </div>
+          )}
           {action.isError && (
             <p role="alert" className="notice notice-heart">
               {action.error.message}

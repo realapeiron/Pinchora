@@ -141,7 +141,7 @@ async fn recycle(cx: &Cx, owner: u64, page: usize, note: Option<String>) -> anyh
     let dex = cx.app.db.dex(owner).await?;
     let all: Vec<_> = dex
         .iter()
-        .filter(|d| d.kept > d.glimmer.max(1))
+        .filter(|d| d.kept > d.glimmer + 1)
         .filter_map(|d| Collection::get().entry(&d.entry_id))
         .collect();
     let pages = all.len().div_ceil(25).max(1);
@@ -183,7 +183,7 @@ async fn recycle(cx: &Cx, owner: u64, page: usize, note: Option<String>) -> anyh
         .await
 }
 
-async fn craft(cx: &Cx, owner: u64) -> anyhow::Result<()> {
+async fn craft(cx: &Cx, owner: u64, request: &str) -> anyhow::Result<()> {
     let lang = cx.lang();
     let owned: std::collections::HashSet<String> =
         cx.app.db.dex(owner).await?.into_iter().map(|d| d.entry_id).collect();
@@ -191,7 +191,13 @@ async fn craft(cx: &Cx, owner: u64) -> anyhow::Result<()> {
     let Some(item) = exchange_pick(Content::get(), Rarity::Common, rand::random()) else {
         return cx.reply_ephemeral(t!(lang, "dex.nothing-yet")).await;
     };
-    let text = if let Some(left) = cx.app.db.craft_shard_loot(owner, cost, &item).await? {
+    let text = if let Some(left) = cx.app.db.craft_shard_loot(owner, cost, &item, request).await? {
+        let (item, left, _) = cx
+            .app
+            .db
+            .shard_craft_result(owner, request)
+            .await?
+            .unwrap_or((item, left, cost));
         t!(
             lang,
             "collection-depth.crafted",
@@ -241,7 +247,7 @@ async fn roll(cx: &Cx, owner: u64) -> anyhow::Result<()> {
             ),
             true,
         ),
-        RollStart::Wait(_) => (t!(lang, "collection-depth.roll-wait"), false),
+        RollStart::Wait(_) | RollStart::Cooldown => (t!(lang, "collection-depth.roll-wait"), false),
         RollStart::Limit => (t!(lang, "collection-depth.roll-limit"), false),
     };
     let buttons = if claim {
@@ -296,7 +302,7 @@ pub(crate) async fn on_component(
     if owner != cx.author()?.id.get() {
         return cx.reply_ephemeral(t!(lang, "dex.not-yours")).await;
     }
-    if matches!(action, "wp" | "wq" | "wr" | "rs" | "c" | "rl" | "cl")
+    if matches!(action, "wp" | "wq" | "wr" | "rs" | "rc" | "c" | "rl" | "cl")
         && cx
             .app
             .cache
@@ -341,8 +347,37 @@ pub(crate) async fn on_component(
             let Some(entry) = value.and_then(|id| Collection::get().entry(id)) else {
                 return cx.reply_ephemeral(t!(lang, "collect.button-expired")).await;
             };
+            let token = cx.interaction.id;
+            cx.update(panel(
+                t!(lang, "collection-depth.recycle"),
+                t!(lang, "collection-depth.recycle-confirm", name = entry.name_in(lang)),
+                vec![row(vec![button(
+                    format!("bc:rc:{owner}:0:{}:{token}", entry.id),
+                    &t!(lang, "collection-depth.confirm"),
+                    None,
+                    ButtonStyle::Danger,
+                    false,
+                )])],
+                owner,
+                lang,
+            ))
+            .await
+        }
+        "rc" => {
+            let Some(entry) = parts.next().and_then(|id| Collection::get().entry(id)) else {
+                return cx.reply_ephemeral(t!(lang, "collect.button-expired")).await;
+            };
+            let Some(token) = parts.next() else {
+                return cx.reply_ephemeral(t!(lang, "collect.button-expired")).await;
+            };
             let earned = recycle_shards(entry.rarity);
-            let text = if cx.app.db.recycle_critter(owner, &entry.id, earned).await?.is_some() {
+            let text = if cx
+                .app
+                .db
+                .recycle_critter(owner, &entry.id, earned, token)
+                .await?
+                .is_some()
+            {
                 t!(
                     lang,
                     "collection-depth.recycled",
@@ -354,7 +389,12 @@ pub(crate) async fn on_component(
             };
             recycle(cx, owner, page, Some(text)).await
         }
-        "c" => craft(cx, owner).await,
+        "c" => {
+            let Some(request) = parts.next() else {
+                return cx.reply_ephemeral(t!(lang, "collect.button-expired")).await;
+            };
+            craft(cx, owner, request).await
+        }
         "rl" => roll(cx, owner).await,
         "cl" => claim(cx, owner).await,
         _ => cx.reply_ephemeral(t!(lang, "collect.button-expired")).await,

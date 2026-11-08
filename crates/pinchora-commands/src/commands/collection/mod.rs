@@ -84,14 +84,14 @@ pub(crate) fn dice() -> impl FnMut() -> f64 {
 
 /// The sprite of an entry: the atlas's `cr_<id>` once it is drawn, else the sprite it borrows, else its
 /// drawn look.
-fn sprite(app: &App, entry: &Entry) -> Arc<RgbaImage> {
-    if let Some(drawn) = app.sprites.atlas(&entry.sprite_name()) {
+fn sprite(sprites: &crate::game::scene::Sprites, entry: &Entry) -> Arc<RgbaImage> {
+    if let Some(drawn) = sprites.atlas(&entry.sprite_name()) {
         return drawn;
     }
     let made = match entry.art() {
-        Some(Art::Fish(id)) => Some(app.sprites.fish(id)),
-        Some(Art::Pet(id)) => Some(app.sprites.pet(id)),
-        Some(Art::Furniture(id)) => app.sprites.atlas(&format!("f_{id}")),
+        Some(Art::Fish(id)) => Some(sprites.fish(id)),
+        Some(Art::Pet(id)) => Some(sprites.pet(id)),
+        Some(Art::Furniture(id)) => sprites.atlas(&format!("f_{id}")),
         Some(Art::Drawn {
             shape,
             body,
@@ -128,7 +128,7 @@ pub(crate) fn picture(app: &App, entry: &Entry, boxed: (u32, u32)) -> EntryPictu
     if let Some(done) = PICTURES.lock().expect("picture cache").get(&key) {
         return done.clone();
     }
-    let sprite = trimmed(&sprite(app, entry));
+    let sprite = trimmed(&sprite(&app.sprites, entry));
     let (w, h) = (sprite.width().max(1), sprite.height().max(1));
     let fitted = if w <= boxed.0 && h <= boxed.1 {
         let factor = (boxed.0 / w).min(boxed.1 / h).clamp(1, 12);
@@ -149,14 +149,8 @@ pub(crate) fn picture(app: &App, entry: &Entry, boxed: (u32, u32)) -> EntryPictu
 /// A deterministic palette shift of the original atlas/drawn sprite, with no new art file.
 pub(crate) fn glimmer_picture(app: &App, entry: &Entry, boxed: (u32, u32)) -> EntryPicture {
     let mut art = picture(app, entry, boxed);
-    if let Ok(mut bitmap) = image::load_from_memory(&art.png).map(|image| image.to_rgba8()) {
-        for pixel in bitmap.pixels_mut() {
-            if pixel.0[3] != 0 {
-                let [r, g, b, a] = pixel.0;
-                pixel.0 = [b.saturating_add(38), r.saturating_add(22), g.saturating_add(30), a];
-            }
-        }
-        art.png = encode_png(&bitmap).unwrap_or(art.png);
+    if let Ok(bitmap) = image::load_from_memory(&art.png) {
+        art.png = encode_png(&pinchora_render::sprites::glimmer(&bitmap.to_rgba8())).unwrap_or(art.png);
     }
     art
 }
@@ -237,4 +231,53 @@ pub fn spawn_ticker(app: Arc<App>) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod depth_art_tests {
+    use super::*;
+    use pinchora_render::{DropCard, DropCritter, Renderer, Theme};
+    #[test]
+    fn every_collection_critter_renders_original_glimmer_art_and_sparkle_frame() {
+        let sprites = crate::game::scene::Sprites::default();
+        let renderer = Renderer::new();
+        let catalogue = pinchora_game::collection::Collection::get();
+        for entry in &catalogue.critters {
+            let original = sprite(&sprites, entry);
+            assert!(
+                original.width() > 8 || original.height() > 8,
+                "placeholder: {}",
+                entry.id
+            );
+            let variant = pinchora_render::sprites::glimmer(&original);
+            assert_ne!(*original, variant, "{}", entry.id);
+            let card = DropCard {
+                title: "Glimmer".into(),
+                subtitle: entry.id.clone(),
+                cards: vec![DropCritter {
+                    art: EntryPicture {
+                        png: encode_png(&variant).unwrap(),
+                        w: variant.width(),
+                        h: variant.height(),
+                    },
+                    name: entry.name_in(Lang::En),
+                    rarity: entry.rarity.label_in(Lang::En).into(),
+                    frame: 0x9af5ec,
+                    habitat: entry.place_in(Lang::En).into(),
+                    sparkles: 4,
+                }],
+                footer: String::new(),
+                theme: Theme::reef(),
+            };
+            assert!(card.to_svg().contains("stroke-dasharray=\"12 8\""));
+            let png = renderer.drop_card(&card).unwrap();
+            let image = image::load_from_memory(&png).unwrap().to_rgba8();
+            assert_eq!(image.dimensions(), (1000, 460));
+            assert!(
+                image.pixels().filter(|p| p.0[..3] == [0x9a, 0xf5, 0xec]).count() > 100,
+                "visible frame: {}",
+                entry.id
+            );
+        }
+    }
 }

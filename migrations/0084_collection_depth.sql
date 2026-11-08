@@ -1,3 +1,5 @@
+-- Fail quickly rather than queue an exclusive lock on a busy live table.
+SET LOCAL lock_timeout = '5s';
 -- Collection depth: held duplicates, glimmer discoveries, wishlists and guarded claims.
 ALTER TABLE dex_entries
     ADD COLUMN kept INTEGER NOT NULL DEFAULT 1 CHECK (kept >= 0),
@@ -38,3 +40,28 @@ ALTER TABLE collection_drops
     ADD COLUMN protected_user_id BIGINT,
     ADD COLUMN protected_slot SMALLINT,
     ADD COLUMN protected_until TIMESTAMPTZ;
+
+-- Durable attempt budgets and an idempotent, auditable shard journal.
+CREATE TABLE collection_word_attempts (
+    drop_id BIGINT NOT NULL REFERENCES collection_drops(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    attempts SMALLINT NOT NULL CHECK (attempts BETWEEN 1 AND 3),
+    PRIMARY KEY (drop_id, user_id)
+);
+CREATE TABLE collection_shard_ledger (
+    user_id BIGINT NOT NULL,
+    request_id TEXT NOT NULL CHECK (length(request_id) BETWEEN 1 AND 100),
+    kind TEXT NOT NULL CHECK (kind IN ('recycle', 'craft')),
+    entry_id TEXT NOT NULL,
+    delta BIGINT NOT NULL CHECK (delta <> 0),
+    balance BIGINT NOT NULL CHECK (balance >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, request_id)
+);
+CREATE INDEX collection_protection_idx ON collection_drops (protected_user_id, protected_until)
+    WHERE protected_user_id IS NOT NULL;
+
+-- Keep only short abuse-prevention expiries when a player's collection is erased.
+ALTER TABLE deleted_users
+    ADD COLUMN collection_roll_until TIMESTAMPTZ,
+    ADD COLUMN collection_ping_until TIMESTAMPTZ;

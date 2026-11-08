@@ -66,7 +66,11 @@ async fn collection_pages_require_session_csrf_validate_wishes_and_audit() {
     );
     h.state.app.set_user_lang(user, Some(Lang::Tr)).await.unwrap();
     let tr = b
-        .write(Method::POST, "/api/me/collection/recycle", json!({"entry_id":entry}))
+        .write(
+            Method::POST,
+            "/api/me/collection/recycle",
+            json!({"entry_id":entry,"confirmed":true,"request_id":"empty"}),
+        )
         .await;
     assert_ne!(tr.status, StatusCode::OK);
     assert!(
@@ -74,4 +78,71 @@ async fn collection_pages_require_session_csrf_validate_wishes_and_audit() {
         "{}",
         tr.text()
     );
+}
+
+#[tokio::test]
+async fn collection_recycle_requires_confirmation_and_retries_do_not_duplicate_rewards() {
+    let Some(h) = Harness::new("collection_depth_retries").await else {
+        return;
+    };
+    let user = unique();
+    let mut b = h.browser();
+    b.login(&h, user, vec![]).await;
+    let entry = &pinchora_game::collection::Collection::get().critters[0];
+    sqlx::query("INSERT INTO dex_entries(user_id,entry_id,caught,kept) VALUES($1,$2,4,4)")
+        .bind(user as i64)
+        .bind(&entry.id)
+        .execute(h.state.app.db.pool())
+        .await
+        .unwrap();
+    let original = h.state.app.db.dex(user).await.unwrap()[0].kept;
+    for body in [
+        json!({"entry_id":entry.id}),
+        json!({"entry_id":entry.id,"confirmed":false,"request_id":"one"}),
+    ] {
+        assert_ne!(
+            b.write(Method::POST, "/api/me/collection/recycle", body).await.status,
+            StatusCode::OK
+        );
+    }
+    assert_eq!(h.state.app.db.dex(user).await.unwrap()[0].kept, original);
+    let request = json!({"entry_id":entry.id,"confirmed":true,"request_id":"one"});
+    let first = b
+        .write(Method::POST, "/api/me/collection/recycle", request.clone())
+        .await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.text());
+    let retry = b.write(Method::POST, "/api/me/collection/recycle", request).await;
+    assert_eq!(retry.status, StatusCode::OK, "{}", retry.text());
+    assert_eq!(first.json(), retry.json());
+    assert_eq!(h.state.app.db.dex(user).await.unwrap()[0].kept, original - 1);
+    // Seed an extra ledger-backed credit, then replay the same craft; response names the original item.
+    h.state
+        .app
+        .db
+        .recycle_critter(user, &entry.id, 45, "fund-craft")
+        .await
+        .unwrap();
+    let request = json!({"request_id":"craft-one"});
+    let first = b.write(Method::POST, "/api/me/collection/craft", request.clone()).await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.text());
+    let retry = b.write(Method::POST, "/api/me/collection/craft", request).await;
+    assert_eq!(retry.status, StatusCode::OK, "{}", retry.text());
+    assert_eq!(first.json(), retry.json());
+    assert_eq!(
+        h.state
+            .app
+            .db
+            .inventory(user)
+            .await
+            .unwrap()
+            .iter()
+            .map(|r| r.quantity)
+            .sum::<i32>(),
+        1
+    );
+    let book = b.get("/api/me/collection/book").await;
+    for key in ["challenge_word", "protected_user_id", "takers", "drop_id"] {
+        assert!(!book.text().contains(key));
+    }
+    assert_eq!(b.get("/api/me/collection/drops").await.status, StatusCode::NOT_FOUND);
 }

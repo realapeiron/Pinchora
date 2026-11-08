@@ -475,9 +475,26 @@ async fn a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_alou
         .custom_id
         .clone()
         .expect("custom id");
+    // The test DB is persistent and the worker closes at most 50 drops per tick. Seed a
+    // full older batch so this exercises eventual expiry rather than assuming an empty queue.
+    sqlx::query(
+        "INSERT INTO collection_drops(kind,guild_id,channel_id,cards,takers,expires_at)
+        SELECT 'bottle',$1,$2,ARRAY['backlog'],ARRAY[0::bigint],now()-interval '1 hour' FROM generate_series(1,51)",
+    )
+    .bind(sim.guild as i64)
+    .bind(channel as i64)
+    .execute(sim.app.db.pool())
+    .await
+    .unwrap();
     sim.app.shift_clock(Duration::minutes(11));
-    collection_tick(&sim.app).await.expect("tick");
-    let posts = sim.posts();
+    let mut posts = Vec::new();
+    for _ in 0..100 {
+        let closed = collection_tick(&sim.app).await.expect("tick");
+        posts.extend(sim.posts());
+        if closed < 50 || posts.iter().any(|p| p.message == second && p.method == Method::PATCH) {
+            break;
+        }
+    }
     let gone = posts
         .iter()
         .find(|p| p.message == second && p.method == Method::PATCH)
@@ -1078,4 +1095,105 @@ async fn soulbound_decor_is_placed_in_your_own_house_but_not_a_partners() {
     let placed = sim.click(a, &held, "Place").await;
     assert!(placed.description().contains("Placed **"), "{}", placed.description());
     assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
+}
+
+#[tokio::test]
+async fn recycle_selection_is_reversible_and_confirmation_replay_is_idempotent() {
+    let Some(mut sim) = Sim::new("recycle_selection_is_reversible_and_confirmation_replay_is_idempotent").await else {
+        return;
+    };
+    for (lang, recycle, confirm) in [
+        (pinchora_core::i18n::Lang::En, "Recycle", "Confirm recycle"),
+        (pinchora_core::i18n::Lang::Tr, "Dönüştür", "Geri dönüşümü onayla"),
+    ] {
+        let user = unique();
+        sim.app.set_user_lang(user, Some(lang)).await.unwrap();
+        let entry = &Collection::get().critters[0];
+        sqlx::query("INSERT INTO dex_entries(user_id,entry_id,caught,kept) VALUES($1,$2,4,4)")
+            .bind(user as i64)
+            .bind(&entry.id)
+            .execute(sim.app.db.pool())
+            .await
+            .unwrap();
+        let dex = sim.command(user, "dex", json!([])).await;
+        let menu = sim.click(user, &dex, recycle).await;
+        let confirmation = sim.pick(user, &menu, "bc:rs:", &entry.id).await;
+        assert_eq!(sim.app.db.dex(user).await.unwrap()[0].kept, 4);
+        assert_eq!(sim.app.db.shards(user).await.unwrap(), 0);
+        let other = unique();
+        sim.click(other, &confirmation, confirm).await;
+        assert_eq!(sim.app.db.dex(user).await.unwrap()[0].kept, 4);
+        sim.click(user, &confirmation, confirm).await;
+        assert_eq!(sim.app.db.dex(user).await.unwrap()[0].kept, 3);
+        sim.app
+            .cache
+            .release_cooldown(&format!("collection-depth:{user}:rc"))
+            .await
+            .unwrap();
+        sim.click(user, &confirmation, confirm).await;
+        assert_eq!(sim.app.db.dex(user).await.unwrap()[0].kept, 3);
+        assert_eq!(
+            sim.app.db.shards(user).await.unwrap(),
+            pinchora_game::collection::recycle_shards(entry.rarity)
+        );
+        sim.app
+            .db
+            .recycle_critter(user, &entry.id, 24, "craft-funds")
+            .await
+            .unwrap();
+        let label = if lang == pinchora_core::i18n::Lang::En {
+            "Craft loot"
+        } else {
+            "Ganimet üret"
+        };
+        sim.click(user, &dex, label).await;
+        let left = sim.app.db.shards(user).await.unwrap();
+        sim.app
+            .cache
+            .release_cooldown(&format!("collection-depth:{user}:c"))
+            .await
+            .unwrap();
+        sim.click(user, &dex, label).await;
+        assert_eq!(sim.app.db.shards(user).await.unwrap(), left);
+        assert_eq!(
+            sim.app
+                .db
+                .inventory(user)
+                .await
+                .unwrap()
+                .iter()
+                .map(|i| i.quantity)
+                .sum::<i32>(),
+            1
+        );
+    }
+}
+
+#[tokio::test]
+async fn collection_claim_components_cannot_cross_guild_or_channel_boundaries() {
+    let Some(mut sim) = Sim::new("collection_claim_components_cannot_cross_guild_or_channel_boundaries").await else {
+        return;
+    };
+    let _turn = COLLECTION.lock().await;
+    sim.channel = unique();
+    post_critter_drop(&sim.app, sim.guild, sim.channel).await.unwrap();
+    let posts = sim.posts();
+    let shown = reply_of(only(&posts, sim.channel, Method::POST));
+    let (id,): (i64,) = sqlx::query_as("SELECT id FROM collection_drops WHERE channel_id=$1 ORDER BY id DESC LIMIT 1")
+        .bind(sim.channel as i64)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    let user = unique();
+    let (guild, channel) = (sim.guild, sim.channel);
+    sim.guild = unique();
+    sim.component(user, &format!("cd:g:{id}:0"), &[], &shown).await;
+    assert!(sim.app.db.dex(user).await.unwrap().is_empty());
+    sim.guild = guild;
+    sim.channel = unique();
+    sim.component(user, &format!("cd:g:{id}:0"), &[], &shown).await;
+    assert!(sim.app.db.dex(user).await.unwrap().is_empty());
+    sim.channel = channel;
+    sim.component(user, &format!("cd:g:{id}:0"), &[], &shown).await;
+    assert_eq!(sim.app.db.dex(user).await.unwrap().len(), 1);
 }

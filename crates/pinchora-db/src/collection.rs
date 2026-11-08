@@ -53,6 +53,7 @@ pub struct CollectionRoll {
 pub enum RollStart {
     Started(CollectionRoll),
     Wait(CollectionRoll),
+    Cooldown,
     Limit,
 }
 
@@ -344,6 +345,9 @@ impl Db {
         retry("start_collection_roll", || async {
             let mut tx = self.pool().begin().await?;
             lock_users(&mut tx, &[sql_id(user)]).await?;
+            let cooling: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM deleted_users WHERE user_id=$1 AND collection_roll_until>$2)")
+                .bind(sql_id(user)).bind(now).fetch_one(&mut *tx).await?;
+            if cooling { return Ok(RollStart::Cooldown); }
             let previous: Option<CollectionRoll> = sqlx::query_as("SELECT entry_id, glimmer, rolled_at, claimed_at FROM collection_rolls WHERE user_id = $1 FOR UPDATE")
                 .bind(sql_id(user)).fetch_optional(&mut *tx).await?;
             if let Some(old) = previous.filter(|r| r.rolled_at + Duration::hours(1) > now) {
@@ -420,7 +424,7 @@ impl Db {
             .fetch_one(&mut *tx)
             .await?;
         let exists: Option<(i64,)> =
-            sqlx::query_as("SELECT 1 FROM collection_wishlist WHERE user_id = $1 AND entry_id = $2")
+            sqlx::query_as("SELECT 1::bigint FROM collection_wishlist WHERE user_id = $1 AND entry_id = $2")
                 .bind(sql_id(user))
                 .bind(entry)
                 .fetch_optional(&mut *tx)
@@ -456,27 +460,66 @@ impl Db {
     }
 
     /// Recycle one held duplicate, keeping the first copy in the book. Returns the shard balance.
-    pub async fn recycle_critter(&self, user: u64, entry: &str, shards: i64) -> anyhow::Result<Option<i64>> {
+    pub async fn recycle_critter(
+        &self,
+        user: u64,
+        entry: &str,
+        shards: i64,
+        request: &str,
+    ) -> anyhow::Result<Option<i64>> {
+        anyhow::ensure!(
+            shards > 0 && !request.is_empty() && request.len() <= 100,
+            "invalid shard operation"
+        );
         retry("recycle_critter", || async {
             let mut tx = self.pool().begin().await?;
             lock_users(&mut tx, &[sql_id(user)]).await?;
+            if let Some((balance,)) = sqlx::query_as::<_, (i64,)>(
+                "SELECT balance FROM collection_shard_ledger WHERE user_id = $1 AND request_id = $2 AND kind = $3")
+                .bind(sql_id(user)).bind(request).bind("recycle").fetch_optional(&mut *tx).await? {
+                return Ok(Some(balance));
+            }
             let kept: Option<(i32,)> = sqlx::query_as("UPDATE dex_entries SET kept = kept - 1
-                WHERE user_id = $1 AND entry_id = $2 AND kept > GREATEST(glimmer, 1) RETURNING kept")
+                WHERE user_id = $1 AND entry_id = $2 AND kept > glimmer + 1 RETURNING kept")
                 .bind(sql_id(user)).bind(entry).fetch_optional(&mut *tx).await?;
             if kept.is_none() { return Ok(None); }
             let (left,): (i64,) = sqlx::query_as("INSERT INTO collection_players (user_id, shards) VALUES ($1, $2)
                 ON CONFLICT (user_id) DO UPDATE SET shards = collection_players.shards + EXCLUDED.shards RETURNING shards")
                 .bind(sql_id(user)).bind(shards).fetch_one(&mut *tx).await?;
+            sqlx::query("INSERT INTO collection_shard_ledger (user_id, request_id, kind, entry_id, delta, balance) VALUES ($1,$2,$3,$4,$5,$6)")
+                .bind(sql_id(user)).bind(request).bind("recycle").bind(entry).bind(shards).bind(left)
+                .execute(&mut *tx).await?;
             tx.commit().await?;
             Ok(Some(left))
         }).await
     }
 
+    /// The committed result used to replay a craft response without rerolling its displayed reward.
+    pub async fn shard_craft_result(&self, user: u64, request: &str) -> anyhow::Result<Option<(String, i64, i64)>> {
+        Ok(sqlx::query_as("SELECT entry_id, balance, -delta FROM collection_shard_ledger WHERE user_id=$1 AND request_id=$2 AND kind='craft'")
+            .bind(sql_id(user)).bind(request).fetch_optional(self.pool()).await?)
+    }
+
     /// Spend shards on one bound loot item. The caller chooses only from the collection recipe pool.
-    pub async fn craft_shard_loot(&self, user: u64, cost: i64, item: &str) -> anyhow::Result<Option<i64>> {
+    pub async fn craft_shard_loot(
+        &self,
+        user: u64,
+        cost: i64,
+        item: &str,
+        request: &str,
+    ) -> anyhow::Result<Option<i64>> {
+        anyhow::ensure!(
+            cost > 0 && !request.is_empty() && request.len() <= 100,
+            "invalid shard operation"
+        );
         retry("craft_shard_loot", || async {
             let mut tx = self.pool().begin().await?;
             lock_users(&mut tx, &[sql_id(user)]).await?;
+            if let Some((balance,)) = sqlx::query_as::<_, (i64,)>(
+                "SELECT balance FROM collection_shard_ledger WHERE user_id = $1 AND request_id = $2 AND kind = $3")
+                .bind(sql_id(user)).bind(request).bind("craft").fetch_optional(&mut *tx).await? {
+                return Ok(Some(balance));
+            }
             let left: Option<(i64,)> = sqlx::query_as(
                 "UPDATE collection_players SET shards = shards - $2
                 WHERE user_id = $1 AND shards >= $2 RETURNING shards",
@@ -489,6 +532,9 @@ impl Db {
                 return Ok(None);
             };
             add_inventory(&mut tx, sql_id(user), &soulbound(item), 1).await?;
+            sqlx::query("INSERT INTO collection_shard_ledger (user_id, request_id, kind, entry_id, delta, balance) VALUES ($1,$2,$3,$4,$5,$6)")
+                .bind(sql_id(user)).bind(request).bind("craft").bind(item).bind(-cost).bind(left)
+                .execute(&mut *tx).await?;
             tx.commit().await?;
             Ok(Some(left))
         })
@@ -548,10 +594,19 @@ impl Db {
                 "SELECT w.user_id, w.entry_id FROM collection_wishlist w
                  JOIN members m ON m.user_id = w.user_id AND m.guild_id = $2
                  WHERE w.ping_on_spawn AND w.entry_id = ANY($1)
+                   AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = w.user_id AND u.dm_opt_out)
+                   AND NOT EXISTS (SELECT 1 FROM guestbook_blocks b WHERE
+                     (b.host_id = w.user_id AND b.blocked_id = $3) OR (b.blocked_id = w.user_id AND b.host_id = $3))
+                   AND NOT EXISTS (SELECT 1 FROM collection_daily d WHERE d.user_id = w.user_id
+                     AND d.game = 'critter_claim' AND d.day = floor(extract(epoch FROM now()) / 86400)::integer AND d.plays >= 10)
+                   AND NOT EXISTS (SELECT 1 FROM deleted_users u WHERE u.user_id=w.user_id AND u.collection_ping_until>now())
+                   AND NOT EXISTS (SELECT 1 FROM collection_drops d WHERE d.protected_user_id = w.user_id
+                     AND d.created_at > now() - interval '1 hour')
                  ORDER BY random() LIMIT 1",
             )
             .bind(&ids)
             .bind(sql_id(new.guild_id))
+            .bind(new.host.map(sql_id))
             .fetch_optional(&mut *tx)
             .await?;
             if let Some((user, entry)) = wanted
@@ -566,6 +621,54 @@ impl Db {
                 row.protected_until = Some(until);
             }
         }
+        tx.commit().await?;
+        Ok(row)
+    }
+
+    /// Revalidate consent immediately before delivery; only the initial delivery arms the window.
+    pub async fn prepare_collection_ping(&self, id: i64, member_present: bool) -> anyhow::Result<DropRow> {
+        let mut tx = self.pool().begin().await?;
+        let candidate: Option<(Option<i64>,)> =
+            sqlx::query_as("SELECT protected_user_id FROM collection_drops WHERE id=$1")
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await?;
+        if let Some((Some(user),)) = candidate {
+            lock_users(&mut tx, &[user]).await?;
+        }
+        let row: DropRow = sqlx::query_as(concat!(
+            "SELECT ",
+            drop_columns!(),
+            " FROM collection_drops WHERE id=$1 FOR UPDATE"
+        ))
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+        if row.message_id.is_some() {
+            return Ok(row);
+        }
+        let eligible: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM collection_wishlist w WHERE w.user_id=$1 AND w.ping_on_spawn
+            AND w.entry_id = $2 AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=w.user_id AND u.dm_opt_out)
+            AND NOT EXISTS (SELECT 1 FROM guestbook_blocks b WHERE (b.host_id=w.user_id AND b.blocked_id=$3) OR (b.blocked_id=w.user_id AND b.host_id=$3))
+            AND NOT EXISTS (SELECT 1 FROM collection_daily d WHERE d.user_id=w.user_id AND d.game='critter_claim'
+                AND d.day=floor(extract(epoch FROM now())/86400)::integer AND d.plays>=10)
+            AND NOT EXISTS (SELECT 1 FROM deleted_users u WHERE u.user_id=w.user_id AND u.collection_ping_until>now())
+            AND NOT EXISTS (SELECT 1 FROM collection_drops d WHERE d.id<>$4 AND d.protected_user_id=w.user_id
+                AND d.protected_until > now() - interval '1 hour' AND (d.message_id IS NOT NULL OR d.id<$4)))")
+            .bind(row.protected_user_id)
+            .bind(row.protected_slot.and_then(|i| row.cards.get(i as usize)).map(|s| s.strip_prefix("g:").unwrap_or(s)))
+            .bind(row.host_id).bind(id).fetch_one(&mut *tx).await?;
+        let active = member_present && eligible && row.mode != "hidden" && row.mode != "vote";
+        let row = sqlx::query_as(concat!(
+            "UPDATE collection_drops SET protected_user_id=CASE WHEN $2 THEN protected_user_id END,
+            protected_slot=CASE WHEN $2 THEN protected_slot END,
+            protected_until=CASE WHEN $2 THEN now() + interval '15 seconds' END WHERE id=$1 RETURNING ",
+            drop_columns!()
+        ))
+        .bind(id)
+        .bind(active)
+        .fetch_one(&mut *tx)
+        .await?;
         tx.commit().await?;
         Ok(row)
     }
@@ -619,6 +722,7 @@ impl Db {
                     && r.mode == "vote"
                     && r.is_open()
                     && r.vote_winner.is_none()
+                    && slot < r.cards.len()
                     && r.expires_at - Duration::seconds(60) > now
             }) else {
                 return Ok(VoteCard::Gone);
@@ -638,7 +742,7 @@ impl Db {
             }
             sqlx::query(
                 "INSERT INTO collection_votes (drop_id, user_id, slot) VALUES ($1, $2, $3)
-                ON CONFLICT (drop_id, user_id) DO UPDATE SET slot = EXCLUDED.slot",
+                ON CONFLICT (drop_id, user_id) DO NOTHING",
             )
             .bind(drop_id)
             .bind(sql_id(user))
@@ -763,6 +867,17 @@ impl Db {
         let Some(mut drop) = drop.filter(|d| d.kind == CRITTERS && d.is_open() && d.expires_at > now) else {
             return Ok(Grab::Gone);
         };
+        // Erasure removes the old taker's identity and attempt rows. Do not let that reset
+        // this player's one-card/three-attempt budget on an already running drop.
+        let erased_during_drop: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM deleted_users WHERE user_id=$1 AND deleted_at >= $2)")
+                .bind(sql_id(user))
+                .bind(drop.created_at)
+                .fetch_one(&mut *tx)
+                .await?;
+        if erased_during_drop {
+            return Ok(Grab::Gone);
+        }
         let Some(card) = drop.cards.get(slot) else {
             return Ok(Grab::Gone);
         };
@@ -773,18 +888,33 @@ impl Db {
         if let Some(have) = drop.takers.iter().position(|t| *t == sql_id(user)) {
             return Ok(Grab::Have { slot: have });
         }
+        if drop.takers[slot] < 0 {
+            return Ok(Grab::Gone);
+        }
         if drop.takers[slot] != 0 {
             return Ok(Grab::Lost {
                 by: drop.takers[slot] as u64,
             });
         }
-        if drop.mode == "word"
-            && !drop
-                .challenge_word
-                .as_deref()
-                .is_some_and(|word| answer.is_some_and(|typed| word.eq_ignore_ascii_case(typed)))
-        {
-            return Ok(Grab::Challenge);
+        if drop.mode == "word" {
+            let attempts: Option<(i16,)> = sqlx::query_as(
+                "INSERT INTO collection_word_attempts (drop_id, user_id, attempts) VALUES ($1,$2,1)
+                ON CONFLICT (drop_id,user_id) DO UPDATE SET attempts = collection_word_attempts.attempts + 1
+                WHERE collection_word_attempts.attempts < 3 RETURNING attempts",
+            )
+            .bind(drop_id)
+            .bind(sql_id(user))
+            .fetch_optional(&mut *tx)
+            .await?;
+            if attempts.is_none()
+                || !drop
+                    .challenge_word
+                    .as_deref()
+                    .is_some_and(|word| answer.is_some_and(|typed| word.eq_ignore_ascii_case(typed.trim())))
+            {
+                tx.commit().await?;
+                return Ok(Grab::Challenge);
+            }
         }
         if drop.mode == "vote" && drop.vote_winner != Some(slot as i16) {
             return Ok(Grab::Voting);
@@ -802,7 +932,7 @@ impl Db {
              RETURNING plays",
         )
         .bind(sql_id(user))
-        .bind(daily.day)
+        .bind(now.timestamp().div_euclid(86_400) as i32)
         .fetch_one(&mut *tx)
         .await?;
         if claims > CLAIMS_PER_DAY {
@@ -869,6 +999,9 @@ impl Db {
         let Some(mut drop) = drop.filter(|d| d.kind == BOTTLE) else {
             return Ok(BottleOpen::Gone);
         };
+        if drop.takers.first().is_some_and(|t| *t < 0) {
+            return Ok(BottleOpen::Gone);
+        }
         // Somebody opened it first: opening closes the bottle, so this must be told before it is called over.
         if drop.takers.first().is_some_and(|t| *t != 0) {
             return Ok(BottleOpen::Lost {

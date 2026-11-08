@@ -43,6 +43,18 @@ pub fn variant_ramp(name: &str) -> Option<[[u8; 3]; 5]> {
     }
 }
 
+/// Deterministic Glimmer palette derived only from the original pixels, preserving transparency.
+pub fn glimmer(sprite: &RgbaImage) -> RgbaImage {
+    let mut out = sprite.clone();
+    for pixel in out.pixels_mut() {
+        if pixel[3] != 0 {
+            let [r, g, b, a] = pixel.0;
+            pixel.0 = [b.saturating_add(38), r.saturating_add(22), g.saturating_add(30), a];
+        }
+    }
+    out
+}
+
 /// Swaps the base ramp for `ramp`; every other colour is kept.
 pub fn recolor(sprite: &RgbaImage, ramp: &[[u8; 3]; 5]) -> RgbaImage {
     let mut out = sprite.clone();
@@ -604,5 +616,30 @@ mod tests {
     fn an_empty_sprite_still_gets_its_zs() {
         let lying = sleeping_pet(&RgbaImage::new(8, 8), false);
         assert_eq!((lying.width(), lying.height()), (24, 8 + ZZ_ROOM));
+    }
+}
+
+#[cfg(test)]
+mod glimmer_tests {
+    use super::*;
+    #[test]
+    fn every_atlas_sprite_has_a_deterministic_visible_glimmer() {
+        let atlas = SpriteStore::from_atlas(ATLAS_PNG, ATLAS_JSON).unwrap();
+        assert!(!atlas.is_empty());
+        for name in atlas.names() {
+            let original = atlas.get(name).unwrap();
+            let variant = glimmer(&original);
+            assert_eq!(original.dimensions(), variant.dimensions(), "{name}");
+            assert!(
+                original.pixels().zip(variant.pixels()).all(|(a, b)| a[3] == b[3]),
+                "{name}"
+            );
+            assert_eq!(variant, glimmer(&original), "{name}");
+            if original.pixels().any(|p| p[3] != 0 && p.0[..3] != [255, 255, 255]) {
+                assert_ne!(*original, variant, "{name}");
+            }
+            let png = crate::encode_png(&variant).unwrap();
+            assert_eq!(image::load_from_memory(&png).unwrap().to_rgba8(), variant, "{name}");
+        }
     }
 }

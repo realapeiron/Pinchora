@@ -195,7 +195,7 @@ pub(crate) async fn view(
                 false,
             ),
             button(
-                format!("bc:c:{owner}"),
+                format!("bc:c:{owner}:0:{}", cx.interaction.id),
                 &t!(lang, "collection-depth.craft"),
                 None,
                 ButtonStyle::Secondary,
@@ -374,7 +374,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
             ]);
             cx.update(Cx::card(embed, "piece.png", png, vec![back], false)).await
         }
-        "w" | "wp" | "wq" | "wr" | "r" | "rs" | "c" | "rl" | "cl" => {
+        "w" | "wp" | "wq" | "wr" | "r" | "rs" | "rc" | "c" | "rl" | "cl" => {
             super::depth::on_component(cx, action, owner, parts, value).await
         }
         _ => cx.reply_ephemeral(t!(lang, "collect.button-expired")).await,

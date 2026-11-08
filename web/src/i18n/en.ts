@@ -1,4 +1,6 @@
 export const en = {
+  "Confirm recycle": "Confirm recycle",
+  "Recycle one spare? This cannot be undone.": "Recycle one spare? This cannot be undone.",
   "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.":
     "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.",
   "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.":

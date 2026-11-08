@@ -367,7 +367,7 @@ Thirty percent are bottles; the other 70% are three-card Critter Drops. Critter 
 **55% standard, 15% hidden, 15% word challenge, 15% vote** for chat-driven drops;
 hand-called `/critterdrop` stays standard. Hidden cards reveal their
 identity after a claim or expiry. A word challenge asks a player to type its shown short
-word before claiming. A vote accepts one choice per player, up to 100 voters, for 30 seconds;
+random eight-character code, rendered only in the image, before claiming. Each player has three database-backed attempts per drop; surrounding whitespace and ASCII case are ignored. A vote accepts one immutable choice per player, up to 100 voters, for 30 seconds;
 the top card (lowest slot on a tie) then opens to the first claimant. All drops expire after
 90 seconds. Each slot is assigned once under a row lock. Claims have a hard limit of
 **10 per player per UTC day**; vote and word inputs have short retry cooldowns. The original first **20** Critter
@@ -379,14 +379,14 @@ transaction. An unclaimed roll pays nothing. The `/dex` panel and `/me/collectio
 same roll state. Wishlist holds ten entries per player. Pings are explicit opt-in and apply
 only to critters. At most one matching opted-in collector is pinged per drop; their matched
 card is reserved for **15 seconds**. Other cards stay open, and the reserved card becomes
-public after the window. No general user or role mentions are allowed.
+public after the window. Reservations are limited to once per collector per hour, exclude capped claimers and blocked hosts, and are revalidated against opt-outs and current Discord membership immediately before posting. Hidden and vote drops do not send identifying wishlist pings. No general user or role mentions are allowed.
 
 Newly awarded copies stay in the collection book; pre-0084 discoveries start with one held copy.
-A player may manually recycle a spare while keeping
+After explicit confirmation, a player may manually recycle a spare while keeping
 one original and all Glimmer copies. Recycle yields **2/4/9/20/45 shards** by rarity, in
 addition to the existing duplicate shells and fragments. Shards cannot be traded or converted
 to shells. A shard craft rolls one common, soulbound reward decor item and costs **12 shards**;
 each completed habitat set (shore, tide pool, kelp, reef, deep) cuts the cost by one, to a
 minimum of **7**. The five sets require every critter of that habitat; each discount is a
 permanent book bonus. The craft is atomic with the shard debit and inventory grant. This
-loop turns repeated cards into personal decor and has no resale path.
+loop turns repeated cards into personal decor and has no resale path. Every shard credit and debit has a transactional ledger entry keyed by a unique request, so retrying a confirmation or craft cannot repeat the award.

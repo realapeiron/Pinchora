@@ -90,6 +90,7 @@ impl CritterDrop {
         let row = create_critter_drop(app, guild, channel, Some(user), false).await?;
         // The drop is the channel's, so it speaks the server's language from its first post to its close.
         let (embed, png, buttons) = critter_message(app, app.guild_lang(guild).await, &row).await?;
+        let row = prepare_ping(app, &row).await?;
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             attachments: Some(vec![Attachment::from_bytes("drop.png".to_owned(), png, 1)]),
@@ -102,6 +103,22 @@ impl CritterDrop {
         track_message(cx, row.id);
         Ok(())
     }
+}
+
+async fn prepare_ping(app: &App, row: &DropRow) -> anyhow::Result<DropRow> {
+    let present = if let Some(user) = row.protected_user_id {
+        match app
+            .http
+            .guild_member(Id::new(row.guild_id as u64), Id::new(user as u64))
+            .await
+        {
+            Ok(response) => response.model().await.is_ok_and(|member| !member.user.bot),
+            Err(_) => false,
+        }
+    } else {
+        false
+    };
+    app.db.prepare_collection_ping(row.id, present).await
 }
 
 fn ping_wish(row: &DropRow) -> Option<AllowedMentions> {
@@ -182,18 +199,13 @@ async fn create_critter_drop(
     } else if roll < 0.15 {
         ("hidden", None)
     } else if roll < 0.30 {
-        let words = if app.guild_lang(guild).await == Lang::Tr {
-            ["mercan", "inci", "gelgit", "kabuk"]
-        } else {
-            ["coral", "pearl", "tide", "shell"]
-        };
-        ("word", Some(words[(rand::random::<u8>() as usize) % 4]))
+        ("word", Some(format!("{:08x}", rand::random::<u32>())))
     } else if roll < 0.45 {
         ("vote", None)
     } else {
         ("standard", None)
     };
-    app.db.set_drop_mode(row.id, mode, word).await
+    app.db.set_drop_mode(row.id, mode, word.as_deref()).await
 }
 
 fn sparkles(rarity: Rarity) -> u8 {
@@ -209,7 +221,11 @@ fn sparkles(rarity: Rarity) -> u8 {
 async fn critter_message(app: &App, lang: Lang, row: &DropRow) -> anyhow::Result<(Embed, Vec<u8>, Vec<Component>)> {
     let card = DropCard {
         title: Game::CritterDrop.name(lang),
-        subtitle: t!(lang, "drop.card.subtitle"),
+        subtitle: if row.mode == "word" {
+            row.challenge_word.clone().unwrap_or_default()
+        } else {
+            t!(lang, "drop.card.subtitle")
+        },
         cards: cards(row)
             .into_iter()
             .enumerate()
@@ -278,6 +294,7 @@ fn critter_embed(row: &DropRow, over: bool, lang: Lang) -> Embed {
                 }
                 (0, false) => t!(lang, "drop.free"),
                 (0, true) => t!(lang, "drop.drifted"),
+                (taker, _) if taker < 0 => t!(lang, "collection-depth.anonymous-claim"),
                 (taker, _) => t!(lang, "drop.taken-by", user = mention(taker)),
             };
             t!(
@@ -327,12 +344,11 @@ fn critter_embed(row: &DropRow, over: bool, lang: Lang) -> Embed {
     let called = row.host_id.map_or(String::new(), |host| {
         format!("\n{}", t!(lang, "drop.called-by", user = mention(host)))
     });
-    let instruction = row
-        .challenge_word
-        .as_deref()
-        .filter(|_| row.mode == "word" && !over)
-        .map(|word| format!("\n\n{}", t!(lang, "collection-depth.type-word", word = word)))
-        .unwrap_or_default();
+    let instruction = if row.mode == "word" && !over {
+        format!("\n\n{}", t!(lang, "collection-depth.type-word"))
+    } else {
+        String::new()
+    };
     let instruction = if row.mode == "vote" && !over {
         format!(
             "\n\n{}",
@@ -423,6 +439,13 @@ async fn post(
     png: Vec<u8>,
     buttons: Vec<Component>,
 ) -> anyhow::Result<bool> {
+    let prepared;
+    let row = if row.kind == DROP_CRITTERS {
+        prepared = prepare_ping(app, row).await?;
+        &prepared
+    } else {
+        row
+    };
     let channel = row.channel_id as u64;
     let embeds = [app.brand_embed(row.guild_id as u64, embed).await];
     let attachments = [Attachment::from_bytes(filename.to_owned(), png, 1)];
@@ -468,6 +491,15 @@ pub(crate) async fn on_grab(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
     ) else {
         return cx.reply_ephemeral(t!(cx.lang(), "collect.button-expired")).await;
     };
+    if cx
+        .app
+        .db
+        .drop_row(id)
+        .await?
+        .is_none_or(|r| Some(r.guild_id as u64) != cx.guild_id() || r.channel_id as u64 != channel_of(cx))
+    {
+        return cx.reply_ephemeral(t!(cx.lang(), "drop.gone")).await;
+    }
     if action == "v" {
         if cx
             .app
@@ -539,9 +571,6 @@ pub(crate) async fn on_word(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Stri
     ) else {
         return cx.reply_ephemeral(t!(cx.lang(), "collect.button-expired")).await;
     };
-    let Some(row) = cx.app.db.drop_row(id).await?.filter(|r| r.mode == "word") else {
-        return cx.reply_ephemeral(t!(cx.lang(), "drop.gone")).await;
-    };
     if cx
         .app
         .cache
@@ -559,19 +588,14 @@ pub(crate) async fn on_word(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Stri
         .find(|(key, _)| key == "answer")
         .map(|(_, value)| value.trim())
         .unwrap_or("");
-    if !row
-        .challenge_word
-        .as_deref()
-        .is_some_and(|word| word.eq_ignore_ascii_case(answer))
-    {
-        return cx.reply_ephemeral(t!(cx.lang(), "collection-depth.wrong-word")).await;
-    }
     claim(cx, id, slot, Some(answer)).await
 }
 
 async fn claim(cx: &Cx, id: i64, slot: usize, answer: Option<&str>) -> anyhow::Result<()> {
     let (app, user, lang) = (&cx.app, cx.author()?.id.get(), cx.lang());
-    let Some(row) = app.db.drop_row(id).await?.filter(|r| r.kind == DROP_CRITTERS) else {
+    let Some(row) = app.db.drop_row(id).await?.filter(|r| {
+        r.kind == DROP_CRITTERS && Some(r.guild_id as u64) == cx.guild_id() && r.channel_id as u64 == channel_of(cx)
+    }) else {
         return cx.reply_ephemeral(t!(lang, "drop.gone")).await;
     };
     let Some(entry) = row
@@ -778,7 +802,9 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
         return cx.reply_ephemeral(t!(cx.lang(), "collect.button-expired")).await;
     };
     let (app, user, lang) = (&cx.app, cx.author()?.id.get(), cx.lang());
-    let Some(row) = app.db.drop_row(id).await?.filter(|r| r.kind == DROP_BOTTLE) else {
+    let Some(row) = app.db.drop_row(id).await?.filter(|r| {
+        r.kind == DROP_BOTTLE && Some(r.guild_id as u64) == cx.guild_id() && r.channel_id as u64 == channel_of(cx)
+    }) else {
         return cx.reply_ephemeral(t!(lang, "bottle.drifted")).await;
     };
     // The opened bottle replaces the channel's post: it is told in the server's language.
@@ -894,4 +920,57 @@ pub(crate) async fn close(app: &Arc<App>, row: &DropRow) {
         Some(&buttons),
     )
     .await;
+}
+
+#[cfg(test)]
+mod depth_tests {
+    use super::*;
+    fn sample() -> DropRow {
+        let now = chrono::Utc::now();
+        DropRow {
+            id: 1,
+            kind: DROP_CRITTERS.into(),
+            guild_id: 2,
+            channel_id: 3,
+            message_id: None,
+            host_id: None,
+            cards: Collection::get()
+                .critters
+                .iter()
+                .take(3)
+                .map(|e| e.id.clone())
+                .collect(),
+            takers: vec![0; 3],
+            status: "open".into(),
+            expires_at: now + Span::seconds(90),
+            mode: "word".into(),
+            challenge_word: Some("a91bc42f".into()),
+            vote_winner: None,
+            created_at: now,
+            protected_user_id: Some(4),
+            protected_slot: Some(0),
+            protected_until: Some(now + Span::seconds(15)),
+        }
+    }
+    #[test]
+    fn word_answers_and_hidden_cards_never_leak_in_discord_metadata() {
+        let mut row = sample();
+        for lang in [Lang::En, Lang::Tr] {
+            let payload =
+                serde_json::to_string(&(critter_embed(&row, false, lang), critter_buttons(&row, false))).unwrap();
+            assert!(!payload.contains("a91bc42f"));
+        }
+        row.mode = "hidden".into();
+        for lang in [Lang::En, Lang::Tr] {
+            let payload =
+                serde_json::to_string(&(critter_embed(&row, false, lang), critter_buttons(&row, false))).unwrap();
+            for entry in cards(&row) {
+                assert!(!payload.contains(&entry.name_in(lang)));
+                assert!(!payload.contains(&entry.id));
+            }
+        }
+        let allowed = ping_wish(&row).unwrap();
+        assert_eq!(allowed.users.len(), 1);
+        assert!(allowed.parse.is_empty() && allowed.roles.is_empty());
+    }
 }

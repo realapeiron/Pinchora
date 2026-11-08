@@ -90,7 +90,7 @@ async fn start_roll(State(st): State<WebState>, c: CurrentSession) -> ApiResult<
                 json!({"entry_id":roll.entry_id,"name":entry.name_in(l),"glimmer":roll.glimmer,"rolled_at":roll.rolled_at,"claimed":false}),
             ))
         }
-        RollStart::Wait(_) => Err(ApiError::blocked(t!(l, "collection-depth.roll-wait"))),
+        RollStart::Wait(_) | RollStart::Cooldown => Err(ApiError::blocked(t!(l, "collection-depth.roll-wait"))),
         RollStart::Limit => Err(ApiError::blocked(t!(l, "collection-depth.roll-limit"))),
     }
 }
@@ -197,6 +197,8 @@ async fn remove_wish(State(st): State<WebState>, c: CurrentSession, Path(id): Pa
 #[serde(deny_unknown_fields)]
 struct Recycle {
     entry_id: String,
+    confirmed: bool,
+    request_id: String,
 }
 async fn recycle(
     State(st): State<WebState>,
@@ -205,12 +207,15 @@ async fn recycle(
 ) -> ApiResult<Json<Value>> {
     write_limit(&st, c.session.user_id).await?;
     let l = lang(&st, &c.session).await;
+    if !v.confirmed || v.request_id.is_empty() || v.request_id.len() > 100 {
+        return Err(invalid(l));
+    }
     let e = Collection::get().entry(&v.entry_id).ok_or_else(|| invalid(l))?;
     let worth = recycle_shards(e.rarity);
     let left = st
         .app
         .db
-        .recycle_critter(c.session.user_id, &v.entry_id, worth)
+        .recycle_critter(c.session.user_id, &v.entry_id, worth, &v.request_id)
         .await?
         .ok_or_else(|| ApiError::blocked(t!(l, "collection-depth.no-spare")))?;
     finish(
@@ -224,9 +229,17 @@ async fn recycle(
     Ok(Json(json!({"shards":left,"earned":worth})))
 }
 
-async fn craft(State(st): State<WebState>, c: CurrentSession) -> ApiResult<Json<Value>> {
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Craft {
+    request_id: String,
+}
+async fn craft(State(st): State<WebState>, c: CurrentSession, ApiJson(v): ApiJson<Craft>) -> ApiResult<Json<Value>> {
     write_limit(&st, c.session.user_id).await?;
     let l = lang(&st, &c.session).await;
+    if v.request_id.is_empty() || v.request_id.len() > 100 {
+        return Err(invalid(l));
+    }
     let dex = st.app.db.dex(c.session.user_id).await?;
     let owned = dex.into_iter().map(|row| row.entry_id).collect();
     let cost = shard_craft_cost(&owned);
@@ -235,9 +248,15 @@ async fn craft(State(st): State<WebState>, c: CurrentSession) -> ApiResult<Json<
     let left = st
         .app
         .db
-        .craft_shard_loot(c.session.user_id, cost, &item)
+        .craft_shard_loot(c.session.user_id, cost, &item, &v.request_id)
         .await?
         .ok_or_else(|| ApiError::blocked(t!(l, "collection-depth.not-enough-shards", cost = cost)))?;
+    let (item, left, cost) = st
+        .app
+        .db
+        .shard_craft_result(c.session.user_id, &v.request_id)
+        .await?
+        .unwrap_or((item, left, cost));
     finish(
         &st,
         &c.session,

@@ -619,6 +619,22 @@ mod tests {
     use crate::play::Game;
 
     #[test]
+    fn shard_rates_match_game_design() {
+        assert_eq!(
+            [
+                Rarity::Common,
+                Rarity::Uncommon,
+                Rarity::Rare,
+                Rarity::Epic,
+                Rarity::Legendary
+            ]
+            .map(recycle_shards),
+            [2, 4, 9, 20, 45]
+        );
+        assert_eq!(GLIMMER_SHARE, 0.02);
+    }
+
+    #[test]
     fn habitat_sets_discount_crafting_only_when_complete() {
         let mut owned = HashSet::new();
         assert_eq!(shard_craft_cost(&owned), 12);

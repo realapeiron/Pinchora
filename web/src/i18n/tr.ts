@@ -1,5 +1,8 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "Confirm recycle": "Geri dönüşümü onayla",
+  "Recycle one spare? This cannot be undone.":
+    "Bir fazla kart geri dönüştürülsün mü? Bu işlem geri alınamaz.",
   "Choose up to 25 distinct server roles (not everyone or integration roles), with at least one supported area each.":
     "En fazla 25 farklı sunucu rolü seçin (everyone ve entegrasyon rolleri hariç); her role en az bir geçerli alan verin.",
   "Use positive actor and row IDs, a valid area, an increasing date range, and at most 200 search characters.":
