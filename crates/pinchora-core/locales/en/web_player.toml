@@ -1,0 +1,7 @@
+[web-player]
+invalid = "Choose an available item and check the profile fields. Badges must be unique, with at most six selected."
+insufficient = "You do not have enough shells for this purchase."
+accessory-locked = "Unlock or buy this accessory before wearing it."
+unlock-level = "Unlocks at level {level}."
+unlock-badge = "Earn the {badge} badge to unlock."
+outfit-name = "Outfit {slot}"

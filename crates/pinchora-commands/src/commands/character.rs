@@ -545,7 +545,7 @@ pub(crate) fn channel_name(channel: Channel, lang: Lang) -> String {
 
 /// A random character from what the player may wear: any look and swatch, and in each slot
 /// either nothing or something they own.
-pub(crate) fn randomise(content: &Content, shelf: &Shelf, rng: &mut impl RngExt) -> Character {
+pub fn randomise(content: &Content, shelf: &Shelf, rng: &mut impl RngExt) -> Character {
     let mut c = Character::starter(content);
     if !content.looks.is_empty() {
         c.look = content.looks[rng.random_range(0..content.looks.len())].id.clone();

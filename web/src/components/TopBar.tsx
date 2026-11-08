@@ -18,8 +18,8 @@ export function TopBar({ me }: { me: Me }) {
         <span className="brand-tag">{t("Dashboard").toLocaleUpperCase()}</span>
       </Link>
       <nav className="top-bar-links" aria-label={t("Player pages")}>
-        <Link to="/me/house" className="top-bar-link">
-          {t("My house")}
+        <Link to="/me" className="top-bar-link">
+          {t("My world")}
         </Link>
       </nav>
       <div className="top-bar-user">

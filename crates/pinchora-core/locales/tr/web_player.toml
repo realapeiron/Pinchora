@@ -1,0 +1,7 @@
+[web-player]
+invalid = "Kullanılabilir bir eşya seç ve profil alanlarını kontrol et. En fazla altı farklı rozet seçebilirsin."
+insufficient = "Bu alışveriş için yeterli kabuğun yok."
+accessory-locked = "Bu aksesuarı takmak için önce kilidini aç veya satın al."
+unlock-level = "{level}. seviyede açılır."
+unlock-badge = "Açmak için {badge} rozetini kazan."
+outfit-name = "Kombin {slot}"
