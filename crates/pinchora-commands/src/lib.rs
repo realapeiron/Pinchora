@@ -281,3 +281,5 @@ pub use commands::{wallet_card_for, wallet_preview_for};
 pub mod house_edit;
 pub mod undo;
 pub use commands::house::Who;
+
+pub use commands::party_v2::tick as party_v2_tick;

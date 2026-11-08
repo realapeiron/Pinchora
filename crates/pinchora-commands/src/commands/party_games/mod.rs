@@ -51,6 +51,18 @@ pub(crate) async fn strict(app: &App, guild: u64) -> bool {
 )]
 #[allow(clippy::large_enum_variant)] // parsed once per interaction, never stored
 pub enum PartyCommand {
+    #[command(name = "reefquiz")]
+    Quiz(super::party_v2::Quiz),
+    #[command(name = "wordwake")]
+    Words(super::party_v2::Words),
+    #[command(name = "driftstory")]
+    Story(super::party_v2::Story),
+    #[command(name = "roomwake")]
+    Room(super::party_v2::Room),
+    #[command(name = "crittercompass")]
+    Critter(super::party_v2::Critter),
+    #[command(name = "lastreef")]
+    Survival(super::party_v2::Survival),
     #[command(name = "hotpearl")]
     HotPearl(PartyHotPearl),
     #[command(name = "acronym")]
@@ -196,6 +208,12 @@ pub struct PartyStop;
 impl PartyCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         match self {
+            Self::Quiz(c) => c.run(cx).await,
+            Self::Words(c) => c.run(cx).await,
+            Self::Story(_) => super::party_v2::open(cx, pinchora_game::party_v2::Kind::Story, "", "all").await,
+            Self::Room(_) => super::party_v2::open(cx, pinchora_game::party_v2::Kind::Room, "", "all").await,
+            Self::Critter(_) => super::party_v2::open(cx, pinchora_game::party_v2::Kind::Critter, "", "all").await,
+            Self::Survival(_) => super::party_v2::open(cx, pinchora_game::party_v2::Kind::Survival, "", "all").await,
             Self::HotPearl(c) => {
                 pearl::open(
                     cx,

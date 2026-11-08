@@ -295,3 +295,5 @@ mod quick_command_budget {
 }
 
 pub(crate) mod reef_loop;
+
+pub(crate) mod party_v2;

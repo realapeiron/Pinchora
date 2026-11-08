@@ -254,13 +254,19 @@ partner propose
 partner streak
 partner view
 party acronym
+party crittercompass
+party driftstory
 party fun
 party hotpearl
+party lastreef
 party nhie
 party postcard
+party reefquiz
+party roomwake
 party stop
 party truthordare
 party wordrace
+party wordwake
 party wouldyourrather
 pat
 pet adopt
@@ -275,13 +281,16 @@ ping
 play 2048
 play anagram
 play derby
+play gemtide
 play guessnumber
 play hangman
 play heist
 play higherlower
+play kelpmaze
 play memory
 play minesweeper
 play picross
+play reefmind
 play shells
 play stats
 play trivia

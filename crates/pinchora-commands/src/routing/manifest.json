@@ -1280,6 +1280,16 @@
     "slice": 0
   },
   {
+    "legacy": "party crittercompass",
+    "canonical": "party crittercompass",
+    "slice": 0
+  },
+  {
+    "legacy": "party driftstory",
+    "canonical": "party driftstory",
+    "slice": 0
+  },
+  {
     "legacy": "party fun",
     "canonical": "party fun",
     "slice": 0
@@ -1290,6 +1300,11 @@
     "slice": 0
   },
   {
+    "legacy": "party lastreef",
+    "canonical": "party lastreef",
+    "slice": 0
+  },
+  {
     "legacy": "party nhie",
     "canonical": "party nhie",
     "slice": 0
@@ -1297,6 +1312,16 @@
   {
     "legacy": "party postcard",
     "canonical": "party postcard",
+    "slice": 0
+  },
+  {
+    "legacy": "party reefquiz",
+    "canonical": "party reefquiz",
+    "slice": 0
+  },
+  {
+    "legacy": "party roomwake",
+    "canonical": "party roomwake",
     "slice": 0
   },
   {
@@ -1312,6 +1337,11 @@
   {
     "legacy": "party wordrace",
     "canonical": "party wordrace",
+    "slice": 0
+  },
+  {
+    "legacy": "party wordwake",
+    "canonical": "party wordwake",
     "slice": 0
   },
   {
@@ -1385,6 +1415,11 @@
     "slice": 0
   },
   {
+    "legacy": "play gemtide",
+    "canonical": "play gemtide",
+    "slice": 0
+  },
+  {
     "legacy": "play guessnumber",
     "canonical": "play guessnumber",
     "slice": 0
@@ -1405,6 +1440,11 @@
     "slice": 0
   },
   {
+    "legacy": "play kelpmaze",
+    "canonical": "play kelpmaze",
+    "slice": 0
+  },
+  {
     "legacy": "play memory",
     "canonical": "play memory",
     "slice": 0
@@ -1417,6 +1457,11 @@
   {
     "legacy": "play picross",
     "canonical": "play picross",
+    "slice": 0
+  },
+  {
+    "legacy": "play reefmind",
+    "canonical": "play reefmind",
     "slice": 0
   },
   {

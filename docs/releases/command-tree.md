@@ -152,3 +152,12 @@ All nine leaves defer privately, retain existing root module ownership and comma
 controls, and are included in the EN/TR command catalogs. Diving shares the existing
 `fz` fishing dispatcher via its `loop` action. Migration 0078 only; no registration
 or deployment is performed in this worktree.
+
+## D9 party and team games v2
+
+Adds six `/party` leaves (`reefquiz`, `wordwake`, `driftstory`, `roomwake`,
+`crittercompass`, `lastreef`) and three `/play` leaves (`reefmind`, `kelpmaze`,
+`gemtide`). `/party` has 15 children and `/play` has 18; registration remains
+78 slash roots plus Report. The localized size check measures `/party` at
+1,934 characters and `/play` at 2,076, below the 6,800-character limit.
+EN/TR descriptions and the route inventory include all nine leaves. No migration, dependencies, registration or deployment.

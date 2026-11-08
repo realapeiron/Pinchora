@@ -130,6 +130,7 @@ impl Db {
                 .collect::<Vec<_>>(),
         )
         .await?;
+        crate::party_v2::guard_channel(&mut tx, new.channel_id).await?;
         let session = sqlx::query_as::<_, GameSession>(concat!(
             "INSERT INTO game_sessions (kind, guild_id, channel_id, host_id, guest_id, bet, status, state, expires_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now() + make_interval(secs => $9))

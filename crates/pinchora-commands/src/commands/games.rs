@@ -188,8 +188,11 @@ pub(crate) fn track_message(cx: &Cx, session: i64) {
 /// module were on: the escrow it holds (stakes, pots) is paid out or given back, so nothing stays
 /// locked. Switching a module off only refuses new commands and clicks.
 pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
-    let mut ended = 0;
+    let mut ended = super::party_v2::tick(app).await?;
     for session in app.db.late_games(50).await? {
+        if session.kind.starts_with("d9:") {
+            continue;
+        }
         let result = match session.kind.as_str() {
             "connect4" | "rps" | "seafleet" | "checkers" | "chess" | "othello" => {
                 super::duel::time_out(app, &session).await

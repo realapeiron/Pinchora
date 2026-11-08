@@ -577,18 +577,10 @@ impl Position {
         }
         feed(self.turn.index() as u8 + 20);
         feed(self.castling + 30);
-        // The en passant square only counts when a pawn could really take.
+        // Only a legal capture changes the repetition identity. A pinned pawn cannot take.
         let ep = self.ep.filter(|&to| {
-            let me = self.turn;
-            let behind = if me == Color::White { -1 } else { 1 };
-            [-1, 1].iter().any(|&df| {
-                step(to, df, behind).is_some_and(|s| {
-                    self.board[usize::from(s)]
-                        == Some(Piece {
-                            color: me,
-                            kind: Kind::Pawn,
-                        })
-                })
+            self.legal_moves().iter().any(|mv| {
+                mv.to == to && mv.from % 8 != to % 8 && self.piece_at(mv.from).is_some_and(|p| p.kind == Kind::Pawn)
             })
         });
         feed(ep.map_or(0, |s| s + 40));
@@ -1027,6 +1019,24 @@ mod tests {
         assert_eq!(knights.san(Move::from_uci("c3e4").unwrap()), "Nce4");
         assert_eq!(knights.san(Move::from_uci("g3e4").unwrap()), "Nge4");
         assert_eq!(Position::start().san(Move::from_uci("g1f3").unwrap()), "Nf3");
+    }
+
+    #[test]
+    fn pinned_en_passant_does_not_prevent_threefold_repetition() {
+        let position = Position::from_fen("1n2k3/8/8/r4pPK/8/8/8/6N1 w - f6 0 1").unwrap();
+        assert!(!position.legal_moves().contains(&Move::from_uci("g5f6").unwrap()));
+        let without_ep = Position::from_fen("1n2k3/8/8/r4pPK/8/8/8/6N1 w - - 0 1").unwrap();
+        assert_eq!(position.key(), without_ep.key());
+        let mut game = Game {
+            position,
+            moves: vec![],
+            keys: vec![position.key()],
+        };
+        play(&mut game, "g1f3 b8c6 f3g1 c6b8 g1f3 b8c6 f3g1 c6b8");
+        assert_eq!(game.outcome(), Some(Outcome::Repetition));
+        let available = Position::from_fen("4k3/8/8/5pP1/8/8/8/4K3 w - f6 0 1").unwrap();
+        let unavailable = Position::from_fen("4k3/8/8/5pP1/8/8/8/4K3 w - - 0 1").unwrap();
+        assert_ne!(available.key(), unavailable.key());
     }
 
     #[test]

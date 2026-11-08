@@ -14,8 +14,8 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
-The merged wave 5 command tree has **78 slash roots plus the Report message action**,
-covering **422 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
+The merged wave 6 command tree has **78 slash roots plus the Report message action**,
+covering **431 executable entries**. `/ban`, `/kick`, `/warn`, `/timeout` and `/purge` remain
 separate roots. F20 adds four member roots, F16 adds `/roblox`, and F17 adds `/game`.
 `/setup` has six groups and `/integrations` has five;
 `/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.
@@ -1719,3 +1719,21 @@ explicit public-board switch using D3's existing optional slug and `/lb/:slug`; 
 saving clears the slug and makes the old public URL return 404. D10 community pages are reused.
 Reef explicitly excludes guild plazas (`web/src/reef/README.md`), so no Reef plaza editor is added;
 the pre-existing house editor's separate plaza scope remains available.
+
+### Party and team games v2
+
+| Command | Original Pinchora game |
+| --- | --- |
+| `/party reefquiz [mode] [category]` | Reef Signals: five distinct EN/TR questions; balanced Coral/Kelp teams or quickfire, categories All/Ocean/Science/Nature |
+| `/party wordwake [mode]` | Wordwake: timed dictionary words containing a fragment; relay, chain, longest, many-word and mixed modes; no repeated words |
+| `/party driftstory` | Drift Tale: 18 turns writing a sea story, one filtered word at a time |
+| `/party roomwake` | Cabin Glimpse: identify four original scenes made with the house renderer and furniture atlas |
+| `/party crittercompass` | Critter Compass: three yes/no clues identify one of eight original reef creatures |
+| `/party lastreef` | Last Reef: eight survival tides, shelter/forage/explore choices, reciprocal alliances and a winners card |
+| `/play reefmind [level]` | Reefmind: white against a local Rust chess captain, easy/medium/hard; legal moves include castling, en passant and promotion |
+| `/play kelpmaze` | Kelp Trail: connected, generated 7×7 maze with direction buttons and a 150-move limit |
+| `/play gemtide` | Gem Tide: adjacent swaps on a 4×4 shell grid; matches, gravity, cascades and dead-board reshuffling; 30 points in 20 swaps |
+
+Public pixel cards use the server language. Party lobbies hold 2–12 players for 90 seconds; the host starts or cancels, players can leave or forfeit. One D9 session occupies a channel and excludes legacy multiplayer starts. Solo boards belong to their creator. All controls check channel, guild, seat and state version. Text entry uses modals, so Message Content intent is unnecessary. State survives restarts in existing `game_sessions`/`party_members`; the game janitor handles deadlines. No new tables or migration.
+
+Completed games feed `/play stats`. Eligible winners receive 15 shells through the economy ledger, with a shared **90 shells per UTC day** across these games. Party rewards require at least two players to actually participate; the self-reported Critter Compass guessing game pays no shells. Cancellation pays nothing. State, stats and reward commit together, preventing repeated clicks from paying twice. Chess searches run off the async executor and stop at **120/1,200/6,000 nodes** and **20/75/150 ms** for easy/medium/hard (checked between nodes); no engine downloads or network calls.

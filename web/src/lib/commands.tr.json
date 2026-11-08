@@ -2014,6 +2014,123 @@
         },
         {
           "aliases": [],
+          "description": "Resif Aklı: yerel deniz kaptanına karşı satranç oyna",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Kolay",
+                "Orta",
+                "Zor"
+              ],
+              "description": "Kaptanın zorluk seviyesi",
+              "name": "level",
+              "required": false
+            }
+          ],
+          "path": "play reefmind",
+          "usage": "/play reefmind [level]"
+        },
+        {
+          "aliases": [],
+          "description": "Yosun Yolu: piksel labirentte altın resife ulaş",
+          "manager": false,
+          "options": [],
+          "path": "play kelpmaze",
+          "usage": "/play kelpmaze"
+        },
+        {
+          "aliases": [],
+          "description": "Taş Gelgiti: komşu taşları değiştir, üçlü eşleştirerek 30 puana ulaş",
+          "manager": false,
+          "options": [],
+          "path": "play gemtide",
+          "usage": "/play gemtide"
+        },
+        {
+          "aliases": [],
+          "description": "Resif Sinyalleri: beş turluk takım veya hızlı bilgi yarışması",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Takımlar",
+                "Hızlı yarış"
+              ],
+              "description": "Takımlar veya hızlı yarış",
+              "name": "mode",
+              "required": false
+            },
+            {
+              "choices": [
+                "Tümü",
+                "Okyanus",
+                "Bilim",
+                "Doğa"
+              ],
+              "description": "Soru kategorisi",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "party reefquiz",
+          "usage": "/party reefquiz [mode] [category]"
+        },
+        {
+          "aliases": [],
+          "description": "Sözcük Dalgası: süreli harfler, en uzun kelimeler ve kelime zinciri",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Sıralı",
+                "Zincir",
+                "En uzun",
+                "Çok kelime",
+                "Karışık"
+              ],
+              "description": "Kelime turu kuralları",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "party wordwake",
+          "usage": "/party wordwake [mode]"
+        },
+        {
+          "aliases": [],
+          "description": "Akıntı Masalı: her sırada tek kelimeyle deniz masalı yaz",
+          "manager": false,
+          "options": [],
+          "path": "party driftstory",
+          "usage": "/party driftstory"
+        },
+        {
+          "aliases": [],
+          "description": "Kamaradan Bir Bakış: Pinchora ev kartlarındaki odaları tahmin et",
+          "manager": false,
+          "options": [],
+          "path": "party roomwake",
+          "usage": "/party roomwake"
+        },
+        {
+          "aliases": [],
+          "description": "Yaratık Pusulası: resiften bir canlı düşün ve ipuçlarını yanıtla",
+          "manager": false,
+          "options": [],
+          "path": "party crittercompass",
+          "usage": "/party crittercompass"
+        },
+        {
+          "aliases": [],
+          "description": "Son Resif: gelgitlerde hayatta kal, ittifak kur, kazananlar kartına ulaş",
+          "manager": false,
+          "options": [],
+          "path": "party lastreef",
+          "usage": "/party lastreef"
+        },
+        {
+          "aliases": [],
           "description": "İnci patlamadan heceyi içeren bir kelime yaz; canı kalan son kişi kazanır",
           "manager": false,
           "options": [
@@ -8068,5 +8185,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 422
+  "count": 431
 }
