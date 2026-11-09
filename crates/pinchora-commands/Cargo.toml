@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-commands"
+description = "Discord commands, interactions, and gateway handlers"
 version.workspace = true
 edition.workspace = true
 

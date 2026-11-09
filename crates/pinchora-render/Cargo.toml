@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-render"
+description = "Pixel art cards and image rendering"
 version.workspace = true
 edition.workspace = true
 
