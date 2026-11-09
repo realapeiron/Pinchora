@@ -170,12 +170,22 @@ impl Db {
         daily_cap: i64,
     ) -> anyhow::Result<VisitOutcome> {
         retry("record_visit", || {
-            self.record_visit_once(host, guest, day, reward, daily_cap)
+            self.record_visit_once(host, guest, day, reward, daily_cap, None)
+        })
+        .await
+    }
+
+    /// Room admission records a visit only while its owner still holds the fence.
+    pub async fn reef_record_visit(&self, fence: &crate::ReefFence, guest: u64) -> anyhow::Result<VisitOutcome> {
+        let day = chrono::Utc::now().date_naive();
+        retry("record_visit", || {
+            self.record_visit_once(fence.owner, guest, day, 0, 0, Some(fence))
         })
         .await
     }
 
     /// One attempt of [`Db::record_visit`].
+    #[allow(clippy::too_many_arguments)]
     async fn record_visit_once(
         &self,
         host: u64,
@@ -183,12 +193,18 @@ impl Db {
         day: NaiveDate,
         reward: i64,
         daily_cap: i64,
+        fence: Option<&crate::ReefFence>,
     ) -> anyhow::Result<VisitOutcome> {
         let (host, guest) = (sql_id(host), sql_id(guest));
         let mut tx = self.pool().begin().await?;
         // The visit row is both players' (a delete of the host's data rewrites it), and the guest's
         // day, with what a delete of their data left of it, is read and written under their lock.
         lock_users(&mut tx, &[host, guest]).await?;
+        if let Some(fence) = fence
+            && !fence.lock_valid(&mut tx).await?
+        {
+            return Ok(VisitOutcome::Unavailable);
+        }
         let blocked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$2) OR (host_id=$2 AND blocked_id=$1))")
             .bind(host).bind(guest).fetch_one(&mut *tx).await?;
         if blocked {

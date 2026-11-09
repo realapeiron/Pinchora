@@ -44,6 +44,7 @@ async fn wait_for_expired_room_lease(site: &Site, owner: u64) {
 
 #[tokio::test]
 async fn two_pods_presence_movement_chat_and_transactional_outbox() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else {
         return;
     };
@@ -169,6 +170,7 @@ async fn two_pods_presence_movement_chat_and_transactional_outbox() {
 
 #[tokio::test]
 async fn controller_replacement_and_safety_reach_another_pod() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else {
         return;
     };
@@ -199,6 +201,7 @@ async fn controller_replacement_and_safety_reach_another_pod() {
 
 #[tokio::test]
 async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else {
         return;
     };
@@ -228,7 +231,7 @@ async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
         .execute(&b.pool)
         .await
         .unwrap();
-    assert_eq!(q.close_reason().await, "ownership_lost");
+    assert_eq!(q.close_reason_within(Duration::from_secs(6)).await, "ownership_lost");
     wait_for_expired_room_lease(&b, host).await;
     eprintln!("recovering room {host} after killed owner at epoch {epoch}");
     let mut recovered = guest.connect().await;
@@ -262,6 +265,7 @@ async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
 
 #[tokio::test]
 async fn environment_isolation_includes_legacy_invalidation() {
+    let _capacity = fixture_capacity().await;
     let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
         return;
     };
@@ -361,6 +365,7 @@ impl Drop for RedisProcess {
 
 #[tokio::test]
 async fn private_redis_restart_loses_keys_in_test_database() {
+    let _capacity = fixture_capacity().await;
     if std::env::var("PINCHORA_TEST_DATABASE_URL").is_err() {
         return;
     }
@@ -384,6 +389,7 @@ async fn private_redis_restart_loses_keys_in_test_database() {
 
 #[tokio::test]
 async fn redis_restart_fails_closed_then_snapshot_recovers_on_two_pods() {
+    let _capacity = fixture_capacity().await;
     if std::env::var("PINCHORA_TEST_DATABASE_URL").is_err() {
         return;
     }
@@ -405,7 +411,7 @@ async fn redis_restart_fails_closed_then_snapshot_recovers_on_two_pods() {
     drop(redis);
     let _restarted = RedisProcess::start(port).await;
     for player in [&mut p, &mut q] {
-        let reason = player.close_reason().await;
+        let reason = player.close_reason_within(Duration::from_secs(6)).await;
         assert!(
             ["routing_unavailable", "ownership_lost", "session_expired"].contains(&reason.as_str()),
             "{reason}"
@@ -434,6 +440,7 @@ async fn redis_restart_fails_closed_then_snapshot_recovers_on_two_pods() {
 
 #[tokio::test]
 async fn outbox_delivers_a_lower_id_that_commits_after_a_higher_id() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else {
         return;
     };
@@ -490,6 +497,7 @@ async fn outbox_delivers_a_lower_id_that_commits_after_a_higher_id() {
 
 #[tokio::test]
 async fn simultaneous_pod_admission_elects_one_room_owner() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else {
         return;
     };
@@ -517,6 +525,7 @@ async fn simultaneous_pod_admission_elects_one_room_owner() {
 
 #[tokio::test]
 async fn a_lost_leave_does_not_keep_presence_in_the_previous_room() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else {
         return;
     };
@@ -581,6 +590,7 @@ async fn a_lost_leave_does_not_keep_presence_in_the_previous_room() {
 
 #[tokio::test]
 async fn expired_fences_cannot_be_renewed_or_write_after_waiting_for_a_row_lock() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     site.house(host).await;
@@ -634,6 +644,7 @@ async fn expired_fences_cannot_be_renewed_or_write_after_waiting_for_a_row_lock(
 
 #[tokio::test]
 async fn chat_recipient_authorization_is_rechecked_against_remote_moderation() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else { return };
     let b = Site::new().await.unwrap();
     let host = unique();
@@ -701,6 +712,7 @@ async fn chat_recipient_authorization_is_rechecked_against_remote_moderation() {
 
 #[tokio::test]
 async fn room_lease_renews_while_chat_waits_for_player_locks() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else { return };
     let host = unique();
     a.house(host).await;
@@ -736,6 +748,7 @@ async fn room_lease_renews_while_chat_waits_for_player_locks() {
 
 #[tokio::test]
 async fn remote_mute_and_block_cover_owner_commands_and_delayed_chat_delivery() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else { return };
     let b = Site::new().await.unwrap();
     let host = unique();
@@ -829,6 +842,7 @@ async fn remote_mute_and_block_cover_owner_commands_and_delayed_chat_delivery() 
 
 #[tokio::test]
 async fn recovery_snapshots_do_not_bypass_remote_access_revocation() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else { return };
     let b = Site::new().await.unwrap();
     let host = unique();
@@ -839,7 +853,7 @@ async fn recovery_snapshots_do_not_bypass_remote_access_revocation() {
     q.join(host).await;
     b.app.db.set_house_locked(host, true).await.unwrap();
     q.send(json!({"type":"snapshot"})).await;
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(PROTOCOL_WAIT, async {
         while let Some(Ok(message)) = q.socket.next().await {
             match message {
                 Message::Text(text) => {
@@ -861,6 +875,7 @@ async fn recovery_snapshots_do_not_bypass_remote_access_revocation() {
 
 #[tokio::test]
 async fn sanctions_keep_their_reason_without_a_control_notification() {
+    let _capacity = fixture_capacity().await;
     let Some(a) = Site::new().await else { return };
     let b = Site::new().await.unwrap();
     // Exercise both the owner-command path and the remote event-delivery path. There is
@@ -893,4 +908,93 @@ async fn sanctions_keep_their_reason_without_a_control_notification() {
         q.send(json!({"type":"snapshot"})).await;
         assert_eq!(q.close_reason().await, "sanctioned");
     }
+}
+
+#[tokio::test]
+async fn renewal_waits_for_a_row_lock_while_the_fence_is_still_valid() {
+    let _capacity = fixture_capacity().await;
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    site.house(host).await;
+    let mut player = eligible(&site, host).await.connect().await;
+    player.join(host).await;
+    let epoch = player.epoch.clone();
+    let mut blocker = site.pool.begin().await.unwrap();
+    sqlx::query("SELECT token FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 FOR UPDATE")
+        .bind(site.app.cache.namespace())
+        .bind(host as i64)
+        .execute(&mut *blocker)
+        .await
+        .unwrap();
+    // A slow renewal is not a lost lease: hold the row past the old one-second
+    // renewal timeout, but release it before the three-second fence expires.
+    let waiting = std::time::Instant::now();
+    tokio::time::sleep(Duration::from_millis(1600)).await;
+    let active: bool = sqlx::query_scalar(
+        "SELECT expires_at>clock_timestamp() FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2",
+    )
+    .bind(site.app.cache.namespace())
+    .bind(host as i64)
+    .fetch_one(&mut *blocker)
+    .await
+    .unwrap();
+    assert!(active, "the delayed renewal still owns an unexpired fence");
+    eprintln!("renewal row lock held for {:?} with a valid fence", waiting.elapsed());
+    blocker.commit().await.unwrap();
+    player.send(json!({"type":"snapshot"})).await;
+    let snapshot = player.until("snapshot").await;
+    assert_eq!(snapshot["room_epoch"], epoch);
+    assert_eq!(snapshot["players"].as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn stale_room_owners_cannot_record_visits_or_replace_occupancy() {
+    let _capacity = fixture_capacity().await;
+    let Some(site) = Site::new().await else { return };
+    let (host, guest) = (unique(), unique());
+    site.house(host).await;
+    let db = &site.app.db;
+    let cache = &site.app.cache;
+    let old = db.reef_acquire(cache.namespace(), host, 0).await.unwrap().unwrap();
+    db.reef_release(&old).await.unwrap();
+    let fresh = db.reef_acquire(cache.namespace(), host, 0).await.unwrap().unwrap();
+    assert!(fresh.token > old.token);
+    assert!(matches!(
+        db.reef_record_visit(&old, guest).await.unwrap(),
+        pinchora_db::VisitOutcome::Unavailable
+    ));
+    let visits: i64 = sqlx::query_scalar("SELECT count(*) FROM visits WHERE host_id=$1 AND guest_id=$2")
+        .bind(host as i64)
+        .bind(guest as i64)
+        .fetch_one(&site.pool)
+        .await
+        .unwrap();
+    assert_eq!(visits, 0, "a stale admission must not record a visit");
+    assert!(matches!(
+        db.reef_record_visit(&fresh, guest).await.unwrap(),
+        pinchora_db::VisitOutcome::Rewarded { reward: 0 }
+    ));
+
+    let lease = format!("lease:plaza:{host}:0:0");
+    let occupancy = format!("occupancy:plaza:{host}:0:0");
+    let ttl = pinchora_db::ReefFence::LEASE.as_millis() as u64;
+    assert!(
+        cache
+            .reef_claim(&lease, &fresh.token.to_string(), ttl, false)
+            .await
+            .unwrap()
+    );
+    assert!(
+        cache
+            .reef_set_fenced(&lease, &fresh.token.to_string(), &occupancy, "2", ttl)
+            .await
+            .unwrap()
+    );
+    assert!(
+        !cache
+            .reef_set_fenced(&lease, &old.token.to_string(), &occupancy, "1", ttl)
+            .await
+            .unwrap()
+    );
+    assert_eq!(cache.reef_get(&occupancy).await.unwrap().as_deref(), Some("2"));
 }

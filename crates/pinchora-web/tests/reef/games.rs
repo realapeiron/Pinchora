@@ -24,6 +24,7 @@ async fn action(b: &Browser, g: &Value, intent: Value) -> (StatusCode, Value) {
 }
 #[tokio::test]
 async fn room_games_chess_match_spectator_stale_retry_csrf_and_private_alts() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -69,6 +70,7 @@ async fn room_games_chess_match_spectator_stale_retry_csrf_and_private_alts() {
 }
 #[tokio::test]
 async fn room_games_trivia_conceal_answer_reconnect_and_deadline() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -120,6 +122,7 @@ async fn room_games_trivia_conceal_answer_reconnect_and_deadline() {
 }
 #[tokio::test]
 async fn room_games_picross_cross_transport_resume_stale_and_private_projection() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -163,6 +166,7 @@ async fn room_games_picross_cross_transport_resume_stale_and_private_projection(
 }
 #[tokio::test]
 async fn picross_full_board_budget_is_separate_but_still_authenticated_and_limited() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     site.house(host).await;
@@ -249,6 +253,7 @@ async fn picross_full_board_budget_is_separate_but_still_authenticated_and_limit
 
 #[tokio::test]
 async fn room_games_checkers_socket_and_http_share_authority() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -280,6 +285,7 @@ async fn room_games_checkers_socket_and_http_share_authority() {
 
 #[tokio::test]
 async fn room_games_furniture_revision_binding_blocks_and_wire_limits() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -352,6 +358,7 @@ async fn room_games_furniture_revision_binding_blocks_and_wire_limits() {
 
 #[tokio::test]
 async fn room_games_picross_retired_practice_cannot_expose_upcoming_daily() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -378,6 +385,7 @@ async fn room_games_picross_retired_practice_cannot_expose_upcoming_daily() {
 
 #[tokio::test]
 async fn trivia_waiting_stale_spectator_and_leave_cannot_bypass_the_round() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -426,6 +434,7 @@ async fn trivia_waiting_stale_spectator_and_leave_cannot_bypass_the_round() {
 
 #[tokio::test]
 async fn private_picross_http_completion_has_no_ledger_payment() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };

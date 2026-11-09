@@ -13,12 +13,42 @@ use std::{
 };
 use tokio::sync::mpsc;
 
+#[cfg(test)]
+#[path = "room/layout_tests.rs"]
+mod layout_tests;
+
 struct Layout {
     grid: Grid,
     targets: Vec<Target>,
     revision: String,
     json: Value,
 }
+
+const LAYOUT_READ_ATTEMPTS: usize = 3;
+
+async fn load_layout_with_events<T, E, L, EF, LF>(mut events: E, mut layout: L) -> anyhow::Result<Option<(T, Vec<i64>)>>
+where
+    E: FnMut() -> EF,
+    L: FnMut() -> LF,
+    EF: std::future::Future<Output = anyhow::Result<Vec<i64>>>,
+    LF: std::future::Future<Output = anyhow::Result<T>>,
+{
+    let mut before = events().await?;
+    for _ in 0..LAYOUT_READ_ATTEMPTS {
+        let loaded = layout().await?;
+        let after = events().await?;
+        // Outbox rows commit atomically with geometry. A commit between these
+        // reads requires a fresh layout too, or its ID could label older geometry.
+        if before == after {
+            return Ok(Some((loaded, after)));
+        }
+        before = after;
+    }
+    // A busy house must not monopolize the actor. Keep its previous layout and
+    // event set untouched; the periodic refresh will try the pending IDs again.
+    Ok(None)
+}
+
 impl Layout {
     async fn load(state: &WebState, key: RoomKey) -> anyhow::Result<Self> {
         let (house, rooms) = state
@@ -178,17 +208,26 @@ impl Room {
             );
         }
     }
-    async fn refresh(&mut self, state: &WebState) -> anyhow::Result<()> {
-        let events = state.app.db.reef_layout_events(self.key.owner).await?;
+    async fn refresh(&mut self, state: &WebState) -> anyhow::Result<bool> {
+        let snapshot = load_layout_with_events(
+            || state.app.db.reef_layout_events(self.key.owner),
+            || Layout::load(state, self.key),
+        )
+        .await?;
+        self.apply_layout(snapshot)
+    }
+    fn apply_layout(&mut self, snapshot: Option<(Layout, Vec<i64>)>) -> anyhow::Result<bool> {
+        let Some((layout, events)) = snapshot else {
+            return Ok(false);
+        };
         let fresh: Vec<_> = events
             .iter()
             .filter(|id| !self.layout_events.contains(id))
             .map(|id| id.to_string())
             .collect();
-        let layout = Layout::load(state, self.key).await?;
-        self.layout_events = events.into_iter().collect();
         if layout.revision == self.layout.revision && fresh.is_empty() {
-            return Ok(());
+            self.layout_events = events.into_iter().collect();
+            return Ok(true);
         }
         let entry = layout.grid.spawn().ok_or_else(|| anyhow::anyhow!("no free entry"))?;
         for member in self.members.values_mut() {
@@ -202,6 +241,7 @@ impl Room {
             }
         }
         self.layout = layout;
+        self.layout_events = events.into_iter().collect();
         // Publish each committed transaction once per live room epoch, even when several commits
         // coalesce into the same loaded geometry. Reconnecting clients obtain the current snapshot.
         for event in &fresh {
@@ -220,7 +260,7 @@ impl Room {
         for member in self.members.values() {
             self.snapshot(&member.peer, "");
         }
-        Ok(())
+        Ok(true)
     }
     async fn join(&mut self, state: &WebState, peer: Peer, request: String) {
         // Old connections can have queued work when a replacement claims the account.
@@ -238,7 +278,7 @@ impl Room {
             peer.error(&self.epoch, &request, "access_denied");
             return;
         }
-        if self.refresh(state).await.is_err() {
+        if !matches!(self.refresh(state).await, Ok(true)) {
             peer.error(&self.epoch, &request, "room_unavailable");
             return;
         }
@@ -274,11 +314,7 @@ impl Room {
         let presence = member.json();
         self.members.insert(peer.token.clone(), member);
         if self.key.instance.is_none() && self.key.owner != peer.user {
-            let _ = state
-                .app
-                .db
-                .record_visit(self.key.owner, peer.user, chrono::Utc::now().date_naive(), 0, 0)
-                .await;
+            let _ = state.app.db.reef_record_visit(&self.fence, peer.user).await;
         }
         self.snapshot(&peer, &request);
         self.broadcast("", json!({"type":"presence","action":"join","player":presence}));
@@ -378,7 +414,10 @@ impl Room {
             return Ok(());
         }
         // Refresh before accepting an intention, including after missed pub/sub notifications.
-        self.refresh(state).await?;
+        if !self.refresh(state).await? {
+            self.members[token].peer.error(&self.epoch, request, "room_unavailable");
+            return Ok(());
+        }
         let occupied: Vec<_> = self
             .members
             .iter()
@@ -473,7 +512,9 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, i
             tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
                 tick.tick().await;
-                if !matches!(tokio::time::timeout(Duration::from_secs(1), super::routing::valid(&state, key, &fence)).await, Ok(true)) {
+                // A row-lock wait can exceed a second while the fence is still valid.
+                // Bound renewal by the lease window; valid still rejects expired fences.
+                if !matches!(tokio::time::timeout(pinchora_db::ReefFence::LEASE, super::routing::valid(&state, key, &fence)).await, Ok(true)) {
                     break;
                 }
             }
@@ -483,12 +524,14 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, i
 }
 async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFence, mut input: mpsc::Receiver<Input>) {
     let epoch = fence.token.to_string();
-    let Ok(events) = state.app.db.reef_layout_events(key.owner).await else {
-        return;
-    };
-    let layout = match Layout::load(state, key).await {
-        Ok(layout) => layout,
-        Err(_) => {
+    let (layout, events) = match load_layout_with_events(
+        || state.app.db.reef_layout_events(key.owner),
+        || Layout::load(state, key),
+    )
+    .await
+    {
+        Ok(Some(snapshot)) => snapshot,
+        Ok(None) | Err(_) => {
             if let Some(Input::Join(peer, request)) = input.recv().await {
                 peer.error(&epoch, &request, "room_unavailable");
             }
@@ -534,7 +577,9 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                 } else {empty_since=now;}
                 if refreshed.elapsed()>=Duration::from_secs(1) {
                     if key.instance.is_some() {
-                        let _=state.app.cache.reef_claim(&format!("occupancy:{}",key.name()),&room.members.len().to_string(),3000,true).await;
+                        let _=state.app.cache.reef_set_fenced(&super::routing::lease_key(key), &room.epoch,
+                            &format!("occupancy:{}",key.name()), &room.members.len().to_string(),
+                            pinchora_db::ReefFence::LEASE.as_millis() as u64).await;
                     }
                     if state.app.cache.ping().await.is_err() || room.refresh(state).await.is_err() {break;}
                     refreshed=Instant::now();
@@ -564,6 +609,42 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn layout_and_outbox_stay_together_when_a_commit_interleaves_the_reads() {
+        use std::{cell::Cell, future::ready};
+
+        for commit_during_layout in [true, false] {
+            let geometry = Cell::new("old");
+            let event_reads = Cell::new(0);
+            let (layout, events) = load_layout_with_events(
+                || {
+                    if event_reads.get() == 1 && !commit_during_layout {
+                        geometry.set("new");
+                    }
+                    event_reads.set(event_reads.get() + 1);
+                    // A late transaction may have reserved its ID before an already-visible one.
+                    ready(Ok(if geometry.get() == "new" {
+                        vec![10, 20]
+                    } else {
+                        vec![20]
+                    }))
+                },
+                || {
+                    if commit_during_layout {
+                        geometry.set("new");
+                    }
+                    ready(Ok(geometry.get()))
+                },
+            )
+            .await
+            .unwrap()
+            .expect("the reads stabilize");
+            assert_eq!(layout, "new");
+            assert_eq!(events, vec![10, 20], "the loaded commit must retain its outbox ID");
+        }
+    }
+
     #[test]
     fn movement_clock_and_corner_safe_stop() {
         let (outgoing, _) = mpsc::channel(64);
