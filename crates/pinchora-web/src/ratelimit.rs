@@ -19,7 +19,18 @@ const PUBLIC_PER_MINUTE: i64 = 60;
 /// Counts one hit on `scope` for `who`; 429 once more than `limit` land in one `window`. When Redis
 /// cannot count, the request goes through: a limiter must not take the dashboard down.
 pub async fn check(cache: &Cache, scope: &str, who: &str, limit: i64, window: Duration) -> Result<(), ApiError> {
-    let now = chrono::Utc::now().timestamp().max(0) as u64;
+    check_at(cache, scope, who, limit, window, chrono::Utc::now()).await
+}
+
+pub(crate) async fn check_at(
+    cache: &Cache,
+    scope: &str,
+    who: &str,
+    limit: i64,
+    window: Duration,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<(), ApiError> {
+    let now = now.timestamp().max(0) as u64;
     let span = window.as_secs().max(1);
     let key = format!("web:rl:{scope}:{who}:{}", now / span);
     match cache.incr(&key, window).await {

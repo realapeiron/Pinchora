@@ -2491,9 +2491,12 @@ fn blank_design() -> Value {
 
 #[tokio::test]
 async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy() {
-    let Some(h) = Harness::new("card_preview_limit").await else {
+    let Some(mut h) = Harness::new("card_preview_limit").await else {
         return;
     };
+    // Freeze the last second of a minute even if rendering crosses the real minute boundary.
+    h.state.preview_clock = || chrono::DateTime::from_timestamp(1_800_000_059, 0).unwrap();
+    h.router = pinchora_web::router(h.state.clone());
     let (guild, _, mut browser) = h.managed_server().await;
     let path = format!("/api/guilds/{guild}/preview/card");
     for n in 1..=20 {
@@ -2507,6 +2510,16 @@ async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy(
         .await;
     assert_eq!(refused.status, StatusCode::TOO_MANY_REQUESTS, "{}", refused.text());
     assert!(refused.header("retry-after").parse::<u64>().is_ok_and(|s| s >= 1));
+    assert_eq!(refused.header("retry-after"), "1");
+    let mut colleague = h.browser();
+    colleague
+        .login(&h, unique(), vec![guild_entry(guild, "Pinchora Reef", false, 1 << 5)])
+        .await;
+    let shared = colleague
+        .write(Method::POST, &path, json!({ "design": blank_design() }))
+        .await;
+    assert_eq!(shared.status, StatusCode::TOO_MANY_REQUESTS, "{}", shared.text());
+
     // The limit is the server's: another server's managers draw as many as they like.
     let (other_guild, _, mut stranger) = h.managed_server().await;
     let other = format!("/api/guilds/{other_guild}/preview/card");
@@ -2539,6 +2552,15 @@ async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy(
         "{}",
         bad.text()
     );
+
+    // Crossing the boundary opens a fresh guild bucket, including for another manager.
+    h.state.preview_clock = || chrono::DateTime::from_timestamp(1_800_000_060, 0).unwrap();
+    h.router = pinchora_web::router(h.state.clone());
+    colleague.router = h.router.clone();
+    let renewed = colleague
+        .write(Method::POST, &path, json!({ "design": blank_design() }))
+        .await;
+    assert_eq!(renewed.status, StatusCode::OK, "{}", renewed.text());
 }
 
 #[tokio::test]

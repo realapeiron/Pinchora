@@ -323,20 +323,22 @@ pub async fn preview(
     ApiJson(body): ApiJson<PreviewBody>,
 ) -> ApiResult<Response> {
     let session = &managed.current.session;
-    ratelimit::check(
+    ratelimit::check_at(
         &state.app.cache,
         "preview",
         &session.user_id.to_string(),
         PREVIEWS_PER_MINUTE,
         Duration::from_secs(60),
+        (state.preview_clock)(),
     )
     .await?;
-    ratelimit::check(
+    ratelimit::check_at(
         &state.app.cache,
         "preview-guild",
         &managed.id.to_string(),
         PREVIEWS_PER_GUILD_PER_MINUTE,
         Duration::from_secs(60),
+        (state.preview_clock)(),
     )
     .await?;
     let design = design_of(&body.design)?;

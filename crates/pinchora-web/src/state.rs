@@ -8,6 +8,8 @@ use crate::{config::WebSettings, discord::DiscordApi};
 #[derive(Clone)]
 pub struct WebState {
     pub app: Arc<App>,
+    /// Wall clock for card preview quotas; replace to exercise fixed-window boundaries.
+    pub preview_clock: fn() -> chrono::DateTime<chrono::Utc>,
     pub(crate) reef: Arc<crate::reef::Runtime>,
     pub settings: Arc<WebSettings>,
     pub(crate) csp: axum::http::HeaderValue,
@@ -28,6 +30,7 @@ impl WebState {
         let discord = Arc::new(DiscordApi::new(&settings.discord_api_base));
         Self {
             app,
+            preview_clock: chrono::Utc::now,
             reef: Arc::default(),
             csp: crate::routes::content_security_policy(&settings.origin),
             settings: Arc::new(settings),
