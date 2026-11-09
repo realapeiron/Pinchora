@@ -10,8 +10,8 @@ import { PixelToggle } from "../../../components/PixelToggle";
 import { PixelButton } from "../../../components/PixelButton";
 import { ChannelPicker, RolePicker } from "../../../components/Pickers";
 import { SafetySaveBar } from "./SafetySaveBar";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/verification.css";
 export function Safety() {
   const overview = useOutletContext<Overview>();

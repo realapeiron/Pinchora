@@ -12,8 +12,8 @@ import { Toast } from "../../../components/Toast";
 import type { Community as CommunityData, ModuleEntry, Overview } from "../../../lib/api";
 import { birthdayWords, useBirthdays } from "../api/birthdays";
 import { CommunitySaveError, useCommunity, useDiscord } from "../../../lib/queries";
-import { Loading, Problem } from "../../shell/pages/States";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { Loading, Problem } from "../../../components/States";
+import { SettingsPage } from "../../../components/PageHead";
 
 const EVERY: Record<number, string> = {
   6: "Every 6 hours",

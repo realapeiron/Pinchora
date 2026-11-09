@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
+import { ready } from "../../../i18n";
 
 import { FALLBACK_NAME, MAX_NAME, ago, roomName, templateProblem } from "./tempVoice";
 import { t, tf } from "./tempVoiceI18n";
 
 afterEach(() => vi.unstubAllGlobals());
+beforeAll(() => ready());
 
 describe("temp voice localization", () => {
   it("renders Turkish copy and values without changing channel or command tokens", () => {

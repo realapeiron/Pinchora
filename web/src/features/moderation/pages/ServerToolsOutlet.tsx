@@ -3,7 +3,7 @@ import { Panel } from "../../../components/Panel";
 import { translate as t } from "../../../i18n";
 import { canOpenPage, type AccessOverview } from "../api/server-tools";
 import type { NavGroup } from "../../../lib/nav";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 
 /** The shell never renders a form for an area the extractor will refuse. */
 export function ServerToolsOutlet({ data, nav }: { data: AccessOverview; nav: NavGroup[] }) {

@@ -1,7 +1,7 @@
 import { useOutletContext } from "react-router";
 import { t } from "../../../i18n/workflows";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
 import type { Overview } from "../../../lib/api";

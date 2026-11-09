@@ -4,7 +4,7 @@ import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
 import { useTicketNotes, useTicketOperationAction, useTicketOperations } from "../api/ticket-operations";
 import { type Ticket, when } from "../api/tickets";
-import { Problem } from "../../shell/pages/States";
+import { Problem } from "../../../components/States";
 
 export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket: Ticket }) {
   const [replyText, setReplyText] = useState("");

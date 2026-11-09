@@ -14,8 +14,8 @@ import {
   wearAccessory,
   type CharacterData,
 } from "../../api/webPlayer";
-import { PageHead } from "../../../shell/pages/PageHead";
-import { Loading, Problem } from "../../../shell/pages/States";
+import { PageHead } from "../../../../components/PageHead";
+import { Loading, Problem } from "../../../../components/States";
 import { Field } from "./ProfileStudio";
 
 export function CharacterStudio() {

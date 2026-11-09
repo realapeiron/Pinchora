@@ -8,8 +8,8 @@ import type { AuditEntry, Overview } from "../../../lib/api";
 import { useDiscord } from "../../../lib/queries";
 import { EMPTY_FILTERS, auditDiff, auditParams, diffText, useFilteredAudit } from "../api/server-tools";
 import { type Names, describeChange, targetLabel, timeAgo, plainNames } from "../../../lib/text";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/server-tools.css";
 
 export function AuditLog() {

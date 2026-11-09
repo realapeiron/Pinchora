@@ -2,13 +2,13 @@ import { dateTime } from "../../../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { Overview } from "../../../lib/api";
-import { words } from "../../moderation/api/automod";
+import { words } from "../../moderation";
 import { useBackup, type BackupData, type BackupDocument, type ImportRequest } from "../api/commandControl";
 import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/command-control.css";
 export function ConfigBackup() {
   const { guild } = useOutletContext<Overview>();

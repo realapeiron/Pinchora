@@ -26,8 +26,8 @@ import {
   firstRunUtc,
   newRecurrence,
 } from "../api/utility";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 const UtilityWords = createContext({ t: catalogWords(), language: "en" });
 
@@ -318,6 +318,7 @@ export function Utility() {
         )}
         {previewItem && (
           <div className="utility-overlay" role="presentation" onClick={() => setPreviewItem(null)}>
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- Dialog containment. */}
             <section
               className="utility-dialog"
               role="dialog"
@@ -360,7 +361,6 @@ export function Utility() {
     </UtilityWords.Provider>
   );
 }
-
 function TimezoneEditor({
   initial,
   busy,
@@ -401,7 +401,6 @@ function TimezoneEditor({
     </Panel>
   );
 }
-
 function ScheduleCard({
   item,
   info,
@@ -456,7 +455,6 @@ function ScheduleCard({
     </article>
   );
 }
-
 function StickyEditor({
   draft,
   info,
@@ -480,6 +478,7 @@ function StickyEditor({
   const set = <K extends keyof Sticky>(key: K, value: Sticky[K]) => onChange({ ...draft, [key]: value });
   return (
     <div className="utility-overlay" role="presentation" onClick={onCancel}>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- Dialog containment. */}
       <section
         className="utility-dialog utility-editor"
         role="dialog"
@@ -600,6 +599,7 @@ function ScheduleEditor({
     set("schedule", newRecurrence(value, draft.next_run_at, draft.tz));
   return (
     <div className="utility-overlay" role="presentation" onClick={onCancel}>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- Dialog containment. */}
       <section
         className="utility-dialog utility-editor"
         role="dialog"

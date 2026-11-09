@@ -15,9 +15,9 @@ import {
   type AccessOverview,
   type AccessView,
   type ManagerGrant,
-} from "../../moderation/api/server-tools";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+} from "../../moderation";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/server-tools.css";
 
 export function Access() {

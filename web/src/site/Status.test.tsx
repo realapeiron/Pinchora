@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+import { ready } from "../i18n";
 
 import { StatusPage, type PublicStatus } from "./Status";
 
@@ -41,6 +43,7 @@ const status: PublicStatus = {
 };
 
 describe("status page", () => {
+  beforeAll(() => ready());
   it.each([
     ["en", "1,234", "Approx. members"],
     ["tr", "1.234", "Yaklaşık üye"],

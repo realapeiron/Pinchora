@@ -2,8 +2,7 @@ import { translate as spaTranslate } from "../i18n";
 import { useEffect, useRef } from "react";
 import { useBlocker } from "react-router";
 
-import { translate } from "../i18n";
-import { en } from "../i18n/en";
+import { hasMessage, translate } from "../i18n";
 import { PixelButton } from "./PixelButton";
 
 /**
@@ -29,7 +28,7 @@ export function SaveBar({
   words?: (key: string, values?: Record<string, string | number>) => string;
 }) {
   const t = (key: string, values: Record<string, string | number> = {}) =>
-    key in en ? translate(key, values) : (words?.(key, values) ?? translate(key, values));
+    hasMessage(key) ? translate(key, values) : (words?.(key, values) ?? translate(key, values));
   const changes = (n: number) =>
     t(n === 1 ? spaTranslate("1 unsaved change") : spaTranslate("{count} unsaved changes"), { count: n });
   const dirty = count > 0;

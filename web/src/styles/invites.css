@@ -6,7 +6,7 @@
   grid-template-columns: 72px 1fr;
   gap: 20px;
   align-items: center;
-  padding: 20px 24px;
+  padding: 20px var(--space-24);
   margin-bottom: 22px;
   color: #d8eaff;
   background: #173663;
@@ -25,7 +25,7 @@
   font-weight: 900;
 }
 .inv-overview strong {
-  color: #fff;
+  color: var(--white);
   font-size: 1.05rem;
 }
 .inv-overview p {
@@ -55,13 +55,13 @@
 .inv-number-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 .inv-number-grid .pixel-input {
   width: 100%;
 }
 .inv-small-note {
-  margin: 16px 0 0;
+  margin: var(--space-16) 0 0;
   font-size: 0.88rem;
   line-height: 1.5;
 }
@@ -72,7 +72,7 @@
   display: grid;
   grid-template-columns: 110px 20px 1fr auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
 }
 .inv-reward-count {
   color: #f7d589;
@@ -82,7 +82,7 @@
   display: grid;
   grid-template-columns: 150px minmax(160px, 1fr) auto;
   align-items: end;
-  gap: 12px;
+  gap: var(--space-12);
   margin-top: 20px;
 }
 .inv-add-reward .pixel-button {
@@ -109,7 +109,7 @@
 }
 .inv-tabs button:focus-visible,
 .inv-member-link:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--white);
   outline-offset: 2px;
 }
 .inv-table-wrap {
@@ -126,11 +126,11 @@
   color: #a9c3e1;
   font-size: 0.78rem;
   font-weight: 700;
-  padding: 10px 12px;
+  padding: 10px var(--space-12);
   border-bottom: 2px solid #446ca4;
 }
 .inv-table td {
-  padding: 12px;
+  padding: var(--space-12);
   border-bottom: 1px solid #365477;
 }
 .inv-table tbody tr:hover {
@@ -154,19 +154,19 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 12px;
-  padding: 16px 0;
+  gap: var(--space-12);
+  padding: var(--space-16) 0;
 }
 .inv-detail {
   border-top: 2px solid #365477;
-  padding-top: 16px;
+  padding-top: var(--space-16);
 }
 .inv-detail h3 {
   margin: 0 0 10px;
 }
 .inv-detail form {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   max-width: 500px;
 }
 .inv-detail form .pixel-input {
@@ -185,7 +185,7 @@
 .inv-join-list li {
   display: grid;
   grid-template-columns: 1fr 120px 180px;
-  gap: 12px;
+  gap: var(--space-12);
   padding: 9px 0;
   border-bottom: 1px solid #365477;
 }
@@ -208,7 +208,7 @@
 @media (max-width: 600px) {
   .inv-overview {
     grid-template-columns: 48px 1fr;
-    gap: 12px;
+    gap: var(--space-12);
     padding: 14px;
   }
   .inv-overview-mark {
@@ -227,7 +227,7 @@
   }
   .inv-tabs {
     width: 100%;
-    margin-top: 8px;
+    margin-top: var(--space-8);
   }
   .inv-tabs button {
     flex: 1;
@@ -248,5 +248,5 @@
 .inv-head-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }

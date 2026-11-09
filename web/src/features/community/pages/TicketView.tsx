@@ -13,8 +13,8 @@ import {
   useTicket,
   when,
 } from "../api/tickets";
-import { PageHead } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { PageHead } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import { TicketOperationsPanel } from "./TicketOperationsPanel";
 
 const STATE_BADGE = { open: "badge-gold", claimed: "badge-mint", closed: "tk-badge-quiet" } as const;

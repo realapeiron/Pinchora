@@ -1,14 +1,14 @@
 .utility-page .utility-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: var(--space-12);
+  margin-bottom: var(--space-24);
 }
 .utility-summary > div {
   background: var(--panel, #fff);
   border: 2px solid var(--ink, #222);
   box-shadow: 4px 4px 0 var(--ink, #222);
-  padding: 16px;
+  padding: var(--space-16);
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -22,12 +22,12 @@
 .utility-list {
   display: grid;
   gap: 10px;
-  margin: 16px 0;
+  margin: var(--space-16) 0;
 }
 .utility-item {
   border: 1px solid var(--panel-edge, #2e3d75);
   background: var(--panel, #141b3d);
-  padding: 16px;
+  padding: var(--space-16);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -37,7 +37,7 @@
   min-width: 0;
 }
 .utility-item-main strong {
-  margin-right: 8px;
+  margin-right: var(--space-8);
 }
 .utility-item-main p {
   overflow: hidden;
@@ -63,14 +63,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-16);
 }
 .utility-dialog {
   background: var(--panel, #141b3d);
   color: var(--ink, #fff1e8);
   border: 3px solid var(--ink, #222);
   box-shadow: 8px 8px 0 #0008;
-  padding: 24px;
+  padding: var(--space-24);
   width: min(600px, 100%);
   max-height: 90vh;
   overflow: auto;
@@ -100,14 +100,14 @@
 .utility-two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 .utility-toggle,
 .utility-editor-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .utility-editor-actions {
   justify-content: flex-end;
@@ -121,12 +121,12 @@
 .utility-runs ol {
   display: grid;
   gap: 6px;
-  padding-left: 24px;
+  padding-left: var(--space-24);
 }
 .utility-timezone {
   display: flex;
   align-items: end;
-  gap: 12px;
+  gap: var(--space-12);
   flex-wrap: wrap;
 }
 .utility-timezone .field {
@@ -147,7 +147,7 @@
     grid-template-columns: 1fr;
   }
   .utility-dialog {
-    padding: 16px;
+    padding: var(--space-16);
     max-height: 94vh;
   }
   .utility-editor-actions > * {

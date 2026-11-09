@@ -1,12 +1,39 @@
 import { useSyncExternalStore } from "react";
 
-import { en } from "./en";
-import { tr } from "./tr";
+import type { en as EnglishCatalog } from "./en";
 
-const englishForTurkish = new Map(Object.entries(tr).map(([key, value]) => [value, key]));
+type Catalog = Record<string, string>;
+let en: Catalog = {};
+let tr: Catalog = {};
+let englishForTurkish = new Map<string, string>();
+const loaded = new Map<Locale, Promise<void>>();
+
+export function loadLocale(choice: Locale): Promise<void> {
+  const existing = loaded.get(choice);
+  if (existing) return existing;
+  const pending =
+    choice === "en"
+      ? import("./en").then((module) => {
+          en = module.en;
+        })
+      : import("./tr").then((module) => {
+          tr = module.tr;
+          englishForTurkish = new Map(Object.entries(tr).map(([key, value]) => [value, key]));
+        });
+  loaded.set(choice, pending);
+  return pending;
+}
+
+export async function ready(): Promise<void> {
+  await Promise.all([loadLocale(locale()), loadLocale(locale() === "en" ? "tr" : "en")]);
+}
+
+export function hasMessage(key: string): boolean {
+  return key in en;
+}
 
 export type Locale = "en" | "tr";
-export type MessageKey = keyof typeof en;
+export type MessageKey = keyof typeof EnglishCatalog;
 type Values = Record<string, string | number>;
 
 let selected: Locale | null = stored(null);
@@ -71,6 +98,7 @@ export function clearUser() {
 
 /** Switch immediately and save locally. Authenticated users also save to /language. */
 export async function setLocale(choice: Locale, save?: (choice: Locale) => Promise<unknown>) {
+  await loadLocale(choice);
   selected = choice;
   try {
     localStorage.setItem(`pinchora.language.${account ?? "visitor"}`, choice);

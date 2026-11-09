@@ -37,11 +37,26 @@
   --mint: #06d6a0;
   --heart: #ff4d6d;
   --outline: #1b1d2b;
+  --surface-raised: #232e5c;
+  --surface-inset: #10173a;
+  --surface-deep: #0c1230;
+  --white: #fff;
+  --site-width: 1160px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-4: 1rem;
+  --radius-3: 3px;
+  --radius-4: 4px;
+  --radius-7: 7px;
+  --radius-12: 12px;
 
   /* One art pixel; outlines, notches and bevels are whole multiples of it. */
   --px: 4px;
   --font-pixel: "Silkscreen", ui-monospace, monospace;
   --font-body: "Noto Sans", system-ui, sans-serif;
+  --font-code: ui-monospace, monospace;
 
   color-scheme: dark;
 }

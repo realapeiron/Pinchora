@@ -11,8 +11,8 @@ import { Toast } from "../../../components/Toast";
 import { ApiError, type Overview } from "../../../lib/api";
 import { birthdayWords, type BirthdaySettings, useBirthdays, useSaveBirthdays } from "../api/birthdays";
 import { useDiscord } from "../../../lib/queries";
-import { Loading, Problem } from "../../shell/pages/States";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { Loading, Problem } from "../../../components/States";
+import { SettingsPage } from "../../../components/PageHead";
 import "../../../styles/birthdays.css";
 
 export function Birthdays() {

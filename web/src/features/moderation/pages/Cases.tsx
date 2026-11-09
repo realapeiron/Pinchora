@@ -11,8 +11,8 @@ import { ApiError, type Case, type Overview } from "../../../lib/api";
 import { type CaseFilters, useCase, useCases, useSaveReason } from "../../../lib/queries";
 import { timeAgo } from "../../../lib/text";
 import { useDebounced } from "../../../lib/useDebounced";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 /** The tone of a kind of case, like the mod-log's colours. */
 function tone(kind: string): string {

@@ -389,9 +389,11 @@ export function Heatmap({ grid }: { grid: number[][] }) {
   const shown = active ? (grid[active.d]?.[active.h] ?? 0) : null;
   return (
     <div className="heat">
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Arrow keys explore the labelled chart. */}
       <div
         className="heat-grid"
         role="img"
+        /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The chart needs a keyboard focus target. */
         tabIndex={0}
         aria-label={
           best

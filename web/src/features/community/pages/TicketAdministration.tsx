@@ -18,7 +18,7 @@ import {
   useTicketPanelOperations,
   useTicketSnippets,
 } from "../api/ticket-operations";
-import { Problem } from "../../shell/pages/States";
+import { Problem } from "../../../components/States";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const time = (minutes: number) =>

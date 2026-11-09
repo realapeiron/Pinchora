@@ -13,7 +13,7 @@
   --heat-3: #6da7ec;
   --heat-4: #b7d3f6;
   --grid: #24305e;
-  --good: #06d6a0;
+  --good: var(--mint);
   --bad: #ff8a73;
 }
 
@@ -40,7 +40,7 @@
 }
 .period-tab {
   min-height: 44px;
-  padding: 8px 16px;
+  padding: var(--space-8) var(--space-16);
   border: 0;
   background: var(--panel);
   color: #8fd3ff;
@@ -60,12 +60,12 @@
 .stat-tiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--space-16);
 }
 .stat-tile {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--space-8);
   min-width: 0;
   padding: 18px 20px;
   background: var(--panel);
@@ -104,7 +104,7 @@
 .stats-grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: var(--space-24);
 }
 
 /* /Charts */
@@ -127,7 +127,7 @@
   fill: var(--grid);
 }
 .chart-base {
-  fill: #2e3d75;
+  fill: var(--panel-edge);
 }
 .chart-tick {
   font: 400 11px/1 var(--font-pixel);
@@ -166,7 +166,7 @@ g.is-active .chart-column,
   pointer-events: none;
 }
 .chart-empty span {
-  padding: 4px 12px;
+  padding: 4px var(--space-12);
   background: var(--panel);
 }
 
@@ -176,7 +176,7 @@ g.is-active .chart-column,
   display: grid;
   gap: 2px;
   min-width: 110px;
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   background: #0b1029;
   box-shadow: inset 0 0 0 2px var(--panel-edge);
   font-size: 14px;
@@ -213,7 +213,7 @@ g.is-active .chart-column,
 
 .chart-legend {
   list-style: none;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-8);
   padding: 0;
   display: flex;
   flex-wrap: wrap;
@@ -223,12 +223,12 @@ g.is-active .chart-column,
 .chart-legend li {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 /* The space a readout needs above a chart. */
 .chart-room {
-  padding-top: 12px;
+  padding-top: var(--space-12);
 }
 
 /* /Busiest hours */
@@ -284,7 +284,7 @@ g.is-active .chart-column,
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
+  gap: var(--space-8) var(--space-16);
   margin-top: 14px;
 }
 .heat-readout {
@@ -416,9 +416,9 @@ g.is-active .chart-column,
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px 16px;
-  padding: 12px 14px;
-  background: #0f1631;
+  gap: 6px var(--space-16);
+  padding: var(--space-12) 14px;
+  background: var(--bg-bottom);
   box-shadow: inset 0 0 0 2px #232e5c;
 }
 .counter-name {
@@ -428,7 +428,7 @@ g.is-active .chart-column,
 .counter-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 4px var(--space-12);
   font-size: 14px;
 }
 .counter-problem {
@@ -448,18 +448,18 @@ g.is-active .chart-column,
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: var(--space-8) var(--space-12);
   margin-top: 14px;
 }
 .counter-preview-name {
-  padding: 6px 12px;
+  padding: 6px var(--space-12);
   background: #0b1029;
   box-shadow: inset 0 0 0 2px var(--panel-edge);
   font-weight: 700;
 }
 
 .card-preview {
-  margin: 16px 0 0;
+  margin: var(--space-16) 0 0;
 }
 .card-preview img {
   display: block;
@@ -467,7 +467,7 @@ g.is-active .chart-column,
   max-width: 900px;
   height: auto;
   image-rendering: auto;
-  background: #0f1631;
+  background: var(--bg-bottom);
 }
 
 .is-refreshing {
@@ -481,15 +481,15 @@ g.is-active .chart-column,
   padding-bottom: 96px;
 }
 .stats-site .stat-tiles {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-24);
 }
 .stats-site .settings-page {
-  gap: 24px;
+  gap: var(--space-24);
 }
 .stats-site-head {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-16);
 }
 .stats-site-head .server-icon {
   flex: none;
@@ -529,7 +529,7 @@ g.is-active .chart-column,
     display: inline;
   }
   .period-tab {
-    padding: 8px 10px;
+    padding: var(--space-8) 10px;
   }
 }
 
@@ -544,7 +544,7 @@ g.is-active .chart-column,
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .stats-site-cta {
-  margin-top: 24px;
+  margin-top: var(--space-24);
 }
 
 @media (max-width: 767px) {

@@ -1,5 +1,5 @@
 .command-control-page {
-  gap: 24px;
+  gap: var(--space-24);
 }
 .command-control-list {
   border-block: 1px solid var(--panel-edge);
@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 16px 0;
+  padding: var(--space-16) 0;
   border-bottom: 1px solid var(--panel-edge);
 }
 .command-row:last-child {
@@ -39,7 +39,7 @@
 .command-switch {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   cursor: pointer;
 }
 .command-switch input {
@@ -54,7 +54,7 @@
 .command-alias-form {
   display: grid;
   grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) auto;
-  gap: 16px;
+  gap: var(--space-16);
   align-items: end;
   margin-top: 20px;
 }
@@ -62,9 +62,9 @@
 .backup-point {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-16);
   align-items: center;
-  padding: 12px 0;
+  padding: var(--space-12) 0;
   border-bottom: 1px solid var(--panel-edge);
 }
 .command-alias-row code {
@@ -94,7 +94,7 @@
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-12);
 }
 .command-drawer h2 {
   overflow-wrap: anywhere;
@@ -159,7 +159,7 @@
 @media (max-width: 600px) {
   .command-row {
     align-items: start;
-    gap: 12px;
+    gap: var(--space-12);
   }
   .command-open span {
     font-size: 0.85rem;
@@ -182,6 +182,6 @@
   }
   .backup-diff th,
   .backup-diff td {
-    padding: 8px 5px;
+    padding: var(--space-8) 5px;
   }
 }

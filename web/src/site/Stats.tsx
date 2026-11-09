@@ -15,7 +15,7 @@ import {
   usePublicStats,
 } from "../features/admin/api/stats";
 import { Activity } from "../features/admin/pages/Stats";
-import { Loading } from "../features/shell/pages/States";
+import { Loading } from "../components/States";
 import { InviteButton } from "./Buttons";
 import "../styles/stats.css";
 

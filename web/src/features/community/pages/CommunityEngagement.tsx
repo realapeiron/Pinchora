@@ -4,8 +4,8 @@ import { Link, useOutletContext } from "react-router";
 import { locale, translate as t } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
 import { ChannelPicker } from "../../../components/Pickers";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import { type Overview, api } from "../../../lib/api";
 import { useDiscord } from "../../../lib/queries";
 import {

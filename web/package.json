@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-main.mjs && npm run reef:budget",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
@@ -37,6 +37,7 @@
     "@vitejs/plugin-react": "5.2.0",
     "@vitest/coverage-v8": "4.1.12",
     "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
     "prettier": "3.9.10",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.1",

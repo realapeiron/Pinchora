@@ -31,8 +31,8 @@ import {
   tidyEmbed,
 } from "../../../lib/tags";
 import { useTagEditor } from "../hooks/useTagEditor";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 function tidyResponder(draft: ResponderDef): ResponderDef {
   const value = draft.trigger_value?.trim() ?? "";

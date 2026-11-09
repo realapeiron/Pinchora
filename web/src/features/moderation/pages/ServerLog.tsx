@@ -13,8 +13,8 @@ import { ApiError, type GuildInfo, type LogSettings, type Overview } from "../..
 import { isDiscordId } from "../../../lib/ids";
 import { type LogDraft, logDraft, logsPatch } from "../api/moderation";
 import { useDiscord, useLogs } from "../../../lib/queries";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 export function ServerLog() {
   const data = useOutletContext<Overview>();

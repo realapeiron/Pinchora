@@ -127,8 +127,9 @@ export function DeleteTicketPanel({
           )}
           <div className="dialog-actions">
             <PixelButton
-              variant="secondary"
+              /* eslint-disable-next-line jsx-a11y/no-autofocus -- Dialog dismissal receives focus on open. */
               autoFocus
+              variant="secondary"
               onClick={() => {
                 setAsking(null);
                 remove.reset();

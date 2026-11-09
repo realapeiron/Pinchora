@@ -1,6 +1,6 @@
 .message-studio {
   display: grid;
-  gap: 16px;
+  gap: var(--space-16);
   max-width: 1100px;
 }
 .studio-actions {
@@ -15,7 +15,7 @@
 .studio-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
   margin: 10px 0;
   align-items: start;
 }
@@ -27,18 +27,18 @@
 .studio-component {
   border: 1px solid var(--outline);
   padding: 14px;
-  margin: 12px 0;
+  margin: var(--space-12) 0;
 }
 .studio-component-preview {
-  margin-top: 8px;
+  margin-top: var(--space-8);
 }
 .studio-component-preview button,
 .studio-component-preview select {
   background: #5865f2;
   color: white;
   border: 0;
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-radius: var(--radius-4);
+  padding: var(--space-8) var(--space-12);
   opacity: 1;
 }
 .studio-component-preview select {
@@ -47,13 +47,13 @@
 .studio-check {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   margin-top: 14px;
 }
 .studio-revision {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 .studio-save {
@@ -63,8 +63,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--space-12);
+  padding: var(--space-12);
   background: var(--panel, #101735);
   border: 1px solid var(--outline);
 }
@@ -93,7 +93,7 @@
 .studio-component-preview {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .studio-component-preview button,
 .studio-component-preview select {

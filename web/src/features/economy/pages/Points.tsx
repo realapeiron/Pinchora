@@ -22,7 +22,7 @@ import {
   problem,
 } from "../../../lib/rules";
 import { useSettingsForm } from "../../../lib/useSettingsForm";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 
 function check(value: Settings): (FieldError | null)[] {
   const out = [checkPointsName(value.points_name), checkPointsEmoji(value.points_emoji)];

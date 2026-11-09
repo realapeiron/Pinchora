@@ -10,8 +10,8 @@ import { Toast } from "../../../components/Toast";
 import type { CustomCommand, Overview } from "../../../lib/api";
 import { useDeleteTag, useTags, useToggleTag } from "../../../lib/queries";
 import { cooldownLabel, describeAction } from "../../../lib/tags";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 /** Custom commands: what members run with /tag. */
 export function Commands() {

@@ -128,6 +128,7 @@ function Layout() {
           <nav className="sidebar-nav" aria-label={spaTranslate("Server settings")}>
             <div className="sidebar-section">
               <p className="sidebar-group pixel-label">{spaTranslate("COMMUNITY")}</p>
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- This static preview shows an inactive navigation item. */}
               <a className="sidebar-link active" href="#">
                 {spaTranslate("Temp voice")}
               </a>

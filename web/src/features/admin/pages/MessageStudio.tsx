@@ -10,7 +10,7 @@ import { PixelButton } from "../../../components/PixelButton";
 import { api, type EmbedSpec, type Overview } from "../../../lib/api";
 import { blankEmbed } from "../../../lib/tags";
 import { useDiscord } from "../../../lib/queries";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 import { importKit, componentRows, studioError, type Component, type Kit } from "../api/messageStudio";
 import "../../../styles/message-studio.css";
 

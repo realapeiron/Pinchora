@@ -10,8 +10,8 @@ import { SOURCES, staffLine } from "../api/moderation";
 import { useStaffLog } from "../../../lib/queries";
 import { timeAgo } from "../../../lib/text";
 import { useDebounced } from "../../../lib/useDebounced";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 export function StaffLog() {
   const data = useOutletContext<Overview>();

@@ -16,6 +16,7 @@ export function Player({ playback }: { playback: Playback }) {
           </li>
         ))}
       </ol>
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Long playback details are keyboard scrollable. */}
       {step && <pre tabIndex={0}>{JSON.stringify(step.detail, null, 2)}</pre>}
     </section>
   );

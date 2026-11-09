@@ -23,6 +23,8 @@ function include(key) {
 }
 for (const [key, chunk] of Object.entries(build))
   if (chunk.isEntry || /ReefStage-/.test(chunk.file)) include(key);
+// The first render waits for both catalogues so synchronous serverText lookups retain their reverse mapping.
+for (const key of ["src/i18n/en.ts", "src/i18n/tr.ts"]) include(key);
 for (const name of files) if (/^prepare\.worker-.*\.js$/.test(name)) used.add(`assets/${name}`);
 // These panels must remain deferred from the playable room's static dependency graph.
 for (const key of [

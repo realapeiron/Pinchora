@@ -16,7 +16,7 @@ import { DELIVERY_LABELS } from "../../../lib/card";
 import { useCards, useDiscord } from "../../../lib/queries";
 import { checkMessage } from "../../../lib/rules";
 import { useSettingsForm } from "../../../lib/useSettingsForm";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 
 function check(value: Settings): (FieldError | null)[] {
   const fail = <T,>(c: { ok: true; value: T } | { ok: false; field: string; message: string }) =>

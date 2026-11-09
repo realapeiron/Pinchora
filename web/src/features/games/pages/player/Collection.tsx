@@ -5,8 +5,8 @@ import { PixelButton } from "../../../../components/PixelButton";
 import { t, number } from "../../../../i18n";
 import { api } from "../../../../lib/api";
 import { usePlayer } from "../../api/webPlayer";
-import { PageHead } from "../../../shell/pages/PageHead";
-import { Loading, Problem } from "../../../shell/pages/States";
+import { PageHead } from "../../../../components/PageHead";
+import { Loading, Problem } from "../../../../components/States";
 
 type Entry = {
   id: string;

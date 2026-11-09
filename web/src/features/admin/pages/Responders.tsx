@@ -10,8 +10,8 @@ import { Toast } from "../../../components/Toast";
 import type { AutoResponder, Overview } from "../../../lib/api";
 import { useDeleteTag, useDiscord, useTags, useToggleTag } from "../../../lib/queries";
 import { TRIGGERS, cooldownLabel } from "../../../lib/tags";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 /** What fires a responder, in a few words: "A member gets @VIP", "A message has “good morning”". */
 function when(responder: AutoResponder, roleName: (id: string) => string): string {

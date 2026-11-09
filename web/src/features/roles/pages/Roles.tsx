@@ -25,9 +25,9 @@ import {
 } from "../api/roles";
 import "../../../styles/roles.css";
 import { ColorRoles } from "./ColorRoles";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 import { RolePanels } from "./RolePanels";
-import { Loading, Problem } from "../../shell/pages/States";
+import { Loading, Problem } from "../../../components/States";
 
 const KINDS: { value: AutoKind; title: string; detail: string }[] = [
   { value: "join", title: "Members who join", detail: "People who come into the server." },

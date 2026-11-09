@@ -19,8 +19,8 @@
 .creator {
   display: grid;
   gap: 6px;
-  padding: 12px 14px;
-  background: #10173a;
+  padding: var(--space-12) 14px;
+  background: var(--surface-inset);
 }
 .creator.is-open {
   background: #121a42;
@@ -35,7 +35,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
+  gap: var(--space-8) var(--space-16);
 }
 
 .creator-title {
@@ -55,7 +55,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .creator-summary {
@@ -70,9 +70,9 @@
 .creator-form {
   display: grid;
   gap: 20px;
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 2px solid #232e5c;
+  margin-top: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 2px solid var(--surface-raised);
 }
 .creator-form .form-grid {
   margin-top: 0;
@@ -83,30 +83,30 @@
 
 .creator-switches {
   display: grid;
-  gap: 16px;
+  gap: var(--space-16);
   padding: 14px;
   background: rgb(46 61 117 / 0.18);
   box-shadow: inset 0 0 0 2px #232e5c;
 }
 .creator-switches .setting-row + .setting-row {
   margin-top: 0;
-  padding-top: 16px;
-  border-top: 2px solid #232e5c;
+  padding-top: var(--space-16);
+  border-top: 2px solid var(--surface-raised);
 }
 
 .creator-foot {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .creator-preview {
   display: grid;
   gap: 5px;
-  padding: 12px 14px;
+  padding: var(--space-12) 14px;
   color: var(--ink);
-  background: #10173a;
+  background: var(--surface-inset);
   box-shadow: inset 0 0 0 2px #364575;
 }
 .creator-preview strong {
@@ -142,7 +142,7 @@
 .live-count {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .live-dot {
@@ -174,10 +174,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(70px, 0.6fr) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px 16px;
+  gap: var(--space-8) var(--space-16);
   min-height: 52px;
-  padding: 8px 14px;
-  background: #10173a;
+  padding: var(--space-8) 14px;
+  background: var(--surface-inset);
 }
 
 .room-name {
@@ -218,13 +218,13 @@
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
+  gap: var(--space-8);
 }
 .command-list li {
   display: grid;
   gap: 2px;
-  padding: 10px 12px;
-  background: #10173a;
+  padding: 10px var(--space-12);
+  background: var(--surface-inset);
   box-shadow: inset 0 0 0 2px #1a2350;
 }
 .command-list code {

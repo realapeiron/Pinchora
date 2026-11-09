@@ -186,9 +186,10 @@ export function RoomStage({
         </PixelButton>
       </div>
       <div
+        /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The editing canvas accepts keyboard focus. */
+        tabIndex={editor ? 0 : undefined}
         ref={stage}
         className="room-viewport"
-        tabIndex={editor ? 0 : undefined}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
           if (editor && !event.altKey) {

@@ -3,11 +3,11 @@
 .top-bar-links {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .top-bar-link {
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   color: var(--ink);
   text-decoration: none;
   font: 700 12px/1 var(--font-pixel);
@@ -29,14 +29,14 @@
 .house-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
+  gap: var(--space-24);
 }
 
 .house-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: var(--space-8);
 }
 
 .house-tab-count {
@@ -45,13 +45,13 @@
 
 .room-stage {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .room-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
 }
 
@@ -102,9 +102,9 @@
   min-height: 48px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   flex-wrap: wrap;
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   background: var(--panel);
   box-shadow: inset 0 0 0 2px var(--panel-edge);
 }
@@ -118,13 +118,13 @@
 .house-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: var(--space-8) var(--space-16);
   align-items: center;
 }
 
 .house-options {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -132,8 +132,8 @@
 .house-contents {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 4px 24px;
-  margin: 12px 0 0;
+  gap: 4px var(--space-24);
+  margin: var(--space-12) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -141,19 +141,19 @@
 .house-contents li {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .house-visit {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
   flex-wrap: wrap;
 }
 
 .house-visit input {
   min-height: 40px;
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   font: 400 14px/1 var(--font-body);
   color: var(--ink);
   background: var(--bg-bottom);
@@ -175,10 +175,10 @@
 
 @media (max-width: 767px) {
   .content.content-wide {
-    padding: 16px 16px 96px;
+    padding: var(--space-16) var(--space-16) 96px;
   }
   .top-bar {
-    padding: 8px 16px;
+    padding: var(--space-8) var(--space-16);
   }
   .top-bar-name,
   .brand-tag {
@@ -201,19 +201,19 @@
 .house-editor {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
-  gap: 24px;
+  gap: var(--space-24);
   align-items: start;
 }
 .house-inventory {
   background: var(--panel);
-  padding: 16px;
+  padding: var(--space-16);
   display: grid;
-  gap: 12px;
+  gap: var(--space-12);
   position: sticky;
   top: 16px;
 }
 .house-inventory h2 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-8);
   font: 700 18px var(--font-pixel);
   color: var(--gold);
 }
@@ -232,7 +232,7 @@
   background: var(--bg-bottom);
   color: var(--ink);
   border: 2px solid var(--panel-edge);
-  padding: 8px;
+  padding: var(--space-8);
   font: inherit;
 }
 .house-options input {
@@ -242,7 +242,7 @@
   max-height: 62vh;
   overflow-y: auto;
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .house-stock button {
   display: flex;
@@ -252,7 +252,7 @@
   border: 2px solid var(--panel-edge);
   background: var(--bg-bottom);
   color: var(--ink);
-  padding: 8px;
+  padding: var(--space-8);
   cursor: grab;
   font: inherit;
 }
@@ -278,7 +278,7 @@
 .house-workbench {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: var(--space-16);
 }
 .house-editor :focus-visible {
   outline: 3px solid var(--gold);
@@ -291,16 +291,16 @@
   pointer-events: none;
 }
 .house-surfaces {
-  padding: 16px;
+  padding: var(--space-16);
   background: var(--panel);
 }
 .house-surfaces summary {
   cursor: pointer;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-16);
 }
 .house-surfaces label {
-  margin-block: 12px;
+  margin-block: var(--space-12);
 }
 .house-confirm {
   padding: 20px;
@@ -308,7 +308,7 @@
   border: 2px solid var(--gold);
 }
 .house-confirm button {
-  margin-right: 12px;
+  margin-right: var(--space-12);
 }
 .room-viewport {
   background: linear-gradient(#2a2c48, #121420);
@@ -316,7 +316,7 @@
 @media (max-width: 1023px) {
   .house-editor {
     grid-template-columns: 190px minmax(0, 1fr);
-    gap: 16px;
+    gap: var(--space-16);
   }
 }
 @media (max-width: 767px) {

@@ -278,6 +278,7 @@ export function HouseEditor({
       );
     }) ?? [];
   return (
+    /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Editor shortcuts work while focus is inside this section. */
     <section
       className="house-editor"
       aria-label={t("House editor")}
@@ -638,6 +639,7 @@ export function HouseEditor({
           <div className="house-confirm" role="alertdialog" aria-modal="false" aria-label={confirm.label}>
             <p>{confirm.label}</p>
             <PixelButton
+              /* eslint-disable-next-line jsx-a11y/no-autofocus -- The confirmation action receives focus when its dialog opens. */
               autoFocus
               disabled={pending}
               onClick={() => {

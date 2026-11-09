@@ -1,8 +1,8 @@
-import { translate as spaTranslate } from "../../../i18n";
-import { ApiError } from "../../../lib/api";
-import { Crab } from "../../../components/Crab";
-import { Panel } from "../../../components/Panel";
-import { t, translate } from "../../../i18n";
+import { translate as spaTranslate } from "../i18n";
+import { ApiError } from "../lib/api";
+import { Crab } from "./Crab";
+import { Panel } from "./Panel";
+import { t, translate } from "../i18n";
 
 export function Loading({ full, label = spaTranslate("Loading") }: { full?: boolean; label?: string }) {
   return (

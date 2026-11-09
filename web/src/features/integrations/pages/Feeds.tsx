@@ -15,9 +15,9 @@ import { ApiError, type FieldError, type Overview } from "../../../lib/api";
 import { useDiscord } from "../../../lib/queries";
 import { useDebounced } from "../../../lib/useDebounced";
 import "../../../styles/feeds.css";
-import { NotFound } from "../../shell/pages/NotFound";
-import { PageHead } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { NotFound } from "../../../components/NotFound";
+import { PageHead } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import {
   KIND_TAG,
   SOURCE_HELP,

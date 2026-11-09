@@ -8,7 +8,7 @@ import { Panel } from "../../../components/Panel";
 import { ChannelPicker, RolePicker } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { type Overview } from "../../../lib/api";
-import { catalogWords } from "../../admin/api/catalogWords";
+import { catalogWords } from "../../admin";
 import { useDiscord } from "../../../lib/queries";
 import {
   type Attendees,
@@ -18,8 +18,8 @@ import {
   useEvents,
   zonedInput,
 } from "../api/events";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 const fresh = (tz: string): EventBody => {
   const start = new Date(Date.now() + 86400000);
@@ -303,14 +303,12 @@ export function Events() {
         </>
       )}
       {looking && (
-        <div className="ev-dialog-backdrop" onClick={() => setLooking(null)}>
-          <div
-            className="ev-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("Event attendees")}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          className="ev-dialog-backdrop"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && setLooking(null)}
+        >
+          <div className="ev-dialog" role="dialog" aria-modal="true" aria-label={t("Event attendees")}>
             <header>
               <h2>{t("Attendees · {count}", { count: looking.data.count })}</h2>
               <PixelButton variant="ghost" onClick={() => setLooking(null)}>
@@ -341,13 +339,16 @@ export function Events() {
         </div>
       )}
       {editing && (
-        <div className="ev-dialog-backdrop" onClick={() => setEditing(null)}>
+        <div
+          className="ev-dialog-backdrop"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && setEditing(null)}
+        >
           <div
             className="ev-dialog ev-editor"
             role="dialog"
             aria-modal="true"
             aria-label={editing.id ? t("Edit event") : t("Create event")}
-            onClick={(e) => e.stopPropagation()}
           >
             <header>
               <h2>{editing.id ? t("Edit event") : t("Create event")}</h2>

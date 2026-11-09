@@ -9,15 +9,16 @@ import { LegacyGuildRedirect } from "./features/shell/pages/LegacyGuildRedirect"
 const GuildLayout = lazy(() =>
   import("./features/admin/pages/GuildLayout").then((m) => ({ default: m.GuildLayout })),
 );
-import { MyHouse, VisitHouse } from "./features/house/pages/House";
+const MyHouse = lazy(() => import("./features/house/pages/House").then((m) => ({ default: m.MyHouse })));
+const VisitHouse = lazy(() =>
+  import("./features/house/pages/House").then((m) => ({ default: m.VisitHouse })),
+);
 import { Login } from "./features/shell/pages/Login";
-import { NotFound } from "./features/shell/pages/NotFound";
-import { RequireLogin } from "./features/shell/pages/RequireLogin";
+import { NotFound } from "./components/NotFound";
+import { RequireLogin } from "./components/RequireLogin";
 import { Servers } from "./features/shell/pages/Servers";
-import { Landing } from "./site/Landing";
 import { SiteLayout } from "./site/SiteLayout";
 import { SiteNotFound } from "./site/SiteNotFound";
-import { StatusPage } from "./site/Status";
 
 // The public site (landing, commands, features, legal) sits under one layout, and the landing page is
 // the front door for everyone; the dashboard keeps its own paths. The rarer pages load on demand.
@@ -26,8 +27,8 @@ const localizedRoutes: RouteObject[] = [
   {
     element: <SiteLayout />,
     children: [
-      { path: "/", element: <Landing /> },
-      { path: "/status", element: <StatusPage /> },
+      { path: "/", lazy: async () => ({ Component: (await import("./site/Landing")).Landing }) },
+      { path: "/status", lazy: async () => ({ Component: (await import("./site/Status")).StatusPage }) },
       {
         path: "/lb/:slug",
         lazy: async () => ({ Component: (await import("./site/Leaderboard")).PublicLeaderboard }),
@@ -93,8 +94,30 @@ const localizedRoutes: RouteObject[] = [
       </RequireLogin>
     ),
   },
-  { path: "/me/house", element: <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> },
-  { path: "/house/:userId", element: <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> },
+  {
+    path: "/me/house",
+    element: (
+      <RequireLogin>
+        {(me) => (
+          <Suspense>
+            <MyHouse me={me} />
+          </Suspense>
+        )}
+      </RequireLogin>
+    ),
+  },
+  {
+    path: "/house/:userId",
+    element: (
+      <RequireLogin>
+        {(me) => (
+          <Suspense>
+            <VisitHouse me={me} />
+          </Suspense>
+        )}
+      </RequireLogin>
+    ),
+  },
   {
     path: "/g/:guildId",
     element: (

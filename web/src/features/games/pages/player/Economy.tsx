@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../lib/api";
 import { Panel } from "../../../../components/Panel";
 import { PixelButton } from "../../../../components/PixelButton";
-import { Loading, Problem } from "../../../shell/pages/States";
+import { Loading, Problem } from "../../../../components/States";
 import { t, translate, number, dateTime } from "../../../../i18n";
 import {
   useEconomy,
@@ -14,7 +14,7 @@ import {
   type Offer,
   type Trade,
   type Auction,
-} from "../../../economy/api/playerEconomy";
+} from "../../../economy";
 import "../../../../styles/player-economy.css";
 
 const JOBS = ["kelp_keeper", "coral_courier", "beacon_tender"] as const;

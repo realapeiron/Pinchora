@@ -22,8 +22,8 @@ import {
   useInvites,
 } from "../api/invites";
 import { useDiscord } from "../../../lib/queries";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 export function Invites() {
   const data = useOutletContext<Overview>();

@@ -20,10 +20,19 @@ export function PixelLink({
   variant = "primary",
   className,
   href,
+  children,
   ...props
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant; href: string }) {
   if (href.startsWith("/") && !href.startsWith("/auth/")) {
-    return <Link to={href} className={classes(variant, className)} {...props} />;
+    return (
+      <Link to={href} className={classes(variant, className)} {...props}>
+        {children}
+      </Link>
+    );
   }
-  return <a href={href} className={classes(variant, className)} {...props} />;
+  return (
+    <a href={href} className={classes(variant, className)} {...props}>
+      {children}
+    </a>
+  );
 }

@@ -23,9 +23,9 @@ import {
   useSaveCreator,
   useTempVoice,
 } from "../api/tempVoice";
-import { Loading, Problem } from "../../shell/pages/States";
+import { Loading, Problem } from "../../../components/States";
 import { t, tf } from "../api/tempVoiceI18n";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 
 import "../../../styles/temp-voice.css";
 

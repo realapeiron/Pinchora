@@ -22,8 +22,8 @@ import {
   useRoom,
 } from "../api/house";
 import { t } from "../../../reef/i18n";
-import { PageHead } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { PageHead } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/house.css";
 
 const ReefLoop = lazy(() => import("../components/ReefLoop").then((m) => ({ default: m.ReefLoop })));

@@ -17,8 +17,8 @@ import {
   type AntiNukeData,
   type AntiNukeConfig,
 } from "../api/anti_nuke";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/anti_nuke.css";
 
 export function AntiNuke() {

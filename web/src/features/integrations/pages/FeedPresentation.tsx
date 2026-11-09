@@ -116,8 +116,9 @@ export function DeleteFeedDialog({ asking, remove, setAsking, setToast }: Delete
           )}
           <div className="dialog-actions">
             <PixelButton
-              variant="secondary"
+              /* eslint-disable-next-line jsx-a11y/no-autofocus -- Dialog dismissal receives focus on open. */
               autoFocus
+              variant="secondary"
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   setAsking(null);

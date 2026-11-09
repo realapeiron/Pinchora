@@ -17,8 +17,8 @@ import {
 } from "../api/achievements";
 import { ApiError, type Overview } from "../../../lib/api";
 import { useAtlasIndex, useDiscord } from "../../../lib/queries";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/achievements.css";
 
 const SYMBOLS: Record<string, string> = {

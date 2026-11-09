@@ -1,19 +1,19 @@
 .community-v2-list {
   display: grid;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 0;
 }
 .community-v2-item {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
   min-width: 0;
-  padding: 12px;
+  padding: var(--space-12);
   border: 1px solid var(--ink, #1b1d2b);
   overflow-wrap: anywhere;
 }
 .community-v2-controls {
   display: grid;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 0;
 }
 .community-v2-controls label {
@@ -27,7 +27,7 @@
 .community-v2-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 @media (min-width: 720px) {
   .community-v2-controls {

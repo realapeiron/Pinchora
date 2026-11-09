@@ -4,9 +4,9 @@ import { ServerIcon } from "../../../components/ServerIcon";
 import { TopBar } from "../../../components/TopBar";
 import { t } from "../../../i18n";
 import type { GuildEntry, Me } from "../../../lib/api";
-import { useMyChannels } from "../../integrations/api/feeds";
+import { useMyChannels } from "../../integrations";
 import { useGuilds, useRefreshGuilds } from "../../../lib/queries";
-import { Loading, Problem } from "./States";
+import { Loading, Problem } from "../../../components/States";
 
 export function Servers({ me }: { me: Me }) {
   const guilds = useGuilds();

@@ -12,8 +12,8 @@ import { Toast } from "../../../components/Toast";
 import { ApiError, type LadderAction, type ModerationSettings, type Overview } from "../../../lib/api";
 import { type DraftRung, draftLadder, moderationPatch } from "../api/moderation";
 import { useDiscord, useModeration } from "../../../lib/queries";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 const ACTIONS: { key: LadderAction; label: string }[] = [
   { key: "timeout", label: "Timeout" },

@@ -79,6 +79,7 @@ export function Gallery() {
       <div
         className="gallery-tabs"
         role="tablist"
+        tabIndex={0}
         aria-label={spaTranslate("What Pinchora draws")}
         onKeyDown={onKey}
       >

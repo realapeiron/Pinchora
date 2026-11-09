@@ -6,7 +6,7 @@
 .duration {
   display: grid;
   grid-template-columns: minmax(70px, 1fr) minmax(96px, 1.2fr);
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 /* A label that reads on the panel-edge blue (the dim badge's muted text is a little under 4.5:1). */
@@ -20,7 +20,7 @@
 .auto-form {
   display: grid;
   gap: 20px;
-  padding: 16px;
+  padding: var(--space-16);
   background: rgb(46 61 117 / 0.18);
   box-shadow: inset 0 0 0 2px #232e5c;
 }
@@ -41,7 +41,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: var(--space-8) var(--space-12);
   font-size: 13px;
 }
 
@@ -62,8 +62,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  padding: 8px 0 8px 22px;
+  gap: 4px var(--space-12);
+  padding: var(--space-8) 0 var(--space-8) 22px;
   border-left: 2px solid var(--panel-edge);
   margin-left: 6px;
 }
@@ -88,11 +88,11 @@
 
 .panel-cards {
   list-style: none;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-16);
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .panel-card {
@@ -100,7 +100,7 @@
   gap: 10px;
   align-content: start;
   padding: 14px;
-  background: #10173a;
+  background: var(--surface-inset);
   box-shadow: inset 0 0 0 2px #232e5c;
 }
 
@@ -125,7 +125,7 @@
 .panel-card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .panel-designer .choice {
@@ -135,7 +135,7 @@
 .panel-rules {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 16px;
+  gap: var(--space-16);
   align-items: start;
 }
 
@@ -144,22 +144,22 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px;
-  background: #10173a;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  background: var(--surface-inset);
   box-shadow: inset 0 0 0 2px #232e5c;
 }
 
 .entry-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
   align-items: start;
   min-width: 0;
 }
@@ -183,7 +183,7 @@
 .entry-tools .pixel-button {
   min-width: 40px;
   min-height: 36px;
-  padding: 6px 8px;
+  padding: 6px var(--space-8);
 }
 
 /* The editor: the form, and the message it makes beside it from a wide screen on. */
@@ -214,7 +214,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
+  gap: var(--space-8) var(--space-12);
   margin: 0 0 4px;
 }
 
@@ -233,7 +233,7 @@
 
 .panel-preview {
   display: grid;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .panel-preview .embed-description {
@@ -265,13 +265,13 @@
   padding: 0 4px;
   color: #c9cdfb;
   background: rgb(88 101 242 / 0.3);
-  border-radius: 3px;
+  border-radius: var(--radius-3);
 }
 
 .preview-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .preview-button {
@@ -279,11 +279,11 @@
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  color: #fff;
+  color: var(--white);
   font: 500 14px/1.2 var(--font-body);
   background: #4e5058;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-3);
   cursor: default;
 }
 
@@ -291,12 +291,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-12);
   padding: 10px 14px;
   color: #b5bac1;
   font-size: 14px;
   background: #1e1f22;
-  border-radius: 3px;
+  border-radius: var(--radius-3);
 }
 
 .preview-select-menu {
@@ -304,13 +304,13 @@
   gap: 2px;
   padding: 6px;
   background: #2b2d31;
-  border-radius: 3px;
+  border-radius: var(--radius-3);
 }
 
 .preview-select-menu > div {
   display: grid;
   gap: 1px;
-  padding: 6px 8px;
+  padding: 6px var(--space-8);
   color: #dbdee1;
   font-size: 14px;
 }
@@ -329,7 +329,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
+  padding: 3px var(--space-8);
   color: #dbdee1;
   font-size: 13px;
   background: #2b2d31;
@@ -350,7 +350,7 @@
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .colour-tile {
@@ -358,7 +358,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   width: 100%;
-  padding: 10px 10px 8px;
+  padding: 10px 10px var(--space-8);
   color: var(--ink);
   font: 700 14px/1.2 var(--font-body);
   text-align: center;
@@ -400,8 +400,8 @@
 .colour-sample {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-12);
+  padding: var(--space-12) 14px;
   background: #313338;
   border-left: var(--px) solid var(--panel-edge);
 }
@@ -417,7 +417,7 @@
 .chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .chip-row .pixel-select {

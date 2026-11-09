@@ -18,8 +18,8 @@ import {
   useRoblox,
   useRobloxWrite,
 } from "../api/roblox";
-import { Loading, Problem } from "../../shell/pages/States";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { Loading, Problem } from "../../../components/States";
+import { SettingsPage } from "../../../components/PageHead";
 import "../../../styles/roblox.css";
 
 export function Roblox() {

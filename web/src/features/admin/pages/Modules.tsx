@@ -21,8 +21,8 @@ import {
   withMode,
 } from "../api/modules";
 import { ModuleSaveError, useDiscord, useModules, useSaveModules } from "../../../lib/queries";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 const MODES: { value: ChannelMode; title: string; detail: string }[] = [
   { value: "all", title: "All channels", detail: "Works everywhere in the server." },

@@ -1,7 +1,7 @@
-import { translate as spaTranslate } from "../../../i18n";
-import { Crab } from "../../../components/Crab";
-import { Panel } from "../../../components/Panel";
-import { PixelLink } from "../../../components/PixelButton";
+import { translate as spaTranslate } from "../i18n";
+import { Crab } from "./Crab";
+import { Panel } from "./Panel";
+import { PixelLink } from "./PixelButton";
 
 export function NotFound() {
   return (

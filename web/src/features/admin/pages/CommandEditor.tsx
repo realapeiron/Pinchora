@@ -29,8 +29,8 @@ import {
   tidyName,
 } from "../../../lib/tags";
 import { useTagEditor } from "../hooks/useTagEditor";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 
 /** What is sent to the server: names and texts tidied, an empty embed left out. */
 function tidyCommand(draft: CommandDef): CommandDef {

@@ -1,7 +1,7 @@
 .branding-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(290px, 0.85fr);
-  gap: 24px;
+  gap: var(--space-24);
   align-items: start;
 }
 .branding-editor,
@@ -9,7 +9,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   border: 1px solid var(--line, #32445b);
-  border-radius: 12px;
+  border-radius: var(--radius-12);
   background: var(--surface, #182334);
   padding: clamp(18px, 2.5vw, 30px);
 }
@@ -23,7 +23,7 @@
 }
 .branding-editor label {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
   margin: 0 0 18px;
   font-weight: 700;
 }
@@ -33,9 +33,9 @@
   box-sizing: border-box;
   padding: 11px 13px;
   border: 1px solid #60728b;
-  border-radius: 7px;
+  border-radius: var(--radius-7);
   background: #101a2b;
-  color: #fff;
+  color: var(--white);
   font: inherit;
 }
 .branding-editor input:focus-visible,
@@ -79,13 +79,13 @@
   opacity: 0.78;
   font-size: 0.89rem;
   line-height: 1.45;
-  margin: -7px 0 16px;
+  margin: -7px 0 var(--space-16);
 }
 .branding-warning {
-  padding: 12px 14px;
+  padding: var(--space-12) 14px;
   border-left: 4px solid #ffad57;
   background: #49351f;
-  color: #fff;
+  color: var(--white);
   line-height: 1.5;
 }
 .branding-actions {
@@ -95,13 +95,13 @@
   margin-top: 22px;
 }
 .branding-reset {
-  margin-top: 16px;
+  margin-top: var(--space-16);
   padding: 14px;
   border: 1px solid #ffad57;
-  border-radius: 7px;
+  border-radius: var(--radius-7);
 }
 .branding-reset button {
-  margin-right: 8px;
+  margin-right: var(--space-8);
 }
 .branding-preview {
   position: sticky;
@@ -110,9 +110,9 @@
 .branding-profile {
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--radius-12);
   background: #202a3a;
-  color: #fff;
+  color: var(--white);
   box-shadow: 0 10px 30px #0005;
 }
 .branding-banner {
@@ -157,9 +157,9 @@
   margin-top: 20px;
   padding: 17px 19px;
   border-left: 5px solid;
-  border-radius: 7px;
+  border-radius: var(--radius-7);
   background: #26354b;
-  color: #fff;
+  color: var(--white);
 }
 .branding-embed strong {
   font-size: 0.99rem;

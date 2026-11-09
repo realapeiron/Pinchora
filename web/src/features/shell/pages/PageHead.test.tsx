@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it } from "vitest";
 import { Panel } from "../../../components/Panel";
 import { setLocale, translate } from "../../../i18n";
-import { SettingsPage } from "./PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 
 afterEach(() => setLocale("en"));
 

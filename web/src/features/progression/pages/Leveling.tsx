@@ -32,7 +32,7 @@ import {
 } from "../../../lib/rules";
 import { jobProgress, jobText, rememberJob, rememberedJob } from "../../../lib/syncJob";
 import { useSettingsForm } from "../../../lib/useSettingsForm";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { SettingsPage } from "../../../components/PageHead";
 import { XpAdmin } from "./XpAdmin";
 import { LevelingPolicyPanel } from "./LevelingPolicy";
 

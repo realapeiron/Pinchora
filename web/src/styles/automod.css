@@ -4,14 +4,14 @@
 .automod-profiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 .automod-profile {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   text-align: left;
-  padding: 20px 16px;
+  padding: 20px var(--space-16);
   color: var(--ink);
   background: var(--bg-bottom);
   border: 2px solid var(--panel-edge);
@@ -44,14 +44,14 @@
   outline-offset: 4px;
 }
 .automod-observation {
-  margin: 24px 0 0;
+  margin: var(--space-24) 0 0;
   color: var(--gold);
   max-width: 75ch;
   font-size: 14px;
   line-height: 1.7;
 }
 .automod-until {
-  margin: 8px 0 0;
+  margin: var(--space-8) 0 0;
   color: var(--muted);
   font-size: 13px;
 }
@@ -59,8 +59,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin: 12px 0 0;
+  gap: var(--space-16);
+  margin: var(--space-12) 0 0;
 }
 .automod-section-head h2 {
   margin: 0;
@@ -69,7 +69,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  gap: 16px;
+  gap: var(--space-16);
 }
 .automod-rule {
   border: 2px solid var(--panel-edge);
@@ -80,11 +80,11 @@
 .automod-rule > header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-16);
   align-items: start;
 }
 .automod-rule h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-8);
   font-size: 17px;
   line-height: 1.4;
 }
@@ -109,8 +109,8 @@
 }
 .automod-details {
   border-top: 1px solid var(--panel-edge);
-  margin-top: 16px;
-  padding-top: 12px;
+  margin-top: var(--space-16);
+  padding-top: var(--space-12);
 }
 .automod-details > summary {
   color: var(--ink);
@@ -119,26 +119,26 @@
   font-size: 14px;
 }
 .automod-details[open] > summary {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-16);
 }
 .automod-details .field {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-16);
 }
 .automod-details h4 {
-  margin: 24px 0 12px;
+  margin: var(--space-24) 0 var(--space-12);
   font-size: 14px;
 }
 .automod-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-12);
 }
 .automod-actions {
   padding-left: 22px;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-16);
 }
 .automod-actions li {
-  padding: 8px 0;
+  padding: var(--space-8) 0;
 }
 .automod-actions li::marker {
   color: var(--muted);
@@ -147,13 +147,13 @@
 .automod-action {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--space-8);
   width: 100%;
 }
 .automod-action-tools {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-12);
   margin-top: 4px;
 }
 .automod-action-tools button {
@@ -162,7 +162,7 @@
   border: 0;
   font: inherit;
   font-size: 12px;
-  padding: 8px 0;
+  padding: var(--space-8) 0;
   cursor: pointer;
 }
 .automod-action-tools button:disabled {
@@ -178,8 +178,8 @@
 .automod-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 8px 0;
+  gap: var(--space-8);
+  margin: var(--space-8) 0;
 }
 .automod-chips button {
   max-width: 100%;
@@ -189,8 +189,8 @@
   display: grid;
   grid-template-columns: 100px minmax(0, 1fr) auto;
   align-items: end;
-  gap: 16px;
-  margin: 16px 0;
+  gap: var(--space-16);
+  margin: var(--space-16) 0;
 }
 .automod-add {
   max-width: 340px;
@@ -198,15 +198,15 @@
 .automod-test-result {
   margin-top: 20px;
   border-top: 1px solid var(--panel-edge);
-  padding-top: 12px;
+  padding-top: var(--space-12);
 }
 .automod-test-result li {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-8);
 }
 .automod-empty {
   color: var(--muted);
   max-width: 60ch;
-  padding: 24px 0;
+  padding: var(--space-24) 0;
   line-height: 1.8;
 }
 .automod-hits {
@@ -222,7 +222,7 @@
 .automod-hits li > div {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-12);
   justify-content: space-between;
 }
 .automod-hits time {
@@ -234,7 +234,7 @@
   font-size: 14px;
 }
 .automod-hits blockquote {
-  margin: 12px 0;
+  margin: var(--space-12) 0;
   color: var(--muted);
 }
 .automod-page textarea {
@@ -255,10 +255,10 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .automod-rule {
-    padding: 16px;
+    padding: var(--space-16);
   }
   .automod-profile {
-    padding: 16px 12px;
+    padding: var(--space-16) var(--space-12);
     min-height: 160px;
   }
   .automod-profile .pixel-label {

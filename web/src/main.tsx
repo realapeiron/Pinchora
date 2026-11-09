@@ -1,6 +1,6 @@
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect } from "react";
-import { useLocale } from "./i18n";
+import { ready, useLocale } from "./i18n";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
 
@@ -41,9 +41,6 @@ const playFonts = () => {
 playFonts();
 router.subscribe(playFonts);
 
-// The tab title and tags follow the page the router is on.
-watchMeta(router);
-
 function LocalizedRouter() {
   const language = useLocale();
   useEffect(() => {
@@ -52,6 +49,11 @@ function LocalizedRouter() {
   }, [language]);
   return <RouterProvider router={router} />;
 }
+
+await ready();
+
+// The tab title and tags follow the page the router is on after its catalogue is ready.
+watchMeta(router);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

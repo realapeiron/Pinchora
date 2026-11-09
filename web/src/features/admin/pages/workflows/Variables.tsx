@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "../../../../i18n/workflows";
 import { Panel } from "../../../../components/Panel";
 import { PixelButton } from "../../../../components/PixelButton";
-import { Problem } from "../../../shell/pages/States";
+import { Problem } from "../../../../components/States";
 import { api } from "../../../../lib/api";
 export function Variables({ path }: { path: string }) {
   const client = useQueryClient();

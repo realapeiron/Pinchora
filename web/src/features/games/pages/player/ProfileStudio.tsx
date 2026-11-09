@@ -15,8 +15,8 @@ import {
   type ProfileDraft,
   type Choice,
 } from "../../api/webPlayer";
-import { PageHead } from "../../../shell/pages/PageHead";
-import { Loading, Problem } from "../../../shell/pages/States";
+import { PageHead } from "../../../../components/PageHead";
+import { Loading, Problem } from "../../../../components/States";
 
 type Tab = "badges" | "background" | "style" | "title" | "showcase" | "bio";
 export function ProfileStudio() {

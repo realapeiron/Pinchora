@@ -10,9 +10,9 @@ import { Panel } from "../../../components/Panel";
 import { Field } from "../../../components/Field";
 import { ChannelPicker, RolePicker } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
-import { PageHead, SettingsPage } from "../../shell/pages/PageHead";
-import { RequireLogin } from "../../shell/pages/RequireLogin";
-import { Loading, Problem } from "../../shell/pages/States";
+import { PageHead, SettingsPage } from "../../../components/PageHead";
+import { RequireLogin } from "../../../components/RequireLogin";
+import { Loading, Problem } from "../../../components/States";
 
 export function ModerationDesk() {
   const { guild } = useOutletContext<Overview>();
@@ -366,6 +366,7 @@ function Desk({
           </p>
           <Field label={t("Decision reason")} htmlFor="review-reason">
             <textarea
+              /* eslint-disable-next-line jsx-a11y/no-autofocus -- The decision dialog focuses its reason field. */
               autoFocus
               id="review-reason"
               className="pixel-input"

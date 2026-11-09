@@ -822,7 +822,6 @@ function GlyphThumb({ id }: { id: string }) {
     </svg>
   );
 }
-
 /** A modal panel with a close button; Escape closes it too. */
 export function Dialog({
   title,
@@ -844,6 +843,7 @@ export function Dialog({
         <div className="panel-body">
           <header className="panel-head">
             <h2 className="pixel-title">{title}</h2>
+            {/* eslint-disable-next-line jsx-a11y/no-autofocus -- The dialog close control receives initial focus. */}
             <PixelButton variant="ghost" className="button-small" onClick={onClose} autoFocus>
               {spaTranslate("Close")}
             </PixelButton>

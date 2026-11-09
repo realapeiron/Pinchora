@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import type { Overview, GuildInfo } from "../../../lib/api";
 import { useDiscord } from "../../../lib/queries";
-import { words, type Words } from "../../moderation/api/automod";
+import { words, type Words } from "../../moderation";
 import {
   defaultRule,
   filteredCommands,
@@ -14,8 +14,8 @@ import {
 import { PixelButton } from "../../../components/PixelButton";
 import { Panel } from "../../../components/Panel";
 import { Field } from "../../../components/Field";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/command-control.css";
 export function CommandControl() {
   const { guild } = useOutletContext<Overview>();
@@ -55,6 +55,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
           {t("saved")}
         </p>
       )}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- This scrollable result region needs keyboard focus. */}
       <div className="command-control-list" role="region" aria-label={t("ui.title")} tabIndex={0}>
         {commands.length === 0 && <p className="empty-row muted">{t("ui.empty")}</p>}
         {commands.map((command) => (

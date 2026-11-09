@@ -7,9 +7,9 @@ import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
 import { TopBar } from "../../../components/TopBar";
 import { type Me } from "../../../lib/api";
-import { PageHead } from "../../shell/pages/PageHead";
-import { RequireLogin } from "../../shell/pages/RequireLogin";
-import { Loading, Problem } from "../../shell/pages/States";
+import { PageHead } from "../../../components/PageHead";
+import { RequireLogin } from "../../../components/RequireLogin";
+import { Loading, Problem } from "../../../components/States";
 import {
   useMyChannels,
   useStartChannel,

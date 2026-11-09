@@ -31,8 +31,8 @@ import {
   useTickets,
   when,
 } from "../api/tickets";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import { CategoryPicker, TicketPanels } from "./TicketPanels";
 import { TicketView } from "./TicketView";
 import { TicketAdministration } from "./TicketAdministration";
@@ -506,68 +506,40 @@ function TicketList({ guild }: { guild: string }) {
         </p>
       )}
       {items.length > 0 && (
-        <table className="tk-table" role="table">
+        <table className="tk-table">
           <caption className="sr-only">{spaTranslate("Tickets, newest first")}</caption>
-          <thead role="rowgroup">
-            <tr role="row">
-              <th scope="col" role="columnheader">
-                {" "}
-                {spaTranslate("Ticket")}{" "}
-              </th>
-              <th scope="col" role="columnheader">
-                {spaTranslate("State")}
-              </th>
-              <th scope="col" role="columnheader">
-                {" "}
-                {spaTranslate("Opened by")}{" "}
-              </th>
-              <th scope="col" role="columnheader">
-                {" "}
-                {spaTranslate("Staff")}{" "}
-              </th>
-              <th scope="col" role="columnheader">
-                {spaTranslate("Opened")}
-              </th>
-              <th scope="col" role="columnheader">
-                {spaTranslate("Closed")}
-              </th>
-              <th scope="col" role="columnheader">
-                {" "}
-                {spaTranslate("Rating")}{" "}
-              </th>
-              <th scope="col" role="columnheader">
-                {spaTranslate("Action")}
-              </th>
+          <thead>
+            <tr>
+              <th scope="col"> {spaTranslate("Ticket")} </th>
+              <th scope="col">{spaTranslate("State")}</th>
+              <th scope="col"> {spaTranslate("Opened by")} </th>
+              <th scope="col"> {spaTranslate("Staff")} </th>
+              <th scope="col">{spaTranslate("Opened")}</th>
+              <th scope="col">{spaTranslate("Closed")}</th>
+              <th scope="col"> {spaTranslate("Rating")} </th>
+              <th scope="col">{spaTranslate("Action")}</th>
             </tr>
           </thead>
-          <tbody role="rowgroup">
+          <tbody>
             {items.map((t) => (
-              <tr key={t.id} role="row" data-ticket={t.number}>
-                <td role="cell" data-label="Ticket">
+              <tr key={t.id} data-ticket={t.number}>
+                <td data-label="Ticket">
                   <Link className="tk-row-link" to={`/g/${guild}/tickets/${t.id}`}>
                     <span className="tk-number">#{String(t.number).padStart(4, "0")}</span>{" "}
                     {t.topic || "No topic"}
                     {t.panel && <span className="tk-sub">{t.panel}</span>}
                   </Link>
                 </td>
-                <td role="cell" data-label="State">
+                <td data-label="State">
                   <span className={`badge ${STATE_BADGE[t.state]}`}>
                     {spaTranslate(STATE_LABEL[t.state]).toLocaleUpperCase()}
                   </span>
                 </td>
-                <td role="cell" data-label="Opened by">
-                  {personLabel(t.opener)}
-                </td>
-                <td role="cell" data-label="Staff">
-                  {personLabel(t.claimed_by ?? t.closed_by)}
-                </td>
-                <td role="cell" data-label="Opened">
-                  {when(t.opened_at)}
-                </td>
-                <td role="cell" data-label="Closed">
-                  {when(t.closed_at)}
-                </td>
-                <td role="cell" data-label="Rating">
+                <td data-label="Opened by">{personLabel(t.opener)}</td>
+                <td data-label="Staff">{personLabel(t.claimed_by ?? t.closed_by)}</td>
+                <td data-label="Opened">{when(t.opened_at)}</td>
+                <td data-label="Closed">{when(t.closed_at)}</td>
+                <td data-label="Rating">
                   {t.rating ? (
                     <span className="tk-stars" role="img" aria-label={`${t.rating} of 5 stars`}>
                       {stars(t.rating)}
@@ -576,7 +548,7 @@ function TicketList({ guild }: { guild: string }) {
                     "—"
                   )}
                 </td>
-                <td role="cell" data-label="Action">
+                <td data-label="Action">
                   {t.state !== "closed" && (
                     <PixelButton
                       variant="secondary"

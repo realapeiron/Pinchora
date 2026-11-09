@@ -22,8 +22,8 @@ import {
   type AutoRule,
   type Words,
 } from "../api/automod";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/automod.css";
 
 export function AutoMod() {

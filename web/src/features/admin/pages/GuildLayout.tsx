@@ -1,5 +1,5 @@
-import { ServerToolsOutlet } from "../../moderation/pages/ServerToolsOutlet";
-import { canOpenPage } from "../../moderation/api/server-tools";
+import { ServerToolsOutlet } from "../../moderation";
+import { canOpenPage } from "../../moderation";
 import { translate as spaTranslate } from "../../../i18n";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useParams } from "react-router";
@@ -13,8 +13,8 @@ import { configureGuild, t, translate } from "../../../i18n";
 import { isDiscordId } from "../../../lib/ids";
 import { type NavGroup, visibleNav } from "../../../lib/nav";
 import { useOverview } from "../../../lib/queries";
-import { NotFound } from "../../shell/pages/NotFound";
-import { Loading, Problem } from "../../shell/pages/States";
+import { NotFound } from "../../../components/NotFound";
+import { Loading, Problem } from "../../../components/States";
 
 /**
  * The admin pages of a server, by sidebar group. Paths are relative to `/g/:guildId`. A feature adds its

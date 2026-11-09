@@ -1,7 +1,7 @@
 import { dateTime } from "../../../../i18n";
 import { t } from "../../../../i18n/workflows";
 import { Panel } from "../../../../components/Panel";
-import { Loading, Problem } from "../../../shell/pages/States";
+import { Loading, Problem } from "../../../../components/States";
 import { Player } from "./Player";
 import type { Editor } from "../../hooks/useWorkflowEditor";
 export function RunHistory({ editor }: { editor: Editor }) {

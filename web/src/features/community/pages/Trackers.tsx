@@ -15,8 +15,8 @@ import {
   words,
 } from "../api/trackers";
 import { useDiscord } from "../../../lib/queries";
-import { Loading, Problem } from "../../shell/pages/States";
-import { SettingsPage } from "../../shell/pages/PageHead";
+import { Loading, Problem } from "../../../components/States";
+import { SettingsPage } from "../../../components/PageHead";
 import "../../../styles/trackers.css";
 
 const games = ["lol", "valorant", "mc"] as const;

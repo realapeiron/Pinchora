@@ -6,8 +6,8 @@ import { settingsDraft, type Settings, type PointsPreview } from "../api/playerE
 import { t, number } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
-import { SettingsPage } from "../../shell/pages/PageHead";
-import { Loading, Problem } from "../../shell/pages/States";
+import { SettingsPage } from "../../../components/PageHead";
+import { Loading, Problem } from "../../../components/States";
 import "../../../styles/player-economy.css";
 export function EconomySettings() {
   const { guildId } = useParams();
