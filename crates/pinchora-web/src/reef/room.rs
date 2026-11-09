@@ -19,6 +19,27 @@ struct Layout {
     revision: String,
     json: Value,
 }
+
+async fn load_layout_with_events<T, E, L, EF, LF>(mut events: E, mut layout: L) -> anyhow::Result<(T, Vec<i64>)>
+where
+    E: FnMut() -> EF,
+    L: FnMut() -> LF,
+    EF: std::future::Future<Output = anyhow::Result<Vec<i64>>>,
+    LF: std::future::Future<Output = anyhow::Result<T>>,
+{
+    let mut before = events().await?;
+    loop {
+        let loaded = layout().await?;
+        let after = events().await?;
+        // Outbox rows commit atomically with geometry. A commit between these
+        // reads requires a fresh layout too, or its ID could label older geometry.
+        if before == after {
+            return Ok((loaded, after));
+        }
+        before = after;
+    }
+}
+
 impl Layout {
     async fn load(state: &WebState, key: RoomKey) -> anyhow::Result<Self> {
         let (house, rooms) = state
@@ -179,13 +200,16 @@ impl Room {
         }
     }
     async fn refresh(&mut self, state: &WebState) -> anyhow::Result<()> {
-        let events = state.app.db.reef_layout_events(self.key.owner).await?;
+        let (layout, events) = load_layout_with_events(
+            || state.app.db.reef_layout_events(self.key.owner),
+            || Layout::load(state, self.key),
+        )
+        .await?;
         let fresh: Vec<_> = events
             .iter()
             .filter(|id| !self.layout_events.contains(id))
             .map(|id| id.to_string())
             .collect();
-        let layout = Layout::load(state, self.key).await?;
         self.layout_events = events.into_iter().collect();
         if layout.revision == self.layout.revision && fresh.is_empty() {
             return Ok(());
@@ -473,7 +497,9 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, i
             tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
                 tick.tick().await;
-                if !matches!(tokio::time::timeout(Duration::from_secs(1), super::routing::valid(&state, key, &fence)).await, Ok(true)) {
+                // A row-lock wait can exceed a second while the fence is still valid.
+                // Bound renewal by the lease window; valid still rejects expired fences.
+                if !matches!(tokio::time::timeout(Duration::from_secs(3), super::routing::valid(&state, key, &fence)).await, Ok(true)) {
                     break;
                 }
             }
@@ -483,11 +509,13 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, i
 }
 async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFence, mut input: mpsc::Receiver<Input>) {
     let epoch = fence.token.to_string();
-    let Ok(events) = state.app.db.reef_layout_events(key.owner).await else {
-        return;
-    };
-    let layout = match Layout::load(state, key).await {
-        Ok(layout) => layout,
+    let (layout, events) = match load_layout_with_events(
+        || state.app.db.reef_layout_events(key.owner),
+        || Layout::load(state, key),
+    )
+    .await
+    {
+        Ok(snapshot) => snapshot,
         Err(_) => {
             if let Some(Input::Join(peer, request)) = input.recv().await {
                 peer.error(&epoch, &request, "room_unavailable");
@@ -564,6 +592,41 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn layout_and_outbox_stay_together_when_a_commit_interleaves_the_reads() {
+        use std::{cell::Cell, future::ready};
+
+        for commit_during_layout in [true, false] {
+            let geometry = Cell::new("old");
+            let event_reads = Cell::new(0);
+            let (layout, events) = load_layout_with_events(
+                || {
+                    if event_reads.get() == 1 && !commit_during_layout {
+                        geometry.set("new");
+                    }
+                    event_reads.set(event_reads.get() + 1);
+                    // A late transaction may have reserved its ID before an already-visible one.
+                    ready(Ok(if geometry.get() == "new" {
+                        vec![10, 20]
+                    } else {
+                        vec![20]
+                    }))
+                },
+                || {
+                    if commit_during_layout {
+                        geometry.set("new");
+                    }
+                    ready(Ok(geometry.get()))
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(layout, "new");
+            assert_eq!(events, vec![10, 20], "the loaded commit must retain its outbox ID");
+        }
+    }
+
     #[test]
     fn movement_clock_and_corner_safe_stop() {
         let (outgoing, _) = mpsc::channel(64);

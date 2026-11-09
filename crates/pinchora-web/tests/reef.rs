@@ -21,6 +21,18 @@ use tokio_tungstenite::{
 use twilight_http::Client;
 use twilight_model::id::Id;
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+// Loaded full runs recorded connection-probe gaps up to 7.2 seconds. These
+// bounds only wait for the same result; production leases and assertions stay intact.
+const PROTOCOL_WAIT: Duration = Duration::from_secs(15);
+
+async fn fixture_capacity() -> tokio::sync::SemaphorePermit<'static> {
+    // Cargo otherwise starts one fixture per host CPU. Concurrent connection setup
+    // exceeded 15 seconds even while established DB probes stayed responsive.
+    // Match Nextest's four-fixture budget; pods within each test remain concurrent.
+    static CAPACITY: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
+    CAPACITY.acquire().await.unwrap()
+}
+
 struct Site {
     app: Arc<App>,
     state: WebState,
@@ -53,7 +65,9 @@ impl Site {
             eprintln!("set test database and Redis URLs");
             return None;
         };
-        let db = Db::connect(&database, 5).await.expect("test Postgres reachable");
+        let db = Db::connect_waiting(&database, 5, PROTOCOL_WAIT)
+            .await
+            .expect("test Postgres reachable");
         db.migrate().await.unwrap();
         let cache = Cache::connect(redis_override.unwrap_or(&redis))
             .await
@@ -201,7 +215,7 @@ impl Player {
         self.until_any(&[kind]).await
     }
     async fn until_any(&mut self, kinds: &[&str]) -> Value {
-        tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::time::timeout(PROTOCOL_WAIT, async {
             loop {
                 let message = self.socket.next().await.expect("open socket").expect("valid frame");
                 if let Message::Text(raw) = message {
@@ -238,7 +252,7 @@ impl Player {
         self.until("snapshot").await
     }
     async fn close_reason(&mut self) -> String {
-        tokio::time::timeout(Duration::from_secs(6), async {
+        tokio::time::timeout(PROTOCOL_WAIT, async {
             loop {
                 match self.socket.next().await {
                     Some(Ok(Message::Close(Some(frame)))) => return frame.reason.to_string(),
@@ -253,6 +267,7 @@ impl Player {
 }
 #[tokio::test]
 async fn two_players_walk_seat_contention_and_layout_refresh() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -353,6 +368,7 @@ async fn two_players_walk_seat_contention_and_layout_refresh() {
 }
 #[tokio::test]
 async fn tickets_are_single_use_session_bound_and_csrf_protected() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -419,6 +435,7 @@ async fn tickets_are_single_use_session_bound_and_csrf_protected() {
 }
 #[tokio::test]
 async fn upgrade_requires_exact_origin_and_authentication_timeout() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -440,6 +457,7 @@ async fn upgrade_requires_exact_origin_and_authentication_timeout() {
 }
 #[tokio::test]
 async fn capacity_and_controller_replacement() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -465,6 +483,7 @@ async fn capacity_and_controller_replacement() {
 }
 #[tokio::test]
 async fn replaced_socket_stays_closed_while_new_controller_remains_active() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -488,6 +507,7 @@ async fn replaced_socket_stays_closed_while_new_controller_remains_active() {
 }
 #[tokio::test]
 async fn hidden_locked_and_blocked_houses_refuse_visitors_but_allow_owner() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -517,6 +537,7 @@ async fn hidden_locked_and_blocked_houses_refuse_visitors_but_allow_owner() {
 }
 #[tokio::test]
 async fn rejects_oversized_messages_and_replayed_sequences() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else {
         return;
     };
@@ -547,6 +568,7 @@ async fn rejects_oversized_messages_and_replayed_sequences() {
 #[tokio::test]
 #[ignore]
 async fn seed_reef_multiplayer() {
+    let _capacity = fixture_capacity().await;
     let site = Site::new().await.expect("test services");
     let owner = 770000000000000091u64;
     let guest = 770000000000000092u64;
@@ -617,6 +639,7 @@ impl Browser {
 }
 #[tokio::test]
 async fn chat_eligibility_report_queue_action_appeal_and_audit() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let guest = unique();
@@ -714,6 +737,7 @@ async fn chat_eligibility_report_queue_action_appeal_and_audit() {
 }
 #[tokio::test]
 async fn bidirectional_blocks_suppress_chat_in_third_party_house_and_revoke_visits() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let owner = unique();
     let alice = unique();
@@ -812,6 +836,7 @@ async fn bidirectional_blocks_suppress_chat_in_third_party_house_and_revoke_visi
 }
 #[tokio::test]
 async fn consent_revocation_logout_and_filter_fail_closed() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let user = unique();
     site.house(user).await;
@@ -843,6 +868,7 @@ async fn consent_revocation_logout_and_filter_fail_closed() {
 }
 #[tokio::test]
 async fn retention_preserves_reported_evidence_and_deletion_removes_chat_but_not_active_bans() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let user = unique();
     let host = unique();
@@ -954,6 +980,7 @@ async fn retention_preserves_reported_evidence_and_deletion_removes_chat_but_not
 
 #[tokio::test]
 async fn socket_rate_limits_and_session_expiry() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let user = unique();
     site.house(user).await;
@@ -987,6 +1014,7 @@ async fn socket_rate_limits_and_session_expiry() {
 
 #[tokio::test]
 async fn operator_site_scope_room_scope_and_reversal_are_authorized() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let owner = unique();
     let guest = unique();
@@ -1044,6 +1072,7 @@ impl Browser {
 }
 #[tokio::test]
 async fn wave7_atomic_receipts_revision_races_and_shared_undo() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let owner = unique();
     site.house(owner).await;
@@ -1169,6 +1198,7 @@ async fn wave7_atomic_receipts_revision_races_and_shared_undo() {
 }
 #[tokio::test]
 async fn wave7_doorbell_admission_expiry_blocks_and_presence_consent() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let guest = unique();
@@ -1255,6 +1285,7 @@ async fn wave7_doorbell_admission_expiry_blocks_and_presence_consent() {
 }
 #[tokio::test]
 async fn wave7_guestbook_appreciation_and_evidence_reuse() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let guest = unique();
@@ -1322,6 +1353,7 @@ async fn wave7_guestbook_appreciation_and_evidence_reuse() {
 #[tokio::test]
 #[ignore = "seeds isolated Wave 7 browser fixtures for the lead"]
 async fn seed_reef_wave7() {
+    let _capacity = fixture_capacity().await;
     let site = Site::new().await.expect("test services");
     // The browser suite supplies fresh identities per test: SQL reseeding cannot
     // reset the running web process's account budgets or live room actors.
@@ -1403,6 +1435,7 @@ async fn seed_reef_wave7() {
 
 #[tokio::test]
 async fn wave7_partner_block_is_rechecked_by_the_shared_transaction() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let guest = unique();
@@ -1451,6 +1484,7 @@ async fn wave7_partner_block_is_rechecked_by_the_shared_transaction() {
 
 #[tokio::test]
 async fn wave7_hidden_notes_cannot_be_promoted_to_report_evidence() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let author = unique();
@@ -1522,6 +1556,7 @@ async fn wave7_hidden_notes_cannot_be_promoted_to_report_evidence() {
 
 #[tokio::test]
 async fn wave7_abuse_limits_cover_reports_likes_and_rsvp() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let user = unique();
@@ -1589,6 +1624,7 @@ async fn wave7_abuse_limits_cover_reports_likes_and_rsvp() {
 
 #[tokio::test]
 async fn wave7_socket_binary_and_control_frame_floods_close() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let browser = site.browser(unique()).await;
     let mut player = browser.connect().await;
@@ -1605,6 +1641,7 @@ async fn wave7_socket_binary_and_control_frame_floods_close() {
 
 #[tokio::test]
 async fn wave7_blocks_filter_room_rosters_and_live_movement() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let a = unique();
@@ -1650,6 +1687,7 @@ async fn wave7_blocks_filter_room_rosters_and_live_movement() {
 
 #[tokio::test]
 async fn wave7_doorbell_retention_preserves_recent_abuse_counters() {
+    let _capacity = fixture_capacity().await;
     let Some(site) = Site::new().await else { return };
     let host = unique();
     let guest = unique();
