@@ -6,7 +6,7 @@
 //!
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 
-pinchora_testkit::isolation!(fixture_isolation);
+use pinchora_testkit::isolation as fixture_isolation;
 
 use std::{
     collections::{HashMap, HashSet},

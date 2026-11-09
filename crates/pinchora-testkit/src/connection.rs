@@ -1,8 +1,3 @@
-#[rustfmt::skip]
-#[macro_export]
-macro_rules! connection {
-    ($name:ident) => {
-        mod $name {
 //! Dedicated fixture sessions with the same bounded acquisition as application pools.
 use std::time::Duration;
 
@@ -23,8 +18,4 @@ pub async fn connection() -> Option<PgConnection> {
     let connection = pool.acquire().await.expect("fixture lock socket").detach();
     pool.close().await;
     Some(connection)
-}
-
-        }
-    };
 }

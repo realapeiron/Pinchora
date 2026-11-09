@@ -4,7 +4,7 @@ use axum::{
     http::{Method, StatusCode, Uri},
     response::IntoResponse,
 };
-pinchora_testkit::isolation!(fixture_isolation);
+use pinchora_testkit::isolation as fixture_isolation;
 
 use pinchora_commands::{
     App, ReactionEvent, cleanup_starboard_copy, on_starboard_reaction, on_starboard_update, reconcile_starboard_post,

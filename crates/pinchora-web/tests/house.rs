@@ -4,7 +4,7 @@
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 //! `seed_demo_house` (ignored) leaves a furnished house for the Playwright screenshots to look at.
 
-pinchora_testkit::isolation!(fixture_isolation);
+use pinchora_testkit::isolation as fixture_isolation;
 
 use std::{
     collections::HashMap,

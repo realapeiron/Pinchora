@@ -1,14 +1,8 @@
-#[rustfmt::skip]
-#[macro_export]
-macro_rules! fixture_lock {
-    ($name:ident) => {
-        mod $name {
 //! Session locks for fixtures shared by Cargo threads and nextest processes.
 use sqlx::PgConnection;
 
-$crate::isolation!(isolation);
-use isolation::connection;
-pub use isolation::shared;
+use crate::connection::connection;
+pub use crate::isolation::shared;
 
 /// Domain numbers define the global order: games (1), party (2), voice XP (3),
 /// temp voice (4), then the independent fixtures (5+). Acquire in increasing order
@@ -65,8 +59,4 @@ mod tests {
         .expect("dropping the guard must close its session and release the lock")
         .unwrap();
     }
-}
-
-        }
-    };
 }
