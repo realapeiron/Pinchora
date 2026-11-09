@@ -4,7 +4,7 @@ import { createContext, useContext, useState } from "react";
 import { dateTime } from "../../../i18n";
 import { Link, useOutletContext } from "react-router";
 
-import { EmbedEditor } from "../../../components/EmbedEditor";
+import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
 import { MessagePreview } from "../../../components/MessagePreview";
 import { Panel } from "../../../components/Panel";

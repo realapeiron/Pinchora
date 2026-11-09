@@ -101,3 +101,17 @@ it("requires the economy grant for the economy dashboard", () => {
   expect(canOpenPage(grant("configuration"), "economy")).toBe(false);
   expect(canOpenPage(grant("economy"), "economy-extra")).toBe(false);
 });
+
+it.each([
+  ["community", "community-pack", "community-engagement"],
+  ["safety", "mod-parity", "moderation-desk"],
+])("preserves %s delegation across the legacy and renamed URLs", (area, legacy, current) => {
+  const grant = (areas: string[]) => ({ access: { full: false, areas } }) as AccessOverview;
+  for (const page of [legacy, current, `${current}/details`]) {
+    expect(canOpenPage(grant([area]), page)).toBe(true);
+    expect(canOpenPage(grant([area === "safety" ? "community" : "safety"]), page)).toBe(false);
+    expect(canOpenPage(grant([]), page)).toBe(false);
+    expect(canOpenPage(undefined, page)).toBe(false);
+  }
+  expect(canOpenPage(grant([area]), `${current}-extra`)).toBe(false);
+});

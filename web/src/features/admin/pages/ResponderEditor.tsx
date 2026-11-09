@@ -4,7 +4,7 @@ import { useNavigate, useOutletContext, useParams } from "react-router";
 
 import { ActionsEditor } from "../components/ActionsEditor";
 import { Choice } from "../../../components/Choice";
-import { EmbedEditor } from "../../../components/EmbedEditor";
+import { EmbedEditor } from "../components/EmbedEditor";
 import { Field, SwitchRow } from "../../../components/Field";
 import { IdList } from "../components/IdList";
 import { Panel } from "../../../components/Panel";

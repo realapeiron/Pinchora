@@ -1017,7 +1017,7 @@ builds only: `PINCHORA_FEEDS__DEV_ENDPOINT=127.0.0.1:<port>` sends every feed re
 Data: `feed_sources`, `feeds`, `feed_items_seen`, `feed_outbox` (migration `0056_feeds.sql`; phase 2 only
 alters them). A feed's `created_by` becomes 0 when its author deletes their data. Code: `pinchora_core::feeds`
 (sources, addresses, filters, timing), `pinchora-commands/src/feeds/` (fetcher, parsers, message, poller),
-`commands/feeds.rs`, `pinchora-db/src/feeds.rs`, `pinchora-web/src/routes/feeds.rs`, `web/src/pages/Feeds.tsx`.
+`commands/feeds.rs`, `pinchora-db/src/feeds.rs`, `pinchora-web/src/routes/feeds.rs`, `web/src/features/integrations/pages/Feeds.tsx`.
 
 ### Workflows
 
@@ -1473,7 +1473,7 @@ matching Discord. Permanent surfaces are bought once, with an explicit price con
 endpoints expose `/inventory`, `/surfaces`, `/guestbook`, and an ETagged `/thumbnail.png`.
 
 No migration or new command root is needed. Tests live in `tests/house_edit/mod.rs`, simulator
-`web_house_edit.rs`, `web/src/lib/houseEdit.test.ts`, and `web/tests/e2e/house-edit.spec.ts`.
+`web_house_edit.rs`, `web/src/features/house/api/houseEdit.test.ts`, and `web/tests/e2e/house-edit.spec.ts`.
 
 The browser draws the room itself, in `web/src/iso`: a TypeScript port of `pinchora-render/src/room.rs`
 (projection, walls, floor, rugs, shadows, wall hangings, painter's order, pets, characters) on plain pixel
@@ -1646,7 +1646,7 @@ state used by event conditions. Existing `/setup welcome` and `/progression leve
 
 Urgent actions use `/ban`, `/kick`, `/timeout`, `/warn` and `/purge`; secondary actions use
 `/mod`. Configuration uses `/safety moderation policy` and the dashboard's
-**Moderation desk** (`/g/:guildId/mod-parity`). The five urgent roots retain their permission masks and all D11 options.
+**Moderation desk** (`/g/:guildId/moderation-desk`). The five urgent roots retain their permission masks and all D11 options.
 Old `/mod` payloads, text paths and stored restrictions remain compatible. The message context
 menu is **Report**. There are 71 slash roots plus this message context command, including F20 and F16.
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router";
 import { translate as t } from "../../../i18n";
-import { EmbedEditor } from "../../../components/EmbedEditor";
+import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
 import { MessagePreview } from "../../../components/MessagePreview";
 import { Panel } from "../../../components/Panel";

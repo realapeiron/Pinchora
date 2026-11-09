@@ -1,9 +1,9 @@
-import { translate as spaTranslate } from "../i18n";
-import { ACCENTS } from "../lib/rules";
-import type { EmbedField, EmbedSpec } from "../lib/api";
-import { LIMITS, blankEmbed, embedChars } from "../lib/tags";
-import { Field } from "./Field";
-import { PixelButton } from "./PixelButton";
+import { translate as spaTranslate } from "../../../i18n";
+import { ACCENTS } from "../../../lib/rules";
+import type { EmbedField, EmbedSpec } from "../../../lib/api";
+import { LIMITS, blankEmbed, embedChars } from "../../../lib/tags";
+import { Field } from "../../../components/Field";
+import { PixelButton } from "../../../components/PixelButton";
 
 const text = (value: string | null) => value ?? "";
 

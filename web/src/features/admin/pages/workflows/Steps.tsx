@@ -1,6 +1,6 @@
 import { t } from "../../../../i18n/workflows";
 import { PixelButton } from "../../../../components/PixelButton";
-import { EmbedEditor } from "../../../../components/EmbedEditor";
+import { EmbedEditor } from "../../components/EmbedEditor";
 import { PlaceholderChips } from "../../../../components/PlaceholderChips";
 import type { EmbedSpec } from "../../../../lib/api";
 import { move, conditions, actions, type Node } from "../../api/workflows";
