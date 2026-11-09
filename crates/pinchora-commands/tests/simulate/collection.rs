@@ -13,7 +13,7 @@ use super::*;
 
 /// Drops are closed by whoever ticks, for every drop in the database, so the tests that make drops and the
 /// ones that move the clock on take turns.
-pub(super) static COLLECTION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+pub(super) const COLLECTION: fixture_lock::FixtureLock = fixture_lock::FixtureLock(13);
 
 #[tokio::test]
 async fn collection_depth_dex_panels_work_in_english_and_turkish() {

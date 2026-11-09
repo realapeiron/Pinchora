@@ -11,7 +11,7 @@ use super::*;
 
 /// The ticker moves on every late game in the database, whoever's it is, so the tests that make party
 /// games take turns.
-pub(super) static PARTY: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+pub(super) const PARTY: fixture_lock::FixtureLock = fixture_lock::FixtureLock(2);
 
 /// The word list Hot Pearl plays by, to find a word for any syllable.
 pub(super) static WORDS: &str = include_str!("../../../../content/pearl_words.txt");

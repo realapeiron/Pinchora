@@ -403,6 +403,7 @@ mod tests {
         ) else {
             return;
         };
+        crate::fixture_isolation::shared().await;
         let db = pinchora_db::Db::connect_waiting(&database, 2, Duration::from_secs(10))
             .await
             .unwrap();

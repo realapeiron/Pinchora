@@ -15,7 +15,7 @@ const MOVE_MEMBERS: u64 = 1 << 24;
 
 // These mocks use separate Discord worlds but share the same real Redis pending-cleanup set.
 // Keep their sweeps from deleting another test's mock-only channel markers.
-static TEMP_VOICE_TESTS: std::sync::OnceLock<Arc<tokio::sync::Mutex<()>>> = std::sync::OnceLock::new();
+const TEMP_VOICE_TESTS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(4);
 
 // /World
 
@@ -301,7 +301,7 @@ async fn voice_discord(
 
 /// The real [`App`] on the test databases, with Discord replaced by [`voice_discord`].
 struct Voice {
-    _test_guard: tokio::sync::OwnedMutexGuard<()>,
+    _test_guard: Option<sqlx::PgConnection>,
     app: Arc<App>,
     world: Shared,
     guild: u64,
@@ -325,11 +325,7 @@ impl Voice {
             eprintln!("{name}: skipped, set PINCHORA_TEST_DATABASE_URL and PINCHORA_TEST_REDIS_URL");
             return None;
         };
-        let test_guard = TEMP_VOICE_TESTS
-            .get_or_init(|| Arc::new(tokio::sync::Mutex::new(())))
-            .clone()
-            .lock_owned()
-            .await;
+        let test_guard = TEMP_VOICE_TESTS.lock().await;
         init_logging();
         let db = Db::connect_waiting(&database, 5, std::time::Duration::from_secs(60))
             .await

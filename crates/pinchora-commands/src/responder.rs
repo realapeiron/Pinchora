@@ -670,6 +670,7 @@ mod tests {
                     .ratelimiter(None)
                     .build(),
             );
+            crate::fixture_isolation::shared().await;
             let db = Db::connect_waiting(&database, 1, std::time::Duration::from_secs(60))
                 .await
                 .expect("connect to the database");

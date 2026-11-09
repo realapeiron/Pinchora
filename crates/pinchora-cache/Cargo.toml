@@ -1,4 +1,5 @@
 [package]
+publish = false
 name = "pinchora-cache"
 description = "Redis coordination, cooldowns, and gateway sessions"
 version.workspace = true
@@ -15,5 +16,6 @@ tracing.workspace = true
 twilight-gateway-queue.workspace = true
 
 [dev-dependencies]
+sqlx.workspace = true
 tokio.workspace = true
 twilight-gateway-queue.workspace = true

@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "../tests/support/isolation.rs"]
+mod fixture_isolation;
+
 mod app;
 mod auto;
 pub mod branding;

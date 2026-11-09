@@ -11,6 +11,8 @@ use pinchora_db::Db;
 use sqlx::PgConnection;
 
 mod admission;
+#[path = "../../../pinchora-commands/tests/support/fixture_family.rs"]
+mod fixture_family;
 
 /// Field order closes the database session before returning its local admission slot.
 #[must_use = "hold the guard until all fixture work and spawned tasks have finished"]
@@ -72,6 +74,7 @@ async fn isolation(exclusive: bool) -> Option<Guard> {
         .await
         .expect("commit ID lease");
     NEXT_ID.fetch_max((1_u64 << 60) + (lease as u64) * ID_RANGE + ID_STRIDE, Ordering::Relaxed);
+    fixture_family::enter(&mut connection, true).await;
     // The local permit bounds waiting sockets too. The PostgreSQL lane also bounds
     // active pools when independent runners on different hosts share a database.
     sqlx::query("SELECT pg_advisory_lock(724032, $1)")

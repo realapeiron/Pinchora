@@ -1,4 +1,5 @@
 [package]
+publish = false
 name = "pinchora-db"
 description = "PostgreSQL access and migrations"
 version.workspace = true

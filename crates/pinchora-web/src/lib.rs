@@ -4,6 +4,10 @@
 //! checked, written, recorded in the audit log and announced on Redis, so each bot pod drops its
 //! cached copy straight away.
 
+#[cfg(test)]
+#[path = "../../pinchora-commands/tests/support/isolation.rs"]
+mod fixture_isolation;
+
 mod audit;
 mod auth;
 mod client_ip;

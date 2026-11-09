@@ -1,4 +1,5 @@
 [package]
+publish = false
 name = "pinchora"
 description = "Application binary and process entry points"
 version.workspace = true

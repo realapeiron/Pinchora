@@ -1,6 +1,6 @@
 //! Birthday opt-in, privacy, setup and pixel card through the real interaction handlers.
 use super::*;
-static TICKS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const TICKS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(7);
 
 #[tokio::test]
 async fn birthday_confirmation_privacy_and_preview() {

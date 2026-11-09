@@ -7,7 +7,7 @@ use pinchora_db::{ScheduledRow, UtilityStickyRow};
 
 use super::*;
 
-static TICK_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const TICK_LOCK: fixture_lock::FixtureLock = fixture_lock::FixtureLock(9);
 
 #[tokio::test]
 async fn afk_sets_clears_once_and_rate_limits_mention_replies() {

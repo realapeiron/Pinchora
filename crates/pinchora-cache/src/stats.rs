@@ -218,6 +218,10 @@ impl Cache {
 }
 
 #[cfg(test)]
+#[path = "../../pinchora-commands/tests/support/fixture_lock.rs"]
+mod fixture_lock;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -236,6 +240,7 @@ mod tests {
 
     #[tokio::test]
     async fn deleting_a_member_clears_live_and_sealed_fields() {
+        let _stats = fixture_lock::FixtureLock(14).lock().await;
         let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
             return;
         };
@@ -281,6 +286,7 @@ mod tests {
 
     #[tokio::test]
     async fn overlapping_flush_claims_are_exclusive_and_releasable() {
+        let _stats = fixture_lock::FixtureLock(14).lock().await;
         let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
             return;
         };

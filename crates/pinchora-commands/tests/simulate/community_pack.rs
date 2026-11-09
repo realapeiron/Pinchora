@@ -2,7 +2,7 @@
 use super::*;
 
 // The ticker sweeps every guild, so distinct simulated clocks must not race each other.
-static TICK_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const TICK_LOCK: fixture_lock::FixtureLock = fixture_lock::FixtureLock(10);
 
 #[tokio::test]
 async fn member_suggests_and_staff_approves_qotd() {

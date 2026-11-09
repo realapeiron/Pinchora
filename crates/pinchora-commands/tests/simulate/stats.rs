@@ -26,6 +26,7 @@ async fn flushed(sim: &Sim, messages: i64) -> (i64, i64, i64) {
 
 #[tokio::test]
 async fn chat_is_counted_once_and_drawn_on_the_stats_cards() {
+    let _stats = fixture_lock::FixtureLock(14).lock().await;
     let Some(mut sim) = Sim::new("chat_is_counted_once_and_drawn_on_the_stats_cards").await else {
         return;
     };
@@ -104,6 +105,7 @@ async fn chat_is_counted_once_and_drawn_on_the_stats_cards() {
 
 #[tokio::test]
 async fn channel_stats_and_period_buttons_recheck_the_viewer() {
+    let _stats = fixture_lock::FixtureLock(14).lock().await;
     let Some(mut sim) = Sim::new("channel_stats_and_period_buttons_recheck_the_viewer").await else {
         return;
     };
@@ -136,6 +138,7 @@ async fn channel_stats_and_period_buttons_recheck_the_viewer() {
 
 #[tokio::test]
 async fn a_batch_cut_short_is_written_once() {
+    let _stats = fixture_lock::FixtureLock(14).lock().await;
     let Some(sim) = Sim::new("a_batch_cut_short_is_written_once").await else {
         return;
     };
@@ -205,6 +208,7 @@ fn add_counter(id: u64, kind: &str) -> Value {
 
 #[tokio::test]
 async fn counter_channels_are_added_listed_limited_and_removed() {
+    let _stats = fixture_lock::FixtureLock(14).lock().await;
     let Some(mut sim) = Sim::new("counter_channels_are_added_listed_limited_and_removed").await else {
         return;
     };

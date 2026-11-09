@@ -342,7 +342,7 @@ async fn posted_panel(sim: &mut Sim, admin: u64, panel: &str, channel: u64) -> R
 }
 
 // Both tests expose a board to the guild-wide ticker; keep their Discord worlds isolated.
-static TICKET_TICK_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const TICKET_TICK_LOCK: fixture_lock::FixtureLock = fixture_lock::FixtureLock(11);
 
 // /Tests
 

@@ -35,7 +35,7 @@ impl Sim {
 }
 /// The ticker claims what is due in any server of the shared database, so the tests that make something
 /// come due take turns.
-static TICKS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const TICKS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(8);
 
 fn note(key: u64, text: String) {
     LOG.lock().unwrap().push((key, text));

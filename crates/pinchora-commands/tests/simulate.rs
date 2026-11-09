@@ -183,6 +183,9 @@ mod tempvoice;
 #[path = "simulate/command_tree.rs"]
 mod command_tree;
 
+#[path = "support/fixture_lock.rs"]
+mod fixture_lock;
+
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
 /// The role the mock bot holds; its position is the ceiling for roles the bot can hand out.
@@ -1354,6 +1357,7 @@ impl Sim {
             eprintln!("{name}: skipped, set PINCHORA_TEST_DATABASE_URL and PINCHORA_TEST_REDIS_URL");
             return None;
         };
+        fixture_lock::shared().await;
         init_logging();
         let db = Db::connect_waiting(&database, 5, std::time::Duration::from_secs(60))
             .await
@@ -2206,7 +2210,7 @@ fn session_of(reply: &Reply) -> i64 {
 
 /// The janitor ends every late game in the database, whoever's it is, so tests that make games
 /// late take turns.
-static SWEEPS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const SWEEPS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(1);
 
 /// The message a session is shown in, as the database knows it.
 async fn message_of(sim: &Sim, session: i64) -> u64 {
@@ -7331,7 +7335,7 @@ static DMS_CLOSED: AtomicBool = AtomicBool::new(false);
 /// a test of its own can rely on them.
 static DM_OVERRIDES: LazyLock<Mutex<HashMap<u64, bool>>> = LazyLock::new(Mutex::default);
 /// Voice ticks pay every server Redis lists, so tests that tick take turns.
-static VOICE_TICKS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const VOICE_TICKS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(3);
 
 /// The AFK voice channel of each mock server.
 static AFK_CHANNELS: LazyLock<Mutex<HashMap<u64, u64>>> = LazyLock::new(Mutex::default);
@@ -9734,7 +9738,7 @@ fn remind_in(duration: &str, text: &str) -> Value {
 
 /// The ticker sends every reminder in the database that is due, so the tests that make some due take
 /// turns, and each starts by sending what an earlier run left behind.
-static REMINDERS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const REMINDERS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(5);
 
 /// The direct messages `user` got among `posts`, oldest first: the mock opens a channel named after
 /// the person it is for.
@@ -10142,6 +10146,7 @@ async fn pet_and_trip_reminders_follow_the_pet() {
 
 #[tokio::test]
 async fn privacy_choices_are_seen_by_other_players_and_data_can_be_deleted() {
+    let _leaderboard = fixture_lock::FixtureLock(15).lock().await;
     let Some(mut sim) = Sim::new("privacy_choices_are_seen_by_other_players_and_data_can_be_deleted").await else {
         return;
     };
@@ -10201,8 +10206,8 @@ async fn privacy_choices_are_seen_by_other_players_and_data_can_be_deleted() {
     );
 
     // Global boards: the owner is first on the XP board until they hide from it.
-    sqlx::query("UPDATE users SET xp = $2 WHERE id = $1")
-        .bind(owner as i64)
+    // Previous runs retain leaderboard fixtures whose IDs may use a higher range.
+    sqlx::query("UPDATE users SET xp = (SELECT COALESCE(MAX(xp), 0) + 1 FROM users) WHERE id = $1")
         .bind(owner as i64)
         .execute(db.pool())
         .await
@@ -10609,7 +10614,7 @@ async fn wrapped_opens_in_december_and_stays_open_through_january() {
 
 /// The events tests take turns: a tick ends every giveaway and poll that is due in the database, and
 /// these tests shift their clock far enough to end each other's.
-static EVENTS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const EVENTS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(6);
 
 /// A message the handlers posted, as a member sees it: its text, embeds and buttons.
 fn reply_of(post: &Post) -> Reply {

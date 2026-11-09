@@ -6,6 +6,9 @@
 //!
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 
+#[path = "../../pinchora-commands/tests/support/isolation.rs"]
+mod fixture_isolation;
+
 use std::{
     collections::{HashMap, HashSet},
     net::{Ipv6Addr, SocketAddr},
@@ -667,6 +670,7 @@ impl Harness {
 
 /// The real [`App`] on the test databases, its REST client pointed at the mock.
 async fn app(database: &str, redis: &str, mock: SocketAddr) -> Arc<App> {
+    fixture_isolation::shared().await;
     let db = Db::connect_waiting(database, 5, std::time::Duration::from_secs(60))
         .await
         .expect("connect to the database");

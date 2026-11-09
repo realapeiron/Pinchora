@@ -4,6 +4,9 @@
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 //! `seed_demo_house` (ignored) leaves a furnished house for the Playwright screenshots to look at.
 
+#[path = "../../pinchora-commands/tests/support/isolation.rs"]
+mod fixture_isolation;
+
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -82,6 +85,7 @@ impl Site {
             eprintln!("{name}: skipped, set PINCHORA_TEST_DATABASE_URL and PINCHORA_TEST_REDIS_URL");
             return None;
         };
+        fixture_isolation::shared().await;
         let db = Db::connect(&database, 5).await.expect("connect to the database");
         db.migrate().await.expect("migrate");
         let cache = Cache::connect(&redis).await.expect("connect to redis");

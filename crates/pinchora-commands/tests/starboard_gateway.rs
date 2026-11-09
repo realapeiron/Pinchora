@@ -4,6 +4,9 @@ use axum::{
     http::{Method, StatusCode, Uri},
     response::IntoResponse,
 };
+#[path = "support/isolation.rs"]
+mod fixture_isolation;
+
 use pinchora_commands::{
     App, ReactionEvent, cleanup_starboard_copy, on_starboard_reaction, on_starboard_update, reconcile_starboard_post,
 };
@@ -30,6 +33,7 @@ async fn exercise(private: bool, reactor_bot: bool, content: bool, live: bool, u
     let base = rand::random_range(1u64 << 58..1u64 << 59);
     let (guild, source, target, message, author, reactor, copy) =
         (base, base + 1, base + 2, base + 3, base + 4, base + 5, base + 6);
+    fixture_isolation::shared().await;
     let db = Db::connect_waiting(
         &std::env::var("PINCHORA_TEST_DATABASE_URL").unwrap(),
         3,

@@ -398,6 +398,7 @@ mod tests {
         let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
             return;
         };
+        crate::fixture_isolation::shared().await;
         let db = pinchora_db::Db::connect(&url, 2).await.unwrap();
         db.migrate().await.unwrap();
         let host = rand::random_range(1..i64::MAX as u64 / 2);

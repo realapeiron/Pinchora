@@ -107,6 +107,7 @@ async fn config(sim: &Sim, mode: &str) -> (Config, u64, u64) {
 }
 #[tokio::test]
 async fn verification_holds_join_then_button_releases_once() {
+    let _stats = fixture_lock::FixtureLock(14).lock().await;
     let Some((mut sim, _, task)) = setup("verification_button").await else {
         return;
     };

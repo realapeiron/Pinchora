@@ -873,7 +873,7 @@ async fn the_hierarchy_and_the_permissions_refuse_what_discord_would() {
 
 /// The ticker lifts every due temporary ban in the database, whoever's it is (the database tests leave
 /// some behind), so tests that run it take turns and only judge their own server's bans.
-static BAN_TICKS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+const BAN_TICKS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(12);
 
 #[tokio::test]
 async fn temporary_bans_end_on_the_ticker_with_a_case_of_their_own() {

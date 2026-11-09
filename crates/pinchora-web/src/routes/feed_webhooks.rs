@@ -238,6 +238,7 @@ mod tests {
         ) else {
             return;
         };
+        crate::fixture_isolation::shared().await;
         let db = Db::connect_waiting(&database, 5, std::time::Duration::from_secs(5))
             .await
             .unwrap();
