@@ -15,7 +15,7 @@ import {
   niceMax,
   peak,
   thousands,
-} from "../lib/stats";
+} from "../features/admin/api/stats";
 
 /** The width an element has now, kept up to date as the page resizes. */
 function useWidth<T extends HTMLElement>(fallback: number) {

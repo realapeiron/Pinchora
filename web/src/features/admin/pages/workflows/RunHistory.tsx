@@ -1,0 +1,30 @@
+import { dateTime } from "../../../../i18n";
+import { t } from "../../../../i18n/workflows";
+import { Panel } from "../../../../components/Panel";
+import { Loading, Problem } from "../../../shell/pages/States";
+import { Player } from "./Player";
+import type { Editor } from "../../hooks/useWorkflowEditor";
+export function RunHistory({ editor }: { editor: Editor }) {
+  const { id, history } = editor;
+  if (!id) return null;
+  return (
+    <Panel title={t("Run history")}>
+      {history.isPending ? (
+        <Loading />
+      ) : history.isError ? (
+        <Problem error={history.error} />
+      ) : history.data.items.length === 0 ? (
+        <p>{t("No runs in the last seven days.")}</p>
+      ) : (
+        history.data.items.map((run) => (
+          <details key={run.id}>
+            <summary>
+              {dateTime(run.started_at)} · {t(run.outcome)}
+            </summary>
+            <Player playback={run} />
+          </details>
+        ))
+      )}
+    </Panel>
+  );
+}

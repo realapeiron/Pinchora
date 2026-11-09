@@ -4,8 +4,8 @@ import { createRoot } from "react-dom/client";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 
 import type { GuildInfo, Overview } from "./lib/api";
-import type { TempVoice as TempVoiceData } from "./lib/tempVoice";
-import { TempVoice } from "./pages/TempVoice";
+import type { TempVoice as TempVoiceData } from "./features/admin/api/tempVoice";
+import { TempVoice } from "./features/admin/pages/TempVoice";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/site.css";
