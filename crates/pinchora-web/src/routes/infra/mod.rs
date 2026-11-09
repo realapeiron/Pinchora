@@ -1,1 +1,1 @@
-pub(crate) mod me;
+pub(in crate::routes) mod me;

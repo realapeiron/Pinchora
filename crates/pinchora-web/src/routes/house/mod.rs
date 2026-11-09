@@ -1,3 +1,3 @@
 #[allow(clippy::module_inception)]
-pub(crate) mod house;
-pub(crate) mod house_edit;
+pub(in crate::routes) mod house;
+pub(in crate::routes) mod house_edit;

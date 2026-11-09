@@ -7,7 +7,7 @@ pub(crate) mod giveaway;
 pub(crate) mod guestbook;
 pub(crate) mod invites;
 pub(crate) mod partner;
-pub(crate) mod periodic;
+pub(in crate::commands) mod periodic;
 pub(crate) mod plaza;
 pub(crate) mod poll;
 pub(crate) mod remind;

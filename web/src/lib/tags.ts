@@ -1,6 +1,6 @@
 import { locale, number, translate as spaTranslate } from "../i18n";
 // Custom commands and auto-responders in the browser: the limits and placeholders (written from
-// pinchora_core::tags into rules.json), blank drafts, and the instant checks. The server checks again
+// pinchora_core::community::tags into rules.json), blank drafts, and the instant checks. The server checks again
 // on save with the same rules; rules.test.ts keeps `checkCommandName` in step with it.
 
 import type {

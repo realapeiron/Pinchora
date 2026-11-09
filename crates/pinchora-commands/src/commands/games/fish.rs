@@ -135,7 +135,7 @@ impl FishCommand {
 // /Helpers
 
 /// The player's global level.
-pub(in crate::commands) async fn player_level(app: &App, user: u64) -> anyhow::Result<u32> {
+async fn player_level(app: &App, user: u64) -> anyhow::Result<u32> {
     Ok(leveling::level_of(app.db.user(user).await?.xp))
 }
 

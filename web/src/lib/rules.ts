@@ -1,6 +1,6 @@
 import { locale, number, translate, translate as spaTranslate } from "../i18n";
 // The settings rules, for instant feedback while typing. The server checks again on save with the
-// same rules (pinchora_core::settings); rules.json is written from them, and rules.test.ts checks
+// same rules (pinchora_core::admin::settings); rules.json is written from them, and rules.test.ts checks
 // these functions give the server's exact answers for the samples in it.
 
 import rules from "./rules.json";

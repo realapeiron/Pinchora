@@ -158,13 +158,13 @@ mod csp_tests {
     }
 }
 
-pub mod admin;
-pub mod community;
-pub mod economy;
-pub mod games;
-pub mod house;
-pub mod infra;
-pub mod integrations;
-pub mod moderation;
-pub mod progression;
-pub mod roles;
+mod admin;
+mod community;
+mod economy;
+mod games;
+mod house;
+mod infra;
+mod integrations;
+mod moderation;
+mod progression;
+mod roles;

@@ -1,4 +1,4 @@
-pub(crate) mod feed_links;
-pub(crate) mod feed_webhooks;
-pub(crate) mod feeds;
-pub(crate) mod roblox;
+pub(in crate::routes) mod feed_links;
+pub(in crate::routes) mod feed_webhooks;
+pub(in crate::routes) mod feeds;
+pub(in crate::routes) mod roblox;

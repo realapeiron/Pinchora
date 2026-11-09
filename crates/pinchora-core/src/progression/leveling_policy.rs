@@ -3,7 +3,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[serde(
+    rename = "LevelingParity",
+    expecting = "struct LevelingParity",
+    default,
+    deny_unknown_fields
+)]
 pub struct LevelingPolicy {
     pub curve: Curve,
     pub message_min: i64,
@@ -174,6 +179,15 @@ impl LevelingPolicy {
 #[cfg(test)]
 mod tests {
     use crate::progression::leveling_policy::*;
+
+    #[test]
+    fn invalid_json_keeps_the_public_policy_type_name() {
+        let error = serde_json::from_str::<LevelingPolicy>("false").unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "invalid type: boolean `false`, expected struct LevelingParity at line 1 column 5"
+        );
+    }
 
     #[test]
     fn defaults_match_classic_levels() {

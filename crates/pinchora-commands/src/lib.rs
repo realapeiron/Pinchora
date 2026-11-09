@@ -1,16 +1,16 @@
 pub mod admin;
 pub mod community;
-pub mod economy;
+mod economy;
 #[cfg(test)]
 pinchora_testkit::isolation!(fixture_isolation);
-pub mod games;
+mod games;
 pub mod house;
 pub mod infra;
 pub mod integrations;
-pub mod moderation;
-pub mod progression;
-pub mod roles;
-pub mod social;
+mod moderation;
+mod progression;
+mod roles;
+mod social;
 
 mod commands;
 pub use crate::admin::afk_sticky_sender::bot_permissions as utility_bot_permissions;

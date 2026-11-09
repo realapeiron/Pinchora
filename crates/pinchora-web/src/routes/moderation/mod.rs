@@ -1,8 +1,8 @@
-pub(crate) mod anti_nuke;
-pub(crate) mod audit_log;
-pub(crate) mod audit_tools;
-pub(crate) mod automod;
+pub(in crate::routes) mod anti_nuke;
+pub(in crate::routes) mod audit_log;
+pub(in crate::routes) mod audit_tools;
+pub(in crate::routes) mod automod;
 #[allow(clippy::module_inception)]
-pub(crate) mod moderation;
-pub(crate) mod policy;
-pub(crate) mod verification;
+pub(in crate::routes) mod moderation;
+pub(in crate::routes) mod policy;
+pub(in crate::routes) mod verification;

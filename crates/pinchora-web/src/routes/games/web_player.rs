@@ -44,7 +44,7 @@ mod collection;
 mod depth;
 
 #[derive(Default, Deserialize)]
-pub(in crate::routes) struct Locale {
+struct Locale {
     pub lang: Option<Lang>,
 }
 
@@ -80,7 +80,7 @@ async fn bounded_query(request: Request, next: Next) -> Response {
     next.run(request).await
 }
 
-pub(in crate::routes) fn render_error(error: anyhow::Error) -> ApiError {
+fn render_error(error: anyhow::Error) -> ApiError {
     if error
         .downcast_ref::<pinchora_commands::PreviewError>()
         .is_some_and(|e| {
@@ -99,7 +99,7 @@ pub(in crate::routes) fn render_error(error: anyhow::Error) -> ApiError {
 pub(in crate::routes) async fn lang(state: &WebState, s: &Session) -> Lang {
     state.app.user_lang_choice(s.user_id).await.unwrap_or_default()
 }
-pub(in crate::routes) fn invalid(lang: Lang) -> ApiError {
+fn invalid(lang: Lang) -> ApiError {
     ApiError::blocked(t!(lang, "web-player.invalid"))
 }
 pub(in crate::routes) async fn finish(state: &WebState, s: &Session, action: &str, before: Value, after: Value) {
@@ -133,7 +133,7 @@ fn audit_metadata(mut value: Value) -> Value {
     value
 }
 
-pub(in crate::routes) async fn render_limit(state: &WebState, s: &Session) -> ApiResult<()> {
+async fn render_limit(state: &WebState, s: &Session) -> ApiResult<()> {
     ratelimit::check(
         &state.app.cache,
         "player-render",
@@ -143,7 +143,7 @@ pub(in crate::routes) async fn render_limit(state: &WebState, s: &Session) -> Ap
     )
     .await
 }
-pub(in crate::routes) fn png(bytes: Vec<u8>) -> Response {
+fn png(bytes: Vec<u8>) -> Response {
     (
         [
             (header::CONTENT_TYPE, "image/png"),
@@ -591,13 +591,7 @@ async fn buy(
     };
     purchase(&state, s, &kind, &id, result).await
 }
-pub(in crate::routes) async fn purchase(
-    state: &WebState,
-    s: &Session,
-    kind: &str,
-    id: &str,
-    result: CustomizeBuy,
-) -> ApiResult<Json<Value>> {
+async fn purchase(state: &WebState, s: &Session, kind: &str, id: &str, result: CustomizeBuy) -> ApiResult<Json<Value>> {
     let result = match result {
         CustomizeBuy::Bought { balance } => {
             let after = json!({"kind":kind,"id":id,"balance":balance});

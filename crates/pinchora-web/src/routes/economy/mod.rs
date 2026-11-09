@@ -1,2 +1,2 @@
-pub(crate) mod player;
-pub(crate) mod store;
+pub(in crate::routes) mod player;
+pub(in crate::routes) mod store;

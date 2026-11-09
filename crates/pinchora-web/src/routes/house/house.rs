@@ -57,7 +57,7 @@ fn etag(bytes: &[u8]) -> String {
 }
 
 /// A body kept under a strong ETag, answered with 304 when the browser already has it.
-pub(in crate::routes) fn cached(
+pub(super) fn cached(
     headers: &HeaderMap,
     content_type: &'static str,
     cache: &'static str,
@@ -153,7 +153,7 @@ async fn content(headers: HeaderMap) -> Response {
 
 /// Whose house is being looked at.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(in crate::routes) enum Whose {
+pub(super) enum Whose {
     Own(u64),
     Visit { owner: u64, guest: u64 },
 }
@@ -249,11 +249,7 @@ fn user_id(raw: &str) -> ApiResult<u64> {
         .ok_or_else(|| ApiError::malformed("That is not a player id."))
 }
 
-pub(in crate::routes) async fn overview(
-    state: &WebState,
-    current: &CurrentSession,
-    whose: Whose,
-) -> ApiResult<Json<Value>> {
+pub(super) async fn overview(state: &WebState, current: &CurrentSession, whose: Whose) -> ApiResult<Json<Value>> {
     let (house, rooms) = open(state, whose).await?;
     let owner = whose.owner();
     let counts = state.app.db.placement_counts(owner).await?;
@@ -287,7 +283,7 @@ pub(in crate::routes) async fn overview(
     })))
 }
 
-pub(in crate::routes) async fn room_data(state: &WebState, whose: Whose, idx: &str) -> ApiResult<RoomData> {
+pub(super) async fn room_data(state: &WebState, whose: Whose, idx: &str) -> ApiResult<RoomData> {
     let idx = room_index(idx)?;
     let (house, rooms) = open(state, whose).await?;
     RoomData::load(&state.app, whose.owner(), &house, &rooms, idx)

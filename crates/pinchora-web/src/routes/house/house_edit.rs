@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 #[derive(Deserialize)]
-pub(in crate::routes) struct Scope {
+pub(super) struct Scope {
     #[serde(default = "own")]
     pub scope: String,
     pub guild: Option<u64>,
@@ -33,7 +33,7 @@ fn own() -> String {
     "own".into()
 }
 
-pub(in crate::routes) async fn resolve(
+pub(super) async fn resolve(
     state: &WebState,
     current: &mut CurrentSession,
     scope: &Scope,

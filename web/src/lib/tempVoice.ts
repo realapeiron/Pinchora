@@ -1,5 +1,5 @@
 // Temp voice: the creators a server set up and the rooms alive right now. The names a creator gives its
-// rooms are checked here the way the bot checks them (crates/pinchora-core/src/temp_voice.rs).
+// rooms are checked here the way the bot checks them (crates/pinchora-core/src/admin/temp_voice.rs).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 

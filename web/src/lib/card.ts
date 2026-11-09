@@ -1,5 +1,5 @@
 import { translate as spaTranslate } from "../i18n";
-// The welcome and goodbye image editor's model: the design JSON the API stores (pinchora_core::card_design),
+// The welcome and goodbye image editor's model: the design JSON the API stores (pinchora_core::admin::card_design),
 // the limits from rules.json, and the pure geometry of the canvas (moving, resizing, snapping) and its
 // undo history. Nothing here touches the DOM, so all of it is unit-tested.
 
@@ -270,7 +270,7 @@ export function tidy(layer: Layer): Layer {
   return h === layer.h ? layer : { ...layer, h };
 }
 
-// /Limits: what keeps a design cheap to draw (pinchora_core::card_design)
+// /Limits: what keeps a design cheap to draw (pinchora_core::admin::card_design)
 
 export interface Canvas {
   width: number;
