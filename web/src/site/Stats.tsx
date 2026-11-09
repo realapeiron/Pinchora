@@ -7,9 +7,15 @@ import { useParams } from "react-router";
 import { ServerIcon } from "../components/ServerIcon";
 import { DailyColumns, NumbersTable, StatTile } from "../components/StatsCharts";
 import { ApiError } from "../lib/api";
-import { type DayRow, dayLabel, thousands, useGlobalStats, usePublicStats } from "../lib/stats";
-import { Activity } from "../pages/Stats";
-import { Loading } from "../pages/States";
+import {
+  type DayRow,
+  dayLabel,
+  thousands,
+  useGlobalStats,
+  usePublicStats,
+} from "../features/admin/api/stats";
+import { Activity } from "../features/admin/pages/Stats";
+import { Loading } from "../features/shell/pages/States";
 import { InviteButton } from "./Buttons";
 import "../styles/stats.css";
 

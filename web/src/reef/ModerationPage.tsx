@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "./i18n";
-import { PageHead } from "../pages/PageHead";
+import { PageHead } from "../features/shell/pages/PageHead";
 import { safetyError } from "./ChatPanel";
 import "./reef.css";
 interface Report {

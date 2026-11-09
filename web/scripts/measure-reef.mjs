@@ -26,7 +26,7 @@ for (const [key, chunk] of Object.entries(build))
 for (const name of files) if (/^prepare\.worker-.*\.js$/.test(name)) used.add(`assets/${name}`);
 // These panels must remain deferred from the playable room's static dependency graph.
 for (const key of [
-  "src/components/HouseEditor.tsx",
+  "src/features/house/components/HouseEditor.tsx",
   "src/reef/DecoratePanel.tsx",
   "src/reef/SpacesPanel.tsx",
   "src/reef/games/ActivityPanel.tsx",
@@ -34,7 +34,7 @@ for (const key of [
   "src/reef/games/Chess.tsx",
   "src/reef/games/Picross.tsx",
   "src/reef/games/Trivia.tsx",
-  "src/pages/Workflows.tsx",
+  "src/features/admin/pages/Workflows.tsx",
 ]) {
   // Rollup can name a shared dynamic facade by its chunk name instead of its source path.
   const name = key

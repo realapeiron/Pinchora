@@ -4,13 +4,16 @@ const ModerationPage = lazy(() =>
 );
 import { Navigate, Outlet, createBrowserRouter, type RouteObject } from "react-router";
 import { useLocale } from "./i18n";
+import { LegacyGuildRedirect } from "./features/shell/pages/LegacyGuildRedirect";
 
-const GuildLayout = lazy(() => import("./pages/GuildLayout").then((m) => ({ default: m.GuildLayout })));
-import { MyHouse, VisitHouse } from "./pages/House";
-import { Login } from "./pages/Login";
-import { NotFound } from "./pages/NotFound";
-import { RequireLogin } from "./pages/RequireLogin";
-import { Servers } from "./pages/Servers";
+const GuildLayout = lazy(() =>
+  import("./features/admin/pages/GuildLayout").then((m) => ({ default: m.GuildLayout })),
+);
+import { MyHouse, VisitHouse } from "./features/house/pages/House";
+import { Login } from "./features/shell/pages/Login";
+import { NotFound } from "./features/shell/pages/NotFound";
+import { RequireLogin } from "./features/shell/pages/RequireLogin";
+import { Servers } from "./features/shell/pages/Servers";
 import { Landing } from "./site/Landing";
 import { SiteLayout } from "./site/SiteLayout";
 import { SiteNotFound } from "./site/SiteNotFound";
@@ -54,17 +57,29 @@ const localizedRoutes: RouteObject[] = [
       { path: "*", element: <SiteNotFound /> },
     ],
   },
-  { path: "/verify/:token", lazy: async () => ({ Component: (await import("./pages/Verify")).Verify }) },
+  {
+    path: "/verify/:token",
+    lazy: async () => ({ Component: (await import("./features/moderation/pages/Verify")).Verify }),
+  },
   {
     path: "/appeals/:guild/:caseNumber",
-    lazy: async () => ({ Component: (await import("./pages/ModParity")).AppealForm }),
+    lazy: async () => ({
+      Component: (await import("./features/moderation/pages/ModerationDesk")).AppealForm,
+    }),
   },
-  { path: "/appeals", lazy: async () => ({ Component: (await import("./pages/ModParity")).AppealForm }) },
+  {
+    path: "/appeals",
+    lazy: async () => ({
+      Component: (await import("./features/moderation/pages/ModerationDesk")).AppealForm,
+    }),
+  },
   { path: "/login", element: <Login /> },
   { path: "/servers", element: <RequireLogin>{(me) => <Servers me={me} />}</RequireLogin> },
   {
     path: "/feeds/my-channels",
-    lazy: async () => ({ Component: (await import("./pages/Feeds")).MyFeedsChannelsRoute }),
+    lazy: async () => ({
+      Component: (await import("./features/integrations/pages/Feeds")).MyFeedsChannelsRoute,
+    }),
   },
   {
     path: "/reef/moderation",
@@ -92,132 +107,250 @@ const localizedRoutes: RouteObject[] = [
       </RequireLogin>
     ),
     children: [
-      { index: true, lazy: async () => ({ Component: (await import("./pages/Overview")).Overview }) },
-      { path: "modules", lazy: async () => ({ Component: (await import("./pages/Modules")).Modules }) },
-      { path: "access", lazy: async () => ({ Component: (await import("./pages/Access")).Access }) },
-      { path: "welcome", lazy: async () => ({ Component: (await import("./pages/Welcome")).Welcome }) },
+      {
+        index: true,
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Overview")).Overview }),
+      },
+      {
+        path: "modules",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Modules")).Modules }),
+      },
+      {
+        path: "access",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Access")).Access }),
+      },
+      {
+        path: "welcome",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Welcome")).Welcome }),
+      },
       {
         path: "branding",
-        lazy: async () => ({ Component: (await import("./pages/Branding")).BrandingPage }),
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Branding")).BrandingPage }),
       },
       {
         path: "welcome-image",
-        lazy: async () => ({ Component: (await import("./pages/WelcomeImage")).WelcomeImage }),
+        lazy: async () => ({ Component: (await import("./features/admin/pages/WelcomeImage")).WelcomeImage }),
       },
       {
         path: "message-studio",
-        lazy: async () => ({ Component: (await import("./pages/MessageStudio")).MessageStudio }),
+        lazy: async () => ({
+          Component: (await import("./features/admin/pages/MessageStudio")).MessageStudio,
+        }),
       },
-      { path: "leveling", lazy: async () => ({ Component: (await import("./pages/Leveling")).Leveling }) },
-      { path: "points", lazy: async () => ({ Component: (await import("./pages/Points")).Points }) },
+      {
+        path: "leveling",
+        lazy: async () => ({ Component: (await import("./features/progression/pages/Leveling")).Leveling }),
+      },
+      {
+        path: "points",
+        lazy: async () => ({ Component: (await import("./features/economy/pages/Points")).Points }),
+      },
       {
         path: "economy",
-        lazy: async () => ({ Component: (await import("./pages/EconomySettings")).EconomySettings }),
+        lazy: async () => ({
+          Component: (await import("./features/economy/pages/EconomySettings")).EconomySettings,
+        }),
       },
-      { path: "log", lazy: async () => ({ Component: (await import("./pages/ServerLog")).ServerLog }) },
-      { path: "community", lazy: async () => ({ Component: (await import("./pages/Community")).Community }) },
+      {
+        path: "log",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/ServerLog")).ServerLog }),
+      },
+      {
+        path: "community",
+        lazy: async () => ({ Component: (await import("./features/community/pages/Community")).Community }),
+      },
       {
         path: "giveaways",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityGiveaways }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityGiveaways,
+        }),
       },
       {
         path: "polls",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityPolls }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityPolls,
+        }),
       },
       {
         path: "suggestions",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunitySuggestions }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunitySuggestions,
+        }),
       },
       {
         path: "reminders",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityReminders }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityReminders,
+        }),
       },
       {
         path: "highlights",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityHighlights }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityHighlights,
+        }),
       },
       {
         path: "auto-channels",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityAutoChannels }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityAutoChannels,
+        }),
       },
       {
         path: "anniversaries",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityAnniversaries }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityAnniversaries,
+        }),
       },
       {
         path: "confessions",
-        lazy: async () => ({ Component: (await import("./pages/CommunityV2")).CommunityConfessions }),
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityTools")).CommunityConfessions,
+        }),
+      },
+      { path: "community-pack", element: <LegacyGuildRedirect target="community-engagement" /> },
+      {
+        path: "community-engagement",
+        lazy: async () => ({
+          Component: (await import("./features/community/pages/CommunityEngagement")).CommunityEngagement,
+        }),
       },
       {
-        path: "community-pack",
-        lazy: async () => ({ Component: (await import("./pages/CommunityPack")).CommunityPack }),
+        path: "roblox",
+        lazy: async () => ({ Component: (await import("./features/integrations/pages/Roblox")).Roblox }),
       },
-      { path: "roblox", lazy: async () => ({ Component: (await import("./pages/Roblox")).Roblox }) },
-      { path: "events", lazy: async () => ({ Component: (await import("./pages/Events")).Events }) },
+      {
+        path: "events",
+        lazy: async () => ({ Component: (await import("./features/community/pages/Events")).Events }),
+      },
       {
         path: "moderation",
-        lazy: async () => ({ Component: (await import("./pages/Moderation")).Moderation }),
+        lazy: async () => ({
+          Component: (await import("./features/moderation/pages/Moderation")).Moderation,
+        }),
+      },
+      { path: "mod-parity", element: <LegacyGuildRedirect target="moderation-desk" /> },
+      {
+        path: "moderation-desk",
+        lazy: async () => ({
+          Component: (await import("./features/moderation/pages/ModerationDesk")).ModerationDesk,
+        }),
       },
       {
-        path: "mod-parity",
-        lazy: async () => ({ Component: (await import("./pages/ModParity")).ModParity }),
+        path: "safety",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/Safety")).Safety }),
       },
-      { path: "safety", lazy: async () => ({ Component: (await import("./pages/Safety")).Safety }) },
-      { path: "anti-nuke", lazy: async () => ({ Component: (await import("./pages/AntiNuke")).AntiNuke }) },
+      {
+        path: "anti-nuke",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/AntiNuke")).AntiNuke }),
+      },
       {
         path: "command-control",
-        lazy: async () => ({ Component: (await import("./pages/CommandControl")).CommandControl }),
+        lazy: async () => ({
+          Component: (await import("./features/admin/pages/CommandControl")).CommandControl,
+        }),
       },
       {
         path: "backup",
-        lazy: async () => ({ Component: (await import("./pages/ConfigBackup")).ConfigBackup }),
+        lazy: async () => ({ Component: (await import("./features/admin/pages/ConfigBackup")).ConfigBackup }),
       },
-      { path: "workflows", lazy: async () => ({ Component: (await import("./pages/Workflows")).Workflows }) },
-      { path: "automod", lazy: async () => ({ Component: (await import("./pages/AutoMod")).AutoMod }) },
-      { path: "cases", lazy: async () => ({ Component: (await import("./pages/Cases")).Cases }) },
-      { path: "staff-log", lazy: async () => ({ Component: (await import("./pages/StaffLog")).StaffLog }) },
+      {
+        path: "workflows",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Workflows")).Workflows }),
+      },
+      {
+        path: "automod",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/AutoMod")).AutoMod }),
+      },
+      {
+        path: "cases",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/Cases")).Cases }),
+      },
+      {
+        path: "staff-log",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/StaffLog")).StaffLog }),
+      },
       {
         path: "temp-voice",
-        lazy: async () => ({ Component: (await import("./pages/TempVoice")).TempVoice }),
+        lazy: async () => ({ Component: (await import("./features/admin/pages/TempVoice")).TempVoice }),
       },
-      { path: "birthdays", lazy: async () => ({ Component: (await import("./pages/Birthdays")).Birthdays }) },
-      { path: "commands", lazy: async () => ({ Component: (await import("./pages/Commands")).Commands }) },
+      {
+        path: "birthdays",
+        lazy: async () => ({ Component: (await import("./features/community/pages/Birthdays")).Birthdays }),
+      },
+      {
+        path: "commands",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Commands")).Commands }),
+      },
       {
         path: "commands/new",
-        lazy: async () => ({ Component: (await import("./pages/CommandEditor")).CommandEditor }),
+        lazy: async () => ({
+          Component: (await import("./features/admin/pages/CommandEditor")).CommandEditor,
+        }),
       },
       {
         path: "commands/:commandId",
-        lazy: async () => ({ Component: (await import("./pages/CommandEditor")).CommandEditor }),
+        lazy: async () => ({
+          Component: (await import("./features/admin/pages/CommandEditor")).CommandEditor,
+        }),
       },
       {
         path: "responders",
-        lazy: async () => ({ Component: (await import("./pages/Responders")).Responders }),
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Responders")).Responders }),
       },
       {
         path: "responders/new",
-        lazy: async () => ({ Component: (await import("./pages/ResponderEditor")).ResponderEditor }),
+        lazy: async () => ({
+          Component: (await import("./features/admin/pages/ResponderEditor")).ResponderEditor,
+        }),
       },
       {
         path: "responders/:responderId",
-        lazy: async () => ({ Component: (await import("./pages/ResponderEditor")).ResponderEditor }),
+        lazy: async () => ({
+          Component: (await import("./features/admin/pages/ResponderEditor")).ResponderEditor,
+        }),
       },
-      { path: "roles", lazy: async () => ({ Component: (await import("./pages/Roles")).Roles }) },
-      { path: "audit", lazy: async () => ({ Component: (await import("./pages/AuditLog")).AuditLog }) },
-      { path: "starboard", lazy: async () => ({ Component: (await import("./pages/Starboard")).Starboard }) },
-      { path: "invites", lazy: async () => ({ Component: (await import("./pages/Invites")).Invites }) },
-      { path: "stats", lazy: async () => ({ Component: (await import("./pages/Stats")).Stats }) },
-      { path: "utility", lazy: async () => ({ Component: (await import("./pages/Utility")).Utility }) },
+      {
+        path: "roles",
+        lazy: async () => ({ Component: (await import("./features/roles/pages/Roles")).Roles }),
+      },
+      {
+        path: "audit",
+        lazy: async () => ({ Component: (await import("./features/moderation/pages/AuditLog")).AuditLog }),
+      },
+      {
+        path: "starboard",
+        lazy: async () => ({ Component: (await import("./features/community/pages/Starboard")).Starboard }),
+      },
+      {
+        path: "invites",
+        lazy: async () => ({ Component: (await import("./features/community/pages/Invites")).Invites }),
+      },
+      {
+        path: "stats",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Stats")).Stats }),
+      },
+      {
+        path: "utility",
+        lazy: async () => ({ Component: (await import("./features/admin/pages/Utility")).Utility }),
+      },
       {
         path: "achievements",
-        lazy: async () => ({ Component: (await import("./pages/Achievements")).Achievements }),
+        lazy: async () => ({
+          Component: (await import("./features/progression/pages/Achievements")).Achievements,
+        }),
       },
       {
         path: "tickets/:ticketId?",
-        lazy: async () => ({ Component: (await import("./pages/Tickets")).Tickets }),
+        lazy: async () => ({ Component: (await import("./features/community/pages/Tickets")).Tickets }),
       },
-      { path: "feeds/*", lazy: async () => ({ Component: (await import("./pages/Feeds")).Feeds }) },
-      { path: "trackers", lazy: async () => ({ Component: (await import("./pages/Trackers")).Trackers }) },
+      {
+        path: "feeds/*",
+        lazy: async () => ({ Component: (await import("./features/integrations/pages/Feeds")).Feeds }),
+      },
+      {
+        path: "trackers",
+        lazy: async () => ({ Component: (await import("./features/community/pages/Trackers")).Trackers }),
+      },
       { path: "*", element: <NotFound /> },
     ],
   },
@@ -234,6 +367,6 @@ export const router = createBrowserRouter([
   { Component: LocalizedPages, children: localizedRoutes },
   {
     path: "/me/*",
-    lazy: async () => ({ Component: (await import("./pages/player/Player")).PlayerRoutes }),
+    lazy: async () => ({ Component: (await import("./features/games/pages/player/Player")).PlayerRoutes }),
   },
 ]);

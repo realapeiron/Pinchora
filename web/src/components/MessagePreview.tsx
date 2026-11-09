@@ -1,6 +1,6 @@
 import { translate as spaTranslate } from "../i18n";
 import type { EmbedSpec, Preview } from "../lib/api";
-import { componentRows } from "../lib/messageStudio";
+import { componentRows } from "../features/admin/api/messageStudio";
 import { RichText } from "./RichText";
 
 function EmbedCard({ embed }: { embed: EmbedSpec }) {

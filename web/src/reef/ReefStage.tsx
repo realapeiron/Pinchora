@@ -1,7 +1,7 @@
 import { SEAT_FOREGROUND_ROWS } from "./seats";
 import type { EditBridge } from "./DecoratePanel";
-import { PageHead } from "../pages/PageHead";
-import type { HouseTarget } from "../lib/house";
+import { PageHead } from "../features/shell/pages/PageHead";
+import type { HouseTarget } from "../features/house/api/house";
 import { Art } from "../iso/art";
 import type { SceneItem } from "../iso/scene";
 import { footprint, surfaceLift } from "../iso/rules";
