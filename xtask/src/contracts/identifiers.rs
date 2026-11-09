@@ -94,16 +94,15 @@ fn components(root: &Path, update: bool) -> Result {
         "components",
         &json!({"prefixes": prefixes,
         "owner_rules": owner.arms["component_owner"], "owner_overrides": owner.blocks["component_owner"],
-        "module_rules": gates.blocks["refuses_component"], "defer_rules": defer.blocks["of"]}),
+        "module_rules": gates.blocks["refuses_component"], "defer_rules": defer.blocks, "defer_tables": defer.constants}),
         update,
     )
 }
 
 #[derive(Default)]
 struct Identifiers {
-    redis: BTreeSet<String>,
     ledger: BTreeSet<String>,
-    cache_file: bool,
+    locals: BTreeMap<String, syn::Expr>,
 }
 impl<'a> Visit<'a> for Identifiers {
     fn visit_item_mod(&mut self, node: &'a syn::ItemMod) {
@@ -111,15 +110,19 @@ impl<'a> Visit<'a> for Identifiers {
             visit::visit_item_mod(self, node);
         }
     }
-    fn visit_macro(&mut self, node: &'a syn::Macro) {
-        if self.cache_file {
-            for s in source::strings(&node.tokens) {
-                if s.contains(':') && !s.contains(char::is_whitespace) && s.len() < 180 {
-                    self.redis.insert(s);
-                }
-            }
+    fn visit_item_fn(&mut self, node: &'a syn::ItemFn) {
+        self.locals.clear();
+        visit::visit_item_fn(self, node);
+    }
+    fn visit_impl_item_fn(&mut self, node: &'a syn::ImplItemFn) {
+        self.locals.clear();
+        visit::visit_impl_item_fn(self, node);
+    }
+    fn visit_local(&mut self, node: &'a syn::Local) {
+        if let (syn::Pat::Ident(id), Some(init)) = (&node.pat, &node.init) {
+            self.locals.insert(id.ident.to_string(), *init.expr.clone());
         }
-        visit::visit_macro(self, node);
+        visit::visit_local(self, node);
     }
     fn visit_expr_method_call(&mut self, node: &'a syn::ExprMethodCall) {
         if [
@@ -132,15 +135,24 @@ impl<'a> Visit<'a> for Identifiers {
         .contains(&node.method.to_string().as_str())
             && let Some(last) = node.args.last()
         {
-            self.ledger.extend(source::strings(last));
+            self.reason(last, 0);
         }
         visit::visit_expr_method_call(self, node);
     }
-    fn visit_field_value(&mut self, node: &'a syn::FieldValue) {
-        if source::tokens(&node.member) == "reason" && matches!(node.expr, syn::Expr::Lit(_)) {
-            self.ledger.extend(source::strings(&node.expr));
+    fn visit_expr_struct(&mut self, node: &'a syn::ExprStruct) {
+        if node.path.segments.last().is_some_and(|segment| segment.ident == "Pay") {
+            for field in &node.fields {
+                if source::tokens(&field.member) == "reason" {
+                    self.reason(&field.expr, 0);
+                }
+            }
         }
-        visit::visit_field_value(self, node);
+        visit::visit_expr_struct(self, node);
+    }
+    fn visit_macro(&mut self, node: &'a syn::Macro) {
+        for expr in source::macro_expressions(node) {
+            self.visit_expr(&expr);
+        }
     }
     fn visit_expr_call(&mut self, node: &'a syn::ExprCall) {
         let name = source::tokens(&node.func);
@@ -168,11 +180,29 @@ impl<'a> Visit<'a> for Identifiers {
         .contains(&leaf)
             && let Some(last) = node.args.last()
         {
-            self.ledger.extend(source::strings(last));
+            self.reason(last, 0);
         }
         visit::visit_expr_call(self, node);
     }
 }
+impl Identifiers {
+    fn reason(&mut self, expr: &syn::Expr, depth: usize) {
+        if depth > 8 {
+            return;
+        }
+        self.ledger.extend(source::strings(expr));
+        match expr {
+            syn::Expr::Reference(r) => self.reason(&r.expr, depth + 1),
+            syn::Expr::Path(p) => {
+                if let Some(value) = self.locals.get(&source::tokens(p)).cloned() {
+                    self.reason(&value, depth + 1);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 pub fn run(root: &Path, update: bool) -> Result {
     components(root, update)?;
     let mut visitor = Identifiers::default();
@@ -181,9 +211,9 @@ pub fn run(root: &Path, update: bool) -> Result {
         if path.contains("/src/")
             && (path.starts_with("crates/pinchora-cache/")
                 || path.starts_with("crates/pinchora-db/")
-                || path.starts_with("crates/pinchora-commands/"))
+                || path.starts_with("crates/pinchora-commands/")
+                || path.starts_with("crates/pinchora-web/"))
         {
-            visitor.cache_file = path.starts_with("crates/pinchora-cache/");
             visitor.visit_file(ast);
         }
     }

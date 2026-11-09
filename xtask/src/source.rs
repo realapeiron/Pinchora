@@ -115,3 +115,12 @@ fn diff(name: &str, path: &str, old: &serde_json::Value, new: &serde_json::Value
         eprintln!("{name}{path}:\n- {}\n+ {}", clip(old), clip(new));
     }
 }
+
+/// Common expression-list macros (ensure!, join!, etc.) still contain real calls.
+pub fn macro_expressions(node: &syn::Macro) -> Vec<syn::Expr> {
+    use syn::parse::Parser;
+    syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated
+        .parse2(node.tokens.clone())
+        .map(|expressions| expressions.into_iter().collect())
+        .unwrap_or_default()
+}

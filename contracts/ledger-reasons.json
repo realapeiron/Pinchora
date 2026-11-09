@@ -1,5 +1,6 @@
 [
   "accessory",
+  "acronym_game",
   "auction_delivery",
   "auction_escrow",
   "auction_fee",
@@ -56,6 +57,7 @@
   "pet_walk",
   "picross_daily",
   "picross_win",
+  "postcard_game",
   "prestige",
   "provisions",
   "quests",

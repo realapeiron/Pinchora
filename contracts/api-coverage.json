@@ -1,9 +1,6 @@
 {
-  "observed": 378,
-  "successful": 304,
+  "observed": 380,
+  "successful": 306,
   "total": 380,
-  "unobserved": [
-    "DELETE /api/me/collection/wishlist/{id}",
-    "POST /api/verify/{token}/help"
-  ]
+  "unobserved": []
 }

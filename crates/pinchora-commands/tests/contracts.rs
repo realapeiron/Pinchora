@@ -39,6 +39,9 @@ fn compiled_contracts() {
         })
         .collect();
     contracts.insert("i18n", json!(keys));
+    use pinchora_core::economy::legacy::Period;
+    let periods: BTreeSet<_> = Period::ALL.map(Period::key).into_iter().collect();
+    contracts.insert("ledger-periods", json!(periods));
     let sections: BTreeSet<_> = pinchora_core::admin::config_backup::SECTIONS
         .iter()
         .map(|s| s.table)
@@ -62,7 +65,10 @@ fn compiled_contracts() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = root.join("target/contracts");
     fs::create_dir_all(&output).unwrap();
-    let record = json!({"inputs": inputs::fingerprint(&root).unwrap(), "contracts": contracts});
+    let Ok(receipt) = inputs::receipt(&root) else {
+        return;
+    };
+    let record = json!({"receipt": receipt, "contracts": contracts});
     fs::write(output.join("runtime.tmp"), serde_json::to_vec(&record).unwrap()).unwrap();
     fs::rename(output.join("runtime.tmp"), output.join("runtime.json")).unwrap();
 }

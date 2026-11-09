@@ -64,6 +64,10 @@ pub fn run(root: &Path) -> Result {
             };
             let canonical = Path::new(path).canonicalize()?;
             let Some(&to) = identities.get(&canonical) else {
+                errors.push(format!(
+                    "{from}: local dependency {} is outside the audited workspace",
+                    dep["name"]
+                ));
                 continue;
             };
             let kind = dep["kind"].as_str().unwrap_or("normal");

@@ -10,6 +10,7 @@ pub struct Keys {
     pub patterns: BTreeSet<String>,
     functions: BTreeMap<String, syn::Block>,
     locals: BTreeMap<String, Expr>,
+    constants: BTreeMap<String, Expr>,
     cache_file: bool,
 }
 impl Keys {
@@ -22,6 +23,11 @@ impl Keys {
             keys.functions.clear();
             struct Helpers<'a>(&'a mut BTreeMap<String, syn::Block>);
             impl<'a> Visit<'a> for Helpers<'_> {
+                fn visit_item_mod(&mut self, node: &'a syn::ItemMod) {
+                    if node.ident != "tests" {
+                        visit::visit_item_mod(self, node);
+                    }
+                }
                 fn visit_item_fn(&mut self, f: &'a syn::ItemFn) {
                     self.0.insert(f.sig.ident.to_string(), *f.block.clone());
                 }
@@ -30,6 +36,14 @@ impl Keys {
                 }
             }
             Helpers(&mut keys.functions).visit_file(file);
+            keys.constants.clear();
+            struct Constants<'a>(&'a mut BTreeMap<String, Expr>);
+            impl<'a> Visit<'a> for Constants<'_> {
+                fn visit_item_const(&mut self, node: &'a syn::ItemConst) {
+                    self.0.insert(node.ident.to_string(), *node.expr.clone());
+                }
+            }
+            Constants(&mut keys.constants).visit_file(file);
             keys.cache_file = path.starts_with("crates/pinchora-cache/");
             keys.visit_file(file);
         }
@@ -47,7 +61,12 @@ impl Keys {
         match expr {
             Expr::Reference(r) => self.resolve(&r.expr, depth + 1),
             Expr::Path(p) => {
-                if let Some(value) = self.locals.get(&source::tokens(p)).cloned() {
+                if let Some(value) = self
+                    .locals
+                    .get(&source::tokens(p))
+                    .or_else(|| self.constants.get(&source::tokens(p)))
+                    .cloned()
+                {
                     self.resolve(&value, depth + 1);
                 }
             }
@@ -62,6 +81,22 @@ impl Keys {
                 }
             }
             _ => {}
+        }
+    }
+    fn cache_receiver(&self, expr: &Expr, depth: usize) -> bool {
+        if depth > 8 {
+            return false;
+        }
+        if source::tokens(expr).contains("cache") {
+            return true;
+        }
+        match expr {
+            Expr::Reference(r) => self.cache_receiver(&r.expr, depth + 1),
+            Expr::Path(p) => self
+                .locals
+                .get(&source::tokens(p))
+                .is_some_and(|v| self.cache_receiver(v, depth + 1)),
+            _ => false,
         }
     }
 }
@@ -95,7 +130,7 @@ impl<'a> Visit<'a> for Keys {
     fn visit_expr_method_call(&mut self, node: &'a syn::ExprMethodCall) {
         let receiver = source::tokens(&node.receiver);
         let name = node.method.to_string();
-        if (receiver.contains("cache") || name.starts_with("reef_"))
+        if (receiver.contains("cache") || self.cache_receiver(&node.receiver, 0) || name.starts_with("reef_"))
             && [
                 "get",
                 "put",
@@ -122,6 +157,11 @@ impl<'a> Visit<'a> for Keys {
                 "set_add",
                 "set_remove",
                 "set_members",
+                "verification_lease",
+                "replace_workflow_roles",
+                "reef_claim",
+                "reef_publish_fenced",
+                "reef_set_fenced",
                 "reef_key",
                 "reef_get",
                 "reef_publish",
@@ -145,11 +185,50 @@ impl<'a> Visit<'a> for Keys {
                 }
             }
         }
-        visit::visit_macro(self, node);
+        for expr in source::macro_expressions(node) {
+            self.visit_expr(&expr);
+        }
     }
     fn visit_item_const(&mut self, node: &'a syn::ItemConst) {
-        if self.cache_file && node.ident == "PREFIX" {
-            self.patterns.extend(source::strings(&node.expr));
+        if self.cache_file {
+            self.patterns
+                .extend(source::strings(&node.expr).into_iter().filter(|s| {
+                    node.ident == "PREFIX" || (s.contains(':') && !s.contains(char::is_whitespace) && s.len() < 180)
+                }));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn constants_local_formats_and_helpers_keep_prefixes() {
+        let file = syn::parse_file(
+            r#"
+            const COUNTS_KEY: &str = "web:landing-counts";
+            fn helper(user: u64) -> String { format!("helper:{user}") }
+            async fn sample(app: &App) {
+                let key = format!("minecraft:status:{host}:{port}");
+                app.cache.try_cooldown(&key, ttl).await;
+                app.cache.get(COUNTS_KEY).await;
+                app.cache.get(&helper(1)).await;
+                anyhow::ensure!(app.cache.once("macro:key", ttl).await?, "pending");
+                let c = &app.cache;
+                c.get("alias:prefix").await;
+            }
+        "#,
+        )
+        .unwrap();
+        let keys = Keys::collect(&[("crates/pinchora-web/src/example.rs".into(), file)]);
+        for key in [
+            "web:landing-counts",
+            "minecraft:status:{host}:{port}",
+            "helper:{user}",
+            "alias:prefix",
+            "macro:key",
+        ] {
+            assert!(keys.contains(key), "missing {key}: {keys:?}");
         }
     }
 }

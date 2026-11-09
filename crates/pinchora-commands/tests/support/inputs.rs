@@ -26,3 +26,15 @@ pub fn fingerprint(root: &Path) -> std::io::Result<String> {
     }
     Ok(format!("{hash:016x}"))
 }
+
+/// Local run identity, never included in public snapshots.
+pub fn receipt(root: &Path) -> std::io::Result<serde_json::Value> {
+    let path = root.join("target/contracts/prepared.json");
+    let value: serde_json::Value = serde_json::from_slice(&fs::read(path)?)?;
+    if value["inputs"].as_str() != Some(&fingerprint(root)?) {
+        return Err(std::io::Error::other(
+            "contract inputs changed; run contracts --prepare before a complete suite",
+        ));
+    }
+    Ok(value)
+}

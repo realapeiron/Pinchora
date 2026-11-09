@@ -86,6 +86,9 @@ async fn web_captcha_is_bound_to_its_member_and_requires_csrf() {
         .unwrap();
     let path = format!("/api/verify/{token}");
     assert_eq!(browser.get(&path).await.status, StatusCode::OK);
+    let help = browser.write(Method::POST, &format!("{path}/help"), json!({})).await;
+    assert_eq!(help.status, StatusCode::OK, "{}", help.text());
+    assert!(help.json()["message"].is_string());
     let csrf = browser.csrf.take();
     assert_eq!(
         browser

@@ -16,11 +16,28 @@ impl<'a> Visit<'a> for Modules {
         }
         visit::visit_item_fn(self, node);
     }
+    fn visit_macro(&mut self, node: &'a syn::Macro) {
+        self.macro_modules(node.tokens.clone());
+    }
     fn visit_item_mod(&mut self, node: &'a syn::ItemMod) {
         if forbidden(&node.ident.to_string()) {
             self.0.push(format!("module {}", node.ident));
         }
         visit::visit_item_mod(self, node);
+    }
+}
+
+impl Modules {
+    fn macro_modules(&mut self, tokens: proc_macro2::TokenStream) {
+        if let Ok(file) = syn::parse2::<syn::File>(tokens.clone()) {
+            self.visit_file(&file);
+        } else {
+            for token in tokens {
+                if let proc_macro2::TokenTree::Group(group) = token {
+                    self.macro_modules(group.stream());
+                }
+            }
+        }
     }
 }
 

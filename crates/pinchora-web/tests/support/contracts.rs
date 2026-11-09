@@ -5,10 +5,20 @@ use std::{
     path::Path,
     sync::{LazyLock, Mutex},
 };
+#[path = "../../../pinchora-commands/tests/support/inputs.rs"]
+mod inputs;
+static RECEIPT: LazyLock<Option<Value>> = LazyLock::new(|| {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // Ordinary filtered tests do not need a recording session or mutate snapshots.
+    inputs::receipt(&root).ok()
+});
 type Shapes = BTreeMap<String, BTreeSet<String>>;
 static OBSERVED: LazyLock<Mutex<Shapes>> = LazyLock::new(|| Mutex::new(BTreeMap::new()));
 static ROUTES: LazyLock<Vec<String>> = LazyLock::new(|| {
-    let mut routes: Vec<String> = serde_json::from_str(include_str!("../../../../contracts/routes.json")).unwrap();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join("target/contracts/routes.json"))
+        .unwrap_or_else(|_| include_str!("../../../../contracts/routes.json").to_owned());
+    let mut routes: Vec<String> = serde_json::from_str(&text).unwrap();
     // Literal paths win over parameters; catch-alls are last.
     routes.sort_by_key(|r| (r.contains('*'), r.matches('{').count(), std::cmp::Reverse(r.len())));
     routes
@@ -31,7 +41,17 @@ pub fn template(method: &str, path: &str) -> Option<String> {
     })
 }
 
+pub fn recording() -> bool {
+    RECEIPT.is_some()
+}
+
 pub fn record(method: &str, path: &str, status: u16, body: &[u8]) {
+    if !recording() {
+        return;
+    }
+    let Some(receipt) = &*RECEIPT else {
+        return;
+    };
     if !path.starts_with("/api/") {
         return;
     }
@@ -53,7 +73,11 @@ pub fn record(method: &str, path: &str, status: u16, body: &[u8]) {
     std::fs::create_dir_all(&dir).unwrap();
     let pid = std::process::id();
     let temp = dir.join(format!("{pid}.tmp"));
-    std::fs::write(&temp, serde_json::to_vec(&*observations).unwrap()).unwrap();
+    std::fs::write(
+        &temp,
+        serde_json::to_vec(&serde_json::json!({"receipt": receipt, "shapes": &*observations})).unwrap(),
+    )
+    .unwrap();
     std::fs::rename(temp, dir.join(format!("{pid}.json"))).unwrap();
 }
 fn walk(path: &str, value: &Value, out: &mut BTreeSet<String>) {
@@ -115,5 +139,21 @@ mod tests {
             Some("/api/house/rooms/{idx}".into())
         );
         assert_eq!(template("GET", "/api/not-a-route"), Some("/api/{*rest}".into()));
+    }
+}
+
+#[cfg(test)]
+mod regression_tests {
+    use super::*;
+    #[test]
+    fn heterogeneous_arrays_keep_rare_keys_and_types() {
+        let mut shape = BTreeSet::new();
+        walk("$", &serde_json::json!([{"n":1}, {"n":"1", "rare":null}]), &mut shape);
+        for field in ["$[].n:number", "$[].n:string", "$[].rare:null"] {
+            assert!(shape.contains(field), "{field}");
+        }
+        let mut removed = BTreeSet::new();
+        walk("$", &serde_json::json!([{"n":1}, {"n":"1"}]), &mut removed);
+        assert_ne!(shape, removed);
     }
 }

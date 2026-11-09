@@ -71,7 +71,8 @@ impl Catalog {
                     }
                 }
                 Stmt::Expr(expr, None) => result.extend(self.expr(expr, &locals)?),
-                _ => {}
+                Stmt::Item(Item::Use(_)) => {}
+                _ => return Err(format!("unsupported statement in router {name}; extend the collector").into()),
             }
         }
         Ok(result)

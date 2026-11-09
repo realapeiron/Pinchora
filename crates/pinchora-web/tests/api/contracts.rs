@@ -102,3 +102,34 @@ async fn message_studio_race_outcomes_have_deterministic_contract_fixtures() {
         StatusCode::UNPROCESSABLE_ENTITY
     );
 }
+
+#[tokio::test]
+async fn wishlist_delete_contract() {
+    let Some(h) = Harness::new("wishlist_delete_contract").await else {
+        return;
+    };
+    let mut browser = h.browser();
+    browser.login(&h, unique(), vec![]).await;
+    let entry = &pinchora_game::collection::Collection::get().critters[0].id;
+    let saved = browser
+        .write(
+            Method::PUT,
+            "/api/me/collection/wishlist",
+            json!({"entry_id":entry,"ping_on_spawn":true}),
+        )
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    let removed = browser
+        .write(
+            Method::DELETE,
+            &format!("/api/me/collection/wishlist/{entry}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(removed.status, StatusCode::OK, "{}", removed.text());
+    assert_eq!(removed.json(), json!({"ok":true}));
+    assert_eq!(
+        browser.get("/api/me/collection/wishlist").await.json()["items"],
+        json!([])
+    );
+}

@@ -34,6 +34,8 @@ twilight-http.workspace = true
 twilight-model.workspace = true
 
 [dev-dependencies]
+# Already transitive through Axum; frame-level observation must preserve trailers and errors.
+http-body = "1"
 pinchora-testkit = { path = "../pinchora-testkit" }
 image.workspace = true
 sqlx.workspace = true

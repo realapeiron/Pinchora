@@ -831,6 +831,10 @@
     "$.error:object",
     "$:object"
   ],
+  "DELETE /api/me/collection/wishlist/{id} 200": [
+    "$.ok:boolean",
+    "$:object"
+  ],
   "DELETE /api/me/guestbook/blocks/{id} 200": [
     "$.ok:boolean",
     "$:object"
@@ -11307,6 +11311,10 @@
     "$.error.code:string",
     "$.error.message:string",
     "$.error:object",
+    "$:object"
+  ],
+  "POST /api/verify/{token}/help 200": [
+    "$.message:string",
     "$:object"
   ],
   "POST /api/{*rest} 405": [
