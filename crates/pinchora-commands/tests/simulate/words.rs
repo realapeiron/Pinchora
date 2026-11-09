@@ -1163,10 +1163,23 @@ async fn wordle_race_keeps_boards_private_and_pays_the_first_solver() {
     let race = sim.click(ada, &lobby, "Start").await;
     assert_eq!(race.files[0].0, "race.png");
     let word = state(&sim, id).await["word"].as_str().expect("the word").to_owned();
-    assert!(
-        !race.description().contains(&word) && !race.content().contains(&word),
+    // The secret can be any dictionary word, including one this fixed sentence already uses,
+    // so the whole text is compared instead of searched for the word.
+    let ends = race
+        .description()
+        .rsplit_once("The race ends ")
+        .expect("the deadline")
+        .1;
+    assert!(ends.starts_with("<t:"), "{ends}");
+    assert_eq!(
+        race.description(),
+        format!(
+            "Find the same five-letter word, first! Your own board is private: press **Guess** \
+             and the board comes back only to you. The race ends {ends}"
+        ),
         "the word stays secret"
     );
+    assert!(!race.content().contains(&word), "the word stays secret");
 
     let outside = sim.click(outsider, &race, "Guess").await;
     assert!(
