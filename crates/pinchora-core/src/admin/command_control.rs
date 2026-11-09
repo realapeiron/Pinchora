@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 pub const MAX_ALIASES: usize = 50;
 pub const PROTECTED: &[&str] = &[
+    // registrations:protected:start
     "commandcontrol",
     "backup",
     "config show",
@@ -22,7 +23,7 @@ pub const PROTECTED: &[&str] = &[
     "ping",
     "privacy",
     "language",
-    "remind",
+    "remind", // registrations:protected:end
 ];
 
 /// Recovery paths are protected individually; unrelated setup actions remain policy-controlled.

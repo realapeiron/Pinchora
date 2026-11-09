@@ -15,19 +15,23 @@ pub const MAX_CHANNELS: usize = 50;
 /// what is the player's own business rather than the server's (their privacy and data, and the
 /// reminders they asked for).
 pub const NEVER_GATED: [&str; 8] = [
+    // registrations:never_gated:start
     "config",
     "help",
     "language",
     "ping",
     "privacy",
-    "remind",
     "commandcontrol",
     "backup",
+    "remind", // registrations:never_gated:end
 ];
 
 /// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
 /// module either.
-pub const NEVER_GATED_PREFIXES: [&str; 5] = ["hp", "pr", "rm", "kc", "cf"];
+pub const NEVER_GATED_PREFIXES: [&str; 5] = [
+    // registrations:never_gated_prefixes:start
+    "hp", "pr", "kc", "cf", "rm", // registrations:never_gated_prefixes:end
+];
 
 /// Where in a server a module works.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

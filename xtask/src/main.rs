@@ -13,6 +13,7 @@ const END: &str = "<!-- crate-table:end -->";
 mod contracts;
 mod dependency;
 mod names;
+mod registrations;
 mod size;
 mod source;
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
@@ -22,13 +23,14 @@ fn main() -> Result {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let update = args.get(1).is_some_and(|s| s == "--update");
     match args.first().map(String::as_str) {
+        Some("registrations") => registrations::run(root, args.get(1).is_some_and(|s| s == "--check")),
         Some("architecture") => architecture(args.get(1).is_some_and(|s| s == "--check")),
         Some("contracts") => contracts::run(root, update, args.get(1).is_some_and(|s| s == "--prepare")),
         Some("depcheck") => dependency::run(root),
         Some("names") => names::run(root),
         Some("size") => size::run(root, update),
         Some("check") => {
-            let results = [dependency::run(root), names::run(root), size::run(root, false), contracts::run(root, false, false)];
+            let results = [registrations::run(root, true), dependency::run(root), names::run(root), size::run(root, false), contracts::run(root, false, false)];
             let failures: Vec<_> = results.into_iter().filter_map(std::result::Result::err).collect();
             for failure in &failures { eprintln!("{failure}"); }
             if failures.is_empty() { Ok(()) } else { Err(format!("{} quality gates failed", failures.len()).into()) }

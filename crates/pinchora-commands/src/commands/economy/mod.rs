@@ -10,3 +10,5 @@ pub(crate) mod shop;
 pub(crate) mod stall;
 pub(crate) mod store;
 pub(crate) mod surge;
+
+pub(crate) mod registration;

@@ -32,6 +32,7 @@ pub enum Deferral {
 /// a command whose success is public stays out. A unit test checks that every entry names a real
 /// command, and the simulator that nothing listed here ever answers publicly.
 const PRIVATE: &[&str] = &[
+    // registrations:private:start
     "workflow",
     "fish dock",
     "fish contest",
@@ -160,20 +161,22 @@ const PRIVATE: &[&str] = &[
     "sticky",
     "schedule",
     "game lol unlink",
-    "trackers",
+    "trackers", // registrations:private:end
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.
 const OPENS_FORM: &[&str] = &[
+    // registrations:opens_form:start
     "customcommand create",
     "customcommand edit",
     "event create",
-    "form open",
+    "form open", // registrations:opens_form:end
 ];
 
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator
 /// checks that every modal it sees opened comes from one of these.
 const OPENS_MODAL: &[&str] = &[
+    // registrations:opens_modal:start
     "cd:w",
     "d9p:answer",
     "d9s:answer",
@@ -203,7 +206,7 @@ const OPENS_MODAL: &[&str] = &[
     "ag:answer",
     "yt:answer",
     "gn:answer",
-    "of:m",
+    "of:m", // registrations:opens_modal:end
 ];
 
 impl Deferral {
@@ -224,8 +227,9 @@ impl Deferral {
             return Self::Never;
         }
         match &interaction.data {
+            // registrations:defer_overrides:start
             Some(InteractionData::ApplicationCommand(command)) if command.name == "tag" && command.options.iter().any(|o| o.name == "name" && matches!(&o.value, twilight_model::application::interaction::application_command::CommandOptionValue::String(s) if s.starts_with("wf:"))) => Self::Private,
-            Some(InteractionData::MessageComponent(component)) if component.custom_id.starts_with("wf:") => Self::Private,
+            Some(InteractionData::MessageComponent(component)) if component.custom_id.starts_with("wf:") => Self::Private, // registrations:defer_overrides:end
             Some(InteractionData::ApplicationCommand(command)) => Self::for_path(&command_path(command)),
             Some(InteractionData::MessageComponent(component)) if covers(OPENS_MODAL, &component.custom_id, ':') => {
                 Self::Never

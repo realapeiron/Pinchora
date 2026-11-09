@@ -1,0 +1,44 @@
+{
+  "private": [
+    "autoroles",
+    "color",
+    "roles"
+  ],
+  "help_community": [
+    "roles",
+    "autoroles",
+    "color"
+  ],
+  "routes": [
+    ["autoroles add", "setup roles auto-add", 5],
+    ["autoroles list", "setup roles auto-list", 5],
+    ["autoroles remove", "setup roles auto-remove", 5],
+    ["autoroles sticky", "setup roles auto-sticky", 5],
+    ["color list", "color list", 0],
+    ["color pick", "color pick", 0],
+    ["color remove", "color remove", 0],
+    ["color set", "color set", 0],
+    ["color setup", "setup roles color-setup", 5],
+    ["roles add", "setup roles panel-add", 5],
+    ["roles panel", "setup roles panel-create", 5],
+    ["roles post", "setup roles panel-post", 5],
+    ["roles remove", "setup roles panel-remove", 5],
+    ["roles temp", "setup roles panel-temp", 5]
+  ],
+  "legacy_leaves": [
+    "autoroles add",
+    "autoroles list",
+    "autoroles remove",
+    "autoroles sticky",
+    "color list",
+    "color pick",
+    "color remove",
+    "color set",
+    "color setup",
+    "roles add",
+    "roles panel",
+    "roles post",
+    "roles remove",
+    "roles temp"
+  ]
+}

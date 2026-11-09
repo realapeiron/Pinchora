@@ -8,3 +8,5 @@ pub(crate) mod profile;
 pub(crate) mod share;
 #[allow(clippy::module_inception)]
 pub(in crate::commands) mod social;
+
+pub(crate) mod registration;

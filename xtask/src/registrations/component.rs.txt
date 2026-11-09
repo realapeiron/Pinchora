@@ -1,0 +1,10 @@
+pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> anyhow::Result<()> {
+    if crate::infra::gate::refuses_component(cx, custom_id).await? {
+        return Ok(());
+    }
+    let mut parts = custom_id.split(':');
+    match parts.next() {
+        /* dispatch arms */
+        _ => cx.reply_ephemeral(t!(cx.lang(), "component.button-expired")).await,
+    }
+}

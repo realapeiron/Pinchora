@@ -1,0 +1,100 @@
+{
+  "private": [
+    "pet streak",
+    "bio",
+    "character",
+    "customize",
+    "friends remove",
+    "pet adopt",
+    "pet list",
+    "pet rename"
+  ],
+  "opens_modal": [
+    "ca:hex",
+    "ca:name",
+    "cs:h"
+  ],
+  "slash_only": [
+    "character",
+    "customize"
+  ],
+  "help_friends": [
+    "friends",
+    "hug",
+    "pat",
+    "wave",
+    "highfive"
+  ],
+  "help_pets": [
+    "pet"
+  ],
+  "help_profile": [
+    "bio",
+    "character",
+    "customize"
+  ],
+  "help_start": [
+    "profile"
+  ],
+  "ephemeral": [
+    "profile"
+  ],
+  "routes": [
+    ["bio", "customize bio", 10],
+    ["character", "character", 0],
+    ["customize background", "customize background", 0],
+    ["customize badges", "customize badges", 0],
+    ["customize showcase", "customize showcase", 0],
+    ["customize style", "customize style", 0],
+    ["customize title", "customize title", 0],
+    ["friends add", "friends add", 0],
+    ["friends list", "friends list", 0],
+    ["friends remove", "friends remove", 0],
+    ["highfive", "highfive", 0],
+    ["hug", "hug", 0],
+    ["pat", "pat", 0],
+    ["pet adopt", "pet adopt", 0],
+    ["pet capsule", "pet capsule", 0],
+    ["pet list", "pet list", 0],
+    ["pet rename", "pet rename", 0],
+    ["pet streak", "pet streak", 0],
+    ["pet trip claim", "pet trip claim", 0],
+    ["pet trip go", "pet trip go", 0],
+    ["pet view", "pet view", 0],
+    ["profile", "profile", 0],
+    ["wave", "wave", 0]
+  ],
+  "legacy_leaves": [
+    "bio",
+    "character",
+    "customize background",
+    "customize badges",
+    "customize showcase",
+    "customize style",
+    "customize title",
+    "friends add",
+    "friends list",
+    "friends remove",
+    "highfive",
+    "hug",
+    "pat",
+    "pet adopt",
+    "pet capsule",
+    "pet list",
+    "pet rename",
+    "pet streak",
+    "pet trip claim",
+    "pet trip go",
+    "pet view",
+    "profile",
+    "wave"
+  ],
+  "help_areas": [
+    "profile",
+    "pets",
+    "friends"
+  ],
+  "text_allowed": [
+    "customize bio"
+  ]
+}

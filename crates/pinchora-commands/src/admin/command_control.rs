@@ -9,6 +9,18 @@ use twilight_model::application::{
     interaction::application_command::{CommandData, CommandOptionValue},
 };
 
+const EPHEMERAL: &[&str] = &[
+    // registrations:ephemeral:start
+    "info",
+    "stats",
+    "balance",
+    "inventory",
+    "leaderboard",
+    "dex",
+    "rank",
+    "profile", // registrations:ephemeral:end
+];
+
 pub fn control_catalog() -> Vec<Command> {
     fn walk(out: &mut Vec<Command>, path: String, description: String, permissions: &str, options: &[CommandOption]) {
         let top = path.split(' ').next().unwrap_or_default();
@@ -17,10 +29,7 @@ pub fn control_catalog() -> Vec<Command> {
             description,
             permissions: permissions.into(),
             protected: crate::infra::routing::protected(&path),
-            ephemeral_supported: matches!(
-                top,
-                "balance" | "rank" | "profile" | "info" | "inventory" | "leaderboard" | "stats" | "dex"
-            ),
+            ephemeral_supported: EPHEMERAL.contains(&top),
         });
         for option in options.iter().filter(|o| {
             matches!(
@@ -69,10 +78,7 @@ pub fn control_catalog() -> Vec<Command> {
                     .bits()
                     .to_string();
             }
-            command.ephemeral_supported = matches!(
-                root,
-                "balance" | "rank" | "profile" | "info" | "inventory" | "leaderboard" | "stats" | "dex"
-            );
+            command.ephemeral_supported = EPHEMERAL.contains(&root);
         }
     }
     out
@@ -127,16 +133,42 @@ pub(crate) fn path(data: &CommandData) -> String {
     path
 }
 /// Every prefix has one owning command. More specific paths keep subcommand rules in force.
+// registrations:component_owners:start
 pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
     Some(match prefix {
-        "he" => "house edit",
-        "hv" => "house view",
-        "hu" => "house upgrade",
-        "dw" | "df" | "dn" => "house decorate",
-        "gb" => "house guestbook",
-        "rc" => "house contest",
+        "wf" => "tag",
+        "tg" => "customcommand list",
+        "cm" => "customcommand",
+        "ms" => "customcommand",
+        "sc" => "stats",
+        "vc" | "vo" => "voice",
+        "nf" => "info user",
+        "hp" => "help",
+        "pr" => "privacy",
+        "kc" => "commandcontrol",
+        "cf" => "backup",
+        "af" => "afk set",
+        "sk" => "sticky set",
+        "sm" => "schedule add",
         "pe" => "plaza edit",
         "pd" => "plaza donate",
+        "pt" => "partner",
+        "gw" => "giveaway",
+        "cv" => "confess",
+        "sg" => "suggest",
+        "pl" => "poll",
+        "tk" | "tp" | "tf" | "tr" => "ticket",
+        "sn" => "feeds list",
+        "gt" => "game lol profile",
+        "sr" => "starboard top",
+        "in" => "invites top",
+        "tl" => "invites temp",
+        "rm" => "remind",
+        "bd" => "birthday set",
+        "ev" => "event",
+        "qd" => "qotd queue",
+        "fm" => "form open",
+        "mml" => "modmail close",
         "mk" => "shop market",
         "cb" | "cp" => "shop catalog",
         "iv" => "inventory",
@@ -144,15 +176,13 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "su" => "stall manage",
         "sb" => "stall view",
         "gf" => "gift",
-        "pc" => "pet view",
-        "pa" => "pet adopt",
-        "ps" => "pet list",
-        "pn" => "pet list",
-        "py" => "pet trip",
+        "qc" => "quests",
+        "ss" => "surge",
+        "st" => "store",
+        "lb" => "leaderboard",
         "fr" => "fish cast",
         "fx" => "fish gear",
         "fz" => "fish sell",
-        "qc" => "quests",
         "tt" => "duel tictactoe",
         "c4" => "duel connect4",
         "rp" => "duel rps",
@@ -175,7 +205,6 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "dy" => "play derby",
         "sz" => "play shells",
         "hs" => "play heist",
-        "ss" => "surge",
         "hl" => "party hotpearl",
         "ac" => "party acronym",
         "cn" => "party postcard",
@@ -186,67 +215,47 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "cd" | "mb" => "critterdrop",
         "bc" => "dex",
         "kp" => "crabpot",
-        "st" => "store",
-        "rr" | "rb" | "rs" => "roles post",
-        "cr" => "color pick",
-        "pt" => "partner",
-        "fd" => "friends list",
-        "hg" => "hug",
-        "gw" => "giveaway",
-        "cv" => "confess",
-        "wf" => "tag",
-        "tg" => "customcommand list",
-        "cm" => "customcommand",
-        "ms" => "customcommand",
-        "sg" => "suggest",
-        "pl" => "poll",
-        "sc" => "stats",
-        "tk" | "tp" | "tf" | "tr" => "ticket",
+        "he" => "house edit",
+        "hv" => "house view",
+        "hu" => "house upgrade",
+        "dw" | "df" | "dn" => "house decorate",
+        "gb" => "house guestbook",
+        "rc" => "house contest",
+        "rx" => "roblox verify",
         "am" | "ax" => "automod",
         "vf" | "cq" => "verify",
         "rd" => "raid",
-        "sn" => "feeds list",
-        "vc" | "vo" => "voice",
-        "nf" => "info user",
-        "gt" => "game lol profile",
+        "an" | "vp" => "antinuke",
         "xi" => "xp",
-        "sr" => "starboard top",
-        "in" => "invites top",
-        "tl" => "invites temp",
-        "lb" => "leaderboard",
+        "ah" => "achievements",
+        "rr" | "rb" | "rs" => "roles post",
+        "cr" => "color pick",
+        "pc" => "pet view",
+        "pa" => "pet adopt",
+        "ps" => "pet list",
+        "pn" => "pet list",
+        "py" => "pet trip",
+        "fd" => "friends list",
+        "hg" => "hug",
         "ch" | "ca" => "character",
         "cz" | "ti" | "cs" | "sw" => "customize",
-        "hp" => "help",
-        "pr" => "privacy",
-        "rm" => "remind",
-        "kc" => "commandcontrol",
-        "cf" => "backup",
-        "an" | "vp" => "antinuke",
-        "bd" => "birthday set",
-        "ah" => "achievements",
-        "af" => "afk set",
-        "sk" => "sticky set",
-        "sm" => "schedule add",
-        "ev" => "event",
-        "qd" => "qotd queue",
-        "fm" => "form open",
-        "mml" => "modmail close",
-        "rx" => "roblox verify",
         _ => return None,
     })
-}
+} // registrations:component_owners:end
 pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<Option<&'static str>> {
+    // registrations:owner_prelude:start
     if custom_id.starts_with("sl:eco:") {
         return Ok(Some(if custom_id.starts_with("sl:eco:step:") {
             "economyv2 jobs"
         } else {
             "economyv2 trade-review"
         }));
-    }
+    } // registrations:owner_prelude:end
     let mut parts = custom_id.split(':');
     let prefix = parts.next().unwrap_or_default();
     let action = parts.next().unwrap_or_default();
     let path = match (prefix, action) {
+        // registrations:owner_actions:start
         ("rx", "check") => Some("roblox verify"),
         ("ev", "c") => Some("event create"),
         ("ev", "p") => Some("event attendees"),
@@ -293,7 +302,7 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
                 Some("go") => Some("xp import mee6"),
                 _ => owner(prefix),
             }
-        }
+        } // registrations:owner_actions:end
         _ => owner(prefix),
     };
     Ok(path)

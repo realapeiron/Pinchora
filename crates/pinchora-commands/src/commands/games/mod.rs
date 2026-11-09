@@ -16,3 +16,5 @@ pub(crate) mod reef_party;
 pub(crate) mod rps;
 pub(crate) mod trivia;
 pub(crate) mod wordle;
+
+pub(crate) mod registration;
