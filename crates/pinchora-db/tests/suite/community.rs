@@ -1,5 +1,5 @@
 //! Database transitions for the community pack, using the assigned isolated PostgreSQL.
-use pinchora_core::community::CountResult;
+use pinchora_core::community::community::CountResult;
 use pinchora_db::Db;
 
 use crate::support::db;
@@ -165,7 +165,7 @@ async fn concurrent_form_creation_and_submissions_obey_limits() {
         db.import_config(
             guild,
             &backup,
-            pinchora_core::config_backup::Policy::Merge,
+            pinchora_core::admin::config_backup::Policy::Merge,
             Default::default()
         )
         .await

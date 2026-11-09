@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use pinchora_core::{
-    leveling::week_start,
-    leveling_parity::{Curve, LevelingParity},
-};
+use pinchora_core::progression::leveling::week_start;
+use pinchora_core::progression::leveling_policy::Curve;
+use pinchora_core::progression::leveling_policy::LevelingPolicy;
 use pinchora_db::Db;
 
 #[tokio::test]
@@ -17,7 +16,7 @@ async fn policy_voice_ledger_and_leave_reset() {
     let base = crate::support::id();
     let (guild, user) = (base, base + 1);
     db.guild_settings(guild).await.unwrap();
-    let mut config = LevelingParity {
+    let mut config = LevelingPolicy {
         curve: Curve::Linear {
             base: 100,
             per_level: 25,
@@ -25,8 +24,8 @@ async fn policy_voice_ledger_and_leave_reset() {
         ..Default::default()
     };
     config.vanity_slug = Some(format!("level-{guild}"));
-    db.save_leveling_parity(guild, &config).await.unwrap();
-    assert_eq!(db.leveling_parity(guild).await.unwrap(), config);
+    db.save_leveling_policy(guild, &config).await.unwrap();
+    assert_eq!(db.leveling_policy(guild).await.unwrap(), config);
     assert_eq!(
         db.vanity_guild(config.vanity_slug.as_deref().unwrap()).await.unwrap(),
         Some(guild)
@@ -81,12 +80,12 @@ async fn leave_grace_preserves_short_rejoins_and_expires_once() {
     let Some((db, guild, user)) = fixture().await else {
         return;
     };
-    let config = LevelingParity {
+    let config = LevelingPolicy {
         reset_on_leave: true,
         leave_grace_secs: 300,
         ..Default::default()
     };
-    db.save_leveling_parity(guild, &config).await.unwrap();
+    db.save_leveling_policy(guild, &config).await.unwrap();
     let now = chrono::Utc::now();
     let week = week_start(now);
     db.add_voice_xp(guild, &[(user, 255)], week).await.unwrap();
@@ -162,17 +161,17 @@ async fn changing_curve_preserves_xp_and_recomputes_achievement_level() {
     db.edit_member_xp(guild, user, pinchora_db::XpEdit::Set, 255)
         .await
         .unwrap();
-    assert_eq!(db.leveling_parity(guild).await.unwrap().level_of(255), 2);
-    let config = LevelingParity {
+    assert_eq!(db.leveling_policy(guild).await.unwrap().level_of(255), 2);
+    let config = LevelingPolicy {
         curve: Curve::Linear { base: 10, per_level: 0 },
         ..Default::default()
     };
-    db.save_leveling_parity(guild, &config).await.unwrap();
+    db.save_leveling_policy(guild, &config).await.unwrap();
     let xp = db.member_rank(guild, user).await.unwrap().unwrap().xp;
     assert_eq!(xp, 255);
-    assert_eq!(db.leveling_parity(guild).await.unwrap().level_of(xp), 25);
+    assert_eq!(db.leveling_policy(guild).await.unwrap().level_of(xp), 25);
     assert_eq!(
-        db.achievement_progress(guild, user, pinchora_core::achievements::Kind::Level)
+        db.achievement_progress(guild, user, pinchora_core::progression::achievements::Kind::Level)
             .await
             .unwrap(),
         25

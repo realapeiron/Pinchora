@@ -2,7 +2,7 @@
 
 use std::sync::LazyLock;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use serde::Deserialize;
 
 use crate::{Availability, Category, Content, Currency, Furniture, Rarity, pets};
@@ -179,7 +179,7 @@ impl Trip {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::trips::*;
 
     fn rolls(shells: f64, furniture: f64, pick: f64, story: f64) -> Rolls {
         Rolls {

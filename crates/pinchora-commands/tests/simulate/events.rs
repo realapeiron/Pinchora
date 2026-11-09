@@ -1,6 +1,6 @@
-//! F21 event form, public RSVP card, capacity, promotion and recurrence.
+//! event form, public RSVP card, capacity, promotion and recurrence.
 
-use super::*;
+use crate::*;
 
 const MANAGE_GUILD: u64 = 1 << 5;
 
@@ -288,7 +288,7 @@ async fn scheduled_event_sync_creates_updates_and_deletes_with_manage_events() {
         location: "Reef".into(),
         channel_id: Some(CHANNEL_ID as i64),
         host_id: None,
-        options: pinchora_core::events::default_options(),
+        options: pinchora_core::community::events::default_options(),
         required_role_id: None,
         reminders: vec![60, 15],
         recurrence: None,
@@ -365,7 +365,7 @@ async fn event_admin_paths_and_sync_failure_do_not_block_local_cancel() {
                 location: String::new(),
                 channel_id: None,
                 host_id: Some(user as i64),
-                options: pinchora_core::events::default_options(),
+                options: pinchora_core::community::events::default_options(),
                 required_role_id: None,
                 reminders: vec![60, 15],
                 recurrence: None,
@@ -454,7 +454,12 @@ async fn event_module_blocks_commands_and_forged_cross_guild_components() {
     sim.guild = owner_guild;
     sim.app
         .db
-        .set_module(sim.guild, pinchora_core::modules::Module::Events, Some(false), None)
+        .set_module(
+            sim.guild,
+            pinchora_core::admin::modules::Module::Events,
+            Some(false),
+            None,
+        )
         .await
         .unwrap();
     sim.app.forget_guild_settings(sim.guild).await;
@@ -491,7 +496,7 @@ async fn event_reminders_two_pods_respect_delivery_privacy_and_replay() {
                 location: String::new(),
                 channel_id: None,
                 host_id: None,
-                options: pinchora_core::events::default_options(),
+                options: pinchora_core::community::events::default_options(),
                 required_role_id: None,
                 reminders: vec![60, 15],
                 recurrence: None,

@@ -1,8 +1,11 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SpriteArt, text};
+use crate::cards::PIXEL;
+use crate::cards::SpriteArt;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{background, compact_in, data_uri_png, escape, mix, panel, truncate},
@@ -149,8 +152,8 @@ impl Tide2048Card<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::tide2048::*;
 
     fn art() -> Vec<u8> {
         // A 24×12 picture as real PNG bytes, so the renderer can decode it.

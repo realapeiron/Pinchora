@@ -1,6 +1,6 @@
 //! Runs against a real PostgreSQL when `PINCHORA_TEST_DATABASE_URL` is set; skipped otherwise.
 
-use pinchora_core::stats::PlayerStats;
+use pinchora_core::admin::stats::PlayerStats;
 use pinchora_db::{
     BefriendOutcome, Cosmetic, CustomizeBuy, DEFAULT_ROD, DEFAULT_SPOT, DailyOutcome, Db, GearBuy, GearRow, LogKind,
     MAX_BADGES, MAX_FRIENDS, MAX_PANEL_ROLES, MAX_REP_ROLES, MAX_XP_RULES, MilestoneReward, NewCatch, OutfitRow,

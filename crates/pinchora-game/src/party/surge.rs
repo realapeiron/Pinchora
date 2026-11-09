@@ -56,7 +56,7 @@ pub const EVERY_CHOICES: [i32; 5] = [6, 12, 24, 48, 168];
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::surge::*;
 
     #[test]
     fn the_goal_grows_with_the_crowd_up_to_a_limit() {

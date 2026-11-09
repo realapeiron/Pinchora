@@ -1,4 +1,4 @@
-use super::*;
+use crate::db::*;
 
 #[tokio::test]
 async fn accessories_are_bought_once_and_outfits_keep_three_slots() {

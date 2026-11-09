@@ -11,10 +11,13 @@ use std::{
     sync::LazyLock,
 };
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{Dice, filter, hotpearl_tr};
 use crate::lang;
+use crate::party::Dice;
+use crate::party::filter;
+use crate::party::hotpearl_tr;
 
 /// Lives a table plays with unless the host picks another number, and the range they may pick from.
 pub const DEFAULT_LIVES: i32 = 2;
@@ -326,7 +329,7 @@ pub fn next_player(order: &[(u64, bool)], after: u64) -> Option<u64> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::hotpearl::*;
 
     #[test]
     fn a_win_needs_real_words_from_the_table_and_the_winner() {

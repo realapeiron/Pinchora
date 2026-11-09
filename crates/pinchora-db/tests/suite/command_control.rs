@@ -1,7 +1,8 @@
-use pinchora_core::{
-    command_control::{Config, Rule},
-    config_backup::{self, Names, Policy},
-};
+use pinchora_core::admin::command_control::Config;
+use pinchora_core::admin::command_control::Rule;
+use pinchora_core::admin::config_backup;
+use pinchora_core::admin::config_backup::Names;
+use pinchora_core::admin::config_backup::Policy;
 use pinchora_db::Db;
 use serde_json::json;
 use std::{collections::BTreeMap, time::Duration};
@@ -50,7 +51,7 @@ async fn palette_swaps_are_atomic_and_duplicate_colours_fail_read_only_validatio
     duplicate["role_id"] = json!("103");
     invalid.sections.get_mut("color_roles").unwrap().push(duplicate);
     let points = db.config_restore_points(guild).await.unwrap();
-    assert!(config_backup::validate_shape(&invalid, pinchora_core::i18n::Lang::En).is_err());
+    assert!(config_backup::validate_shape(&invalid, pinchora_core::infra::i18n::Lang::En).is_err());
     assert_eq!(db.config_restore_points(guild).await.unwrap(), points);
     assert_eq!(db.export_config(guild, Names::default()).await.unwrap(), replaced);
 }
@@ -103,7 +104,7 @@ async fn round_trip_dry_read_restore_and_privacy() {
     sqlx::query("INSERT INTO custom_responders(guild_id,name,trigger_kind,responses,created_by) VALUES($1,'Greeting','member_join',ARRAY['Welcome!'],123456789),($1,'Greeting','member_leave',ARRAY['Goodbye!'],123456789)")
         .bind(guild as i64).execute(db.pool()).await.unwrap();
     let first = db.export_config(guild, Names::default()).await.unwrap();
-    config_backup::validate_shape(&first, pinchora_core::i18n::Lang::En).unwrap();
+    config_backup::validate_shape(&first, pinchora_core::infra::i18n::Lang::En).unwrap();
     db.validate_backup_types(&first).await.unwrap();
     assert!(
         db.config_restore_points(guild).await.unwrap().is_empty(),

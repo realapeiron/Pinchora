@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 #[tokio::test]
 async fn command_control_backup_preview_import_restore_and_permissions() {
     let Some(h) = Harness::new("command_control_backup").await else {
@@ -35,7 +35,7 @@ async fn command_control_backup_preview_import_restore_and_permissions() {
             "quick game missing from command controls: {path}"
         );
     }
-    let mut config = pinchora_core::command_control::Config::default();
+    let mut config = pinchora_core::admin::command_control::Config::default();
     config.aliases.insert("w".into(), "play wordle".into());
     let saved = browser
         .write(Method::PUT, &format!("{path}/command-control"), json!(config))
@@ -141,7 +141,7 @@ async fn backup_routes_require_csrf_scope_restore_points_and_revalidate_dangerou
         .state
         .app
         .db
-        .export_config(foreign, pinchora_core::config_backup::Names::default())
+        .export_config(foreign, pinchora_core::admin::config_backup::Names::default())
         .await
         .unwrap();
     let point = h
@@ -151,8 +151,8 @@ async fn backup_routes_require_csrf_scope_restore_points_and_revalidate_dangerou
         .import_config(
             foreign,
             &foreign_backup,
-            pinchora_core::config_backup::Policy::Merge,
-            pinchora_core::config_backup::Names::default(),
+            pinchora_core::admin::config_backup::Policy::Merge,
+            pinchora_core::admin::config_backup::Names::default(),
         )
         .await
         .unwrap();
@@ -213,8 +213,11 @@ async fn backup_utility_and_event_settings_validate_and_localize() {
         "next_run_at":"2030-01-01T00:00:00Z","enabled":true
     }]);
     assert!(
-        pinchora_commands::validate_backup(&serde_json::from_value(bad).unwrap(), pinchora_core::i18n::Lang::En)
-            .is_err()
+        pinchora_commands::validate_backup(
+            &serde_json::from_value(bad).unwrap(),
+            pinchora_core::infra::i18n::Lang::En
+        )
+        .is_err()
     );
     assert_eq!(h.state.app.db.config_restore_points(guild).await.unwrap(), before);
     let catalog = browser.get(&format!("{path}/command-control")).await.json();
@@ -232,14 +235,17 @@ async fn backup_utility_and_event_settings_validate_and_localize() {
                 .any(|c| c["path"] == command && c["protected"] == false)
         );
     }
-    for lang in [pinchora_core::i18n::Lang::En, pinchora_core::i18n::Lang::Tr] {
+    for lang in [
+        pinchora_core::infra::i18n::Lang::En,
+        pinchora_core::infra::i18n::Lang::Tr,
+    ] {
         for section in [
             "utility_settings",
             "sticky_messages",
             "scheduled_messages",
             "event_settings",
         ] {
-            assert!(pinchora_core::i18n::exact(lang, &format!("config_backup.section.{section}")).is_some());
+            assert!(pinchora_core::infra::i18n::exact(lang, &format!("config_backup.section.{section}")).is_some());
         }
     }
 }

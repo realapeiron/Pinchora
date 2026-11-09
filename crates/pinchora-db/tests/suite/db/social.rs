@@ -1,4 +1,4 @@
-use super::*;
+use crate::db::*;
 
 #[tokio::test]
 async fn one_partner_each_even_when_pairings_race() {

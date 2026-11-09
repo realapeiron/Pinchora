@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
     save(
         "lobby",
         r.party_lobby_card(&PartyLobbyCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             title: "Hot Pearl",
             tagline: "A syllable appears. Type a word that contains it before the pearl pops!",
             players: &players,
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
         save(
             name,
             r.pearl_card(&PearlCard {
-                lang: pinchora_core::i18n::Lang::En,
+                lang: pinchora_core::infra::i18n::Lang::En,
                 syllable: "ear",
                 seats: &seats,
                 banner: "Marlowe played PEARL  ·  Captain Pinch is up",
@@ -131,7 +131,7 @@ fn main() -> anyhow::Result<()> {
     save(
         "vote",
         r.entries_card(&EntriesCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             title: "Acronym Tide",
             subtitle: "Which phrase is best for T · W · R · S?",
             chip: "Round 2/3",
@@ -161,7 +161,7 @@ fn main() -> anyhow::Result<()> {
     save(
         "reveal-postcard",
         r.entries_card(&EntriesCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             title: "Caption the Postcard",
             subtitle: "The votes are in",
             chip: "Round 1/3",
@@ -202,7 +202,7 @@ fn main() -> anyhow::Result<()> {
     save(
         "race",
         r.race_card(&RaceCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             title: "Wordle Race",
             racers: &racers,
             footer: "First to find the word wins",
@@ -212,7 +212,7 @@ fn main() -> anyhow::Result<()> {
     save(
         "postcard",
         r.postcard_card(&PostcardCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             scene: &scene,
             place: "Driftwood Dunes",
             stamp: "Round 1/3",
@@ -221,7 +221,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let open = RatherCard {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         category: "Silly",
         a: "Have hiccups that sound like a duck",
         b: "Sneeze glitter every time",
@@ -233,7 +233,7 @@ fn main() -> anyhow::Result<()> {
     save(
         "rather-result",
         r.rather_card(&RatherCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             votes: Some((7, 3)),
             closed: true,
             ..open
@@ -258,7 +258,7 @@ fn main() -> anyhow::Result<()> {
         save(
             name,
             r.prompt_card(&PromptCard {
-                lang: pinchora_core::i18n::Lang::En,
+                lang: pinchora_core::infra::i18n::Lang::En,
                 tone,
                 name: "Captain Pinch",
                 text,

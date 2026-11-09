@@ -1,7 +1,8 @@
-//! F11 uses real Postgres/Redis and a Discord REST mock, including recovery requests.
-use super::*;
+//! uses real Postgres/Redis and a Discord REST mock, including recovery requests.
+use crate::*;
 use pinchora_commands::{on_antinuke_audit, restore_antinuke, restore_antinuke_actor_roles};
-use pinchora_core::anti_nuke::{Config, Limit};
+use pinchora_core::moderation::anti_nuke::Config;
+use pinchora_core::moderation::anti_nuke::Limit;
 use twilight_model::guild::audit_log::AuditLogEntry;
 #[derive(Clone)]
 struct SafetyMock {
@@ -374,7 +375,7 @@ async fn antinuke_commands_enforce_manage_owner_trust_and_clicks() {
             .guild_modules(sim.guild)
             .await
             .unwrap()
-            .rule(pinchora_core::modules::Module::AntiNuke)
+            .rule(pinchora_core::admin::modules::Module::AntiNuke)
             .enabled
     );
     let reply = sim.command(user, "antinuke", json!([sub("disable", vec![])])).await;
@@ -1031,7 +1032,12 @@ async fn antinuke_disabled_module_avoids_database_reads() {
     };
     sim.app
         .db
-        .set_module(sim.guild, pinchora_core::modules::Module::AntiNuke, Some(false), None)
+        .set_module(
+            sim.guild,
+            pinchora_core::admin::modules::Module::AntiNuke,
+            Some(false),
+            None,
+        )
         .await
         .unwrap();
     sim.app.announce_guild_change(sim.guild).await;

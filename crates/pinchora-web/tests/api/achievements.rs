@@ -1,5 +1,5 @@
 //! Achievements' actual authorization, audit and cache boundaries.
-use super::*;
+use crate::*;
 
 fn body() -> Value {
     json!({"name":"First pearl","description":"A milestone","icon":"star","kind":"custom",
@@ -51,7 +51,7 @@ async fn achievement_routes_require_manager_csrf_and_record_real_before_after() 
             guild,
             owner,
             id.parse().unwrap(),
-            pinchora_core::achievements::Kind::Custom,
+            pinchora_core::progression::achievements::Kind::Custom,
         )
         .await
         .unwrap();
@@ -89,7 +89,7 @@ async fn achievement_web_edit_publishes_invalidation_and_turkish_labels() {
     let (guild, _, mut manager) = h.managed_server().await;
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let base = format!("/api/guilds/{guild}/achievements");

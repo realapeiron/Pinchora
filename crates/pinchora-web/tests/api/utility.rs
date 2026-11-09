@@ -1,6 +1,6 @@
 //! Utility API routes through the same managed-guild browser harness as the other pages.
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn schedule_can_be_previewed_edited_paused_and_removed() {
@@ -11,7 +11,7 @@ async fn schedule_can_be_previewed_edited_paused_and_removed() {
     let base = format!("/api/guilds/{guild}/utility");
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let localized = browser.get(&base).await.json();
@@ -19,7 +19,7 @@ async fn schedule_can_be_previewed_edited_paused_and_removed() {
     assert_eq!(localized["strings"]["MESSAGES"], "MESAJLAR");
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::En))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::En))
         .await
         .unwrap();
 

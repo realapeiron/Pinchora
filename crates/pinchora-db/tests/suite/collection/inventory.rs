@@ -1,4 +1,4 @@
-use super::*;
+use crate::collection::*;
 
 #[tokio::test]
 async fn glimmer_duplicate_recycles_and_crafts_bound_loot() {

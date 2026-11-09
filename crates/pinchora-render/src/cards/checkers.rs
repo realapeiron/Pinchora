@@ -1,8 +1,12 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::boards::{self, Marks, OUTLINE, SQUARE};
+use crate::cards::boards;
+use crate::cards::boards::Marks;
+use crate::cards::boards::OUTLINE;
+use crate::cards::boards::SQUARE;
 use crate::{Theme, svg::background};
 
 /// The two sides' pearls (body, light, shade): a white pearl and a black one.
@@ -188,8 +192,8 @@ impl CheckersCard<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::checkers::*;
 
     fn start() -> [u8; 32] {
         std::array::from_fn(|sq| match sq {

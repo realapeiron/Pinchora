@@ -6,7 +6,8 @@
 
 use image::{Delay, Frame, Rgba, RgbaImage, codecs::gif::GifEncoder, codecs::gif::Repeat};
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 use crate::social::{blit, hex, mix, put};
 
@@ -479,7 +480,7 @@ mod tests {
 
     use image::{AnimationDecoder, codecs::gif::GifDecoder};
 
-    use super::*;
+    use crate::derby::*;
 
     /// Six distinct stand-in crabs: a body block and a shell, in the pet sprite's shell colours.
     fn crabs() -> Vec<RgbaImage> {

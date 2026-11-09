@@ -49,7 +49,7 @@ pub fn theme(week: i64) -> &'static Theme {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::contest::*;
 
     /// 2026-11-02 00:00:00 UTC, a Monday.
     const MONDAY: i64 = 1_793_577_600;

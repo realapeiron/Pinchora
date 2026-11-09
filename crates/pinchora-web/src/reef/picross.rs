@@ -1,5 +1,7 @@
 //! Personal Picross uses the exact same rows and atomic completion as Discord.
-use super::{RoomKey, games::access, spaces::limit};
+use crate::reef::RoomKey;
+use crate::reef::games::access;
+use crate::reef::spaces::limit;
 use crate::{
     error::{ApiError, ApiJson, ApiResult},
     extract::{CurrentSession, SessionWriteLimit},
@@ -12,7 +14,9 @@ use axum::{
     routing::post,
 };
 use pinchora_db::PicrossGame;
-use pinchora_game::play::picross::{self, Grid, Puzzle};
+use pinchora_game::play::picross;
+use pinchora_game::play::picross::Grid;
+use pinchora_game::play::picross::Puzzle;
 use serde::Deserialize;
 use serde_json::{Value, json};
 pub fn router() -> Router<WebState> {

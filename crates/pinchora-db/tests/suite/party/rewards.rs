@@ -1,4 +1,4 @@
-use super::*;
+use crate::party::*;
 
 #[tokio::test]
 async fn gambling_is_off_until_a_manager_turns_it_on() {

@@ -1,8 +1,12 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{BadgeIcon, PIXEL, SANS, text};
+use crate::cards::BadgeIcon;
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{
@@ -335,8 +339,8 @@ pub(crate) fn locked_tint(rarity: u32) -> String {
 mod tests {
     use std::collections::HashSet;
 
-    use super::*;
     use crate::Renderer;
+    use crate::cards::badges::*;
 
     fn cell(state: BadgeState) -> BadgeCell<'static> {
         BadgeCell {
@@ -371,7 +375,7 @@ mod tests {
             }),
         ];
         let card = BadgeCollectionCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             cells: &cells,
             legend: &[],
             theme: Theme::reef(),

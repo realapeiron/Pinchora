@@ -1,6 +1,6 @@
 //! Trivia rounds: showing a question's options in a random order.
 
-use super::Question;
+use crate::play::Question;
 
 /// A shuffle of the four options from `seed`: slot `i` shows option `order[i]`.
 pub fn permutation(seed: u64) -> [usize; 4] {
@@ -52,7 +52,7 @@ impl Question {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::trivia::*;
     use crate::play::{Difficulty, TriviaCategory};
 
     fn question() -> Question {

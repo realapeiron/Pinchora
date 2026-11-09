@@ -1,4 +1,4 @@
-use super::*;
+use crate::locks::*;
 
 #[tokio::test]
 async fn guild_settings_reads_a_concurrent_first_insert_after_it_commits() {

@@ -4,18 +4,16 @@
 
 use chrono::Duration;
 use pinchora_commands::{collection_tick, post_bottle, post_critter_drop};
-use pinchora_core::i18n::Lang;
-use pinchora_game::{
-    collection::Collection,
-    lang,
-    play::{
-        find_question,
-        picross::{self, Puzzle},
-        tide2048,
-    },
-};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_game::collection::Collection;
+use pinchora_game::lang;
+use pinchora_game::play::find_question;
+use pinchora_game::play::picross;
+use pinchora_game::play::picross::Puzzle;
+use pinchora_game::play::tide2048;
 
-use super::{collection::COLLECTION, *};
+use crate::collection::COLLECTION;
+use crate::*;
 
 /// Keeps the picture of a reply next to the sim's own, under a name that says what it shows.
 fn keep_png(sim: &Sim, reply: &Reply, name: &str) {

@@ -198,7 +198,7 @@ pub fn stems(word: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::hotpearl_tr::*;
 
     #[test]
     fn endings_follow_the_vowels_of_the_stem() {

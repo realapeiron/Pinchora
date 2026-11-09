@@ -1,0 +1,17 @@
+pub(crate) mod afk_sticky_schedule;
+pub(crate) mod branding;
+pub(crate) mod command_control;
+pub(crate) mod config;
+pub(crate) mod customcommand;
+pub(crate) mod help;
+pub(crate) mod info;
+pub(crate) mod language;
+pub(crate) mod member_events;
+pub(crate) mod modules;
+pub(crate) mod ping;
+pub(crate) mod prefix;
+pub(crate) mod privacy;
+pub(crate) mod quick;
+pub(crate) mod stats;
+pub(crate) mod tempvoice;
+pub(crate) mod workflows;

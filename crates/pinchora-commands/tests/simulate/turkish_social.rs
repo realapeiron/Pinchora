@@ -3,9 +3,9 @@
 //! commands, giveaways, suggestions, polls, the welcome, goodbye, level-up and server log messages) for a server
 //! whose default language is Turkish. The pictures they draw are saved next to the other simulator output.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
-use super::*;
+use crate::*;
 
 fn keep(sim: &Sim, reply: &Reply, name: &str) {
     let (_, png) = reply.files.first().expect("the reply carried a picture");

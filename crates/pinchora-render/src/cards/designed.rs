@@ -1,4 +1,4 @@
-//! Welcome and goodbye images from a server's own design (`pinchora_core::card_design`): the background,
+//! Welcome and goodbye images from a server's own design (`pinchora_core::admin::card_design`): the background,
 //! then every visible layer bottom to top. The bot and the dashboard's preview both draw through here.
 
 use std::{
@@ -7,13 +7,22 @@ use std::{
     sync::{Arc, LazyLock, Mutex},
 };
 
-use pinchora_core::card_design::{
-    Align, AvatarShape, Background, CardDesign, Content, Direction, Font, LINE_HEIGHT, Layer, NAME_MAX, SERVER_MAX,
-    ShapeKind,
-};
-use pinchora_core::i18n::Lang;
+use pinchora_core::admin::card_design::Align;
+use pinchora_core::admin::card_design::AvatarShape;
+use pinchora_core::admin::card_design::Background;
+use pinchora_core::admin::card_design::CardDesign;
+use pinchora_core::admin::card_design::Content;
+use pinchora_core::admin::card_design::Direction;
+use pinchora_core::admin::card_design::Font;
+use pinchora_core::admin::card_design::LINE_HEIGHT;
+use pinchora_core::admin::card_design::Layer;
+use pinchora_core::admin::card_design::NAME_MAX;
+use pinchora_core::admin::card_design::SERVER_MAX;
+use pinchora_core::admin::card_design::ShapeKind;
+use pinchora_core::infra::i18n::Lang;
 
-use super::{PIXEL, SANS};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
 use crate::{
     character::atlas,
     encode_png,
@@ -66,7 +75,7 @@ pub fn ordinal(n: u64) -> String {
 
 pub fn ordinal_in(lang: Lang, n: u64) -> String {
     if lang == Lang::Tr {
-        return format!("{}.", pinchora_core::server_stats::grouped_in(lang, n as i64));
+        return format!("{}.", pinchora_core::admin::server_stats::grouped_in(lang, n as i64));
     }
     let suffix = match (n % 10, n % 100) {
         (_, 11..=13) => "th",
@@ -88,7 +97,7 @@ pub fn fill_placeholders(text: &str, fill: &CardFill<'_>) -> String {
             "server" => truncate(fill.server, SERVER_MAX),
             "members" => fill.members.map_or_else(
                 || "?".to_owned(),
-                |n| pinchora_core::server_stats::grouped_in(fill.lang, n as i64),
+                |n| pinchora_core::admin::server_stats::grouped_in(fill.lang, n as i64),
             ),
             "ordinal" => fill
                 .members

@@ -1,6 +1,6 @@
 //! Starboard and vote channel setup through the real slash-command handler.
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn starboard_setup_list_top_and_vote_channels() {

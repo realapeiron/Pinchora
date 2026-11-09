@@ -1,5 +1,14 @@
 //! EN/TR simulator paths through every quick game, including stale and forged component ids.
-use super::{SWEEPS, Sim, duel, int_option, play_sub, record_of, sub, text_option, turkish_server, unique};
+use crate::SWEEPS;
+use crate::Sim;
+use crate::duel;
+use crate::int_option;
+use crate::play_sub;
+use crate::record_of;
+use crate::sub;
+use crate::text_option;
+use crate::turkish_server;
+use crate::unique;
 use pinchora_commands::party_tick;
 use pinchora_game::play::quick::Othello;
 use serde_json::{Value, json};
@@ -13,7 +22,7 @@ fn cell_label(n: usize, size: usize) -> String {
 fn memory_label(n: usize) -> String {
     format!("{}{}", char::from(b'A' + (n / 4) as u8), n % 4 + 1)
 }
-async fn answer(sim: &mut Sim, user: u64, board: &super::Reply, label: &str, value: &str) -> super::Reply {
+async fn answer(sim: &mut Sim, user: u64, board: &crate::Reply, label: &str, value: &str) -> crate::Reply {
     let modal = sim.click(user, board, label).await;
     sim.submit_fields(user, &modal, &[("answer", value)]).await
 }
@@ -145,17 +154,17 @@ async fn quick_solo_timeout_is_counted_once_by_the_janitor() {
     let board = sim.command(user, "play", play_sub("typing", vec![])).await;
     assert!(board.ephemeral);
     sim.app.shift_clock(chrono::Duration::minutes(2));
-    assert!(super::sweep_games(&sim.app).await.unwrap() >= 1);
+    assert!(crate::sweep_games(&sim.app).await.unwrap() >= 1);
     assert!(sim.app.db.solo_game(user, "typing").await.unwrap().unwrap().over());
     assert_eq!(record_of(&sim, user, "typing").await, (1, 0));
-    assert_eq!(super::sweep_games(&sim.app).await.unwrap(), 0);
+    assert_eq!(crate::sweep_games(&sim.app).await.unwrap(), 0);
     assert_eq!(record_of(&sim, user, "typing").await, (1, 0));
 }
 
 async fn run_public(name: &'static str, tr: bool) {
     let _serial = SWEEPS.lock().await;
     // This flow advances both game janitors, including the shared party-game clock.
-    let _party = super::words::PARTY.lock().await;
+    let _party = crate::words::PARTY.lock().await;
     let Some(mut sim) = Sim::new(name).await else {
         return;
     };
@@ -171,7 +180,7 @@ async fn run_public(name: &'static str, tr: bool) {
         .await;
     assert_eq!(board.files[0].0, "othello.png");
     assert!(board.pings_nobody());
-    let id = super::session_of(&board);
+    let id = crate::session_of(&board);
     let session = sim.app.db.game(id).await.unwrap().unwrap();
     let raw = session.state.split('|').next().unwrap();
     let s: Value = serde_json::from_str(raw).unwrap();
@@ -222,7 +231,7 @@ async fn run_public(name: &'static str, tr: bool) {
         .execute(sim.app.db.pool())
         .await
         .unwrap();
-    super::sweep_games(&sim.app).await.unwrap();
+    crate::sweep_games(&sim.app).await.unwrap();
     assert_eq!(sim.app.db.game(id).await.unwrap().unwrap().status, "done");
 
     let question = sim.command(host, "party", json!([sub("nhie", vec![])])).await;

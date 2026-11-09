@@ -1,7 +1,7 @@
 //! Who may set a role up to be handed out: the server owner any role the bot can give, an administrator
 //! the ones below their own highest role, a manager only those below it without a dangerous permission.
 
-use super::*;
+use crate::*;
 
 const ADMINISTRATOR: u64 = 1 << 3;
 const MANAGE_MESSAGES: u64 = 1 << 13;

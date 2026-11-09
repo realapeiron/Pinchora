@@ -261,7 +261,7 @@ impl Default for Othello {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::quick::*;
     #[test]
     fn memory_pairs_and_repeated_clicks() {
         let mut m = Memory::new((0..8).flat_map(|v| [v, v]).collect()).unwrap();

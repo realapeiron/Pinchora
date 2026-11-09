@@ -1,10 +1,11 @@
 //! Acronym Tide: a few letters come up, everyone writes a phrase whose words start with them in
 //! order, and the table votes for the best one without knowing who wrote what.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::Dice;
 use crate::lang;
+use crate::party::Dice;
 
 /// Rounds a game plays unless the host picks another number, and the range they may pick from.
 pub const DEFAULT_ROUNDS: i32 = 3;
@@ -128,7 +129,7 @@ pub fn check_phrase(lang: Lang, text: &str, letters: &[char]) -> Result<String, 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::acronym::*;
 
     #[test]
     fn rounds_get_longer_and_start_over() {

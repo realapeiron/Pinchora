@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 fn inventory() -> Vec<(&'static str, &'static str, &'static str)> {
     include_str!("../../../../docs/w7-guild-route-matrix.tsv")

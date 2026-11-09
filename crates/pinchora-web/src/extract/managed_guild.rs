@@ -5,13 +5,12 @@ use axum::{
     http::request::Parts,
 };
 
-use crate::{
-    dashboard_access,
-    discord::{self, UserGuild},
-    error::ApiError,
-    extract::CurrentSession,
-    state::WebState,
-};
+use crate::dashboard_access;
+use crate::discord;
+use crate::discord::UserGuild;
+use crate::error::ApiError;
+use crate::extract::CurrentSession;
+use crate::state::WebState;
 
 /// A server with the bot present and full Discord management rights or a current role grant for
 /// this endpoint. The latter is checked for every read and write; unknown areas fail closed.

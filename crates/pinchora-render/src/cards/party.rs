@@ -3,9 +3,13 @@
 
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, SpriteArt, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::SpriteArt;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{
@@ -255,7 +259,7 @@ const CHEST_TRIM: &[&str] = &[
 /// 580×350 share-or-grab card: both players, the pool between them, and what they picked.
 pub struct ShareGrabCard<'a> {
     /// The language of the labels; the banner comes translated, and in capitals.
-    pub lang: pinchora_core::i18n::Lang,
+    pub lang: pinchora_core::infra::i18n::Lang,
     pub names: [&'a str; 2],
     pub picks: [PickView; 2],
     /// Shells in the pool.
@@ -1075,7 +1079,7 @@ impl SurgeCard<'_> {
 mod tests {
     use image::RgbaImage;
 
-    use super::*;
+    use crate::cards::party::*;
     use crate::{Renderer, encode_png};
 
     fn png() -> Vec<u8> {
@@ -1132,7 +1136,7 @@ mod tests {
     #[test]
     fn share_or_grab_hides_the_picks_until_both_are_in() {
         let card = |picks, banner| ShareGrabCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             names: ["Ann", "A very very long display name"],
             picks,
             pool: 60,

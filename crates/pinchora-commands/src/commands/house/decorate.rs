@@ -1,0 +1,238 @@
+//! `/house decorate`: buy and apply wallpapers and floors.
+
+use std::str::Split;
+
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
+use pinchora_db::Currency as DbCurrency;
+use pinchora_game::{Content, Currency, Surface, house};
+use twilight_model::{
+    channel::message::{
+        Component,
+        component::{ActionRow, Button, ButtonStyle, SelectMenu, SelectMenuOption, SelectMenuType},
+    },
+    http::interaction::InteractionResponseData,
+};
+use twilight_util::builder::embed::EmbedBuilder;
+
+use crate::Cx;
+use crate::commands::house::house::ensure_house;
+use crate::games::game::scene::RoomView;
+use crate::games::game::scene::render_view;
+use crate::infra::util::BRAND;
+use crate::infra::util::thousands_in;
+
+const PAGE: usize = 25;
+
+fn price_text(lang: Lang, s: &Surface) -> String {
+    match s.currency {
+        Currency::Shells => t!(lang, "house.decorate.shell-price", price = thousands_in(lang, s.price)),
+        Currency::Pearls => t!(lang, "house.decorate.pearl-price", price = thousands_in(lang, s.price)),
+    }
+}
+
+fn menu(lang: Lang, custom_id: String, placeholder: String, list: &[Surface], page: usize, current: &str) -> Component {
+    let options = list
+        .iter()
+        .skip(page * PAGE)
+        .take(PAGE)
+        .map(|s| SelectMenuOption {
+            default: s.id == current,
+            description: Some(format!("{} · {}", s.rarity.label_in(lang), price_text(lang, s))),
+            emoji: None,
+            label: Content::get().name(&s.id, lang).into_owned(),
+            value: s.id.clone(),
+        })
+        .collect();
+    Component::ActionRow(ActionRow {
+        id: None,
+        components: vec![Component::SelectMenu(SelectMenu {
+            channel_types: None,
+            custom_id,
+            default_values: None,
+            disabled: false,
+            id: None,
+            kind: SelectMenuType::Text,
+            max_values: Some(1),
+            min_values: Some(1),
+            options: Some(options),
+            placeholder: Some(placeholder),
+            required: None,
+        })],
+    })
+}
+
+pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
+    let user = cx.author()?.id.get();
+    let content = Content::get();
+    let (house_row, rooms) = ensure_house(&cx.app, user).await?;
+    let room = room.clamp(0, rooms.len() as i16 - 1);
+    let row = rooms[room as usize].clone();
+    let tier = house::tier(house_row.tier);
+    let pages = content
+        .surfaces
+        .wallpapers
+        .len()
+        .max(content.surfaces.floors.len())
+        .div_ceil(PAGE)
+        .max(1);
+    let page = page % pages;
+    let (wp, fl) = (row.wallpaper.clone(), row.floor.clone());
+    let placements = cx.app.db.placements(user, room).await?;
+    let sprites = cx.app.sprites.clone();
+    let view = RoomView {
+        width: tier.width,
+        depth: tier.depth,
+        room: row,
+        placements,
+        cursor: None,
+        selected: None,
+        edit: false,
+        pets: Vec::new(),
+        characters: Vec::new(),
+        seed: 0,
+    };
+    let png = cx.app.render(move |_| render_view(&sprites, &view)).await?;
+    let name = |list: &[Surface], id: &str| {
+        list.iter()
+            .find(|s| s.id == id)
+            .map_or(id.to_owned(), |s| content.name(&s.id, lang).into_owned())
+    };
+    let embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(t!(lang, "house.decorate.title", room = room + 1))
+        .description(t!(
+            lang,
+            "house.decorate.body",
+            note = note,
+            wallpaper = name(&content.surfaces.wallpapers, &wp),
+            floor = name(&content.surfaces.floors, &fl)
+        ));
+    let components = vec![
+        menu(
+            lang,
+            format!("dw:{room}:{page}"),
+            t!(lang, "house.decorate.wallpaper-menu", page = page + 1, pages = pages),
+            &content.surfaces.wallpapers,
+            page,
+            &wp,
+        ),
+        menu(
+            lang,
+            format!("df:{room}:{page}"),
+            t!(lang, "house.decorate.floor-menu", page = page + 1, pages = pages),
+            &content.surfaces.floors,
+            page,
+            &fl,
+        ),
+        Component::ActionRow(ActionRow {
+            id: None,
+            components: vec![
+                Component::Button(Button {
+                    custom_id: Some(format!("dn:{room}:{}", page + 1)),
+                    disabled: pages < 2,
+                    emoji: None,
+                    id: None,
+                    label: Some(t!(lang, "house.decorate.more")),
+                    sku_id: None,
+                    style: ButtonStyle::Secondary,
+                    url: None,
+                }),
+                Component::Button(Button {
+                    custom_id: Some(format!("dn:{}:0", (room + 1) % rooms.len() as i16)),
+                    disabled: rooms.len() < 2,
+                    emoji: None,
+                    id: None,
+                    label: Some(t!(lang, "house.decorate.next-room")),
+                    sku_id: None,
+                    style: ButtonStyle::Secondary,
+                    url: None,
+                }),
+            ],
+        }),
+    ];
+    Ok(Cx::card(embed, "room.png", png, components, true))
+}
+
+/// `dw` / `df` selects and the `dn` page button.
+pub(crate) async fn on_component(
+    cx: &Cx,
+    kind: &str,
+    mut args: Split<'_, char>,
+    value: Option<&str>,
+) -> anyhow::Result<()> {
+    let room: i16 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+    let page: usize = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+    if kind == "dn" {
+        let data = panel(cx, room, page, "").await?;
+        return cx.update(data).await;
+    }
+    let content = Content::get();
+    let wall = kind == "dw";
+    let list = if wall {
+        &content.surfaces.wallpapers
+    } else {
+        &content.surfaces.floors
+    };
+    let Some(surface) = value.and_then(|v| list.iter().find(|s| s.id == v)) else {
+        return cx.reply_ephemeral(t!(cx.lang(), "house.decorate.pick")).await;
+    };
+    let user = cx.author()?.id.get();
+    let key = format!("{}:{}", if wall { "wp" } else { "fl" }, surface.id);
+    let _guard = cx.app.db.house_editor(user).await?;
+    let owned = cx.app.db.owns(user, &key).await?;
+    let (wp, fl) = if wall {
+        (Some(surface.id.as_str()), None)
+    } else {
+        (None, Some(surface.id.as_str()))
+    };
+    let currency = match surface.currency {
+        Currency::Shells => DbCurrency::Shells,
+        Currency::Pearls => DbCurrency::Pearls,
+    };
+    let outcome = cx
+        .app
+        .db
+        .update_house_checked(
+            user,
+            room,
+            pinchora_db::HouseUpdate::Surface {
+                wallpaper: wp,
+                floor: fl,
+                key: &key,
+                price: surface.price,
+                currency,
+                confirmed: true,
+            },
+            |_| true,
+        )
+        .await?;
+    if outcome != pinchora_db::HouseUpdateOutcome::Done {
+        return cx
+            .reply_ephemeral(t!(
+                cx.lang(),
+                "house.decorate.costs",
+                name = content.name(&surface.id, cx.lang()),
+                price = price_text(cx.lang(), surface)
+            ))
+            .await;
+    }
+    let note = if owned {
+        String::new()
+    } else {
+        t!(
+            cx.lang(),
+            "house.decorate.bought",
+            name = content.name(&surface.id, cx.lang()),
+            price = price_text(cx.lang(), surface)
+        )
+    };
+    let _ = cx
+        .app
+        .cache
+        .publish_invalidation(pinchora_cache::Invalidation::House(user))
+        .await;
+    let data = panel(cx, room, page, &note).await?;
+    cx.update(data).await
+}

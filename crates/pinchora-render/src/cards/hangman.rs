@@ -1,8 +1,10 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, text};
+use crate::cards::PIXEL;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{SHELL, background_plain, escape, panel, sprite},
@@ -333,8 +335,8 @@ impl HangmanCard<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::hangman::*;
 
     fn card(lines: &[Vec<HangmanLetter>], misses: usize) -> HangmanCard<'_> {
         HangmanCard {

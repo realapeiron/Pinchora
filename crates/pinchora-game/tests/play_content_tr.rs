@@ -3,7 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_game::{
     lang,
     party::{filter::is_profane_for, hotpearl::dictionary_for, prompts::PartyContent},

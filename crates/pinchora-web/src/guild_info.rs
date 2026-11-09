@@ -4,7 +4,10 @@
 use std::time::Duration;
 
 use axum::http::StatusCode;
-use pinchora_core::settings::{self, FieldError, Grantor, RoleFacts};
+use pinchora_core::admin::settings;
+use pinchora_core::admin::settings::FieldError;
+use pinchora_core::admin::settings::Grantor;
+use pinchora_core::admin::settings::RoleFacts;
 use serde::{Deserialize, Serialize};
 use twilight_model::{
     channel::{Channel, ChannelType},

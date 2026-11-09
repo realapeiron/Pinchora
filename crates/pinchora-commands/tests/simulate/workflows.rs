@@ -1,5 +1,6 @@
-use super::*;
-use pinchora_core::workflows::{Definition, Event};
+use crate::*;
+use pinchora_core::admin::workflows::Definition;
+use pinchora_core::admin::workflows::Event;
 #[tokio::test]
 async fn workflows_button_role_message_and_dry_run_en_tr() {
     let Some(mut sim) = Sim::new("workflows_button").await else {
@@ -9,7 +10,10 @@ async fn workflows_button_role_message_and_dry_run_en_tr() {
     let role = unique();
     sim.guild_role(role, "Workflow role", 2);
     sim.channel_is(sim.channel, 0, None);
-    for lang in [pinchora_core::i18n::Lang::En, pinchora_core::i18n::Lang::Tr] {
+    for lang in [
+        pinchora_core::infra::i18n::Lang::En,
+        pinchora_core::infra::i18n::Lang::Tr,
+    ] {
         sim.app.set_user_lang(user, Some(lang)).await.unwrap();
         let def:Definition=serde_json::from_value(json!({"name":format!("greet_{}",lang.code()),"enabled":true,"trigger":{"kind":"button"},"conditions":[],"actions":[{"kind":"tag","action":{"kind":"add_role","role_id":role.to_string()}},{"kind":"reply","text":"Hello @everyone <@&123> {user}"}]})).unwrap();
         let row = sim.app.db.save_workflow(sim.guild, None, &def, user).await.unwrap();
@@ -19,7 +23,7 @@ async fn workflows_button_role_message_and_dry_run_en_tr() {
             channel_id: sim.channel.to_string(),
             ..Default::default()
         };
-        let dry = pinchora_commands::workflows::engine::dry_run(&def, &event, sim.app.now());
+        let dry = pinchora_commands::admin::workflows::engine::dry_run(&def, &event, sim.app.now());
         assert_eq!(dry.outcome, "ready");
         assert!(sim.role_changes().is_empty());
         assert!(sim.app.db.workflow_runs(sim.guild, row.id).await.unwrap().is_empty());
@@ -27,19 +31,16 @@ async fn workflows_button_role_message_and_dry_run_en_tr() {
         let reply = sim.component(user, &format!("wf:b:{}:0", row.id), &[], &shown).await;
         assert!(reply.ephemeral);
         assert!(
-            reply
-                .followups
-                .last()
-                .unwrap_or(&reply)
-                .content()
-                .contains(if lang == pinchora_core::i18n::Lang::En {
+            reply.followups.last().unwrap_or(&reply).content().contains(
+                if lang == pinchora_core::infra::i18n::Lang::En {
                     "completed"
                 } else {
                     "tamamlandı"
-                }),
+                }
+            ),
             "{reply}"
         );
-        let expected = if lang == pinchora_core::i18n::Lang::En {
+        let expected = if lang == pinchora_core::infra::i18n::Lang::En {
             vec![format!("PUT {user} {role}")]
         } else {
             Vec::new()
@@ -62,7 +63,7 @@ async fn workflows_button_role_message_and_dry_run_en_tr() {
         assert_eq!(runs[0].outcome, "completed");
         assert_eq!(runs[0].steps[1]["status"], "done");
         assert!(
-            pinchora_commands::workflows::engine::run(&sim.app, &row, Event { depth: 1, ..event })
+            pinchora_commands::admin::workflows::engine::run(&sim.app, &row, Event { depth: 1, ..event })
                 .await
                 .is_err()
         );
@@ -78,7 +79,7 @@ async fn workflows_keyword_and_module_refuse_before_actions() {
     let row = sim.app.db.save_workflow(sim.guild, None, &def, user).await.unwrap();
     assert!(!sim.app.message_content);
     assert!(
-        pinchora_commands::workflows::engine::run(
+        pinchora_commands::admin::workflows::engine::run(
             &sim.app,
             &row,
             Event {
@@ -106,7 +107,7 @@ async fn workflows_share_the_tag_points_cap_without_touching_shells() {
     )
     .await;
     sim.permissions = 0;
-    let tag: pinchora_core::tags::CommandDef = serde_json::from_value(
+    let tag: pinchora_core::community::tags::CommandDef = serde_json::from_value(
         json!({"name":"reward","responses":["ok"],"cooldown_secs":30,"actions":[{"kind":"give_points","amount":900}]}),
     )
     .unwrap();
@@ -122,14 +123,14 @@ async fn workflows_share_the_tag_points_cap_without_touching_shells() {
         ..Default::default()
     };
     assert_eq!(
-        pinchora_commands::workflows::engine::run(&sim.app, &row, event.clone())
+        pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event.clone())
             .await
             .unwrap()
             .outcome,
         "completed"
     );
     assert_eq!(
-        pinchora_commands::workflows::engine::run(&sim.app, &row, event)
+        pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event)
             .await
             .unwrap()
             .outcome,
@@ -157,8 +158,8 @@ async fn workflows_role_callbacks_cannot_start_another_workflow() {
         "joined_at":null,"deaf":null,"mute":null,"pending":false,"premium_since":null
     }))
     .unwrap();
-    pinchora_commands::workflows::triggers::roles(&sim.app, &event).await;
-    let run = pinchora_commands::workflows::engine::run(
+    pinchora_commands::admin::workflows::triggers::roles(&sim.app, &event).await;
+    let run = pinchora_commands::admin::workflows::engine::run(
         &sim.app,
         &first,
         Event {
@@ -178,8 +179,8 @@ async fn workflows_role_callbacks_cannot_start_another_workflow() {
         .unwrap();
     event.roles = vec![Id::new(role)];
     tokio::join!(
-        pinchora_commands::workflows::triggers::roles(&sim.app, &event),
-        pinchora_commands::workflows::triggers::roles(&sim.app, &event)
+        pinchora_commands::admin::workflows::triggers::roles(&sim.app, &event),
+        pinchora_commands::admin::workflows::triggers::roles(&sim.app, &event)
     );
     sim.app.drain(std::time::Duration::from_secs(2)).await;
     assert!(sim.app.db.workflow_runs(sim.guild, second.id).await.unwrap().is_empty());
@@ -218,7 +219,7 @@ async fn workflows_recheck_moved_managed_and_dangerous_roles_for_every_operation
                     roles.push(changed);
                 }
             }
-            let result = pinchora_commands::workflows::engine::run(&sim.app, &row, event.clone())
+            let result = pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event.clone())
                 .await
                 .unwrap();
             assert_eq!(result.outcome, "failed", "{operation}: {change}");
@@ -242,10 +243,10 @@ async fn workflows_preview_and_live_messages_use_identical_rendering() {
         channel_id: sim.channel.to_string(),
         ..Default::default()
     };
-    let preview = pinchora_commands::workflows::engine::dry_run(&def, &event, sim.app.now());
+    let preview = pinchora_commands::admin::workflows::engine::dry_run(&def, &event, sim.app.now());
     assert!(sim.posts().is_empty());
     assert!(sim.app.db.workflow_vars(sim.guild, user).await.unwrap().is_empty());
-    let live = pinchora_commands::workflows::engine::run(&sim.app, &row, event)
+    let live = pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event)
         .await
         .unwrap();
     assert_eq!(live.outcome, "completed");
@@ -261,7 +262,7 @@ async fn workflows_preview_and_live_messages_use_identical_rendering() {
 
 #[tokio::test]
 async fn workflows_ignore_bot_and_webhook_keywords_and_disabled_source_modules() {
-    use pinchora_core::modules::Module;
+    use pinchora_core::admin::modules::Module;
     let Some(sim) = Sim::new("workflow_source_gates").await else {
         return;
     };
@@ -276,7 +277,7 @@ async fn workflows_ignore_bot_and_webhook_keywords_and_disabled_source_modules()
         if webhook {
             msg["webhook_id"] = json!(unique().to_string());
         }
-        pinchora_commands::workflows::triggers::message(&sim.app, &serde_json::from_value(msg).unwrap());
+        pinchora_commands::admin::workflows::triggers::message(&sim.app, &serde_json::from_value(msg).unwrap());
     }
     sim.app.drain(std::time::Duration::from_secs(2)).await;
     assert!(
@@ -304,13 +305,13 @@ async fn workflows_ignore_bot_and_webhook_keywords_and_disabled_source_modules()
             .unwrap();
         sim.app.forget_guild_settings(sim.guild).await;
         assert!(
-            !pinchora_commands::workflows::trigger_catalog(&sim.app, sim.guild)
+            !pinchora_commands::admin::workflows::trigger_catalog(&sim.app, sim.guild)
                 .await
                 .iter()
                 .any(|t| t.key() == kind)
         );
         assert!(
-            pinchora_commands::workflows::engine::run(
+            pinchora_commands::admin::workflows::engine::run(
                 &sim.app,
                 &row,
                 Event {
@@ -341,14 +342,14 @@ async fn workflows_refuse_excess_writes_before_discord_and_fail_unknown_channels
         channel_id: unique().to_string(),
         ..Default::default()
     };
-    let result = pinchora_commands::workflows::engine::run(&sim.app, &row, event.clone())
+    let result = pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event.clone())
         .await
         .unwrap();
     assert_eq!(result.outcome, "failed");
     assert!(sim.posts().is_empty());
     sim.channel_is(sim.channel, 0, None);
     sim.mock.blocked.lock().unwrap().push(sim.channel);
-    let denied = pinchora_commands::workflows::engine::run(
+    let denied = pinchora_commands::admin::workflows::engine::run(
         &sim.app,
         &row,
         Event {
@@ -366,7 +367,7 @@ async fn workflows_refuse_excess_writes_before_discord_and_fail_unknown_channels
             .collect::<Vec<_>>()
     );
     assert!(
-        pinchora_commands::workflows::engine::run(&sim.app, &row, event)
+        pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event)
             .await
             .is_err()
     );
@@ -394,7 +395,7 @@ async fn workflows_concurrent_points_share_one_daily_allowance() {
         let app = sim.app.clone();
         let row = row.clone();
         tasks.spawn(async move {
-            pinchora_commands::workflows::engine::run(
+            pinchora_commands::admin::workflows::engine::run(
                 &app,
                 &row,
                 Event {
@@ -418,7 +419,8 @@ async fn workflows_concurrent_points_share_one_daily_allowance() {
 
 #[tokio::test]
 async fn workflows_claim_all_cooldowns_atomically_without_consuming_on_refusal() {
-    use pinchora_core::workflows::{Condition, Scope};
+    use pinchora_core::admin::workflows::Condition;
+    use pinchora_core::admin::workflows::Scope;
     let Some(sim) = Sim::new("workflow_cooldown_race").await else {
         return;
     };
@@ -426,7 +428,7 @@ async fn workflows_claim_all_cooldowns_atomically_without_consuming_on_refusal()
     let def = Definition {
         name: "cooldowns".into(),
         enabled: true,
-        trigger: pinchora_core::workflows::Trigger::Button {},
+        trigger: pinchora_core::admin::workflows::Trigger::Button {},
         conditions: vec![
             Condition::Cooldown {
                 scope: Scope::Server,
@@ -437,7 +439,7 @@ async fn workflows_claim_all_cooldowns_atomically_without_consuming_on_refusal()
                 seconds: 60,
             },
         ],
-        actions: vec![pinchora_core::workflows::StepAction::Log { text: "ok".into() }],
+        actions: vec![pinchora_core::admin::workflows::StepAction::Log { text: "ok".into() }],
     };
     let row = sim.app.db.save_workflow(sim.guild, None, &def, user).await.unwrap();
     let server = format!("wf:cool:{}:{}:0:0", sim.guild, row.id);
@@ -453,7 +455,7 @@ async fn workflows_claim_all_cooldowns_atomically_without_consuming_on_refusal()
         ..Default::default()
     };
     assert_eq!(
-        pinchora_commands::workflows::engine::run(&sim.app, &row, event.clone())
+        pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event.clone())
             .await
             .unwrap()
             .outcome,
@@ -461,7 +463,7 @@ async fn workflows_claim_all_cooldowns_atomically_without_consuming_on_refusal()
     );
     sim.app.cache.release_cooldown(&member).await.unwrap();
     assert_eq!(
-        pinchora_commands::workflows::engine::run(&sim.app, &row, event)
+        pinchora_commands::admin::workflows::engine::run(&sim.app, &row, event)
             .await
             .unwrap()
             .outcome,
@@ -474,7 +476,7 @@ async fn workflows_claim_all_cooldowns_atomically_without_consuming_on_refusal()
         let row = row.clone();
         let user = unique();
         tasks.spawn(async move {
-            pinchora_commands::workflows::engine::run(
+            pinchora_commands::admin::workflows::engine::run(
                 &app,
                 &row,
                 Event {
@@ -504,7 +506,7 @@ async fn workflows_member_leave_still_evaluates_account_age_without_a_member_fet
     sim.mock.missing_members.lock().unwrap().push((sim.guild, user));
     let def: Definition = serde_json::from_value(json!({"name":"leave","enabled":true,"trigger":{"kind":"member_leave"},"conditions":[{"kind":"account_age","days":1}],"actions":[{"kind":"log","text":"goodbye"}]})).unwrap();
     let row = sim.app.db.save_workflow(sim.guild, None, &def, user).await.unwrap();
-    let result = pinchora_commands::workflows::engine::run(
+    let result = pinchora_commands::admin::workflows::engine::run(
         &sim.app,
         &row,
         Event {

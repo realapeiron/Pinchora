@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
 
     let started = std::time::Instant::now();
     let profile = r.profile_card(&ProfileCard {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         display_name: "Captain Pinch",
         title: None,
         username: "captain.pinch",
@@ -179,7 +179,7 @@ fn main() -> anyhow::Result<()> {
     let themed = Theme::reef().with_accent(Some(0x8eddd1));
     let profile_with = |name: &str, backdrop: Option<Backdrop<'_>>, badges: &[BadgeIcon<'_>], theme: Theme| {
         let png = r.profile_card(&ProfileCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: Some("Tide Angler"),
             username: "captain.pinch",
@@ -263,7 +263,7 @@ fn main() -> anyhow::Result<()> {
     std::fs::write(
         format!("{out}/badge-collection.png"),
         r.badge_collection(&BadgeCollectionCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             cells: &cells,
             legend: &legend,
             theme: Theme::reef(),
@@ -271,7 +271,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let rank = r.rank_card(&RankCard {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         display_name: "Captain Pinch",
         title: Some("Tide Angler"),
         username: "captain.pinch",
@@ -291,7 +291,7 @@ fn main() -> anyhow::Result<()> {
 
     let rank_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
         r.rank_card(&RankCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: None,
             username: "captain.pinch",
@@ -315,7 +315,7 @@ fn main() -> anyhow::Result<()> {
 
     let wallet_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
         r.wallet_card(&WalletCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: "Captain Pinch",
             avatar_png: &placeholder_avatar(7, WalletCard::AVATAR_SIZE),
             shells: 1_284_500,
@@ -343,7 +343,7 @@ fn main() -> anyhow::Result<()> {
         server_name: "The Tide Pool",
         member_number: Some(12_345),
         title: "Welcome",
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/welcome.png"), &welcome)?;
@@ -353,7 +353,7 @@ fn main() -> anyhow::Result<()> {
         avatar_png: &placeholder_avatar(5, LevelUpCard::AVATAR_SIZE),
         from: 26,
         to: 27,
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/levelup.png"), &level_up)?;
@@ -428,7 +428,7 @@ fn main() -> anyhow::Result<()> {
             .collect::<Vec<_>>()
     };
     let board = r.leaderboard_card(&LeaderboardCard {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         title: "Server leaderboard".into(),
         entries: entries(false),
         page: 0,
@@ -438,7 +438,7 @@ fn main() -> anyhow::Result<()> {
     })?;
     std::fs::write(format!("{out}/leaderboard.png"), &board)?;
     let shells = r.leaderboard_card(&LeaderboardCard {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         title: "Richest shell collectors".into(),
         entries: entries(true).into_iter().skip(3).collect(),
         page: 4,
@@ -538,7 +538,7 @@ fn main() -> anyhow::Result<()> {
     ];
     // Wrapped: a busy year, and a year with nothing in it.
     let busy = WrappedCard {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         year: 2026,
         display_name: "Captain Pinch",
         avatar_png: &placeholder_avatar(7, WrappedCard::AVATAR_SIZE),
@@ -588,7 +588,7 @@ fn main() -> anyhow::Result<()> {
                     theme: Theme|
      -> anyhow::Result<Vec<u8>> {
         r.profile_card(&ProfileCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: name,
             title: Some("Lighthouse Keeper"),
             username: "bartholomew.fizzlebottom.smythe.99",

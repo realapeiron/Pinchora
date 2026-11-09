@@ -8,18 +8,21 @@
 use std::path::{Path, PathBuf};
 
 use image::{RgbaImage, imageops::FilterType};
-use pinchora_core::{
-    card_design::{Background, CardDesign, CardKind, Content, Direction, check_design},
-    i18n::Lang,
-    t,
-};
+use pinchora_core::admin::card_design::Background;
+use pinchora_core::admin::card_design::CardDesign;
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Content;
+use pinchora_core::admin::card_design::Direction;
+use pinchora_core::admin::card_design::check_design;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use pinchora_render::{
     CardFill, DesignedCard, Renderer, Theme, WelcomeCard, character::atlas, fill_placeholders, ordinal,
     placeholder_avatar, templates,
 };
 
 const FILL: CardFill<'static> = CardFill {
-    lang: pinchora_core::i18n::Lang::En,
+    lang: pinchora_core::infra::i18n::Lang::En,
     user: "Captain Pinch",
     username: "captain.pinch",
     server: "Pinchora Reef",
@@ -182,7 +185,7 @@ fn placeholders_fill_in_and_hostile_names_still_draw() {
     assert_eq!(ordinal(101), "101st");
     assert_eq!(ordinal(1112), "1,112th");
     let sneaky = CardFill {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         user: "{server}",
         ..FILL
     };
@@ -192,7 +195,7 @@ fn placeholders_fill_in_and_hostile_names_still_draw() {
 
     let hostile = "Zoë ✨ 李 😀 <b>&amp;\"'</b> \u{FFFE}\u{FFFF}\u{FDD0}\u{0}\u{7}\u{85} end";
     let fill = CardFill {
-        lang: pinchora_core::i18n::Lang::En,
+        lang: pinchora_core::infra::i18n::Lang::En,
         user: hostile,
         username: hostile,
         server: hostile,

@@ -1,8 +1,12 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, avatar_frame, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::avatar_frame;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{CRAB, background, compact_in, escape, panel, pixel_width, sprite, truncate, truncate_pixel_to},
@@ -256,7 +260,7 @@ impl LeaderboardCard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::leaderboard::*;
     use crate::{Renderer, placeholder_avatar};
 
     fn entry(rank: i64, name: &str) -> LeaderboardEntry {

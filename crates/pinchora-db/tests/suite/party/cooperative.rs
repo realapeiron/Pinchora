@@ -1,4 +1,4 @@
-use super::*;
+use crate::party::*;
 
 #[tokio::test]
 async fn a_heist_pays_the_crew_once_up_to_their_daily_limit() {

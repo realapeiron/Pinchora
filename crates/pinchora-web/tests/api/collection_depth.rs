@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn collection_pages_require_session_csrf_validate_wishes_and_audit() {

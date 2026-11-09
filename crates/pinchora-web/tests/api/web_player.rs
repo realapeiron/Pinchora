@@ -1,5 +1,5 @@
-//! W5: ordinary members can edit themselves; previews and purchases use the bot's rules.
-use super::*;
+//! ordinary members can edit themselves; previews and purchases use the bot's rules.
+use crate::*;
 use pinchora_game::{
     BadgeKind, Content,
     character::{Character, Shelf},

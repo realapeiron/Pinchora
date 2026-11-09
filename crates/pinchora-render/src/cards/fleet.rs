@@ -1,12 +1,14 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{
-    PIXEL, SANS,
-    boards::{COORDINATE_SIZE, coordinate_color, fitted_pixel_text},
-    text,
-};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::boards::COORDINATE_SIZE;
+use crate::cards::boards::coordinate_color;
+use crate::cards::boards::fitted_pixel_text;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{
@@ -407,8 +409,8 @@ impl FleetCard<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::fleet::*;
 
     fn ships() -> Vec<ShipView> {
         vec![

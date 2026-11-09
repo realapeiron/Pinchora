@@ -4,7 +4,7 @@
 
 use std::sync::LazyLock;
 
-use pinchora_core::stats::WardrobeFacts;
+use pinchora_core::admin::stats::WardrobeFacts;
 use pinchora_render::character::{ACCESSORY_TINTS, Channel, CharacterSpec, Colors, Paint, Pose, Slot, Worn};
 use serde::Deserialize;
 
@@ -298,7 +298,7 @@ impl Character {
 mod tests {
     use pinchora_render::character::{ACCESSORIES, OUTFIT_COLORS, SKIN_TONES, accessory as art};
 
-    use super::*;
+    use crate::character::*;
 
     #[test]
     fn codes_round_trip() {
@@ -435,7 +435,8 @@ mod tests {
 
     #[test]
     fn the_shelf_works_out_what_a_player_may_wear_from_the_database_facts() {
-        use pinchora_core::stats::{PlayerStats, WardrobeFacts};
+        use pinchora_core::admin::stats::PlayerStats;
+        use pinchora_core::admin::stats::WardrobeFacts;
 
         use crate::{BadgeKind, BadgeStat};
 

@@ -1,6 +1,7 @@
 //! Five independently displaced glyphs on a reef pixel card. The PNG carries no answer metadata.
 use crate::{Renderer, Theme, svg};
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use std::fmt::Write;
 const GLYPH_SIZE: u32 = 92;
 pub struct CaptchaCard<'a> {
@@ -96,10 +97,13 @@ impl Renderer {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::verification::*;
     #[test]
     fn captcha_alphabet_and_glyph_size_are_readable() {
-        assert_eq!(pinchora_core::verification::CAPTCHA_ALPHABET, b"ACDEFHJKPRTUXY34");
+        assert_eq!(
+            pinchora_core::moderation::verification::CAPTCHA_ALPHABET,
+            b"ACDEFHJKPRTUXY34"
+        );
         assert_eq!(GLYPH_SIZE, 92);
         assert!(GLYPH_SIZE as f32 / 56. >= 1.6);
         assert!(GLYPH_SIZE as f32 / 56. <= 1.8);

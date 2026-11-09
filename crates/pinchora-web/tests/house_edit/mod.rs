@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 impl Browser {
     async fn op(&mut self, path: &str, expected: &str, op: Value, csrf: bool) -> Response {
@@ -51,9 +51,10 @@ async fn ops_are_atomic_versioned_and_share_discord_history() {
     assert_eq!(blocked.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(blocked.code(), "blocked");
     let rows = site.app.db.placements(user, 0).await.unwrap();
-    let mut history = pinchora_commands::undo::load(&site.app, pinchora_commands::Who::own(user), 0, &rows).await;
+    let mut history =
+        pinchora_commands::admin::undo::load(&site.app, pinchora_commands::Who::own(user), 0, &rows).await;
     let step = history.pop().expect("web operation is in Discord history");
-    assert_eq!(step.kind, pinchora_commands::undo::Kind::Place);
+    assert_eq!(step.kind, pinchora_commands::admin::undo::Kind::Place);
     let id = placed["placements"][0]["id"].as_str().unwrap();
     let moved = browser
         .op(
@@ -115,30 +116,30 @@ async fn concurrent_ops_accept_only_one_expected_version() {
     let user = unique();
     site.move_in(user, 1, &[]).await;
     site.app.db.grant_item(user, CHAIR, 2).await.unwrap();
-    let expected = pinchora_commands::house_edit::fingerprint(&[]);
+    let expected = pinchora_commands::house::house_edit::fingerprint(&[]);
     let who = pinchora_commands::Who::own(user);
-    let operation = |x| pinchora_commands::house_edit::Operation::Place {
+    let operation = |x| pinchora_commands::house::house_edit::Operation::Place {
         item_id: CHAIR.into(),
         x,
         y: 0,
         flipped: false,
     };
     let (a, b) = tokio::join!(
-        pinchora_commands::house_edit::apply(&site.app, who, 0, (8, 8), &expected, operation(0)),
-        pinchora_commands::house_edit::apply(&site.app, who, 0, (8, 8), &expected, operation(3))
+        pinchora_commands::house::house_edit::apply(&site.app, who, 0, (8, 8), &expected, operation(0)),
+        pinchora_commands::house::house_edit::apply(&site.app, who, 0, (8, 8), &expected, operation(3))
     );
     let outcomes = [a.unwrap(), b.unwrap()];
     assert_eq!(
         outcomes
             .iter()
-            .filter(|o| matches!(o, pinchora_commands::house_edit::Outcome::Done(_)))
+            .filter(|o| matches!(o, pinchora_commands::house::house_edit::Outcome::Done(_)))
             .count(),
         1
     );
     assert_eq!(
         outcomes
             .iter()
-            .filter(|o| matches!(o, pinchora_commands::house_edit::Outcome::Conflict(_)))
+            .filter(|o| matches!(o, pinchora_commands::house::house_edit::Outcome::Conflict(_)))
             .count(),
         1
     );
@@ -408,26 +409,29 @@ async fn invalid_coordinates_and_old_partner_bonds_cannot_write() {
     site.app.db.pair_partners(a, b).await.unwrap();
     let pair = site.app.db.partner(a).await.unwrap().unwrap();
     let who = pinchora_commands::Who::partner_of(a, pair);
-    let expected = pinchora_commands::house_edit::fingerprint(&[]);
-    let op = |x| pinchora_commands::house_edit::Operation::Place {
+    let expected = pinchora_commands::house::house_edit::fingerprint(&[]);
+    let op = |x| pinchora_commands::house::house_edit::Operation::Place {
         item_id: CHAIR.into(),
         x,
         y: 0,
         flipped: false,
     };
-    let negative = pinchora_commands::house_edit::apply(&site.app, who, 0, (8, 8), &expected, op(-1))
+    let negative = pinchora_commands::house::house_edit::apply(&site.app, who, 0, (8, 8), &expected, op(-1))
         .await
         .unwrap();
     assert!(matches!(
         negative,
-        pinchora_commands::house_edit::Outcome::Refused { .. }
+        pinchora_commands::house::house_edit::Outcome::Refused { .. }
     ));
     site.app.db.leave_partner(a).await.unwrap();
     site.app.db.pair_partners(a, b).await.unwrap();
-    let stale = pinchora_commands::house_edit::apply(&site.app, who, 0, (8, 8), &expected, op(0))
+    let stale = pinchora_commands::house::house_edit::apply(&site.app, who, 0, (8, 8), &expected, op(0))
         .await
         .unwrap();
-    assert!(matches!(stale, pinchora_commands::house_edit::Outcome::Refused { .. }));
+    assert!(matches!(
+        stale,
+        pinchora_commands::house::house_edit::Outcome::Refused { .. }
+    ));
     assert!(site.app.db.placements(b, 0).await.unwrap().is_empty());
 }
 
@@ -460,7 +464,8 @@ async fn partner_cannot_move_or_transfer_owners_furniture() {
 
 #[tokio::test]
 async fn late_history_save_cannot_erase_or_resurrect_newer_history() {
-    use pinchora_commands::{Who, undo};
+    use pinchora_commands::Who;
+    use pinchora_commands::admin::undo;
     let Some(site) = Site::new("history_cas").await else {
         return;
     };
@@ -575,7 +580,7 @@ async fn personal_ops_are_audited_bounded_and_rate_limited() {
     site.move_in(user, 1, &[]).await;
     let mut browser = site.browser();
     browser.login(user).await;
-    let version = pinchora_commands::house_edit::fingerprint(&[]);
+    let version = pinchora_commands::house::house_edit::fingerprint(&[]);
     let large = browser
         .op(
             "/api/house/rooms/0/ops",
@@ -646,7 +651,7 @@ async fn inventory_bounds_surfaces_and_sold_undo_never_duplicate() {
     site.app.db.grant_item(user, CHAIR, 1).await.unwrap();
     let mut browser = site.browser();
     browser.login(user).await;
-    let mut version = pinchora_commands::house_edit::fingerprint(&[]);
+    let mut version = pinchora_commands::house::house_edit::fingerprint(&[]);
     for x in [-1, 8, 32767] {
         let result = browser
             .op(
@@ -787,7 +792,8 @@ async fn surface_furniture_respects_occupied_tiles_and_stores_and_restores_as_on
     }
     let mut browser = site.browser();
     browser.login(user).await;
-    let mut version = pinchora_commands::house_edit::fingerprint(&site.app.db.placements(user, 0).await.unwrap());
+    let mut version =
+        pinchora_commands::house::house_edit::fingerprint(&site.app.db.placements(user, 0).await.unwrap());
     let op = |item| json!({"type":"place","item_id":item,"x":0,"y":0,"flipped":false});
     let rejected = browser.op("/api/house/rooms/0/ops", &version, op(books), true).await;
     assert_eq!(rejected.status, StatusCode::UNPROCESSABLE_ENTITY);

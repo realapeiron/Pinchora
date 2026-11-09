@@ -7,7 +7,7 @@ import { questionText, type Question } from "./community-pack";
 describe("Community validation translations", () => {
   it("translates every server-side validation message into Turkish", () => {
     const source = readFileSync(
-      new URL("../../../crates/pinchora-web/src/routes/community_pack.rs", import.meta.url),
+      new URL("../../../crates/pinchora-web/src/routes/community/engagement.rs", import.meta.url),
       "utf8",
     );
     const messages = [...source.matchAll(/bad\(\s*(?:"[^"]+"|field),\s*"([^"]+)"/g)].map((match) => match[1]);

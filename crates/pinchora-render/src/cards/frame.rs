@@ -205,7 +205,7 @@ fn neon(out: &mut String, w: f32, h: f32, accent: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::frame::*;
 
     fn svg(frame: Frame, w: f32, h: f32) -> String {
         let mut s = String::new();

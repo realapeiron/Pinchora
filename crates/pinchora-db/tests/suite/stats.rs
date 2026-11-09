@@ -4,7 +4,10 @@
 //! channels' limit and the claim that keeps two pods from working out the same server.
 
 use chrono::{Duration, Utc};
-use pinchora_core::server_stats::{HourTally, MAX_COUNTERS, Pair, RENAME_GAP};
+use pinchora_core::admin::server_stats::HourTally;
+use pinchora_core::admin::server_stats::MAX_COUNTERS;
+use pinchora_core::admin::server_stats::Pair;
+use pinchora_core::admin::server_stats::RENAME_GAP;
 use pinchora_db::CounterSave;
 
 use crate::support::db;

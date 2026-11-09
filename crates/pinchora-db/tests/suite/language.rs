@@ -2,7 +2,7 @@
 //!
 //! A player's own language and a server's default: set, read back, cleared.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 use crate::support::db;
 

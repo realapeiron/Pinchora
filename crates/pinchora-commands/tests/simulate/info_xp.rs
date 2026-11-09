@@ -1,6 +1,6 @@
 //! `/info` cards and XP administration, including an offline MEE6 server.
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn resumed_gateway_status_uses_rest_guild_counts() {
@@ -12,7 +12,7 @@ async fn resumed_gateway_status_uses_rest_guild_counts() {
         .map(|n| json!({ "id": (base * n).to_string(), "approximate_member_count": n }))
         .collect();
     *sim.mock.bot_guilds.lock().unwrap() = guilds;
-    let counts = pinchora_commands::status::fetch_guild_counts(&sim.app.http, 1)
+    let counts = pinchora_commands::admin::status::fetch_guild_counts(&sim.app.http, 1)
         .await
         .unwrap();
     let own = &counts[&0];
@@ -27,9 +27,9 @@ async fn resumed_gateway_status_uses_rest_guild_counts() {
         );
         assert!(queries[1].contains(&format!("after={}", base * 200)));
     }
-    pinchora_commands::status::publish_shard(
+    pinchora_commands::admin::status::publish_shard(
         &sim.app.cache,
-        &pinchora_commands::status::ShardHealth {
+        &pinchora_commands::admin::status::ShardHealth {
             id: 0,
             total: 1,
             guilds: own.len() as u64,
@@ -41,7 +41,8 @@ async fn resumed_gateway_status_uses_rest_guild_counts() {
     .unwrap();
     sim.app.cache.forget("public:status:v1").await.unwrap();
     let status =
-        pinchora_commands::status::snapshot(&sim.app.db, &sim.app.cache, APPLICATION_ID, "https://example.test").await;
+        pinchora_commands::admin::status::snapshot(&sim.app.db, &sim.app.cache, APPLICATION_ID, "https://example.test")
+            .await;
     assert_eq!(status.servers, 201);
     assert_eq!(status.approximate_members, 201 * 202 / 2);
     assert!(serde_json::to_value(status).unwrap().get("channels").is_none());
@@ -505,7 +506,7 @@ async fn bot_info_card_renders_in_english_and_turkish() {
     assert_eq!(english.files.len(), 1, "{english}");
     assert_eq!(image::load_from_memory(&english.files[0].1).unwrap().width(), 900);
     sim.app
-        .set_user_lang(user, Some(pinchora_core::i18n::Lang::Tr))
+        .set_user_lang(user, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let turkish = sim.command(user, "info", json!([sub("bot", vec![])])).await;

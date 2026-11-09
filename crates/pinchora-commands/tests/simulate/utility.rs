@@ -2,10 +2,10 @@
 
 use chrono::{Duration as ChronoDuration, Utc};
 use pinchora_commands::utility_tick;
-use pinchora_core::utility::Schedule;
+use pinchora_core::admin::afk_sticky_schedule::Schedule;
 use pinchora_db::{ScheduledRow, UtilityStickyRow};
 
-use super::*;
+use crate::*;
 
 const TICK_LOCK: fixture_lock::FixtureLock = fixture_lock::FixtureLock(9);
 
@@ -592,7 +592,12 @@ async fn disabled_utility_leaves_afk_and_sticky_untouched() {
         .unwrap();
     sim.app
         .db
-        .set_module(sim.guild, pinchora_core::modules::Module::Utility, Some(false), None)
+        .set_module(
+            sim.guild,
+            pinchora_core::admin::modules::Module::Utility,
+            Some(false),
+            None,
+        )
         .await
         .unwrap();
     sim.app.forget_guild_settings(sim.guild).await;

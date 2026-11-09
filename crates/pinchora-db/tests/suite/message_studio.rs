@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use pinchora_core::card_design::{CardKind, Delivery};
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Delivery;
 use pinchora_db::Db;
 
 #[tokio::test]

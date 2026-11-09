@@ -5,11 +5,16 @@
 use std::sync::OnceLock;
 
 use chrono::{Duration as Span, Utc};
-use pinchora_commands::feeds::{FeedsTick, Fetcher, end_live, install_fetcher, send, tick_for};
-use pinchora_core::feeds::Item;
+use pinchora_commands::community::feeds::FeedsTick;
+use pinchora_commands::community::feeds::Fetcher;
+use pinchora_commands::community::feeds::end_live;
+use pinchora_commands::community::feeds::install_fetcher;
+use pinchora_commands::community::feeds::send;
+use pinchora_commands::community::feeds::tick_for;
+use pinchora_core::community::feeds::Item;
 use pinchora_db::{FeedAdd, FeedEdit, NewFeed, Polled, PostOutcome};
 
-use super::*;
+use crate::*;
 
 /// What the local feed server answers for a path (with its query): status and body.
 type Pages = Arc<Mutex<HashMap<String, (u16, String)>>>;
@@ -246,13 +251,13 @@ async fn live_post_is_edited_and_verified_streamer_role_is_removed() {
         .find(|r| r["id"].as_str() == Some(role_text.as_str()))
         .unwrap()["permissions"] = json!("8");
     sim.mock.role_calls.lock().unwrap().clear();
-    assert!(!pinchora_commands::feeds::change_live_role(&sim.app, &live, true).await);
+    assert!(!pinchora_commands::community::feeds::change_live_role(&sim.app, &live, true).await);
     assert!(sim.mock.role_calls.lock().unwrap().is_empty());
 
     // A failed removal preserves the message/role association for the next poll and blocks deletion.
     sim.mock.roles_allowed.store(false, Ordering::SeqCst);
     assert!(
-        pinchora_commands::feeds::before_live_change(&sim.app, Some(&live), None)
+        pinchora_commands::community::feeds::before_live_change(&sim.app, Some(&live), None)
             .await
             .is_err()
     );
@@ -954,7 +959,12 @@ async fn bluesky_posts_and_a_switched_off_module() {
     // With the module switched off, new posts are dropped, not saved up for later.
     sim.app
         .db
-        .set_module(sim.guild, pinchora_core::modules::Module::Feeds, Some(false), None)
+        .set_module(
+            sim.guild,
+            pinchora_core::admin::modules::Module::Feeds,
+            Some(false),
+            None,
+        )
         .await
         .unwrap();
     sim.app.announce_guild_change(sim.guild).await;

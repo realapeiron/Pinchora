@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn guild_plaza_membership_delegated_management_capacity_and_scheduled_rsvp() {

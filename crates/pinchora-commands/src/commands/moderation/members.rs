@@ -2,13 +2,16 @@
 //! and `/role add|remove`.
 
 use chrono::Duration;
-use pinchora_core::{
-    i18n::Lang,
-    moderation::{CaseKind, check_reason, check_temp_ban, check_timeout, role_refusal_for},
-    server_events::parse_duration,
-    settings::{Grantor, RoleFacts},
-    t,
-};
+use pinchora_core::admin::server_events::parse_duration;
+use pinchora_core::admin::settings::Grantor;
+use pinchora_core::admin::settings::RoleFacts;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::moderation::check_reason;
+use pinchora_core::moderation::moderation::check_temp_ban;
+use pinchora_core::moderation::moderation::check_timeout;
+use pinchora_core::moderation::moderation::role_refusal_for;
+use pinchora_core::t;
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
@@ -19,8 +22,17 @@ use twilight_model::{
     util::Timestamp,
 };
 
-use super::{Act, Moderator, Ranks, administrator, permitted, record, reply_embed, take_back, tell};
-use crate::{Cx, roles::error_code};
+use crate::Cx;
+use crate::commands::moderation::Act;
+use crate::commands::moderation::Moderator;
+use crate::commands::moderation::Ranks;
+use crate::commands::moderation::administrator;
+use crate::commands::moderation::permitted;
+use crate::commands::moderation::record;
+use crate::commands::moderation::reply_embed;
+use crate::commands::moderation::take_back;
+use crate::commands::moderation::tell;
+use crate::roles::roles::error_code;
 
 fn ban_members() -> Permissions {
     Permissions::BAN_MEMBERS
@@ -129,7 +141,9 @@ impl Ban {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await? {
+        if let Some(why) =
+            crate::moderation::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await?
+        {
             return cx.reply_ephemeral(why).await;
         }
         if let Some(why) = ranks.refusal(lang, &self.user, "ban") {
@@ -244,7 +258,9 @@ impl Kick {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await? {
+        if let Some(why) =
+            crate::moderation::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await?
+        {
             return cx.reply_ephemeral(why).await;
         }
         if let Some(why) = ranks.refusal(lang, &self.user, "kick") {
@@ -339,7 +355,9 @@ impl Timeout {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await? {
+        if let Some(why) =
+            crate::moderation::anti_nuke::vip_refusal(&cx.app, guild, self.user.resolved.id.get()).await?
+        {
             return cx.reply_ephemeral(why).await;
         }
         if let Some(why) = ranks.refusal(lang, &self.user, "timeout") {
@@ -565,7 +583,9 @@ impl RoleCommand {
         if let Some(why) = role_refusal_for(facts, grantor, Some(ranks.bot.top), &label) {
             return cx.reply_ephemeral(why).await;
         }
-        if !add && let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, user.resolved.id.get()).await? {
+        if !add
+            && let Some(why) = crate::moderation::anti_nuke::vip_refusal(&cx.app, guild, user.resolved.id.get()).await?
+        {
             return cx.reply_ephemeral(why).await;
         }
         let kind = if add { CaseKind::RoleAdd } else { CaseKind::RoleRemove };

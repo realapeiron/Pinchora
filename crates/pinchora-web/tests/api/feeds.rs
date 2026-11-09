@@ -3,9 +3,10 @@
 
 use std::sync::OnceLock;
 
-use pinchora_commands::feeds::{Fetcher, install_fetcher};
+use pinchora_commands::community::feeds::Fetcher;
+use pinchora_commands::community::feeds::install_fetcher;
 
-use super::*;
+use crate::*;
 
 type Pages = Arc<Mutex<HashMap<String, String>>>;
 

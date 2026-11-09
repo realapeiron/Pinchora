@@ -11,10 +11,9 @@ use axum::{
 };
 use ed25519_dalek::{Signature, VerifyingKey};
 use pinchora_commands::{App, Responder, handle_interaction};
-use pinchora_core::{
-    Config,
-    telemetry::{self, Readiness},
-};
+use pinchora_core::Config;
+use pinchora_core::infra::telemetry;
+use pinchora_core::infra::telemetry::Readiness;
 use tokio::sync::oneshot;
 use twilight_model::{
     application::interaction::{Interaction, InteractionType},
@@ -121,7 +120,7 @@ mod tests {
     use axum::http::HeaderValue;
     use ed25519_dalek::{Signer, SigningKey};
 
-    use super::*;
+    use crate::http::*;
 
     fn signed(key: &SigningKey, timestamp: &str, body: &[u8]) -> HeaderMap {
         let mut message = timestamp.as_bytes().to_vec();

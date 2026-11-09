@@ -3,7 +3,7 @@
 use std::{borrow::Cow, fmt::Write};
 
 use base64::Engine;
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use resvg::usvg;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -253,7 +253,7 @@ pub fn thousands(n: i64) -> String {
 
 /// Grouped integer in the language's number notation.
 pub fn thousands_in(lang: Lang, n: i64) -> String {
-    pinchora_core::server_stats::grouped_in(lang, n)
+    pinchora_core::admin::server_stats::grouped_in(lang, n)
 }
 
 /// `1234567` → `1.2M`, for tight boxes.
@@ -478,7 +478,7 @@ pub fn background_plain(out: &mut String, w: f32, h: f32, top: &str, bottom: &st
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::svg::*;
 
     #[test]
     fn number_formats() {

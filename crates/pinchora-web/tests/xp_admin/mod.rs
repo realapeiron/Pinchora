@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn xp_routes_require_manager_csrf_and_audit_edits() {
@@ -83,7 +83,7 @@ async fn xp_validation_uses_the_servers_language() {
     h.add_bot(guild);
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let mut browser = h.browser();
@@ -100,7 +100,7 @@ async fn xp_validation_uses_the_servers_language() {
     assert_eq!(response.status, StatusCode::BAD_REQUEST);
     assert_eq!(
         response.json()["error"]["message"],
-        pinchora_core::t!(pinchora_core::i18n::Lang::Tr, "xp.invalid-amount")
+        pinchora_core::t!(pinchora_core::infra::i18n::Lang::Tr, "xp.invalid-amount")
     );
     let response = browser
         .get(&format!("/api/guilds/{guild}/xp-admin/members?search=0"))

@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 use crate::lang;
 
@@ -121,7 +121,7 @@ pub fn share_text(lang: Lang, puzzle: i64, solved_in: Option<usize>, rows: &[[Ti
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::wordle::*;
     use Tile::{Absent as A, Correct as C, Present as P};
 
     #[test]

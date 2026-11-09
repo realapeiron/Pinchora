@@ -1,8 +1,12 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, PetStatus, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::PetStatus;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{STAR, background, data_uri_png, escape, panel, plate, sprite, truncate_to},
@@ -270,7 +274,7 @@ impl NurseryCard {
 mod tests {
     use image::RgbaImage;
 
-    use super::*;
+    use crate::cards::nursery::*;
     use crate::{Renderer, encode_png};
 
     fn card(pets: usize) -> NurseryCard {

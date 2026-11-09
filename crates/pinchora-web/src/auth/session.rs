@@ -5,7 +5,7 @@ use std::time::Duration;
 use axum::http::{HeaderMap, HeaderValue, header::COOKIE};
 use base64::Engine;
 use pinchora_cache::Cache;
-use pinchora_core::config::Secret;
+use pinchora_core::infra::config::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::discord::UserGuild;
@@ -157,7 +157,7 @@ pub fn set_cookie(name: &str, value: &str, path: &str, max_age: i64, secure: boo
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::auth::session::*;
 
     #[test]
     fn cookies_are_found_among_others() {

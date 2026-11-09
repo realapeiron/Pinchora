@@ -1,6 +1,6 @@
 //! The web care route and the Discord button share a Redis cooldown and the same stored pet.
-use super::*;
-use pinchora_core::i18n::Lang;
+use crate::*;
+use pinchora_core::infra::i18n::Lang;
 
 #[tokio::test]
 async fn web_care_cooldown_interleaves_with_discord_in_both_languages() {

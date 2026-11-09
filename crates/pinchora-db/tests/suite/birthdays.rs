@@ -170,7 +170,7 @@ async fn real_year_cap_private_profiles_and_durable_delivery() {
     .unwrap();
     db.save_birthday_settings(
         guild,
-        &pinchora_core::birthdays::BirthdaySettings {
+        &pinchora_core::community::birthdays::BirthdaySettings {
             enabled: true,
             channel_id: Some(channel),
             role_id: Some(role),

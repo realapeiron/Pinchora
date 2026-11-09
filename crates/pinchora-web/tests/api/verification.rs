@@ -1,5 +1,5 @@
 //! Safety permissions, settings and member-bound captcha routes through the real API stack.
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn safety_settings_require_manage_and_csrf_and_preview_a_real_png() {
@@ -53,7 +53,7 @@ async fn web_captcha_is_bound_to_its_member_and_requires_csrf() {
         return;
     };
     let (guild, user, mut browser) = h.managed_server().await;
-    let mut config = pinchora_core::verification::Config::default();
+    let mut config = pinchora_core::moderation::verification::Config::default();
     config.verification.enabled = true;
     config.verification.verified_role_id = Some("123".into());
     h.state.app.db.save_safety(guild, &config).await.unwrap();
@@ -131,7 +131,7 @@ async fn web_captcha_token_cannot_cross_rejoin_or_disabled_module() {
         return;
     };
     let (guild, user, mut browser) = h.managed_server().await;
-    let mut c = pinchora_core::verification::Config::default();
+    let mut c = pinchora_core::moderation::verification::Config::default();
     c.verification.enabled = true;
     c.verification.verified_role_id = Some("123".into());
     h.state.app.db.save_safety(guild, &c).await.unwrap();
@@ -198,12 +198,12 @@ async fn safety_copy_and_expired_links_use_the_selected_language() {
     let (guild, user, mut browser) = h.managed_server().await;
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     h.state
         .app
-        .set_user_lang(user, Some(pinchora_core::i18n::Lang::Tr))
+        .set_user_lang(user, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let response = browser.get(&format!("/api/guilds/{guild}/safety")).await;

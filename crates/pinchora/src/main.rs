@@ -7,10 +7,9 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use pinchora_cache::Cache;
 use pinchora_commands::App;
-use pinchora_core::{
-    Config,
-    telemetry::{self, Readiness},
-};
+use pinchora_core::Config;
+use pinchora_core::infra::telemetry;
+use pinchora_core::infra::telemetry::Readiness;
 use pinchora_db::Db;
 use twilight_http::Client;
 use twilight_model::id::Id;
@@ -128,9 +127,9 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     // Ends duels and rounds whose clock ran out, so no wager stays held after a restart.
     pinchora_commands::spawn_game_janitor(app.clone());
     pinchora_commands::spawn_workflows_ticker(app.clone());
-    pinchora_commands::spawn_economy_v2_ticker(app.clone());
-    pinchora_commands::spawn_mod_parity_ticker(app.clone());
-    pinchora_commands::spawn_leveling_parity_ticker(app.clone());
+    pinchora_commands::spawn_player_economy_ticker(app.clone());
+    pinchora_commands::spawn_moderation_policy_ticker(app.clone());
+    pinchora_commands::spawn_leveling_policy_ticker(app.clone());
     // Sends the reminders that came due; every pod runs it and the table's leases keep one from
     // repeating another.
     pinchora_commands::spawn_reminder_ticker(app.clone());
@@ -160,7 +159,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_trackers_ticker(app.clone());
     pinchora_commands::spawn_event_ticker(app.clone());
     pinchora_commands::spawn_community_ticker(app.clone());
-    pinchora_commands::spawn_community_v2_ticker(app.clone());
+    pinchora_commands::spawn_community_tools_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());

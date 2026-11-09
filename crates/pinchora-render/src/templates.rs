@@ -2,14 +2,20 @@
 //! Pinchora always drew, one per theme, layer for layer; a server that never opened the editor gets the
 //! classic card in its theme, headline and accent.
 
-use pinchora_core::{
-    card_design::{
-        Align, AvatarShape, Background, CardDesign, CardKind, Content, DESIGN_VERSION, Direction, Font, Layer,
-        ShapeKind, text_height,
-    },
-    i18n::Lang,
-    t,
-};
+use pinchora_core::admin::card_design::Align;
+use pinchora_core::admin::card_design::AvatarShape;
+use pinchora_core::admin::card_design::Background;
+use pinchora_core::admin::card_design::CardDesign;
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Content;
+use pinchora_core::admin::card_design::DESIGN_VERSION;
+use pinchora_core::admin::card_design::Direction;
+use pinchora_core::admin::card_design::Font;
+use pinchora_core::admin::card_design::Layer;
+use pinchora_core::admin::card_design::ShapeKind;
+use pinchora_core::admin::card_design::text_height;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 use crate::{Theme, svg::truncate};
 
@@ -333,7 +339,7 @@ fn text(id: &str, body: &str, font: Font, bold: bool, size: u32, color: &str, (x
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::templates::*;
     #[test]
     fn boost_and_level_cards_have_turkish_text() {
         for kind in [CardKind::Boost, CardKind::LevelUp] {

@@ -6,7 +6,7 @@
 //! keeps a small world behind it (the channels, who sits where). Handlers see it through the same twilight
 //! client as ever.
 
-use super::*;
+use crate::*;
 
 const CONNECT: u64 = 1 << 20;
 const VIEW_CHANNEL: u64 = 1 << 10;
@@ -1237,7 +1237,12 @@ async fn only_managers_set_creators_up_and_the_module_switch_stops_rooms() {
     // With the module off, a creator makes nothing and /voice is refused.
     v.app
         .db
-        .set_module(v.guild, pinchora_core::modules::Module::TempVoice, Some(false), None)
+        .set_module(
+            v.guild,
+            pinchora_core::admin::modules::Module::TempVoice,
+            Some(false),
+            None,
+        )
         .await
         .expect("switch the module off");
     v.app.announce_guild_change(v.guild).await;
@@ -1249,7 +1254,12 @@ async fn only_managers_set_creators_up_and_the_module_switch_stops_rooms() {
     // On again: rooms are made, and the template with its number applies.
     v.app
         .db
-        .set_module(v.guild, pinchora_core::modules::Module::TempVoice, Some(true), None)
+        .set_module(
+            v.guild,
+            pinchora_core::admin::modules::Module::TempVoice,
+            Some(true),
+            None,
+        )
         .await
         .expect("switch the module on");
     v.app.announce_guild_change(v.guild).await;
@@ -1518,7 +1528,7 @@ async fn turkish_members_and_servers_get_turkish_text() {
     let (admin, alice) = (unique(), unique());
     let creator = v.channel(2, "Join to create", None);
     v.app
-        .set_guild_lang(v.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(v.guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     v.add_creator(admin, creator, vec![]).await;
@@ -1549,7 +1559,7 @@ async fn a_server_holds_a_limited_number_of_rooms() {
     let creator = v.channel(2, "Join to create", None);
     v.add_creator(admin, creator, vec![]).await;
     // The server is full of rooms already (made some other way: rows are enough).
-    for _ in 0..pinchora_core::temp_voice::MAX_ROOMS {
+    for _ in 0..pinchora_core::admin::temp_voice::MAX_ROOMS {
         v.app
             .db
             .create_temp_room(pinchora_db::NewTempRoom {

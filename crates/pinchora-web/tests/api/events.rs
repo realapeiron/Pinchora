@@ -1,10 +1,10 @@
-use super::*;
+use crate::*;
 fn body() -> Value {
     let start = chrono::Utc::now() + chrono::Duration::hours(4);
     json!({"title":"@everyone test", "description":"<@&123>","starts_at":start,
         "ends_at":start+chrono::Duration::hours(1),"tz":"UTC","location":"reef",
         "channel_id":GENERAL.to_string(),"required_role_id":null,
-        "options":pinchora_core::events::default_options(),"recurrence":null,"sync":false})
+        "options":pinchora_core::community::events::default_options(),"recurrence":null,"sync":false})
 }
 #[tokio::test]
 async fn events_scope_csrf_audit_and_sync_failure_keep_local_changes() {
@@ -15,7 +15,7 @@ async fn events_scope_csrf_audit_and_sync_failure_keep_local_changes() {
     let path = format!("/api/guilds/{guild}/events");
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let localized = browser.get(&path).await.json();
@@ -23,7 +23,7 @@ async fn events_scope_csrf_audit_and_sync_failure_keep_local_changes() {
     assert_eq!(localized["strings"]["EVENTS"], "ETKİNLİKLER");
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::En))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::En))
         .await
         .unwrap();
 
@@ -113,7 +113,7 @@ async fn events_scope_csrf_audit_and_sync_failure_keep_local_changes() {
     h.state
         .app
         .db
-        .set_module(guild, pinchora_core::modules::Module::Events, Some(false), None)
+        .set_module(guild, pinchora_core::admin::modules::Module::Events, Some(false), None)
         .await
         .unwrap();
     h.state.app.forget_guild_settings(guild).await;

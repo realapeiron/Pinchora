@@ -1,4 +1,4 @@
-use super::*;
+use crate::locks::*;
 
 /// What players do at once in a busy server, deletes of their data among it, from a few workers for
 /// a while (`PINCHORA_TEST_MIX_SECS`, `PINCHORA_TEST_MIX_WORKERS`). No call may fail (a deadlock

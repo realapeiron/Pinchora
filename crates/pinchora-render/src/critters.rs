@@ -454,7 +454,7 @@ pub fn draw(shape_name: &str, body: &str, accent: &str, pattern: &str) -> Option
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::critters::*;
 
     #[test]
     fn every_shape_is_a_clean_grid() {

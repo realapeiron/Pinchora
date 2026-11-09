@@ -3,10 +3,12 @@
 //! Every label comes in already worded (and in capitals where the pixel font draws it), so the card
 //! itself knows no language.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Renderer, Theme,
     svg::{CRAB, background, compact_in, escape, pixel_width, sprite, thousands_in, truncate_pixel_to, truncate_to},
@@ -690,7 +692,7 @@ impl Renderer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::stats::*;
 
     /// The sample the golden image and the samples example draw: a busy month in a mid-sized server.
     pub(crate) fn sample() -> StatsCard {

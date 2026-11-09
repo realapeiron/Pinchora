@@ -15,7 +15,7 @@ pub(crate) async fn run(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
     let Some(msg) = target else {
         return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "parity.invalid")).await;
     };
-    super::parity::submit_report(
+    crate::commands::moderation::policy::submit_report(
         cx,
         g,
         msg.author.id.get(),

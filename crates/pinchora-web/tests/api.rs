@@ -6,8 +6,7 @@
 //!
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 
-#[path = "../../pinchora-commands/tests/support/isolation.rs"]
-mod fixture_isolation;
+pinchora_testkit::isolation!(fixture_isolation);
 
 use std::{
     collections::{HashMap, HashSet},
@@ -33,7 +32,9 @@ use pinchora_cache::{Cache, Invalidation};
 use pinchora_commands::{
     App, CardSubject, PreviewError, card_png, listen_for_invalidations, on_member_add, on_message,
 };
-use pinchora_core::{card_design::CardKind, config::WebConfig, i18n::Lang};
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::infra::config::WebConfig;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_db::{Db, XpGrant};
 use pinchora_web::{WebSettings, WebState};
 use reqwest::Url;
@@ -65,10 +66,10 @@ mod tags;
 #[path = "api/roles.rs"]
 mod roles;
 // Tickets: settings, panels, the tickets list and transcripts.
-#[path = "api/community_pack.rs"]
-mod community_pack;
-#[path = "api/community_v2.rs"]
-mod community_v2;
+#[path = "api/community_engagement.rs"]
+mod community_engagement;
+#[path = "api/community_tools.rs"]
+mod community_tools;
 #[path = "api/invites.rs"]
 mod invites;
 #[path = "api/roblox.rs"]
@@ -89,8 +90,8 @@ mod birthdays;
 mod branding;
 #[path = "api/events.rs"]
 mod events;
-#[path = "api/leveling_parity.rs"]
-mod leveling_parity;
+#[path = "api/leveling_policy.rs"]
+mod leveling_policy;
 #[path = "api/message_studio.rs"]
 mod message_studio;
 #[path = "api/tempvoice.rs"]
@@ -653,7 +654,7 @@ impl Harness {
             global_xp: 0,
             points: 0,
         };
-        let week = pinchora_core::leveling::week_start(chrono::Utc::now());
+        let week = pinchora_core::progression::leveling::week_start(chrono::Utc::now());
         self.state
             .app
             .db
@@ -2330,7 +2331,7 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
     assert_eq!(junk.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", junk.text());
     let huge = upload(
         "image/png",
-        vec![0; pinchora_core::card_design::UPLOAD_MAX_BYTES + 2048],
+        vec![0; pinchora_core::admin::card_design::UPLOAD_MAX_BYTES + 2048],
     )
     .await;
     assert_eq!(huge.status, StatusCode::PAYLOAD_TOO_LARGE);
@@ -2616,7 +2617,7 @@ async fn a_noisy_upload_is_shrunk_until_it_is_small_enough_to_keep() {
     let made = made.json();
     let stored = browser.get(made["url"].as_str().unwrap()).await;
     assert!(
-        stored.body.len() <= pinchora_core::card_design::UPLOAD_STORED_MAX_BYTES,
+        stored.body.len() <= pinchora_core::admin::card_design::UPLOAD_STORED_MAX_BYTES,
         "{} bytes kept",
         stored.body.len()
     );
@@ -2857,8 +2858,8 @@ async fn access(
     app: &App,
     guild: u64,
     channel: u64,
-    module: pinchora_core::modules::Module,
-) -> pinchora_core::modules::Access {
+    module: pinchora_core::admin::modules::Module,
+) -> pinchora_core::admin::modules::Access {
     app.module_access(guild, Some(channel), module)
         .await
         .expect("module access")
@@ -2866,7 +2867,9 @@ async fn access(
 
 #[tokio::test]
 async fn module_switches_save_with_the_command_rules_and_reach_the_bot() {
-    use pinchora_core::modules::{Access, Group, Module};
+    use pinchora_core::admin::modules::Access;
+    use pinchora_core::admin::modules::Group;
+    use pinchora_core::admin::modules::Module;
     let Some(h) = Harness::new("modules").await else {
         return;
     };
@@ -3526,7 +3529,7 @@ async fn points_that_race_each_other_never_leave_the_least_above_the_most() {
 /// new reason, and the staff log that reads commands, Discord and the dashboard together.
 #[tokio::test]
 async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
-    use pinchora_core::moderation::CaseKind;
+    use pinchora_core::moderation::moderation::CaseKind;
     let Some(h) = Harness::new("moderation").await else {
         return;
     };
@@ -3597,7 +3600,8 @@ async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
         .await;
     assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
     let config = h.state.app.db.log_config(guild).await.unwrap();
-    use pinchora_core::logging::{LogCategory, LogEvent};
+    use pinchora_core::admin::logging::LogCategory;
+    use pinchora_core::admin::logging::LogEvent;
     assert_eq!(config.default_channel, Some(GENERAL));
     assert_eq!(config.channels.get(&LogCategory::Moderation), Some(&NEWS));
     assert!(!config.enabled(LogEvent::MessageEdit) && config.enabled(LogEvent::VoiceSelf));
@@ -3919,7 +3923,7 @@ async fn the_landing_data_is_public_cached_and_knows_who_is_looking() {
 
 #[tokio::test]
 async fn case_reason_edits_require_the_author_or_a_higher_moderator() {
-    use pinchora_core::moderation::CaseKind;
+    use pinchora_core::moderation::moderation::CaseKind;
     let Some(h) = Harness::new("reason_hierarchy").await else {
         return;
     };
@@ -4019,8 +4023,8 @@ async fn public_bot_status_has_safe_cached_numbers() {
     assert_eq!(browser.get("/api/public/status").await.json(), body);
 }
 
-#[path = "api/mod_parity.rs"]
-mod mod_parity;
+#[path = "api/moderation_policy.rs"]
+mod moderation_policy;
 
 #[path = "api/collection_depth.rs"]
 mod collection_depth;
@@ -4029,8 +4033,8 @@ mod player_depth;
 #[path = "api/web_player.rs"]
 mod web_player;
 
-#[path = "api/economy_v2.rs"]
-mod economy_v2;
+#[path = "api/economy_player.rs"]
+mod economy_player;
 #[path = "api/reef_spaces.rs"]
 mod reef_spaces;
 

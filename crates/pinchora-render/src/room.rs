@@ -633,7 +633,7 @@ fn draw_order(items: &[SceneItem], idx: &[usize]) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::room::*;
 
     fn item(x: u32, y: u32, w: u32, d: u32, layer: SceneLayer) -> SceneItem {
         SceneItem {

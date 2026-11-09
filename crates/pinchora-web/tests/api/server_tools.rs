@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 /// Discord's update response keeps the message id; the shared mock already handles creation.
 pub(super) fn updated_message(channel: &str, message: &str) -> (StatusCode, String) {

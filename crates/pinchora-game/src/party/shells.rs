@@ -1,6 +1,6 @@
 //! The shell game: a pearl under one of three shells, a guess, and a payout that favours the sea.
 
-use super::Rng;
+use crate::party::Rng;
 
 /// Shells on the table.
 pub const SHELLS: usize = 3;
@@ -30,7 +30,7 @@ pub fn pearl(seed: u64) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::shells::*;
 
     #[test]
     fn the_sea_keeps_a_sixth_of_every_stake_on_average() {

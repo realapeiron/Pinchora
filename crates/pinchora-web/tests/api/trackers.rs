@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn tracker_settings_require_manager_csrf_and_write_audit() {

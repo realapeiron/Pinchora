@@ -1,6 +1,6 @@
 //! The heaviest card the validator lets through still draws within the render budget.
 //!
-//! `pinchora_core::card_design` caps what the layers may cost together (`LAYER_COST_MAX`), caps a layer at the
+//! `pinchora_core::admin::card_design` caps what the layers may cost together (`LAYER_COST_MAX`), caps a layer at the
 //! canvas, and allows four avatars. This builds the designs that spend that allowance on what costs the most
 //! per unit, on the biggest canvas with the busiest background, and times them: in release the slowest must
 //! draw in 400 ms. Run it with `cargo test --release -p pinchora-render --test cost -- --nocapture` (the
@@ -15,10 +15,16 @@
 use std::time::Instant;
 
 use image::RgbaImage;
-use pinchora_core::card_design::{
-    AVATAR_COST_FACTOR, AVATAR_MAX_SIDE, CardDesign, LAYER_COST_MAX, MAX_AVATARS, MAX_LAYERS, TEXT_CHAR_COST,
-    UPLOAD_STORED_MAX_BYTES, layers_cost, parse_design,
-};
+use pinchora_core::admin::card_design::AVATAR_COST_FACTOR;
+use pinchora_core::admin::card_design::AVATAR_MAX_SIDE;
+use pinchora_core::admin::card_design::CardDesign;
+use pinchora_core::admin::card_design::LAYER_COST_MAX;
+use pinchora_core::admin::card_design::MAX_AVATARS;
+use pinchora_core::admin::card_design::MAX_LAYERS;
+use pinchora_core::admin::card_design::TEXT_CHAR_COST;
+use pinchora_core::admin::card_design::UPLOAD_STORED_MAX_BYTES;
+use pinchora_core::admin::card_design::layers_cost;
+use pinchora_core::admin::card_design::parse_design;
 use pinchora_render::{CardFill, DesignedCard, Renderer, character::atlas, encode_png, placeholder_avatar};
 use serde_json::{Value, json};
 
@@ -27,7 +33,7 @@ const RUNS: usize = 5;
 const UPLOAD_ID: &str = "0123456789abcdef0123456789abcdef";
 
 const FILL: CardFill<'static> = CardFill {
-    lang: pinchora_core::i18n::Lang::En,
+    lang: pinchora_core::infra::i18n::Lang::En,
     user: "Captain Pinch the Third of Reef",
     username: "captain.pinch",
     server: "Pinchora Reef",

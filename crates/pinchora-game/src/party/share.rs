@@ -1,6 +1,7 @@
 //! Share or grab: two players secretly pick, and the pool goes by what they picked together.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 /// Shells the sea puts in the pool of a game nobody wagered on.
 pub const POOL: i64 = 60;
@@ -116,7 +117,7 @@ impl Picks {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::share::*;
 
     #[test]
     fn the_four_outcomes_split_the_pool_and_never_create_shells() {

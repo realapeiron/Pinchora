@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
-use super::{PIXEL, text};
+use crate::cards::PIXEL;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{background, escape, mix, panel},
@@ -156,8 +157,8 @@ impl WordleCard<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::wordle::*;
 
     fn row(word: &str, marks: [u8; 5]) -> WordleRow {
         WordleRow {

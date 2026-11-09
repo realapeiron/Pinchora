@@ -2,16 +2,26 @@
 //! Postcard, Wordle Race, Would You Rather, Truth or Dare, `/party stop`, the filter settings and the refusals.
 //! What the words and prompts themselves are is covered next door in `words.rs`.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_game::party::writing_reward;
 
-use super::{
-    words::{
-        PARTY, WORDS_TR, advance, balance, description, edits, fresh, game, game_id, keep, keep_reply, lobby_of, pin,
-        st_prompt, state, word_tr,
-    },
-    *,
-};
+use crate::words::PARTY;
+use crate::words::WORDS_TR;
+use crate::words::advance;
+use crate::words::balance;
+use crate::words::description;
+use crate::words::edits;
+use crate::words::fresh;
+use crate::words::game;
+use crate::words::game_id;
+use crate::words::keep;
+use crate::words::keep_reply;
+use crate::words::lobby_of;
+use crate::words::pin;
+use crate::words::st_prompt;
+use crate::words::state;
+use crate::words::word_tr;
+use crate::*;
 
 /// Keeps the picture of a reply under a name that says what it shows.
 fn keep_png(sim: &Sim, reply: &Reply, name: &str) {

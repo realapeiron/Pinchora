@@ -5,7 +5,8 @@
 
 use std::fmt;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
@@ -812,7 +813,7 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::chess::*;
 
     fn perft(fen: &str, depth: u32) -> u64 {
         Position::from_fen(fen).expect("a good FEN").perft(depth)

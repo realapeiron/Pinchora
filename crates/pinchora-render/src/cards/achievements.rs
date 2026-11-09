@@ -2,9 +2,11 @@
 
 use std::fmt::Write;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{CRAB, HEART, SHELL, STAR, background, data_uri_png, escape, fit_laid_out, sprite, thousands_in},

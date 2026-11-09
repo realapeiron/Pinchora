@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn branding_applies_profile_color_to_english_and_turkish_embeds() {
@@ -126,7 +126,7 @@ async fn branding_show_reports_accepted_profile_instead_of_an_unapplied_draft() 
         ..Default::default()
     };
     sim.app.db.save_guild_branding(sim.guild, &row).await.unwrap();
-    pinchora_commands::branding::apply(&sim.app, sim.guild, &row)
+    pinchora_commands::admin::branding::apply(&sim.app, sim.guild, &row)
         .await
         .unwrap();
     let draft = pinchora_db::GuildBranding {
@@ -150,7 +150,7 @@ async fn branding_show_reports_accepted_profile_instead_of_an_unapplied_draft() 
 
 #[tokio::test]
 async fn branding_covers_wave3_forms_moderation_logs_and_roblox_embeds() {
-    use pinchora_core::logging::LogEvent;
+    use pinchora_core::admin::logging::LogEvent;
     let Some(mut sim) = Sim::new("branding_wave3_embeds").await else {
         return;
     };
@@ -162,7 +162,7 @@ async fn branding_covers_wave3_forms_moderation_logs_and_roblox_embeds() {
         ..Default::default()
     };
     sim.app.db.save_guild_branding(sim.guild, &row).await.unwrap();
-    pinchora_commands::branding::apply(&sim.app, sim.guild, &row)
+    pinchora_commands::admin::branding::apply(&sim.app, sim.guild, &row)
         .await
         .unwrap();
     sim.app
@@ -175,9 +175,9 @@ async fn branding_covers_wave3_forms_moderation_logs_and_roblox_embeds() {
         .unwrap();
     sim.app
         .db
-        .save_mod_parity_config(
+        .save_moderation_policy_config(
             sim.guild,
-            &pinchora_core::mod_parity::Config {
+            &pinchora_core::moderation::policy::Config {
                 report_channel: Some(sim.channel.to_string()),
                 ..Default::default()
             },

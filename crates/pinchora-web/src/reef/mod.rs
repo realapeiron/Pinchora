@@ -365,7 +365,7 @@ impl Limits {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::reef::*;
     #[tokio::test]
     async fn remote_peers_do_not_accumulate_in_the_local_location_index() {
         let runtime = Runtime::default();

@@ -1,4 +1,4 @@
-use super::*;
+use crate::economy_player::*;
 
 #[tokio::test]
 async fn shifts_are_ordered_capped_idempotent_and_promote() {
@@ -378,7 +378,7 @@ async fn migration_0083_preserves_existing_balances_inventory_and_access_grants(
 async fn admin_audit_failure_rolls_back_settings_and_reset() {
     let _isolation = crate::support::shared().await;
     let Some((db, u)) = setup().await else { return };
-    let actor = pinchora_db::economy_v2::EconomyAudit {
+    let actor = pinchora_db::economy::player::EconomyAudit {
         actor: u,
         name: "invalid\0name",
         source: pinchora_db::AuditSource::Web,

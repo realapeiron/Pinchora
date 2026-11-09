@@ -1,10 +1,18 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{
-    Backdrop, BadgeIcon, PIXEL, SANS, ShowcaseSlot, SpriteArt, avatar_frame, backdrop, showcase::draw_row, text,
-};
+use crate::cards::Backdrop;
+use crate::cards::BadgeIcon;
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::ShowcaseSlot;
+use crate::cards::SpriteArt;
+use crate::cards::avatar_frame;
+use crate::cards::backdrop;
+use crate::cards::showcase::draw_row;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{

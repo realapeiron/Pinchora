@@ -1,5 +1,5 @@
 //! The quick canvas games share one frame, but every board/prompt variant has a golden.
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_render::{QuickCard, QuickDetails, QuickHeat, QuickKind, Renderer, Theme};
 use std::path::Path;
 

@@ -1,8 +1,11 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{CRAB, STAR, background, escape, panel, pixel_width, segment_bar, sprite, truncate_to, wrap},
@@ -182,8 +185,8 @@ impl PollCard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::poll::*;
 
     fn card(question: &str, votes: &[i64], closed: bool) -> PollCard {
         PollCard {

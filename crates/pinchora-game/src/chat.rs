@@ -1,5 +1,6 @@
 //! Discord-independent EN/TR policy; preserve accepted Unicode text exactly.
-use pinchora_core::{chat_text, i18n::Lang};
+use pinchora_core::infra::chat_text;
+use pinchora_core::infra::i18n::Lang;
 pub fn check(text: &str) -> Result<(), &'static str> {
     chat_text::check(text)?;
     if crate::party::filter::is_profane(text, false) || crate::party::filter::is_profane_for(text, true, Lang::Tr) {
@@ -15,7 +16,7 @@ pub fn display_name(text: &str) -> String {
     }
 }
 pub fn fingerprint(text: &str) -> String {
-    let words = pinchora_core::automod::words(text, 'i').join(" ");
+    let words = pinchora_core::moderation::automod::words(text, 'i').join(" ");
     if words.is_empty() {
         text.trim().to_lowercase()
     } else {
@@ -24,7 +25,7 @@ pub fn fingerprint(text: &str) -> String {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::chat::*;
     #[test]
     fn english_turkish_filter_table() {
         for text in [

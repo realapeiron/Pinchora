@@ -1,4 +1,4 @@
-use super::*;
+use crate::economy_player::*;
 
 #[tokio::test]
 async fn auctions_escrow_refund_extend_and_settle_once() {
@@ -355,7 +355,7 @@ async fn anti_snipe_never_exceeds_hard_end_and_privacy_removes_ledger_pairs() {
             .unwrap();
         end = serde_json::from_value(result["ends_at"].clone()).unwrap();
         assert!(end <= hard);
-        bid = pinchora_core::economy_v2::minimum_bid(bid);
+        bid = pinchora_core::economy::player::minimum_bid(bid);
     }
     assert_eq!(end, hard);
     assert!(

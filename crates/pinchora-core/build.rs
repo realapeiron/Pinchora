@@ -31,6 +31,14 @@ fn main() {
             .and_then(|n| n.to_str())
             .expect("utf-8 name");
         let area = file.file_stem().and_then(|n| n.to_str()).expect("utf-8 name");
+        let area = match area {
+            "community_engagement" => "community_pack",
+            "community_tools" => "community_v2",
+            "economy_player" => "economy_v2",
+            "reef_party" => "party_v2",
+            "role_automation" => "roles_pack",
+            other => other,
+        };
         out.push_str(&format!(
             "    ({lang:?}, {area:?}, include_str!({:?})),\n",
             file.display().to_string()

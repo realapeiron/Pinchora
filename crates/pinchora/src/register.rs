@@ -6,7 +6,7 @@ pub async fn run(config: &Config, global: bool) -> anyhow::Result<()> {
     let http = Client::new(config.discord.token.expose().to_owned());
     let client = http.interaction(Id::new(config.discord.application_id));
     let commands = pinchora_commands::command_definitions();
-    pinchora_commands::routing::validate(&commands)?;
+    pinchora_commands::infra::routing::validate(&commands)?;
     let scope = config.discord.dev_guild_id.filter(|_| !global);
     let db = pinchora_db::Db::connect(config.database.url.expose(), 2).await?;
     let cache = pinchora_cache::Cache::connect(config.redis.url.expose()).await?;
@@ -14,7 +14,7 @@ pub async fn run(config: &Config, global: bool) -> anyhow::Result<()> {
         Some(guild) => client.guild_commands(Id::new(guild)).await?.models().await?,
         None => client.global_commands().await?.models().await?,
     };
-    let replacing = pinchora_commands::routing::has_legacy_paths(&old);
+    let replacing = pinchora_commands::infra::routing::has_legacy_paths(&old);
     let ids: std::collections::BTreeMap<_, _> = old.into_iter().filter_map(|c| Some((c.name, c.id?.get()))).collect();
     if replacing {
         let mut guilds = Vec::new();

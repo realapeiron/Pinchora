@@ -1,4 +1,11 @@
-use super::{Command, Envelope, Event, Input, MAX_MESSAGE, Peer, QUEUE, RoomKey};
+use crate::reef::Command;
+use crate::reef::Envelope;
+use crate::reef::Event;
+use crate::reef::Input;
+use crate::reef::MAX_MESSAGE;
+use crate::reef::Peer;
+use crate::reef::QUEUE;
+use crate::reef::RoomKey;
 use crate::{
     auth::session,
     error::{ApiError, ApiResult},
@@ -172,7 +179,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     let mut current_room: Option<mpsc::Sender<Input>> = None;
     let mut current_key: Option<RoomKey> = None;
     let mut sequence = 1;
-    let mut frames = super::Bucket::new(30.0, 60.0);
+    let mut frames = crate::reef::Bucket::new(30.0, 60.0);
     let mut seen = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
     heartbeat.tick().await;
@@ -187,7 +194,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
                 match message {
                     Some(message) => {
                         if let Ok(body) = serde_json::from_str::<Value>(&message) {
-                            if let Some(reason)=body["close"].as_str() {peer.terminate(super::routing::close_reason(reason));break;}
+                            if let Some(reason)=body["close"].as_str() {peer.terminate(crate::reef::routing::close_reason(reason));break;}
                             peer.send("","",json!({"type":"policy_changed"}));
                         }
                     }
@@ -199,12 +206,12 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
             }
             _=validity.tick() => {
                 if let Some(key)=current_key
-                    && !matches!(state.app.cache.reef_renew(&super::routing::location_key(&peer.token), &key.name(), 5000).await,Ok(true)) {
+                    && !matches!(state.app.cache.reef_renew(&crate::reef::routing::location_key(&peer.token), &key.name(), 5000).await,Ok(true)) {
                     peer.terminate("routing_unavailable");break;
                 }
-                match state.app.cache.reef_renew(&super::routing::controller_key(peer.user), &peer.token, 5000).await {
+                match state.app.cache.reef_renew(&crate::reef::routing::controller_key(peer.user), &peer.token, 5000).await {
                     Ok(true) => {},
-                    Ok(false) => {peer.terminate(super::routing::controller(&state,&peer).await.err().unwrap_or("routing_unavailable"));break;},
+                    Ok(false) => {peer.terminate(crate::reef::routing::controller(&state,&peer).await.err().unwrap_or("routing_unavailable"));break;},
                     Err(_) => {peer.terminate("routing_unavailable");break;}
                 }
                 match session::load(&state.app.cache,&current.sid,chrono::Utc::now().timestamp()).await {
@@ -252,7 +259,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
                         // Check before leaving the old room. Actor repeats this check at admission.
                         if room_access(&state,key,peer.user).await.is_err() {peer.error("",&envelope.request_id,"access_denied");continue;}
                         if let Some(tx)=current_room.take() { let _=tx.send(Input::Leave(peer.token.clone())).await; }
-                        if state.app.cache.reef_claim(&super::routing::location_key(&peer.token), &key.name(), 5000, true).await.is_err() {
+                        if state.app.cache.reef_claim(&crate::reef::routing::location_key(&peer.token), &key.name(), 5000, true).await.is_err() {
                             peer.terminate("routing_unavailable");break;
                         }
                         current_key=Some(key);
@@ -263,7 +270,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
                     }
                     Command::Leave => {
                         if let Some(key)=current_key.take() {
-                            let _=state.app.cache.reef_release(&super::routing::location_key(&peer.token), &key.name()).await;
+                            let _=state.app.cache.reef_release(&crate::reef::routing::location_key(&peer.token), &key.name()).await;
                         }
                         state.reef.unlocate(peer.user).await;
                         if let Some(tx)=current_room.take() {let _=tx.send(Input::Leave(peer.token.clone())).await;}
@@ -285,7 +292,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
         let _ = state
             .app
             .cache
-            .reef_release(&super::routing::location_key(&peer.token), &key.name())
+            .reef_release(&crate::reef::routing::location_key(&peer.token), &key.name())
             .await;
     }
     state.reef.release(&state, &peer).await;
@@ -318,7 +325,7 @@ pub(crate) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> an
     }
     anyhow::ensure!(state.app.db.character(user).await?.is_some(), "access denied");
     if key.instance.is_some() {
-        super::spaces::membership(state, key.owner, user).await?;
+        crate::reef::spaces::membership(state, key.owner, user).await?;
         return Ok(());
     }
     anyhow::ensure!(!state.app.db.is_guild(key.owner).await?, "access denied");
@@ -338,7 +345,7 @@ pub(crate) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> an
         "access denied"
     );
     anyhow::ensure!(
-        super::spaces::visit_consent(state, key.owner, user).await?,
+        crate::reef::spaces::visit_consent(state, key.owner, user).await?,
         "access denied"
     );
     anyhow::ensure!(!state.app.db.socially_blocked(key.owner, user).await?, "access denied");
@@ -346,7 +353,7 @@ pub(crate) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> an
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::reef::socket::*;
     #[tokio::test]
     async fn redis_ticket_is_consumed_once_and_bound_to_the_session() {
         let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {

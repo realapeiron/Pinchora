@@ -218,12 +218,11 @@ impl Cache {
 }
 
 #[cfg(test)]
-#[path = "../../pinchora-commands/tests/support/fixture_lock.rs"]
-mod fixture_lock;
+pinchora_testkit::fixture_lock!(fixture_lock);
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::stats::*;
 
     #[test]
     fn batch_keys_name_their_server_and_hour() {

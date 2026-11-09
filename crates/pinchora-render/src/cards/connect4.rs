@@ -1,8 +1,11 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{SHELL, background, escape, mix, notched_path, panel, sprite, truncate},
@@ -206,8 +209,8 @@ impl Connect4Card<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::connect4::*;
 
     fn card<'a>(cells: &'a [u8], win: &'a [usize], pot: i64) -> Connect4Card<'a> {
         Connect4Card {

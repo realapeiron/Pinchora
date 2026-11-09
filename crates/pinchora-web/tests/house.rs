@@ -4,8 +4,7 @@
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 //! `seed_demo_house` (ignored) leaves a furnished house for the Playwright screenshots to look at.
 
-#[path = "../../pinchora-commands/tests/support/isolation.rs"]
-mod fixture_isolation;
+pinchora_testkit::isolation!(fixture_isolation);
 
 use std::{
     collections::HashMap,
@@ -25,7 +24,7 @@ use axum::{
 };
 use pinchora_cache::Cache;
 use pinchora_commands::{App, RoomData, render_room_png};
-use pinchora_core::config::WebConfig;
+use pinchora_core::infra::config::WebConfig;
 use pinchora_db::{Db, Hide, NewRoom};
 use pinchora_game::{Content, character::Character, house::tier};
 use pinchora_render::sprites::{ATLAS_JSON, ATLAS_PNG};

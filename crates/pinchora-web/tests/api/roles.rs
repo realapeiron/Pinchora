@@ -1,7 +1,7 @@
 //! The roles page over the API: auto roles, sticky roles, role panels (saved, posted by the bot, deleted)
 //! and colour roles, each with the rules and the sentences the commands use.
 
-use super::*;
+use crate::*;
 
 fn g(guild: u64) -> String {
     format!("/api/guilds/{guild}/roles")

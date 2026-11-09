@@ -1,11 +1,16 @@
 //! Illustrated quick games. Rules supply visible cells; this module only presents them.
-use super::{PIXEL, SANS, boards, checkers, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::boards;
+use crate::cards::checkers;
+use crate::cards::text;
 use crate::{
     Theme,
     sprites::SpriteStore,
     svg::{SHELL, background, escape, mix, notched_path, panel, sprite, truncate_to, wrap_laid_out},
 };
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use std::{fmt::Write, sync::OnceLock};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

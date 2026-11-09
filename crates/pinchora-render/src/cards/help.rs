@@ -1,8 +1,11 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{
@@ -228,8 +231,8 @@ impl HelpCard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::help::*;
 
     fn row(command: &str, text: &str, manager: bool) -> HelpRow {
         HelpRow {

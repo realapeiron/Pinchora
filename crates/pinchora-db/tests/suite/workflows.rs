@@ -1,7 +1,11 @@
 //! Concurrent writer regressions use exclusive guards to protect small pools and
 //! lock deadlines. Their spawned writers still race through the original pool;
 //! the guild-scoped configuration test can share access.
-use pinchora_core::workflows::{Definition, Event, Scope, StepAction, Trigger};
+use pinchora_core::admin::workflows::Definition;
+use pinchora_core::admin::workflows::Event;
+use pinchora_core::admin::workflows::Scope;
+use pinchora_core::admin::workflows::StepAction;
+use pinchora_core::admin::workflows::Trigger;
 use pinchora_db::Db;
 // Due-work scans are global; scheduler tests must not consume each other's fixtures.
 async fn db() -> Option<Db> {
@@ -140,7 +144,7 @@ async fn workflow_history_expires_and_schedule_is_single_claim() {
     let guild = id();
     let mut def = definition("timer");
     def.trigger = Trigger::Schedule {
-        spec: pinchora_core::workflows::Schedule::Interval { minutes: 1 },
+        spec: pinchora_core::admin::workflows::Schedule::Interval { minutes: 1 },
         tz: "Europe/Istanbul".into(),
     };
     let row = db.save_workflow(guild, None, &def, guild + 1).await.unwrap();
@@ -279,7 +283,7 @@ async fn workflow_schedule_concurrent_claims_skip_downtime_and_retention_deletes
     let guild = id();
     let mut def = definition("restart");
     def.trigger = Trigger::Schedule {
-        spec: pinchora_core::workflows::Schedule::Interval { minutes: 1 },
+        spec: pinchora_core::admin::workflows::Schedule::Interval { minutes: 1 },
         tz: "UTC".into(),
     };
     let row = db.save_workflow(guild, None, &def, guild + 1).await.unwrap();

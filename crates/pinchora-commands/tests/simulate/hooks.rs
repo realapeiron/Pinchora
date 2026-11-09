@@ -3,7 +3,7 @@
 use pinchora_commands::{ReactionEvent, on_reaction};
 use twilight_model::gateway::payload::incoming::ReactionAdd;
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn direct_messages_get_a_modmail_reply_and_reactions_pass_quietly() {

@@ -2,7 +2,9 @@
 
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{escape, mix, notched_path, panel, pixel_width, truncate, truncate_pixel_to},
@@ -115,7 +117,7 @@ pub(super) const COORDINATE_SIZE: f32 = 14.0;
 pub(super) fn status_panel(
     out: &mut String,
     t: &Theme,
-    lang: pinchora_core::i18n::Lang,
+    lang: pinchora_core::infra::i18n::Lang,
     y: f32,
     status: &str,
     pot: i64,

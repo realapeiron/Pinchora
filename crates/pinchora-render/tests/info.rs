@@ -3,7 +3,8 @@
 use std::path::Path;
 
 use image::{RgbaImage, imageops::FilterType};
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use pinchora_render::{InfoCard, InfoRow, Renderer, Theme, placeholder_avatar};
 
 fn row(label: &str, value: &str) -> InfoRow {

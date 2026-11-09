@@ -1,10 +1,11 @@
 //! Turkish for the shop group, played through the real handlers: the market, catalog and inventory, gifts, stalls
 //! and the plaza, quests, server points and the role store. The pictures land in `target/sim/<test name>/`.
 
-use pinchora_core::{i18n::Lang, items::soulbound};
+use pinchora_core::games::items::soulbound;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_game::{Availability, Currency, quests::QuestKind};
 
-use super::*;
+use crate::*;
 
 /// The id of a piece of furniture sold in the catalog for shells, by position.
 fn catalog_piece(n: usize) -> String {
@@ -421,7 +422,7 @@ async fn turkish_gifts_stalls_and_the_plaza() {
     let refused = sim.command(member, "plaza", json!([sub("edit", vec![])])).await;
     assert_eq!(
         refused.content(),
-        pinchora_core::t!(pinchora_core::i18n::Lang::Tr, "config.needs-manage-server")
+        pinchora_core::t!(pinchora_core::infra::i18n::Lang::Tr, "config.needs-manage-server")
     );
     sim.permissions = MANAGE_GUILD;
     let editor = sim.command(manager, "plaza", json!([sub("edit", vec![])])).await;
@@ -542,7 +543,7 @@ async fn turkish_quests_points_and_the_store() {
         .await;
     assert_eq!(
         denied.content(),
-        pinchora_core::t!(pinchora_core::i18n::Lang::Tr, "config.needs-manage-server")
+        pinchora_core::t!(pinchora_core::infra::i18n::Lang::Tr, "config.needs-manage-server")
     );
     sim.permissions = MANAGE_GUILD;
     let given = sim

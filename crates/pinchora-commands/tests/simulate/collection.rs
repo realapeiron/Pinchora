@@ -3,13 +3,14 @@
 
 use chrono::Duration;
 use pinchora_commands::{collection_tick, post_bottle, post_critter_drop};
-use pinchora_core::items::{is_soulbound, soulbound};
+use pinchora_core::games::items::is_soulbound;
+use pinchora_core::games::items::soulbound;
 use pinchora_game::{
     Rarity,
     collection::{Collection, Kind, exchange_cost, exchange_pick},
 };
 
-use super::*;
+use crate::*;
 
 /// Drops are closed by whoever ticks, for every drop in the database, so the tests that make drops and the
 /// ones that move the clock on take turns.
@@ -21,9 +22,14 @@ async fn collection_depth_dex_panels_work_in_english_and_turkish() {
         return;
     };
     for (language, wish_label, roll_label, claim_label) in [
-        (pinchora_core::i18n::Lang::En, "Wishlist", "Hourly roll", "Claim card"),
         (
-            pinchora_core::i18n::Lang::Tr,
+            pinchora_core::infra::i18n::Lang::En,
+            "Wishlist",
+            "Hourly roll",
+            "Claim card",
+        ),
+        (
+            pinchora_core::infra::i18n::Lang::Tr,
             "Dilek listesi",
             "Saatlik atış",
             "Kartı al",
@@ -903,7 +909,7 @@ async fn help_tells_about_collecting() {
         return;
     };
     let help = sim.command(unique(), "help", json!([])).await;
-    let areas = super::help_areas(&help);
+    let areas = crate::help_areas(&help);
     assert!(areas.iter().any(|a| a == "Crowd games & collecting"), "{areas:?}");
 }
 
@@ -1103,8 +1109,8 @@ async fn recycle_selection_is_reversible_and_confirmation_replay_is_idempotent()
         return;
     };
     for (lang, recycle, confirm) in [
-        (pinchora_core::i18n::Lang::En, "Recycle", "Confirm recycle"),
-        (pinchora_core::i18n::Lang::Tr, "Dönüştür", "Geri dönüşümü onayla"),
+        (pinchora_core::infra::i18n::Lang::En, "Recycle", "Confirm recycle"),
+        (pinchora_core::infra::i18n::Lang::Tr, "Dönüştür", "Geri dönüşümü onayla"),
     ] {
         let user = unique();
         sim.app.set_user_lang(user, Some(lang)).await.unwrap();
@@ -1141,7 +1147,7 @@ async fn recycle_selection_is_reversible_and_confirmation_replay_is_idempotent()
             .recycle_critter(user, &entry.id, 24, "craft-funds")
             .await
             .unwrap();
-        let label = if lang == pinchora_core::i18n::Lang::En {
+        let label = if lang == pinchora_core::infra::i18n::Lang::En {
             "Craft loot"
         } else {
             "Ganimet üret"

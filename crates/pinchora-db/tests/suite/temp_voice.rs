@@ -4,7 +4,8 @@
 //! player's data leaves of them.
 
 use chrono::{Duration, Utc};
-use pinchora_core::temp_voice::{MAX_CREATORS, MAX_ROOMS};
+use pinchora_core::admin::temp_voice::MAX_CREATORS;
+use pinchora_core::admin::temp_voice::MAX_ROOMS;
 use pinchora_db::{CreatorSave, Db, NewTempRoom, RoomMake, VoiceCreator};
 
 use crate::support::db;

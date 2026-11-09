@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_render::{AchievementCell, AchievementsCard, Renderer, Theme};
 
 fn card(lang: Lang) -> AchievementsCard {

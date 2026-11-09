@@ -324,7 +324,7 @@ fn a_soulbound_id_still_fits_the_editor_custom_ids() {
     // allows 100.
     let longest = Content::get()
         .items()
-        .map(|i| pinchora_core::items::soulbound(&i.id()).len())
+        .map(|i| pinchora_core::games::items::soulbound(&i.id()).len())
         .max()
         .expect("items");
     assert!(longest <= 60, "a soulbound id is {longest} characters long");

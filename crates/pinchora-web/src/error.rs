@@ -6,7 +6,7 @@ use axum::{
     http::{HeaderValue, StatusCode, header::RETRY_AFTER},
     response::{IntoResponse, Response},
 };
-use pinchora_core::settings::FieldError;
+use pinchora_core::admin::settings::FieldError;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 

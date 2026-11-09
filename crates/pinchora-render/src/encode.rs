@@ -69,7 +69,7 @@ fn indexed(width: u32, height: u32, colors: &[[u8; 4]], indices: &[u8]) -> anyho
 mod tests {
     use image::Rgba;
 
-    use super::*;
+    use crate::encode::*;
 
     #[test]
     fn indexed_png_round_trips() {

@@ -1,6 +1,6 @@
 //! Hangman: six misses and the sea takes the sandcastle.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 use crate::lang;
 
@@ -150,7 +150,7 @@ impl Hangman {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::hangman::*;
 
     #[test]
     fn masks_until_letters_are_found() {

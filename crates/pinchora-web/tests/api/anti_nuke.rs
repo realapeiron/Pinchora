@@ -1,5 +1,5 @@
-use super::*;
-use pinchora_core::anti_nuke::Config;
+use crate::*;
+use pinchora_core::moderation::anti_nuke::Config;
 
 #[tokio::test]
 async fn antinuke_web_checks_live_owner_csrf_managed_guild_and_private_audit() {

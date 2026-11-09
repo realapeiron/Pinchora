@@ -1,4 +1,4 @@
-use super::*;
+use crate::privacy::*;
 
 /// A derby the deleted player hosts is called off, and every racer gets their stake back.
 #[tokio::test]

@@ -2,7 +2,7 @@
 
 use std::{collections::HashSet, sync::LazyLock};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]

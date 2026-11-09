@@ -9,13 +9,13 @@ use std::time::Duration;
 use pinchora_commands::{
     lift_expired_bans, on_audit_log_entry, on_message_delete, on_message_delete_bulk, on_message_update,
 };
-use pinchora_core::logging::LogEvent;
+use pinchora_core::admin::logging::LogEvent;
 use pinchora_db::{CaseFilter, StaffFilter};
 use twilight_model::gateway::payload::incoming::{
     GuildAuditLogEntryCreate, MessageDelete, MessageDeleteBulk, MessageUpdate,
 };
 
-use super::*;
+use crate::*;
 
 const KICK: u64 = 1 << 1;
 const BAN: u64 = 1 << 2;

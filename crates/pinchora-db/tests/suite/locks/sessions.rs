@@ -1,4 +1,4 @@
-use super::*;
+use crate::locks::*;
 
 #[tokio::test]
 async fn opening_a_session_waits_for_its_host_to_finish_deleting() {

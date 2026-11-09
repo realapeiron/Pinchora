@@ -2,18 +2,19 @@
 //! direct messages (open and closed), a stored design that no longer reads, and `/setup welcome card`
 //! putting the classic card back. Pictures land in `target/sim/<test>/`.
 
-use pinchora_core::card_design::{CardKind, Delivery};
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Delivery;
 use pinchora_render::templates;
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn event_kits_choose_member_conditions_in_english_and_turkish() {
     for (language, expected_first, expected_again) in [
-        (pinchora_core::i18n::Lang::En, "Welcome", "Welcome back"),
-        (pinchora_core::i18n::Lang::Tr, "Hoş geldin", "Yeniden hoş geldin"),
+        (pinchora_core::infra::i18n::Lang::En, "Welcome", "Welcome back"),
+        (pinchora_core::infra::i18n::Lang::Tr, "Hoş geldin", "Yeniden hoş geldin"),
     ] {
-        let Some(sim) = Sim::new(if language == pinchora_core::i18n::Lang::En {
+        let Some(sim) = Sim::new(if language == pinchora_core::infra::i18n::Lang::En {
             "event_kit_english"
         } else {
             "event_kit_turkish"
@@ -30,7 +31,7 @@ async fn event_kits_choose_member_conditions_in_english_and_turkish() {
             .unwrap();
         sim.app.set_guild_lang(sim.guild, Some(language)).await.unwrap();
         sim.app.forget_guild_settings(sim.guild).await;
-        let content = if language == pinchora_core::i18n::Lang::En {
+        let content = if language == pinchora_core::infra::i18n::Lang::En {
             "{{if returning}}Welcome back{{else}}Welcome{{end}} {user}"
         } else {
             "{{if returning}}Yeniden hoş geldin{{else}}Hoş geldin{{end}} {user}"

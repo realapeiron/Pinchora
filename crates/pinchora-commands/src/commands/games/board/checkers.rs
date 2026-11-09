@@ -1,0 +1,644 @@
+//! `/duel checkers`: Pearl Checkers, English draughts. A move is two picks from selects under the board: the
+//! piece, then the move (a step, or a jump, which is compulsory).
+
+use std::str::Split;
+
+use chrono::{DateTime, Duration, Utc};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
+use pinchora_db::GameSession;
+use pinchora_game::play::Game as Play;
+use pinchora_game::play::checkers as rules;
+use pinchora_game::play::checkers::Game;
+use pinchora_game::play::checkers::Move;
+use pinchora_game::play::checkers::Outcome;
+use pinchora_render::{CheckersCard, Theme};
+use twilight_model::{channel::message::Component, http::interaction::InteractionResponseData};
+use twilight_util::builder::embed::EmbedBuilder;
+
+use crate::App;
+use crate::Cx;
+use crate::commands::games::board::CHECKERS_SECS;
+use crate::commands::games::board::conclude;
+use crate::commands::games::board::confirm_resign;
+use crate::commands::games::board::edit_card;
+use crate::commands::games::board::option;
+use crate::commands::games::board::players;
+use crate::commands::games::board::resign_button;
+use crate::commands::games::board::resigned;
+use crate::commands::games::board::select_row;
+use crate::commands::games::board::select_rows;
+use crate::commands::games::board::tag;
+use crate::commands::games::duel::Kind as DuelKind;
+use crate::commands::games::duel::answer;
+use crate::commands::games::duel::expire_here;
+use crate::commands::games::games::location;
+use crate::commands::games::games::pack;
+use crate::commands::games::games::quiet;
+use crate::commands::games::games::unpack;
+use crate::infra::util::BRAND;
+use crate::infra::util::SUCCESS;
+use crate::infra::util::mention;
+use crate::infra::util::relative;
+use crate::infra::util::thousands_in;
+
+/// The state's own fields: which player (0 host, 1 guest) has the pearls and moves first, the position,
+/// plies played and the squares the last move visited.
+struct State {
+    pearl: usize,
+    game: Game,
+    plies: usize,
+    last: Vec<u8>,
+}
+
+impl State {
+    fn encode(&self) -> String {
+        let last = if self.last.is_empty() {
+            "-".to_owned()
+        } else {
+            self.last.iter().map(u8::to_string).collect::<Vec<_>>().join(".")
+        };
+        format!(
+            "{}:{}:{}:{}:{}:{last}",
+            self.pearl,
+            self.game.cells_text(),
+            self.game.turn,
+            self.game.quiet,
+            self.plies
+        )
+    }
+
+    fn decode(fields: &str) -> Option<Self> {
+        let mut parts = fields.split(':');
+        let pearl = parts.next()?.parse().ok().filter(|p| *p < 2)?;
+        let cells = parts.next()?;
+        let turn = parts.next()?.parse().ok()?;
+        let quiet = parts.next()?.parse().ok()?;
+        let plies = parts.next()?.parse().ok()?;
+        let last = match parts.next()? {
+            "-" => Vec::new(),
+            text => text
+                .split('.')
+                .map(|s| s.parse().ok().filter(|sq| *sq < 32))
+                .collect::<Option<_>>()?,
+        };
+        Some(Self {
+            pearl,
+            game: Game::from_parts(cells, turn, quiet)?,
+            plies,
+            last,
+        })
+    }
+
+    /// The player (0 or 1) who plays side `side` (1 or 2).
+    fn player(&self, side: u8) -> usize {
+        if side == 1 { self.pearl } else { 1 - self.pearl }
+    }
+
+    fn mover(&self) -> usize {
+        self.player(self.game.turn)
+    }
+}
+
+pub(crate) fn initial_fields() -> String {
+    State {
+        pearl: rand::random_range(0..2),
+        game: Game::new(),
+        plies: 0,
+        last: Vec::new(),
+    }
+    .encode()
+}
+
+/// The player to move when the game timed out.
+pub(crate) fn slow_players(session: &GameSession) -> Vec<u64> {
+    let (fields, _) = unpack(&session.state);
+    State::decode(fields)
+        .map(|state| vec![players(session)[state.mover()]])
+        .unwrap_or_default()
+}
+
+/// Why a game ended.
+enum How {
+    /// The loser had no piece or no move left.
+    Cleared,
+    /// The 40-move rule.
+    Rule,
+    /// This player (0 host, 1 guest) gave up.
+    Resigned(usize),
+}
+
+impl How {
+    fn text(&self, lang: Lang, names: &[String; 2]) -> String {
+        match self {
+            Self::Cleared => t!(lang, "checkers.how-cleared"),
+            Self::Rule => t!(lang, "checkers.how-rule"),
+            Self::Resigned(loser) => t!(lang, "board.how-resigned", name = tag(&names[*loser])),
+        }
+    }
+}
+
+/// How a game ended: the winner (0 host, 1 guest) or `None` for a draw, and why.
+struct End {
+    winner: Option<usize>,
+    how: How,
+}
+
+impl End {
+    fn of(state: &State, outcome: Outcome) -> Self {
+        match outcome {
+            Outcome::Won(side) => Self {
+                winner: Some(state.player(side)),
+                how: How::Cleared,
+            },
+            Outcome::Draw => Self {
+                winner: None,
+                how: How::Rule,
+            },
+        }
+    }
+}
+
+/// How a board is shown: the end of the game if it is over, when the move is due, the piece picked up and a note to add.
+#[derive(Default)]
+struct Show<'a> {
+    end: Option<&'a End>,
+    deadline: DateTime<Utc>,
+    selected: Option<u8>,
+    note: &'a str,
+}
+
+/// The board message in `lang`: the picture, whose move it is, and the menus to make it.
+async fn message(
+    app: &App,
+    lang: Lang,
+    session: &GameSession,
+    names: &[String; 2],
+    state: &State,
+    show: &Show<'_>,
+) -> anyhow::Result<InteractionResponseData> {
+    let Show {
+        end,
+        deadline,
+        selected,
+        note,
+    } = *show;
+    let ids = players(session);
+    let moves = state.game.legal_moves();
+    let targets: Vec<u8> = selected
+        .map(|from| moves.iter().filter(|m| m.from() == from).map(Move::to).collect())
+        .unwrap_or_default();
+    let cells: [u8; 32] = std::array::from_fn(|sq| state.game.cell(sq as u8));
+    let pearl_name = names[state.pearl].clone();
+    let black_name = names[1 - state.pearl].clone();
+    let turn = end.is_none().then(|| state.game.turn - 1);
+    let winner = end.and_then(|e| e.winner).map(|w| u8::from(w != state.pearl));
+    let mover = state.mover();
+    let status = match end {
+        Some(End { winner: Some(w), how }) => t!(
+            lang,
+            "board.status-won",
+            name = tag(&names[*w]),
+            how = how.text(lang, names)
+        ),
+        Some(End { winner: None, how }) => t!(lang, "board.status-draw", how = how.text(lang, names)),
+        None if moves.iter().any(|m| !m.captured.is_empty()) => {
+            t!(lang, "checkers.status-jump", name = tag(&names[mover]))
+        }
+        None => t!(lang, "board.status-move", name = tag(&names[mover])),
+    };
+    // The card draws it in capitals.
+    let status = lang.upper(&status);
+    let content = match end {
+        None => t!(
+            lang,
+            "checkers.turn",
+            pearls = mention(ids[state.pearl]),
+            black = mention(ids[1 - state.pearl]),
+            mover = mention(ids[mover]),
+            when = relative(deadline),
+            note = note
+        ),
+        Some(End { winner: Some(w), how }) => t!(
+            lang,
+            "board.won",
+            winner = mention(ids[*w]),
+            how = how.text(lang, names),
+            note = note
+        ),
+        Some(End { winner: None, how }) => t!(lang, "board.draw", how = how.text(lang, names), note = note),
+    };
+    let pot = if session.bet > 0 { session.bet * 2 } else { 0 };
+    let png = {
+        let (status, targets, last) = (status.clone(), targets.clone(), state.last.clone());
+        app.render(move |r| {
+            r.checkers_card(&CheckersCard {
+                lang,
+                cells: &cells,
+                names: [&pearl_name, &black_name],
+                turn,
+                winner,
+                last: &last,
+                selected,
+                targets: &targets,
+                status: &status,
+                pot,
+                theme: Theme::reef(),
+            })
+        })
+        .await?
+    };
+    let mut description = if state.plies == 0 {
+        t!(lang, "checkers.intro")
+    } else {
+        t!(lang, "checkers.move-number", n = state.plies / 2 + 1)
+    };
+    if pot > 0 {
+        description.push('\n');
+        description.push_str(&t!(
+            lang,
+            "duel.pot-line",
+            pot = thousands_in(lang, pot),
+            bet = thousands_in(lang, session.bet)
+        ));
+    }
+    let embed = EmbedBuilder::new()
+        .color(if end.is_some() { SUCCESS } else { BRAND })
+        .title(Play::Checkers.name(lang))
+        .description(description);
+    let mut components = Vec::new();
+    if end.is_none() {
+        components = menus(lang, session.id, state, &moves, selected);
+    }
+    let mut data = Cx::card(embed, "checkers.png", png, components, false);
+    data.content = Some(content);
+    data.allowed_mentions = quiet();
+    Ok(data)
+}
+
+/// The piece menu, the move menu once a piece is picked, and Resign.
+fn menus(lang: Lang, id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Component> {
+    let mut froms: Vec<u8> = moves.iter().map(Move::from).collect();
+    froms.sort_unstable();
+    froms.dedup();
+    let piece_options = froms
+        .iter()
+        .map(|&sq| {
+            let count = moves.iter().filter(|m| m.from() == sq).count();
+            let jumps = moves.iter().any(|m| m.from() == sq && !m.captured.is_empty());
+            option(
+                t!(
+                    lang,
+                    if state.game.is_king(sq) {
+                        "checkers.piece-king"
+                    } else {
+                        "checkers.piece-man"
+                    },
+                    square = rules::name(sq)
+                ),
+                sq.to_string(),
+                Some(t!(
+                    lang,
+                    if jumps {
+                        "checkers.moves-jumps"
+                    } else {
+                        "checkers.moves"
+                    },
+                    count = count
+                )),
+                selected == Some(sq),
+            )
+        })
+        .collect();
+    let mut rows = vec![select_row(
+        format!("ck:s:{id}:{}", state.plies),
+        &t!(lang, "checkers.pick-piece"),
+        piece_options,
+        (1, 1),
+    )];
+    if let Some(from) = selected {
+        let options = moves
+            .iter()
+            .filter(|m| m.from() == from)
+            .map(|m| {
+                let takes = m.captured.len();
+                option(
+                    m.text(),
+                    m.code(),
+                    (takes > 0).then(|| t!(lang, "checkers.takes", count = takes)),
+                    false,
+                )
+            })
+            .collect();
+        rows.extend(select_rows(
+            lang,
+            &format!("ck:t:{id}:{}:{from}", state.plies),
+            &t!(lang, "checkers.where", square = rules::name(from)),
+            options,
+            (1, 1),
+        ));
+    }
+    rows.push(resign_button(lang, "ck", id));
+    rows
+}
+
+/// The first board, shown when the challenge is accepted.
+pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
+    let (fields, names) = unpack(&session.state);
+    let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad checkers state {fields:?}"))?;
+    // The board is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
+    let data = message(
+        &cx.app,
+        lang,
+        session,
+        &names,
+        &state,
+        &Show {
+            deadline: session.expires_at,
+            ..Show::default()
+        },
+    )
+    .await?;
+    cx.update(data).await
+}
+
+/// `ck:y:<id>` and `ck:n:<id>` answer a challenge, `ck:s:<id>:<plies>` picks a piece (the value is its
+/// square), `ck:t:<id>:<plies>:<from>` picks its move (the value is the path), `ck:q:<id>` asks to resign
+/// and `ck:R:<id>` confirms.
+pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
+    let action = args.next();
+    let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
+        return cx.reply_ephemeral(t!(cx.lang(), "duel.game-expired")).await;
+    };
+    let value = values.first().map(String::as_str);
+    match action {
+        Some("y") => answer(cx, DuelKind::Checkers, id, true).await,
+        Some("n") => answer(cx, DuelKind::Checkers, id, false).await,
+        Some("q") => confirm_resign(cx, "ck", id).await,
+        Some("R") => on_resign(cx, id).await,
+        Some("s") => match (
+            args.next().and_then(|v| v.parse::<usize>().ok()),
+            value.and_then(|v| v.parse::<u8>().ok()),
+        ) {
+            (Some(plies), Some(from)) => on_piece(cx, id, plies, from).await,
+            _ => cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await,
+        },
+        Some("t") => match (args.next().and_then(|v| v.parse::<usize>().ok()), value) {
+            (Some(plies), Some(path)) => on_move(cx, id, plies, path).await,
+            _ => cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await,
+        },
+        _ => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
+    }
+}
+
+/// A running game the clicker plays in, with the board as it stands; see the chess module's `running`.
+async fn running(cx: &Cx, id: i64, plies: Option<usize>) -> anyhow::Result<Option<(GameSession, [String; 2], State)>> {
+    let me = cx.author()?.id.get();
+    // Another kind's id is not this game: its buttons pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.is_active() && s.kind == DuelKind::Checkers.key())
+    else {
+        cx.reply_ephemeral(t!(cx.lang(), "duel.game-over")).await?;
+        return Ok(None);
+    };
+    if !session.has_player(me) {
+        cx.reply_ephemeral(t!(cx.lang(), "duel.not-in-game", command = "checkers"))
+            .await?;
+        return Ok(None);
+    }
+    if session.expired() {
+        expire_here(cx, &session).await?;
+        return Ok(None);
+    }
+    let (fields, names) = unpack(&session.state);
+    let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad checkers state {fields:?}"))?;
+    if let Some(plies) = plies {
+        if state.plies != plies {
+            // The stale board is refreshed in place for everyone: the server's language.
+            let data = message(
+                &cx.app,
+                cx.app.guild_lang(session.guild_id as u64).await,
+                &session,
+                &names,
+                &state,
+                &Show {
+                    deadline: session.expires_at,
+                    ..Show::default()
+                },
+            )
+            .await?;
+            cx.update(data).await?;
+            return Ok(None);
+        }
+        if state.mover() != usize::from(me != players(&session)[0]) {
+            cx.reply_ephemeral(t!(cx.lang(), "duel.not-your-turn")).await?;
+            return Ok(None);
+        }
+    }
+    Ok(Some((session, names, state)))
+}
+
+async fn on_piece(cx: &Cx, id: i64, plies: usize, from: u8) -> anyhow::Result<()> {
+    let Some((session, names, state)) = running(cx, id, Some(plies)).await? else {
+        return Ok(());
+    };
+    if !state.game.legal_moves().iter().any(|m| m.from() == from) {
+        return cx.reply_ephemeral(t!(cx.lang(), "board.cant-move")).await;
+    }
+    let data = message(
+        &cx.app,
+        cx.app.guild_lang(session.guild_id as u64).await,
+        &session,
+        &names,
+        &state,
+        &Show {
+            deadline: session.expires_at,
+            selected: Some(from),
+            ..Show::default()
+        },
+    )
+    .await?;
+    cx.update(data).await
+}
+
+async fn on_move(cx: &Cx, id: i64, plies: usize, path: &str) -> anyhow::Result<()> {
+    let Some((session, names, state)) = running(cx, id, Some(plies)).await? else {
+        return Ok(());
+    };
+    // `lang` is for what only the clicker sees; the board stays in the server's language.
+    let lang = cx.lang();
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
+    let wanted: Option<Vec<u8>> = path.split('.').map(|s| s.parse().ok()).collect();
+    let Some(mv) = state
+        .game
+        .legal_moves()
+        .into_iter()
+        .find(|m| wanted.as_deref() == Some(m.path.as_slice()))
+    else {
+        return cx.reply_ephemeral(t!(lang, "board.illegal")).await;
+    };
+    let mut game = state.game.clone();
+    game.play(&mv)
+        .ok_or_else(|| anyhow::anyhow!("a legal move was refused"))?;
+    let next = State {
+        pearl: state.pearl,
+        game,
+        plies: state.plies + 1,
+        last: mv.path.clone(),
+    };
+    let packed = pack(&next.encode(), [&names[0], &names[1]]);
+    let Some(outcome) = next.game.outcome() else {
+        if !cx
+            .app
+            .db
+            .advance_game(id, &session.state, &packed, CHECKERS_SECS)
+            .await?
+        {
+            return cx.reply_ephemeral(t!(lang, "board.changed-pick")).await;
+        }
+        let deadline = Utc::now() + Duration::seconds(CHECKERS_SECS);
+        let data = message(
+            &cx.app,
+            board_lang,
+            &session,
+            &names,
+            &next,
+            &Show {
+                deadline,
+                ..Show::default()
+            },
+        )
+        .await?;
+        return cx.update(data).await;
+    };
+    let end = End::of(&next, outcome);
+    let winner = end.winner.map(|w| players(&session)[w]);
+    let Some(note) = conclude(
+        &cx.app,
+        board_lang,
+        &session,
+        &packed,
+        Play::Checkers,
+        winner,
+        next.plies,
+    )
+    .await?
+    else {
+        return cx.reply_ephemeral(t!(lang, "duel.board-changed")).await;
+    };
+    let data = message(
+        &cx.app,
+        board_lang,
+        &session,
+        &names,
+        &next,
+        &Show {
+            deadline: Utc::now(),
+            end: Some(&end),
+            note: &note,
+            ..Show::default()
+        },
+    )
+    .await?;
+    cx.update(data).await
+}
+
+/// The player who confirmed on the private message resigns; the public board shows it.
+async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
+    let Some((session, names, state)) = running(cx, id, None).await? else {
+        return Ok(());
+    };
+    let me = cx.author()?.id.get();
+    let ids = players(&session);
+    let winner = usize::from(me == ids[0]);
+    // The public board is edited with the bot's token, for everyone: the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
+    let Some(note) = conclude(
+        &cx.app,
+        board_lang,
+        &session,
+        &session.state,
+        Play::Checkers,
+        Some(ids[winner]),
+        state.plies,
+    )
+    .await?
+    else {
+        return resigned(cx, &t!(cx.lang(), "board.too-late")).await;
+    };
+    let end = End {
+        winner: Some(winner),
+        how: How::Resigned(1 - winner),
+    };
+    let data = message(
+        &cx.app,
+        board_lang,
+        &session,
+        &names,
+        &state,
+        &Show {
+            deadline: Utc::now(),
+            end: Some(&end),
+            note: &note,
+            ..Show::default()
+        },
+    )
+    .await?;
+    if let Some((channel, message)) = location(&session) {
+        edit_card(&cx.app, channel, message, &data).await;
+    }
+    resigned(cx, &t!(cx.lang(), "board.resigned")).await
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::commands::games::board::checkers::*;
+
+    #[test]
+    fn state_round_trips() {
+        let mut game = Game::new();
+        let mv = game.legal_moves().into_iter().next().expect("a move");
+        game.play(&mv).expect("legal");
+        let state = State {
+            pearl: 1,
+            game,
+            plies: 1,
+            last: mv.path.clone(),
+        };
+        let again = State::decode(&state.encode()).expect("decodes");
+        assert_eq!(
+            (again.pearl, again.plies, again.last.clone(), again.mover()),
+            (1, 1, mv.path, 0),
+            "after one ply it is player 2's turn, and the guest has the pearls"
+        );
+        assert_eq!(again.game, state.game);
+        let fresh = State::decode(&initial_fields()).expect("the first state decodes");
+        assert_eq!((fresh.plies, fresh.game.turn, fresh.last.is_empty()), (0, 1, true));
+        let start = Game::new().cells_text();
+        for bad in [
+            "",
+            "2:x",
+            &format!("0:{start}:1:0:0:99"),
+            &format!("0:{start}:9:0:0:-"),
+            &format!("0:{start}:1:0:x:-"),
+        ] {
+            assert!(State::decode(bad).is_none(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn pearls_are_player_one() {
+        let state = State {
+            pearl: 1,
+            game: Game::new(),
+            plies: 0,
+            last: Vec::new(),
+        };
+        assert_eq!((state.player(1), state.player(2), state.mover()), (1, 0, 1));
+    }
+}

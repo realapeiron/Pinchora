@@ -1,25 +1,39 @@
 //! `/warn`, `/warnings` and `/unwarn`, and the warn ladder: a number of warns that brings a timeout,
 //! a kick or a ban, given by the bot itself.
 
-use pinchora_core::{
-    moderation::{CaseKind, Punishment, Threshold, check_reason, outranks, reached},
-    t,
-};
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::moderation::Punishment;
+use pinchora_core::moderation::moderation::Threshold;
+use pinchora_core::moderation::moderation::check_reason;
+use pinchora_core::moderation::moderation::outranks;
+use pinchora_core::moderation::moderation::reached;
+use pinchora_core::t;
 use pinchora_db::NewCase;
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{guild::Permissions, id::Id};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
-use super::{
-    Act, BOT_NAME, Moderator, Ranks, color,
-    members::{private, public, refusal, set_timeout},
-    permitted, record, reply_embed, take_back, tell, words,
-};
-use crate::{
-    Cx,
-    util::{WARN, mention, relative, resolved_display_name},
-};
+use crate::Cx;
+use crate::commands::moderation::Act;
+use crate::commands::moderation::BOT_NAME;
+use crate::commands::moderation::Moderator;
+use crate::commands::moderation::Ranks;
+use crate::commands::moderation::color;
+use crate::commands::moderation::members::private;
+use crate::commands::moderation::members::public;
+use crate::commands::moderation::members::refusal;
+use crate::commands::moderation::members::set_timeout;
+use crate::commands::moderation::permitted;
+use crate::commands::moderation::record;
+use crate::commands::moderation::reply_embed;
+use crate::commands::moderation::take_back;
+use crate::commands::moderation::tell;
+use crate::commands::moderation::words;
+use crate::infra::util::WARN;
+use crate::infra::util::mention;
+use crate::infra::util::relative;
+use crate::infra::util::resolved_display_name;
 
 fn moderate_members() -> Permissions {
     Permissions::MODERATE_MEMBERS
@@ -88,7 +102,7 @@ pub(crate) async fn climb(
         Punishment::Kick => (CaseKind::Kick, "kick"),
         Punishment::Ban => (CaseKind::Ban, "ban"),
     };
-    if let Some(why) = crate::anti_nuke::vip_refusal(&cx.app, guild, user.resolved.id.get()).await? {
+    if let Some(why) = crate::moderation::anti_nuke::vip_refusal(&cx.app, guild, user.resolved.id.get()).await? {
         return Ok(t!(lang, "mod.ladder-stopped", count = warns, why = why));
     }
     if let Some(why) = ranks.bot_may(lang, user, verb) {
@@ -121,7 +135,10 @@ pub(crate) async fn climb(
     let http = &cx.app.http;
     let done = match rung.action {
         Punishment::Timeout => {
-            let until = cx.app.now() + rung.duration.unwrap_or(super::members::LADDER_TIMEOUT);
+            let until = cx.app.now()
+                + rung
+                    .duration
+                    .unwrap_or(crate::commands::moderation::members::LADDER_TIMEOUT);
             set_timeout(cx, guild, user, Some(until), &audit).await
         }
         Punishment::Kick => http
@@ -301,7 +318,7 @@ impl Unwarn {
         let Some((_, opened)) = removed else {
             return cx.reply_ephemeral(t!(lang, "mod.not-a-warn", number = number)).await;
         };
-        super::post_case(&cx.app, guild, &opened.case).await;
+        crate::commands::moderation::post_case(&cx.app, guild, &opened.case).await;
         let line = t!(lang, "mod.active-warns-now", count = opened.active_warns);
         let mut embed = reply_embed(&opened.case, &[line], lang);
         embed.color = Some(color(Some(CaseKind::Unwarn)));

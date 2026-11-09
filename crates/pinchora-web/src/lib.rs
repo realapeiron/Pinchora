@@ -5,8 +5,7 @@
 //! cached copy straight away.
 
 #[cfg(test)]
-#[path = "../../pinchora-commands/tests/support/isolation.rs"]
-mod fixture_isolation;
+pinchora_testkit::isolation!(fixture_isolation);
 
 mod audit;
 mod auth;
@@ -30,10 +29,9 @@ mod state;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use pinchora_commands::App;
-use pinchora_core::{
-    Config,
-    telemetry::{self, Readiness},
-};
+use pinchora_core::Config;
+use pinchora_core::infra::telemetry;
+use pinchora_core::infra::telemetry::Readiness;
 
 pub use config::WebSettings;
 pub use state::WebState;

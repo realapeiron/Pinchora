@@ -4,10 +4,11 @@
 
 use std::time::Duration;
 
-use pinchora_core::tags::{CommandDef, ResponderDef};
+use pinchora_core::community::tags::CommandDef;
+use pinchora_core::community::tags::ResponderDef;
 use twilight_model::gateway::payload::incoming::MemberUpdate;
 
-use super::*;
+use crate::*;
 
 /// A command as the database stores it, with only the name and reply filled in.
 fn command(name: &str, reply: &str) -> CommandDef {

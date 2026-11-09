@@ -1,6 +1,7 @@
 //! Durable delivery intent, fencing, backlog coalescing and privacy on the real database.
 use chrono::{Duration as Span, Utc};
-use pinchora_core::utility::{Schedule, next_run};
+use pinchora_core::admin::afk_sticky_schedule::Schedule;
+use pinchora_core::admin::afk_sticky_schedule::next_run;
 use pinchora_db::{ScheduledRow, UtilityStickyRow, timestamp};
 use serde_json::json;
 

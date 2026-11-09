@@ -4,6 +4,14 @@ Pinchora is a social game bot for Discord: levels, a shell economy, pixel-art pr
 and (next) houses, pets and mini games. It is built to run on many shards across many pods
 from day one. Background research lives in [`research/`](research/).
 
+Rust command handlers, gateway helpers, database modules, core rules and API routes are grouped
+by domain: `games`, `economy`, `progression`, `social`, `house`, `moderation`, `community`,
+`roles`, `integrations` and `admin`. Shared infrastructure lives in `src/infra/`; command handlers
+and API routes use `src/commands/<domain>/` and `src/routes/<domain>/` respectively.
+`crates/pinchora-testkit/` supplies fixture macros only through development dependencies. It is
+excluded from workspace roots so the normal workspace dependency tree contains production crates only;
+its protocol tests expand at their original consumer sites and retain their isolation scopes.
+
 ## Stack
 
 | Concern | Choice | Why |

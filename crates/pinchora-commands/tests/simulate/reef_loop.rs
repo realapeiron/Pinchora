@@ -1,6 +1,7 @@
-//! Every D7 command in both languages, using the real dispatch and PNG rendering.
-use super::*;
-use pinchora_core::{i18n::Lang, t};
+//! Every command in both languages, using the real dispatch and PNG rendering.
+use crate::*;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 fn sub(name: &str, options: Value) -> Value {
     json!([{"name":name,"type":1,"options":options}])
 }
@@ -166,8 +167,8 @@ async fn flow(locale: &str, name: &'static str) {
         )
         .await;
     assert!(duplicate.description().contains(&t!(lang, "reef.already")));
-    let previous = pinchora_core::reef_loop::season_start(
-        pinchora_core::reef_loop::season_start(now.date_naive()) - chrono::Duration::days(1),
+    let previous = pinchora_core::games::reef_loop::season_start(
+        pinchora_core::games::reef_loop::season_start(now.date_naive()) - chrono::Duration::days(1),
     );
     for day in 0..3 {
         sqlx::query("INSERT INTO reef_catches(guild_id,day,user_id,fish_id,size_cm,score) VALUES($1,$2,$3,'toaststripe_minnow',7,1.2)").bind(sim.guild as i64).bind(previous+chrono::Duration::days(day)).bind(u as i64).execute(db.pool()).await.unwrap();

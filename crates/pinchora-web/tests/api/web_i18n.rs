@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn language_choice_is_authenticated_persisted_and_shared_with_the_bot() {

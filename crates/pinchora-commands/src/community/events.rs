@@ -1,0 +1,475 @@
+use std::{sync::Arc, time::Duration};
+
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Delivery;
+use pinchora_core::admin::modules::Module;
+use pinchora_core::admin::settings::MessageKind;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::progression::leveling::MESSAGE_XP;
+use pinchora_core::progression::leveling::MESSAGE_XP_COOLDOWN_SECS;
+use pinchora_core::progression::leveling::scale;
+use pinchora_core::progression::leveling::week_start;
+use pinchora_core::t;
+use pinchora_db::XpGrant;
+use twilight_model::{
+    channel::message::{AllowedMentions, MentionType, MessageType},
+    gateway::payload::incoming::{
+        BanAdd, BanRemove, GuildCreate, GuildDelete, MemberAdd, MemberRemove, MemberUpdate, MessageCreate,
+        VoiceStateUpdate,
+    },
+    id::Id,
+};
+
+use crate::App;
+use crate::admin::auto;
+use crate::admin::card_images::CardSubject;
+use crate::admin::card_images::card_png;
+use crate::admin::card_images::deliver;
+use crate::admin::card_images::server_card;
+use crate::commands::games::collection;
+use crate::infra::hooks;
+use crate::infra::hooks::JoinVerdict;
+use crate::infra::hooks::ReactionEvent;
+use crate::infra::hooks::Verdict;
+use crate::infra::util::display_name;
+use crate::infra::util::fill;
+use crate::infra::util::mention;
+use crate::moderation::server_log;
+use crate::progression::leveling;
+use crate::progression::leveling::LevelUp;
+use crate::progression::voice_xp;
+use crate::roles::roles;
+
+/// What the bot says in `lang` when a server wrote no message of its own (English is the `DEFAULT_*` text).
+pub fn default_message(lang: Lang, kind: MessageKind) -> String {
+    t!(lang, &format!("events.default-{}", kind.key()))
+}
+
+/// Runs text commands, grants chat XP (once per minute per member) and announces level-ups.
+pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {
+    let msg = event.message;
+    if msg.author.bot || msg.webhook_id.is_some() || !matches!(msg.kind, MessageType::Regular | MessageType::Reply) {
+        return Ok(());
+    }
+    let Some(guild) = msg.guild_id else {
+        hooks::on_dm(&app, &msg).await;
+        return Ok(());
+    };
+    let (g, u) = (guild.get(), msg.author.id.get());
+    // With message content on, the server log keeps the message a day to show an edit or delete (also
+    // one a package blocks below, so its delete can show what it said).
+    server_log::keep_message(&app, g, &msg).await;
+    let settings = app.guild_settings(g).await?;
+    // Packages that judge a message (automod first) speak before it earns XP or calls a command.
+    if hooks::after_message(&app, &msg, &settings).await == Verdict::Blocked {
+        return Ok(());
+    }
+    // A text command runs on its own; the message still counts as chat below.
+    if crate::infra::text::calls_bot(&app, &msg).await {
+        let (app2, message) = (app.clone(), msg.clone());
+        app.spawn(async move {
+            crate::infra::text::on_text_command(app2, &message).await;
+        });
+    }
+    // Keywords in the chat set auto-responders off (they only hear text when the bot has the Message
+    // Content intent). It comes first: it has nothing to do with the XP minute.
+    auto::chat(&app, &msg).await;
+    // Chat that makes critters and bottles wash up counts here, before the XP cooldown: it never reads
+    // the message, and a failure never keeps a member from their XP.
+    let here = Some(msg.channel_id.get());
+    if app.module_allowed(g, here, Module::Collection).await
+        && let Err(error) = collection::spawn::on_chat(&app, g, u, msg.channel_id.get()).await
+    {
+        tracing::debug!(%error, guild = g, "chat drops not counted");
+    }
+    // Leveling and points can also be switched off in some channels (`/config modules`). Where neither
+    // counts the minute is not spent, so chatting in such a channel never costs the XP of the next message
+    // somewhere else.
+    let parity = app.leveling_policy(g).await?;
+    let leveling_on =
+        settings.leveling_enabled && parity.messages && app.module_allowed(g, here, Module::Leveling).await;
+    let points_on = settings.points_enabled && app.module_allowed(g, here, Module::Points).await;
+    let author_nick = msg.member.as_ref().and_then(|m| m.nick.as_deref());
+    if !leveling_on && !points_on {
+        server_log::note_names(&app, g, &msg.author, author_nick).await;
+        return Ok(());
+    }
+    let cooldown = Duration::from_secs(parity.message_cooldown_secs);
+    if app
+        .cache
+        .try_cooldown(&format!("xp:{g}:{u}"), cooldown)
+        .await?
+        .is_some()
+    {
+        return Ok(());
+    }
+    server_log::note_names(&app, g, &msg.author, author_nick).await;
+    let points = if points_on {
+        rand::random_range(i64::from(settings.points_min)..=i64::from(settings.points_max))
+    } else {
+        0
+    };
+    let held: Vec<u64> = msg
+        .member
+        .as_ref()
+        .map(|m| m.roles.iter().map(|r| r.get()).collect())
+        .unwrap_or_default();
+    // The server's multipliers scale its own XP and points; the global XP stays what it is.
+    let rules = app.xp_rules(g).await?;
+    let lineage = app.xp_lineage(&rules, msg.channel_id.get()).await;
+    let multiplier = rules.multiplier_in(&lineage, &held);
+    let points = scale(points, multiplier);
+    if !leveling_on {
+        if points > 0 {
+            app.db.give_points(g, u, points).await?;
+            metrics::counter!("pinchora_points_granted_total").increment(points as u64);
+        }
+        return Ok(());
+    }
+    let base = rand::random_range(MESSAGE_XP);
+    let global_xp = if app
+        .cache
+        .try_cooldown(
+            &format!("xp:global:{g}:{u}"),
+            Duration::from_secs(MESSAGE_XP_COOLDOWN_SECS),
+        )
+        .await?
+        .is_none()
+    {
+        base
+    } else {
+        0
+    };
+    let mut amount = if parity.message_min == 15 && parity.message_max == 25 {
+        base
+    } else {
+        rand::random_range(parity.message_min..=parity.message_max)
+    };
+    if parity.effort && (msg.content.chars().count() >= 200 || !msg.attachments.is_empty()) {
+        amount += parity.effort_bonus;
+    }
+    let grant = XpGrant {
+        server_xp: scale(amount, multiplier),
+        global_xp,
+        points,
+    };
+    let gain = app.db.add_xp(g, u, grant, week_start(app.now())).await?;
+    metrics::counter!("pinchora_xp_granted_total").increment(grant.server_xp as u64);
+    metrics::counter!("pinchora_points_granted_total").increment(points as u64);
+    // Quests switched off count nothing, chatting included.
+    if app.module_allowed(g, here, Module::Quests).await {
+        app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
+    }
+
+    let (before, after) = (parity.level_of(gain.old_xp), parity.level_of(gain.new_xp));
+    if after <= before {
+        return Ok(());
+    }
+    leveling::level_up(
+        &app,
+        &settings,
+        LevelUp {
+            guild: g,
+            user: u,
+            before,
+            after,
+            author: Some(&msg.author),
+            nick: msg.member.as_ref().and_then(|m| m.nick.as_deref()),
+            roles: &held,
+            here: msg.channel_id,
+        },
+    )
+    .await
+}
+
+/// Gives the join role, logs the join, and welcomes the member with the server's image and text, sent the way
+/// it chose, when the server has welcomes turned on.
+pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()> {
+    let returning = app
+        .db
+        .card_member_returning(event.guild_id.get(), event.user.id.get())
+        .await?;
+    let held = hooks::on_member_join(&app, &event).await == JoinVerdict::Held;
+    let MemberAdd { guild_id, member } = event;
+    let settings = app.guild_settings(guild_id.get()).await?;
+    // The role and the log come first: neither depends on the welcome card going out.
+    if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot && !held) {
+        roles::give_join_role(&app, guild_id.get(), member.user.id.get(), role as u64).await;
+    }
+    server_log::note_names(&app, guild_id.get(), &member.user, member.nick.as_deref()).await;
+    let roles: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+    server_log::member_joined(&app, guild_id.get(), &member.user, &roles).await;
+    // A member held at the gate gets the rest when they are let in.
+    if held {
+        return Ok(());
+    }
+    auto::member_joined(&app, guild_id.get(), &member).await;
+    if member.user.bot || !settings.welcome_enabled {
+        return Ok(());
+    }
+    let card = server_card(&app, &settings, guild_id.get(), CardKind::Welcome).await?;
+    let channel = match card.delivery {
+        Delivery::Dm => None,
+        _ => match settings.welcome_channel_id {
+            Some(channel) => Some(Id::new(channel as u64)),
+            None => return Ok(()),
+        },
+    };
+    let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
+    // The welcome answers nobody in particular: it speaks the server's language.
+    let lang = app.guild_lang(guild_id.get()).await;
+    let count = guild.approximate_member_count;
+    let mut text = settings
+        .welcome_message
+        .clone()
+        .unwrap_or_else(|| default_message(lang, MessageKind::Welcome))
+        .replace("{user}", &mention(member.user.id))
+        .replace("{server}", &guild.name)
+        .replace("{count}", &count.map(|c| c.to_string()).unwrap_or_default());
+    let mut mass = false;
+    if let Some((chosen, allowed)) = crate::social::message_studio::event_text(
+        &app,
+        guild_id.get(),
+        CardKind::Welcome,
+        crate::social::message_studio::EventMember {
+            user_id: member.user.id.get(),
+            user: &mention(member.user.id),
+            server: &guild.name,
+            level: None,
+            booster: member.premium_since.is_some(),
+            returning,
+            ordinal: count,
+        },
+    )
+    .await?
+    {
+        text = chosen;
+        mass = allowed;
+    }
+    let png = if card.delivery.has_image() {
+        let subject = CardSubject {
+            user: member.user.id,
+            avatar: member.user.avatar,
+            name: display_name(&member.user, member.nick.as_deref()),
+            username: member.user.name.clone(),
+            server: guild.name.clone(),
+            members: count,
+        };
+        Some(card_png(&app, guild_id.get(), &card.design, &subject).await?)
+    } else {
+        None
+    };
+    let mut mentions = AllowedMentions {
+        users: vec![member.user.id],
+        ..Default::default()
+    };
+    if mass {
+        mentions.parse = vec![MentionType::Everyone, MentionType::Roles];
+    }
+    let image = png.map(|png| ("welcome.png", png, card.design.alt_text.as_str()));
+    match channel {
+        Some(channel) => deliver(&app, channel, card.delivery, &text, image, &mentions).await,
+        None => {
+            // Closed direct messages are the member's choice, not a failure.
+            let user = member.user.id.get();
+            let Some(dm) = leveling::private_channel(&app, user).await else {
+                return Ok(());
+            };
+            if let Err(error) = deliver(&app, dm, Delivery::WithMessage, &text, image, &mentions).await {
+                tracing::debug!(guild = guild_id.get(), user, %error, "welcome direct message not delivered");
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Says goodbye when the server has it turned on (with its goodbye image, if it chose one), and logs the
+/// leave.
+pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Result<()> {
+    hooks::on_member_leave(&app, &event).await;
+    let MemberRemove { guild_id, user } = event;
+    let settings = app.guild_settings(guild_id.get()).await?;
+    app.log_state.forget(guild_id.get(), user.id.get()).await;
+    server_log::member_left(&app, guild_id.get(), &user).await;
+    auto::member_left(&app, guild_id.get(), &user).await;
+    if !app.module_allowed(guild_id.get(), None, Module::Goodbye).await {
+        return Ok(());
+    }
+    let Some(channel) = settings.goodbye_channel_id.filter(|_| !user.bot) else {
+        return Ok(());
+    };
+    let card = server_card(&app, &settings, guild_id.get(), CardKind::Goodbye).await?;
+    let lang = app.guild_lang(guild_id.get()).await;
+    let template = settings
+        .goodbye_message
+        .clone()
+        .unwrap_or_else(|| default_message(lang, MessageKind::Goodbye));
+    let template = template.as_str();
+    let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
+    let (server, members) = (guild.name, guild.approximate_member_count);
+    let members_text = members.map(|c| c.to_string()).unwrap_or_default();
+    // Not a mention: the member is gone, and a name reads better than a bare id.
+    let name = display_name(&user, None);
+    let mut text = fill(
+        template,
+        &[("user", &name), ("server", &server), ("members", &members_text)],
+    );
+    let mut mass = false;
+    if let Some((chosen, allowed)) = crate::social::message_studio::event_text(
+        &app,
+        guild_id.get(),
+        CardKind::Goodbye,
+        crate::social::message_studio::EventMember {
+            user_id: user.id.get(),
+            user: &name,
+            server: &server,
+            level: None,
+            booster: false,
+            returning: false,
+            ordinal: members,
+        },
+    )
+    .await?
+    {
+        text = chosen;
+        mass = allowed;
+    }
+    let png = if card.delivery.has_image() {
+        let subject = CardSubject {
+            user: user.id,
+            avatar: user.avatar,
+            name,
+            username: user.name.clone(),
+            server,
+            members,
+        };
+        Some(card_png(&app, guild_id.get(), &card.design, &subject).await?)
+    } else {
+        None
+    };
+    let mut mentions = AllowedMentions::default();
+    if mass {
+        mentions.parse = vec![MentionType::Everyone, MentionType::Roles];
+    }
+    let image = png.map(|png| ("goodbye.png", png, card.design.alt_text.as_str()));
+    deliver(&app, Id::new(channel as u64), card.delivery, &text, image, &mentions).await
+}
+
+/// Passes a reaction added to or removed from a message on to the feature packages.
+pub async fn on_reaction(app: Arc<App>, event: ReactionEvent) -> anyhow::Result<()> {
+    hooks::on_reaction(&app, &event).await;
+    Ok(())
+}
+
+/// What Discord said changed that text commands keep permission data about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionChange {
+    /// A server's owner or roles (the server itself, or one of its roles, was updated).
+    Guild(u64),
+    /// A channel's permission overwrites (or the channel went away).
+    Channel(u64),
+    /// What a server set for the bot's commands under Integrations.
+    CommandPermissions(u64),
+}
+
+/// Forgets what text commands cached about the thing that changed, so the next command is judged by
+/// the new permissions rather than the minute-old ones.
+pub async fn on_permissions_changed(app: &App, change: PermissionChange) {
+    match change {
+        PermissionChange::Guild(guild) => app.forget_permission_facts(guild).await,
+        PermissionChange::Channel(channel) => app.forget_channel_rules(channel).await,
+        PermissionChange::CommandPermissions(guild) => app.forget_command_overrides(guild).await,
+    }
+}
+
+/// Logs nickname, username and avatar changes.
+pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
+    hooks::on_member_update(&app, &event).await;
+    auto::roles_changed(&app, &event).await;
+    // A member's roles may have changed: what text commands know of the server's permissions is
+    // forgotten with it.
+    on_permissions_changed(&app, PermissionChange::Guild(event.guild_id.get())).await;
+    let roles: Vec<u64> = event.roles.iter().map(|r| r.get()).collect();
+    server_log::names_updated(&app, event.guild_id.get(), &event.user, event.nick.as_deref(), &roles).await;
+    Ok(())
+}
+
+/// Logs a ban.
+pub async fn on_ban_add(app: Arc<App>, event: BanAdd) -> anyhow::Result<()> {
+    server_log::ban_changed(&app, event.guild_id.get(), &event.user, true).await;
+    Ok(())
+}
+
+/// Logs an unban. Only its timestamped audit entry may close cases: gateway delivery can be delayed.
+pub async fn on_ban_remove(app: Arc<App>, event: BanRemove) -> anyhow::Result<()> {
+    server_log::ban_changed(&app, event.guild_id.get(), &event.user, false).await;
+    Ok(())
+}
+
+/// Logs voice joins, leaves and moves, and keeps track of who sits in voice for voice XP.
+pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> anyhow::Result<()> {
+    let state = event.0;
+    let Some(guild) = state.guild_id else {
+        return Ok(());
+    };
+    let settings = app.guild_settings(guild.get()).await?;
+    server_log::voice_updated(&app, guild.get(), &state).await;
+    voice_xp::track(&app, guild.get(), &state, &settings).await;
+    hooks::on_workflow_voice(&app, &state).await;
+    crate::commands::admin::tempvoice::on_voice_state(&app, &state).await;
+    Ok(())
+}
+
+/// Rebuilds who is in voice from the server's voice states, which Discord sends once per session in
+/// GUILD_CREATE: a leave or join missed while the bot was away is put right here.
+pub async fn on_guild_create(app: Arc<App>, event: GuildCreate) -> anyhow::Result<()> {
+    match voice_snapshot(&app, event) {
+        Some(snapshot) => voice_xp::rebuild(&app, snapshot).await,
+        None => Ok(()),
+    }
+}
+
+/// What the rebuild of a GUILD_CREATE needs, taken at once and without awaiting anything: the guild itself
+/// (its members, roles and emojis, big on a big server) is dropped here, so a rebuild waiting for its slot or
+/// for the database holds only the snapshot. `None` for a server that is unavailable.
+pub fn voice_snapshot(app: &App, event: GuildCreate) -> Option<voice_xp::VoiceSnapshot> {
+    let GuildCreate::Available(guild) = event else {
+        return None;
+    };
+    Some(voice_xp::VoiceSnapshot::of(&guild, app.now().timestamp()))
+}
+
+/// Forgets who was in voice in a server the bot lost, or that went down: it starts over from the
+/// GUILD_CREATE that follows when it comes back.
+pub async fn on_guild_delete(app: Arc<App>, event: GuildDelete) -> anyhow::Result<()> {
+    voice_xp::forget(&app, event.id.get()).await
+}
+
+#[cfg(test)]
+mod tests {
+    use pinchora_core::admin::settings::DEFAULT_GOODBYE;
+    use pinchora_core::admin::settings::DEFAULT_LEVELUP;
+    use pinchora_core::admin::settings::DEFAULT_WELCOME;
+    use pinchora_core::admin::settings::DEFAULT_WELCOME_TITLE;
+
+    use crate::community::events::*;
+
+    /// The English catalog and the constants the dashboard shows say the same, and Turkish keeps every
+    /// placeholder the message fills in.
+    #[test]
+    fn default_messages_match_the_constants_and_keep_their_placeholders() {
+        for (kind, constant) in [
+            (MessageKind::Welcome, DEFAULT_WELCOME),
+            (MessageKind::Goodbye, DEFAULT_GOODBYE),
+            (MessageKind::LevelUp, DEFAULT_LEVELUP),
+        ] {
+            assert_eq!(default_message(Lang::En, kind), constant);
+            assert_eq!(kind.default_message(), constant);
+            let turkish = default_message(Lang::Tr, kind);
+            for placeholder in constant.split('{').skip(1).filter_map(|rest| rest.split('}').next()) {
+                assert!(turkish.contains(&format!("{{{placeholder}}}")), "{turkish}");
+            }
+        }
+        assert_eq!(t!(Lang::En, "events.default-welcome-title"), DEFAULT_WELCOME_TITLE);
+    }
+}

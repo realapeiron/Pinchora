@@ -272,7 +272,7 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::checkers::*;
 
     /// A position from a list of (square name, piece), player 1 to move.
     fn setup(pieces: &[(&str, char)], turn: u8) -> Game {

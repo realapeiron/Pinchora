@@ -2,7 +2,8 @@
 //!
 //! A cell is `y * 10 + x`; columns read A to J along the top and rows 1 to 10 down the side.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 pub const SIZE: usize = 10;
 pub const CELLS: usize = SIZE * SIZE;
@@ -279,7 +280,7 @@ impl Sea {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::fleet::*;
 
     /// Five ships along the edges and the middle, written out.
     const HARBOUR: &str = "00h09h92v96v45h";
@@ -389,7 +390,7 @@ mod tests {
     fn shots_hit_miss_sink_and_are_not_repeated() {
         let fleet = Fleet::decode(HARBOUR).expect("a valid fleet");
         let mut sea = Sea::new();
-        // The dinghy lies on E6 and F6.
+        // The dinghy lies on E6 and .
         let dinghy = fleet.cells_of(4);
         assert_eq!(dinghy, [54, 55]);
         assert_eq!(sea.fire(&fleet, 0), Fired::Hit, "A1 is the galleon's bow");

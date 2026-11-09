@@ -1,4 +1,4 @@
-use super::*;
+use crate::party::*;
 
 #[tokio::test]
 async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {

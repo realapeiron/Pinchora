@@ -19,7 +19,7 @@ pub mod surge;
 
 pub use rng::Rng;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 use crate::play::Game;
 
@@ -217,7 +217,7 @@ impl Dice {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::*;
 
     #[test]
     fn party_keys_and_prefixes_are_unique_and_round_trip() {

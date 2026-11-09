@@ -2,9 +2,10 @@
 //! votes for the funniest. The scenes are profile backdrops with pets, fish and characters standing
 //! about on them; the picture is drawn from the sprite atlas, so a scene is only a list of places.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::Dice;
+use crate::party::Dice;
 
 /// Rounds a game plays unless the host picks another number, and the range they may pick from.
 pub const DEFAULT_ROUNDS: i32 = 3;
@@ -220,7 +221,7 @@ pub fn check_caption(text: &str) -> Result<String, CaptionError> {
 mod tests {
     use std::collections::HashSet;
 
-    use super::*;
+    use crate::party::postcard::*;
     use crate::{character, content::Content};
 
     #[test]

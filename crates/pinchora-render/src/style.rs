@@ -210,7 +210,7 @@ pub(crate) fn luminance(rgb: u32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::style::*;
 
     #[test]
     fn frames_round_trip_and_unlock_by_level() {

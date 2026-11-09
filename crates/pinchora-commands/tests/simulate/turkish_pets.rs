@@ -1,9 +1,9 @@
 //! Pets, the nursery, field trips and the card editors (titles, style, showcase) for a player whose Discord is
 //! set to Turkish.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
-use super::*;
+use crate::*;
 
 /// Keeps the picture of a reply next to the sim's own, under a name that says what it shows.
 fn keep_png(sim: &Sim, reply: &Reply, name: &str) {

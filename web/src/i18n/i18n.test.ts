@@ -49,12 +49,12 @@ describe("SPA message catalogs", () => {
         .join("\n") +
       readFileSync(join(process.cwd(), "src/lib/commands.json"), "utf8") +
       readFileSync(join(process.cwd(), "src/lib/rules.json"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/community_pack.rs"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/tickets/operations.rs"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/house_edit.rs"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/house_edit.rs"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/commands/house.rs"), "utf8") +
-      ["modules", "logging", "moderation", "server_stats"]
+      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/community/engagement.rs"), "utf8") +
+      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/community/tickets/operations.rs"), "utf8") +
+      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/house/house_edit.rs"), "utf8") +
+      readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/house/house_edit.rs"), "utf8") +
+      readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/commands/house/house.rs"), "utf8") +
+      ["admin/modules", "admin/logging", "moderation/moderation", "admin/server_stats"]
         .map((name) => readFileSync(join(process.cwd(), `../crates/pinchora-core/src/${name}.rs`), "utf8"))
         .join("\n") +
       readdirSync(join(process.cwd(), "../crates/pinchora-core/locales/en"))

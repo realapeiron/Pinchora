@@ -1,4 +1,4 @@
-use pinchora_core::anti_nuke::Config;
+use pinchora_core::moderation::anti_nuke::Config;
 use pinchora_db::Db;
 use serde_json::json;
 async fn db() -> Option<Db> {

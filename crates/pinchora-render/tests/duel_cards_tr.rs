@@ -1,7 +1,7 @@
 //! The duel cards in Turkish: every label comes out of the catalog (a missing key would be drawn as itself),
 //! the pixel font draws the Turkish letters, and the cards still render.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_render::{
     CheckersCard, ChessCard, Connect4Card, FleetCard, Mood, PickView, RadarCard, Renderer, SeaView, ShareGrabCard,
     ShipView, Theme,

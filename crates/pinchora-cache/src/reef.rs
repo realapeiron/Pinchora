@@ -135,7 +135,7 @@ impl Cache {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::reef::*;
     use futures_util::StreamExt;
 
     #[tokio::test]

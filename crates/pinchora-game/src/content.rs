@@ -3,8 +3,10 @@ use std::{
     sync::LazyLock,
 };
 
-use pinchora_core::items::{is_soulbound, plain, soulbound};
-use pinchora_core::stats::PlayerStats;
+use pinchora_core::admin::stats::PlayerStats;
+use pinchora_core::games::items::is_soulbound;
+use pinchora_core::games::items::plain;
+use pinchora_core::games::items::soulbound;
 use serde::Deserialize;
 
 use crate::fishing::Gear;
@@ -443,7 +445,7 @@ pub struct Title {
 pub struct Item<'a> {
     pub base: &'a Furniture,
     pub variant: Option<&'a str>,
-    /// Bought with fragments: it can be placed but never leaves its owner (see `pinchora_core::items`).
+    /// Bought with fragments: it can be placed but never leaves its owner (see `pinchora_core::games::items`).
     pub bound: bool,
 }
 

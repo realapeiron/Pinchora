@@ -3,9 +3,12 @@
 
 use chrono::Utc;
 use pinchora_commands::{stats_flush, stats_refresh_counters};
-use pinchora_core::server_stats::{HourTally, hour_of, hour_start, message_fields};
+use pinchora_core::admin::server_stats::HourTally;
+use pinchora_core::admin::server_stats::hour_of;
+use pinchora_core::admin::server_stats::hour_start;
+use pinchora_core::admin::server_stats::message_fields;
 
-use super::*;
+use crate::*;
 
 /// Flushes until `guild` has `messages` stored (other tests flush the same Redis too, and a batch
 /// another one took may still be on its way), and returns what is stored.
@@ -14,7 +17,7 @@ async fn flushed(sim: &Sim, messages: i64) -> (i64, i64, i64) {
     for _ in 0..100 {
         stats_flush(&sim.app).await.expect("flush");
         let hours = sim.app.db.guild_hours(sim.guild, from).await.unwrap();
-        let sum = |f: fn(&pinchora_core::server_stats::HourRow) -> i64| hours.iter().map(f).sum::<i64>();
+        let sum = |f: fn(&pinchora_core::admin::server_stats::HourRow) -> i64| hours.iter().map(f).sum::<i64>();
         let found = (sum(|h| h.messages), sum(|h| h.joins), sum(|h| h.leaves));
         if found.0 >= messages {
             return found;

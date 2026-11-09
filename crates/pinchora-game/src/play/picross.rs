@@ -3,7 +3,8 @@
 //!
 //! Columns read A to J and rows 1 to 10, like the coordinates in Sea Fleet.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 /// Cells on a side.
 pub const SIZE: usize = 10;
@@ -1858,7 +1859,7 @@ pub struct Marks {
     pub clear: Vec<usize>,
 }
 
-/// Reads `A1 B3-B7 -C2 -D1-D4`: cells and straight runs (`B3-B7` along a column, `A1-E1` along a row)
+/// Reads `A1 B3-B7 -C2 -`: cells and straight runs (`B3-B7` along a column, `A1-E1` along a row)
 /// to fill, or to clear when they start with `-`. Words are split by spaces or commas. `None` for
 /// anything it cannot read, such as a diagonal.
 pub fn parse_marks(text: &str) -> Option<Marks> {
@@ -2020,7 +2021,7 @@ fn search(rows: &[Vec<u16>], cols: &[Vec<u16>], mut known: Known, limit: usize, 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::picross::*;
 
     #[test]
     fn every_picture_has_exactly_one_solution_in_every_variant() {

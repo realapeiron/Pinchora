@@ -2,9 +2,10 @@
 //! The vault is a crew-against-the-sea game: nobody ever loses shells, the loot is simply not there when
 //! the crew fumbles.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::Rng;
+use crate::party::Rng;
 
 /// Crew members a heist holds, and the least it needs to set off.
 pub const MAX_CREW: i64 = 8;
@@ -248,7 +249,7 @@ pub fn run(seed: u64, roles: &[Role]) -> Heist {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::heist::*;
     use Role::{Diver, Locksmith, Lookout};
 
     #[test]

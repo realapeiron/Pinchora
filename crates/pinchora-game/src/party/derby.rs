@@ -3,7 +3,7 @@
 //! Every crab runs the same random process, so each has the same chance of winning and the pool
 //! can be shared out between the people who backed the winner without the house taking a cut.
 
-use super::Rng;
+use crate::party::Rng;
 
 /// Lanes on the track.
 pub const CRABS: usize = 6;
@@ -161,7 +161,7 @@ pub fn run(seed: u64) -> Race {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::derby::*;
 
     #[test]
     fn a_seed_runs_the_same_race_every_time() {

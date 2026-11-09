@@ -1,6 +1,9 @@
 use chrono::{Duration, TimeZone, Utc};
-use pinchora_core::economy_v2::{EconomySettings, Offer, TradeItem};
-use pinchora_db::{Db, economy_v2::Action as A};
+use pinchora_core::economy::player::EconomySettings;
+use pinchora_core::economy::player::Offer;
+use pinchora_core::economy::player::TradeItem;
+use pinchora_db::Db;
+use pinchora_db::economy::player::Action as A;
 use serde_json::Value;
 async fn setup() -> Option<(Db, u64)> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;

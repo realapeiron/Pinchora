@@ -3,11 +3,11 @@
 
 use chrono::Duration;
 use pinchora_commands::party_tick;
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_db::PartyGame;
 use pinchora_game::party::{pearl_reward, race_reward, writing_reward};
 
-use super::*;
+use crate::*;
 
 /// The ticker moves on every late game in the database, whoever's it is, so the tests that make party
 /// games take turns.
@@ -1526,7 +1526,7 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
         return;
     };
     let help = sim.command(unique(), "help", json!([])).await;
-    let areas = super::help_areas(&help);
+    let areas = crate::help_areas(&help);
     assert!(
         areas
             .iter()

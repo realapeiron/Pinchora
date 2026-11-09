@@ -2,12 +2,15 @@
 
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, avatar_frame, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::avatar_frame;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{CRAB, STAR, background, escape, fit_laid_out, sprite},
 };
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 /// Label and value shown on an information card.
 pub struct InfoRow {
@@ -179,7 +182,7 @@ fn swatch(value: &str) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::info::*;
     #[test]
     fn hostile_names_render() {
         let card = InfoCard {

@@ -36,7 +36,7 @@ fn same(a: &[u8], b: &[u8]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::auth::csrf::*;
 
     #[test]
     fn comparison_needs_every_byte() {

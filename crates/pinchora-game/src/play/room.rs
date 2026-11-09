@@ -1,6 +1,9 @@
 //! Transport-independent room game state. All board moves delegate to the existing rules.
-use super::{Game as Kind, PlayContent, checkers, chess};
-use pinchora_core::i18n::Lang;
+use crate::play::Game as Kind;
+use crate::play::PlayContent;
+use crate::play::checkers;
+use crate::play::chess;
+use pinchora_core::infra::i18n::Lang;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -45,7 +48,7 @@ impl Session {
                 Board::Trivia {
                     question: q.id.clone(),
                     lang: lang.code().into(),
-                    order: super::trivia::permutation(seed),
+                    order: crate::play::trivia::permutation(seed),
                 }
             }
             _ => return None,
@@ -132,7 +135,7 @@ impl Session {
         }
         Ok(())
     }
-    pub fn question(&self) -> Option<(&super::Question, [usize; 4])> {
+    pub fn question(&self) -> Option<(&crate::play::Question, [usize; 4])> {
         let Board::Trivia { question, lang, order } = &self.board else {
             return None;
         };
@@ -200,7 +203,7 @@ impl Session {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::room::*;
     #[test]
     fn trivia_projection_conceals_solution_and_identity_until_reveal() {
         for lang in [Lang::En, Lang::Tr] {
@@ -251,7 +254,7 @@ mod tests {
 
 #[cfg(test)]
 mod adapter_tests {
-    use super::*;
+    use crate::play::room::*;
     fn moves(codes: &[&str]) -> Session {
         let mut s = Session::new("chess", Lang::En, 0).unwrap();
         s.phase = "active".into();

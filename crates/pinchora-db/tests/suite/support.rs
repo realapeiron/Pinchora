@@ -11,8 +11,7 @@ use pinchora_db::Db;
 use sqlx::PgConnection;
 
 mod admission;
-#[path = "../../../pinchora-commands/tests/support/fixture_family.rs"]
-mod fixture_family;
+pinchora_testkit::fixture_family!(fixture_family);
 
 /// Field order closes the database session before returning its local admission slot.
 #[must_use = "hold the guard until all fixture work and spawned tasks have finished"]

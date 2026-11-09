@@ -1,7 +1,7 @@
 //! Letters and letter case for the languages the word games speak. Turkish has two letters I: dotless
 //! `ı`/`I` and dotted `i`/`İ`, so the plain `to_uppercase` of `i` (which gives `I`) is wrong for it.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 pub const EN_ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
 pub const TR_ALPHABET: &str = "abcçdefgğhıijklmnoöprsştuüvyz";
@@ -50,7 +50,7 @@ pub fn keyboard_rows(lang: Lang) -> [&'static str; 3] {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::lang::*;
 
     #[test]
     fn turkish_has_twenty_nine_letters_and_the_keyboard_holds_each_once() {

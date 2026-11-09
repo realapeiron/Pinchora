@@ -389,7 +389,7 @@ pub fn display_rgb(swatches: &[Swatch], paint: Paint) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::character::palette::*;
 
     #[test]
     fn oklch_round_trips() {

@@ -1,11 +1,14 @@
 //! Pixel cake card used for birthday announcements and previews.
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{background, escape, fit_laid_out},
 };
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use std::fmt::Write;
 
 pub struct BirthdayCard {

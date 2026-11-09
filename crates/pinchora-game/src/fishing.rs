@@ -471,7 +471,7 @@ pub fn sale_value(fish: &Fish, size_cm: f32) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::fishing::*;
 
     #[test]
     fn day_parts() {

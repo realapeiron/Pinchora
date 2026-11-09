@@ -1,6 +1,6 @@
 //! Real-DB money, ownership, clock and concurrency boundaries.
 use chrono::{Duration, Utc};
-use pinchora_core::reef_loop as rules;
+use pinchora_core::games::reef_loop as rules;
 use pinchora_db::{Db, Hide, NewCatch, ReefAction as A, ReefOutcome as O};
 async fn setup() -> Option<(Db, u64)> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;

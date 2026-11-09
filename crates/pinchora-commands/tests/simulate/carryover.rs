@@ -1,9 +1,10 @@
 //! What a switched-off module still did, now fixed: giveaway and poll timers, the chat XP minute, quest
 //! progress from chat, and level-ups posted into a channel the leveling rule leaves out.
 
-use pinchora_game::quests::{self, QuestKind};
+use pinchora_game::quests;
+use pinchora_game::quests::QuestKind;
 
-use super::*;
+use crate::*;
 
 /// Runs the giveaway and poll ticker once.
 async fn tick(sim: &Sim) {

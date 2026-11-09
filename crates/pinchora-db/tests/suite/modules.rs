@@ -2,10 +2,10 @@
 //!
 //! Module switches per server and channel, and the points range checked as the row is written.
 
-use pinchora_core::{
-    modules::{ChannelMode, Module, ModuleRule},
-    settings::GuildSettingsPatch,
-};
+use pinchora_core::admin::modules::ChannelMode;
+use pinchora_core::admin::modules::Module;
+use pinchora_core::admin::modules::ModuleRule;
+use pinchora_core::admin::settings::GuildSettingsPatch;
 use pinchora_db::{Db, PatchRefused};
 
 use crate::support::db;

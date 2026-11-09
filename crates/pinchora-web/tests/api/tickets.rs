@@ -3,10 +3,11 @@
 //! `seed_demo_tickets` (ignored) leaves tickets for the Playwright run to look at.
 
 use chrono::{Duration as Span, Utc};
-use pinchora_core::tickets::{Answer, Line};
+use pinchora_core::community::tickets::Answer;
+use pinchora_core::community::tickets::Line;
 use pinchora_db::{Db, NewTicket, TicketOpen};
 
-use super::*;
+use crate::*;
 
 fn t(guild: u64) -> String {
     format!("/api/guilds/{guild}/tickets")

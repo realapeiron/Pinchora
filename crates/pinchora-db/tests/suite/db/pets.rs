@@ -1,4 +1,4 @@
-use super::*;
+use crate::db::*;
 
 #[tokio::test]
 async fn place_and_pick_up_round_trip() {

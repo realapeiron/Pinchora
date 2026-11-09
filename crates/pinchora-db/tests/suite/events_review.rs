@@ -1,5 +1,7 @@
 use chrono::{Duration, Utc};
-use pinchora_core::events::{Recurrence, Repeat, default_options};
+use pinchora_core::community::events::Recurrence;
+use pinchora_core::community::events::Repeat;
+use pinchora_core::community::events::default_options;
 use pinchora_db::{Db, EventDraft, ReminderRow, RsvpResult};
 
 async fn setup() -> (Db, u64, u64, EventDraft) {

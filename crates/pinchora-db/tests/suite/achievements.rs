@@ -1,7 +1,7 @@
 //! Achievement progress and one-time rewards against the real test database.
 
 use chrono::Utc;
-use pinchora_core::achievements::Kind;
+use pinchora_core::progression::achievements::Kind;
 use pinchora_db::{AchievementDraft, AchievementSave, Db};
 
 use crate::support::db;

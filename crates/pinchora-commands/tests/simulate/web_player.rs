@@ -1,5 +1,5 @@
 //! The web's profile assembler produces the actual /profile PNG, in both languages.
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn web_player_shared_profile_matches_discord_after_studio_save() {
@@ -46,7 +46,10 @@ async fn web_player_shared_profile_matches_discord_after_studio_save() {
     draft.frame = "rope".into();
     sim.app.db.save_player_profile(id, &draft).await.unwrap();
     let user: twilight_model::user::User = serde_json::from_value(user_json(id)).unwrap();
-    for lang in [pinchora_core::i18n::Lang::En, pinchora_core::i18n::Lang::Tr] {
+    for lang in [
+        pinchora_core::infra::i18n::Lang::En,
+        pinchora_core::infra::i18n::Lang::Tr,
+    ] {
         sim.app.set_user_lang(id, Some(lang)).await.unwrap();
         let reply = sim.command(id, "profile", json!([])).await;
         let expected = pinchora_commands::profile_card_for(

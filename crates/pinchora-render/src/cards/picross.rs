@@ -1,10 +1,10 @@
 use std::fmt::Write;
 
-use super::{
-    PIXEL, SANS,
-    boards::{COORDINATE_SIZE, coordinate_color},
-    text,
-};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::boards::COORDINATE_SIZE;
+use crate::cards::boards::coordinate_color;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{background_plain, escape, mix, panel, truncate},
@@ -322,8 +322,8 @@ impl PicrossCard<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::picross::*;
 
     fn clues(rows: &[&[u8]]) -> Vec<Vec<u8>> {
         rows.iter().map(|r| r.to_vec()).collect()

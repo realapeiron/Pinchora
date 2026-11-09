@@ -1,6 +1,7 @@
 //! Rock paper scissors, best of one, three or five.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
@@ -75,7 +76,7 @@ pub fn wins_needed(rounds: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::rps::*;
 
     #[test]
     fn every_pairing_has_the_right_winner() {

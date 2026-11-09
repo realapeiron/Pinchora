@@ -2,7 +2,9 @@
 //!
 //! Welcome and goodbye designs, and the uploads kept for them.
 
-use pinchora_core::card_design::{CardKind, Delivery, MAX_UPLOADS};
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Delivery;
+use pinchora_core::admin::card_design::MAX_UPLOADS;
 
 use crate::support::db;
 

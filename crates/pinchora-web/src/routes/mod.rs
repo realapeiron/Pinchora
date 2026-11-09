@@ -1,64 +1,20 @@
 //! The dashboard's routes and the headers every response carries.
 
-mod achievements;
-mod anti_nuke;
-mod audit_log;
-mod automod;
-mod birthdays;
-mod branding;
-mod cards;
-mod commands;
-mod community;
-mod community_pack;
-mod community_v2;
-mod discord_info;
-mod economy_v2;
-mod events;
-mod feed_links;
-mod feed_webhooks;
-mod feeds;
-mod guilds;
-mod house;
-mod house_edit;
-mod invites;
-mod leveling;
-mod leveling_parity;
-mod me;
-mod message_studio;
-mod mod_parity;
-mod moderation;
-mod modules;
-mod overview;
-mod preview;
-mod reef;
-mod responders;
-mod roblox;
-mod roles;
-mod settings;
-mod site;
-mod starboard;
-mod static_files;
-mod stats;
-mod store;
-mod tag_common;
-mod temp_voice;
-mod tickets;
-mod trackers;
-mod utility;
-mod verification;
-mod web_player;
-mod xp_admin;
-
 use std::time::Instant;
 
-use axum::{
-    Router,
-    extract::{MatchedPath, Request, State},
-    http::{HeaderName, HeaderValue, header},
-    middleware::{self, Next},
-    response::Response,
-    routing::{any, get, post},
-};
+use axum::Router;
+use axum::extract::MatchedPath;
+use axum::extract::Request;
+use axum::extract::State;
+use axum::http::HeaderName;
+use axum::http::HeaderValue;
+use axum::http::header;
+use axum::middleware;
+use axum::middleware::Next;
+use axum::response::Response;
+use axum::routing::any;
+use axum::routing::get;
+use axum::routing::post;
 
 use crate::{auth::oauth, error::ApiError, ratelimit, state::WebState};
 
@@ -97,43 +53,46 @@ pub fn router(state: WebState) -> Router {
             ratelimit::auth_by_address,
         ));
     let public = Router::new()
-        .route("/api/public/landing", get(site::landing))
-        .route("/api/public/status", get(site::status))
-        .route("/api/public/leaderboard/{slug}", get(leveling_parity::public_board))
-        .nest("/api/public/stats", stats::public_router())
+        .route("/api/public/landing", get(crate::routes::admin::site::landing))
+        .route("/api/public/status", get(crate::routes::admin::site::status))
+        .route(
+            "/api/public/leaderboard/{slug}",
+            get(crate::routes::progression::leveling_policy::public_board),
+        )
+        .nest("/api/public/stats", crate::routes::progression::stats::public_router())
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             ratelimit::public_by_address,
         ));
     let api = Router::new()
-        .route("/api/me", get(me::me))
-        .nest("/api/me", web_player::router())
-        .nest("/api/me/economy", economy_v2::player_router())
-        .route("/api/me/language", post(me::language))
-        .route("/api/me/trackers", get(trackers::export))
-        .route("/api/me/guilds", get(me::guilds))
-        .route("/api/me/guilds/refresh", post(me::refresh_guilds))
+        .route("/api/me", get(crate::routes::infra::me::me))
+        .nest("/api/me", crate::routes::games::web_player::router())
+        .nest("/api/me/economy", crate::routes::economy::player::player_router())
+        .route("/api/me/language", post(crate::routes::infra::me::language))
+        .route("/api/me/trackers", get(crate::routes::community::trackers::export))
+        .route("/api/me/guilds", get(crate::routes::infra::me::guilds))
+        .route("/api/me/guilds/refresh", post(crate::routes::infra::me::refresh_guilds))
         .nest(
             "/api/guilds/{g}",
-            guilds::router().route_layer(middleware::from_fn_with_state(
+            crate::routes::admin::guilds::router().route_layer(middleware::from_fn_with_state(
                 state.clone(),
                 crate::dashboard_access::guard,
             )),
         )
-        .nest("/api/house", house::router())
-        .nest("/api/reef", reef::router())
-        .nest("/api/verify", verification::member_router())
-        .nest("/api/appeals", mod_parity::member_router())
-        .nest("/api/feeds", feed_links::router())
+        .nest("/api/house", crate::routes::house::house::router())
+        .nest("/api/reef", crate::routes::games::reef::router())
+        .nest("/api/verify", crate::routes::moderation::verification::member_router())
+        .nest("/api/appeals", crate::routes::moderation::policy::member_router())
+        .nest("/api/feeds", crate::routes::integrations::feed_links::router())
         .route("/api/{*rest}", any(|| async { ApiError::not_found() }));
     Router::new()
         .merge(auth)
         .merge(public)
-        .route("/invite", get(site::invite))
-        .nest("/hooks", feed_webhooks::router())
+        .route("/invite", get(crate::routes::admin::site::invite))
+        .nest("/hooks", crate::routes::integrations::feed_webhooks::router())
         .merge(api)
-        .merge(house::assets())
-        .merge(static_files::router())
+        .merge(crate::routes::house::house::assets())
+        .merge(crate::routes::admin::static_files::router())
         .layer(middleware::from_fn_with_state(state.clone(), headers))
         .with_state(state)
 }
@@ -173,12 +132,9 @@ async fn headers(State(state): State<WebState>, request: Request, next: Next) ->
     response
 }
 
-mod command_control;
-mod config_backup;
-
 #[cfg(test)]
 mod csp_tests {
-    use super::*;
+    use crate::routes::*;
 
     #[test]
     fn reef_workers_images_and_websockets_keep_a_narrow_policy() {
@@ -201,9 +157,14 @@ mod csp_tests {
         }
     }
 }
-mod reef_loop;
 
-mod access;
-mod audit_tools;
-
-mod workflows;
+pub mod admin;
+pub mod community;
+pub mod economy;
+pub mod games;
+pub mod house;
+pub mod infra;
+pub mod integrations;
+pub mod moderation;
+pub mod progression;
+pub mod roles;

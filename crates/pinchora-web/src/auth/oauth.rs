@@ -12,19 +12,25 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use base64::Engine;
-use pinchora_core::config::Secret;
+use pinchora_core::infra::config::Secret;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-use crate::{
-    auth::session::{self, LIFETIME_SECS, OAUTH_COOKIE, SESSION_COOKIE, Session},
-    discord::{self, CallError, UserGuild},
-    error::{ApiError, ApiJson, ApiResult},
-    extract::CurrentSession,
-    state::WebState,
-};
+use crate::auth::session;
+use crate::auth::session::LIFETIME_SECS;
+use crate::auth::session::OAUTH_COOKIE;
+use crate::auth::session::SESSION_COOKIE;
+use crate::auth::session::Session;
+use crate::discord;
+use crate::discord::CallError;
+use crate::discord::UserGuild;
+use crate::error::ApiError;
+use crate::error::ApiJson;
+use crate::error::ApiResult;
+use crate::extract::CurrentSession;
+use crate::state::WebState;
 
 /// How long a login may take between leaving for Discord and coming back.
 const PENDING_TTL: Duration = Duration::from_secs(600);
@@ -266,7 +272,7 @@ fn rand_bytes<const N: usize>() -> [u8; N] {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::auth::oauth::*;
 
     #[test]
     fn next_stays_on_this_site() {

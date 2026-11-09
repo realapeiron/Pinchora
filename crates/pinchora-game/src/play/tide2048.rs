@@ -165,7 +165,7 @@ pub fn reward(best: u8) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::tide2048::*;
 
     /// A board from rows of tile values (2, 4, 8 ... or 0).
     fn board(rows: [[u32; 4]; 4]) -> Board {

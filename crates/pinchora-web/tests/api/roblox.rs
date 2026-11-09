@@ -1,5 +1,5 @@
 //! Managed guild and audit rules for Roblox configuration.
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn settings_and_binds_are_validated_and_audited() {

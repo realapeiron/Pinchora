@@ -1,4 +1,5 @@
-use pinchora_core::{mod_parity::Config, moderation::CaseKind};
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::policy::Config;
 use pinchora_db::{Db, NewCase};
 async fn database() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
@@ -28,14 +29,14 @@ async fn reports_are_guild_scoped_and_rate_limited() {
             .is_none()
     );
     assert_eq!(
-        db.mod_parity_queues(g + 9).await.unwrap()["reports"]
+        db.moderation_policy_queues(g + 9).await.unwrap()["reports"]
             .as_array()
             .unwrap()
             .len(),
         0
     );
     assert_eq!(
-        db.mod_parity_queues(g).await.unwrap()["reports"][0]["user_id"],
+        db.moderation_policy_queues(g).await.unwrap()["reports"][0]["user_id"],
         user.to_string()
     );
 }
@@ -91,13 +92,13 @@ async fn policy_roundtrips_and_rejects_invalid_rules() {
         appeals: true,
         ..Default::default()
     };
-    db.save_mod_parity_config(g, &c).await.unwrap();
-    assert_eq!(db.mod_parity_config(g).await.unwrap(), c);
+    db.save_moderation_policy_config(g, &c).await.unwrap();
+    assert_eq!(db.moderation_policy_config(g).await.unwrap(), c);
     let bad = Config {
         mute_role: Some("0".into()),
         ..c
     };
-    assert!(db.save_mod_parity_config(g, &bad).await.is_err());
+    assert!(db.save_moderation_policy_config(g, &bad).await.is_err());
 }
 
 #[tokio::test]
@@ -106,10 +107,10 @@ async fn autopurge_claim_excludes_other_pods_until_transaction_ends() {
     let Some(db) = database().await else {
         return;
     };
-    let guard = db.claim_mod_parity_sweep().await.unwrap().expect("first pod");
-    assert!(db.claim_mod_parity_sweep().await.unwrap().is_none());
+    let guard = db.claim_moderation_policy_sweep().await.unwrap().expect("first pod");
+    assert!(db.claim_moderation_policy_sweep().await.unwrap().is_none());
     guard.rollback().await.unwrap();
-    assert!(db.claim_mod_parity_sweep().await.unwrap().is_some());
+    assert!(db.claim_moderation_policy_sweep().await.unwrap().is_some());
 }
 
 #[tokio::test]
@@ -245,14 +246,14 @@ async fn d11_export_and_delete_cover_every_new_personal_table() {
             .await
             .unwrap();
     }
-    let export = db.export_mod_parity_data(user).await.unwrap();
+    let export = db.export_moderation_policy_data(user).await.unwrap();
     for rows in export.as_object().unwrap().values() {
         assert_eq!(rows.as_array().unwrap().len(), 1);
     }
     assert!(export["mod_notes"][0]["body"].is_null());
     assert!(export["mod_reports"][0]["body"].is_null());
     db.delete_user_data(user, chrono::Utc::now()).await.unwrap();
-    let export = db.export_mod_parity_data(user).await.unwrap();
+    let export = db.export_moderation_policy_data(user).await.unwrap();
     for rows in export.as_object().unwrap().values() {
         assert!(rows.as_array().unwrap().is_empty());
     }

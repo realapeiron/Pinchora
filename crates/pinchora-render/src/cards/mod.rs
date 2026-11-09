@@ -262,7 +262,7 @@ pub(crate) const SANS: &str = "Noto Sans";
 mod tests {
     use image::RgbaImage;
 
-    use super::*;
+    use crate::cards::*;
     use crate::{Frame, Opacity, ProfileCard, RankCard, Renderer, Theme, WalletCard, encode_png, placeholder_avatar};
 
     fn scene() -> Vec<u8> {
@@ -280,7 +280,7 @@ mod tests {
 
     fn profile<'a>(backdrop: Option<Backdrop<'a>>, badges: &'a [BadgeIcon<'a>]) -> ProfileCard<'a> {
         ProfileCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: None,
             username: "captain.pinch",
@@ -310,7 +310,7 @@ mod tests {
         let plain = [
             profile(None, &[]).to_svg(),
             RankCard {
-                lang: pinchora_core::i18n::Lang::En,
+                lang: pinchora_core::infra::i18n::Lang::En,
                 display_name: "A",
                 title: None,
                 username: "a",
@@ -325,7 +325,7 @@ mod tests {
             }
             .to_svg(),
             WalletCard {
-                lang: pinchora_core::i18n::Lang::En,
+                lang: pinchora_core::infra::i18n::Lang::En,
                 display_name: "A",
                 avatar_png: &[],
                 shells: 1,
@@ -417,7 +417,7 @@ mod tests {
 
     fn rank(title: Option<&str>) -> RankCard<'_> {
         RankCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: "Captain Pinch",
             title,
             username: "captain.pinch",
@@ -539,7 +539,7 @@ mod tests {
         let png = scene();
         let cells = collection(&png);
         let card = BadgeCollectionCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             cells: &cells,
             legend: &LEGEND,
             theme: Theme::reef(),
@@ -563,7 +563,7 @@ mod tests {
         let mut locked = collection(&png);
         locked[0].state = BadgeState::Locked { have: 1, at: 5 };
         let svg = BadgeCollectionCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             cells: &locked,
             legend: &LEGEND,
             theme: Theme::reef(),
@@ -617,7 +617,7 @@ mod tests {
         }
         assert_eq!(cells.len(), 40);
         let card = BadgeCollectionCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             cells: &cells,
             legend: &LEGEND,
             theme: Theme::reef(),
@@ -692,16 +692,16 @@ mod tests {
     #[test]
     fn the_footer_stays_clear_of_a_frame() {
         // The frame's band is 8 px; the lowest thing on the card is the badge plates.
-        let band = 540.0 - super::frame::BAND;
+        let band = 540.0 - crate::cards::frame::BAND;
         for (rows, what) in [
-            (super::profile::Rows::classic(6.0), "classic with a frame"),
-            (super::profile::Rows::showcase(), "showcase"),
+            (crate::cards::profile::Rows::classic(6.0), "classic with a frame"),
+            (crate::cards::profile::Rows::showcase(), "showcase"),
         ] {
             assert!(rows.foot_y + BadgeIcon::PLATE <= band, "{what}: {}", rows.foot_y);
             assert!(rows.plate.0 + rows.plate.1 <= band, "{what}: the plate");
         }
         // And the classic rows are the old ones when there is no frame.
-        assert_eq!(super::profile::Rows::classic(0.0).foot_y, 482.0);
+        assert_eq!(crate::cards::profile::Rows::classic(0.0).foot_y, 482.0);
         let mut framed = profile(None, &[]);
         framed.theme = Theme::reef().with_style(Opacity::Normal, Frame::Gold);
         let svg = framed.to_svg();
@@ -730,7 +730,7 @@ mod tests {
             showcase::draw_row(
                 &mut svg,
                 &Theme::reef(),
-                pinchora_core::i18n::Lang::En,
+                pinchora_core::infra::i18n::Lang::En,
                 &slots,
                 296.0,
                 260.0,
@@ -752,7 +752,7 @@ mod tests {
         showcase::draw_row(
             &mut none,
             &Theme::reef(),
-            pinchora_core::i18n::Lang::En,
+            pinchora_core::infra::i18n::Lang::En,
             &[],
             296.0,
             260.0,
@@ -1036,7 +1036,7 @@ mod tests {
             showcase::draw_row(
                 &mut svg,
                 &Theme::reef(),
-                pinchora_core::i18n::Lang::En,
+                pinchora_core::infra::i18n::Lang::En,
                 &slots,
                 296.0,
                 254.0,
@@ -1067,7 +1067,7 @@ mod tests {
         let themed = |opacity, frame| Theme::reef().with_style(opacity, frame);
         let rank = |theme| RankCard { theme, ..rank(None) };
         let wallet = |theme| WalletCard {
-            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::infra::i18n::Lang::En,
             display_name: "A",
             avatar_png: &[],
             shells: 1,

@@ -2,12 +2,12 @@
 //! buttons, results, refusals, and the janitor speaking the language a table was opened in. Pictures land in
 //! `target/sim/<test>/`.
 
-use pinchora_game::party::{
-    derby::ROSTER,
-    heist::{self, Role, Tier},
-};
+use pinchora_game::party::derby::ROSTER;
+use pinchora_game::party::heist;
+use pinchora_game::party::heist::Role;
+use pinchora_game::party::heist::Tier;
 
-use super::*;
+use crate::*;
 
 /// How Discord writes a mention.
 fn at(user: u64) -> String {
@@ -425,7 +425,7 @@ async fn the_turkish_shell_game_is_off_until_a_manager_turns_it_on_and_tells_whe
         .await
         .unwrap();
     sim.app
-        .set_user_lang(loser, Some(pinchora_core::i18n::Lang::Tr))
+        .set_user_lang(loser, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     sim.locale = "en-US";
@@ -571,7 +571,7 @@ async fn timed_turkish_storms_are_configured_in_turkish() {
 
     // The storm that comes by itself speaks the server's language (here: set to Turkish for the occasion).
     sim.app
-        .set_guild_lang(sim.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(sim.guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     sim.app.shift_clock(chrono::Duration::hours(7));

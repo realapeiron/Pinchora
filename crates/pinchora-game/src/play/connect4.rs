@@ -104,7 +104,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::connect4::*;
 
     fn play(moves: &[(usize, u8)]) -> Board {
         let mut board = Board::new();

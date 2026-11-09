@@ -1,5 +1,11 @@
 //! Each frontend subscribes before relaying. Only the fenced owner runs the room actor.
-use super::{Envelope, Event, Input, Peer, QUEUE, RoomKey, room};
+use crate::reef::Envelope;
+use crate::reef::Event;
+use crate::reef::Input;
+use crate::reef::Peer;
+use crate::reef::QUEUE;
+use crate::reef::RoomKey;
+use crate::reef::room;
 use crate::state::WebState;
 use futures_util::StreamExt;
 use pinchora_db::ReefFence;
@@ -275,8 +281,8 @@ async fn route(
                                 }
                                 if key.instance.is_some()
                                     && matches!(event.body["type"].as_str(), Some("chat" | "snapshot"))
-                                    && let Err(error) = super::socket::room_access(state,key,peer.user).await {
-                                    peer.terminate(super::socket::access_close_reason(&error));continue;
+                                    && let Err(error) = crate::reef::socket::room_access(state,key,peer.user).await {
+                                    peer.terminate(crate::reef::socket::access_close_reason(&error));continue;
                                 }
                                 if !filter_presence(&mut event.body, &policy.blocked) {
                                     // Keep the delivery sequence intact without disclosing the identity.
@@ -377,7 +383,7 @@ fn filter_presence(body: &mut serde_json::Value, blocked: &[String]) -> bool {
 
 #[cfg(test)]
 mod visibility_tests {
-    use super::filter_presence;
+    use crate::reef::routing::filter_presence;
     use serde_json::json;
 
     #[test]

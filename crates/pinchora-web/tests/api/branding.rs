@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn branding_web_managed_csrf_audit_cooldown_and_discord_capability() {
@@ -181,7 +181,8 @@ async fn branding_partial_apply_clear_and_reset_keep_accepted_state_and_audit() 
 
 #[tokio::test]
 async fn branding_snapshot_race_and_redis_invalidation_across_pods() {
-    use pinchora_commands::branding::{ApplyResult, apply};
+    use pinchora_commands::admin::branding::ApplyResult;
+    use pinchora_commands::admin::branding::apply;
     let Some(h) = Harness::new("branding_race").await else {
         return;
     };
@@ -261,7 +262,8 @@ async fn branding_mutations_require_manage_server_and_csrf() {
 
 #[tokio::test]
 async fn branding_backup_preserves_runtime_state_and_validates_profile() {
-    use pinchora_core::config_backup::{Names, Policy};
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
     let Some(h) = Harness::new("branding_backup").await else {
         return;
     };
@@ -273,13 +275,13 @@ async fn branding_backup_preserves_runtime_state_and_validates_profile() {
         ..Default::default()
     };
     db.save_guild_branding(guild, &row).await.unwrap();
-    pinchora_commands::branding::apply(&h.state.app, guild, &row)
+    pinchora_commands::admin::branding::apply(&h.state.app, guild, &row)
         .await
         .unwrap();
     let mut backup = db.snapshot_config(guild, Names::default()).await.unwrap();
     assert!(backup.sections["guild_branding"][0].get("active_embed_color").is_none());
     backup.sections.get_mut("guild_branding").unwrap()[0]["nickname"] = json!("@everyone");
-    assert!(pinchora_commands::validate_backup(&backup, pinchora_core::i18n::Lang::En).is_err());
+    assert!(pinchora_commands::validate_backup(&backup, pinchora_core::infra::i18n::Lang::En).is_err());
     backup.sections.get_mut("guild_branding").unwrap().clear();
     db.import_config(guild, &backup, Policy::Replace, Names::default())
         .await
@@ -363,7 +365,9 @@ async fn branding_avatar_refusal_and_transport_failure_are_recorded_and_audited(
 
 #[tokio::test]
 async fn branding_backup_copies_upload_references_to_the_destination_guild() {
-    use pinchora_core::config_backup::{Import, Names, Policy};
+    use pinchora_core::admin::config_backup::Import;
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
     let Some(h) = Harness::new("branding_backup_remap").await else {
         return;
     };
@@ -391,7 +395,7 @@ async fn branding_backup_copies_upload_references_to_the_destination_guild() {
             backup,
             policy: Policy::Merge,
         },
-        pinchora_core::i18n::Lang::En,
+        pinchora_core::infra::i18n::Lang::En,
         actor,
     )
     .await
@@ -400,5 +404,5 @@ async fn branding_backup_copies_upload_references_to_the_destination_guild() {
     assert_ne!(copied, &json!(id));
     assert_eq!(&mapped.sections["guild_branding"][0]["avatar_upload_id"], copied);
     assert_eq!(&mapped.sections["guild_branding"][0]["banner_upload_id"], copied);
-    assert!(pinchora_commands::validate_backup(&mapped, pinchora_core::i18n::Lang::En).is_ok());
+    assert!(pinchora_commands::validate_backup(&mapped, pinchora_core::infra::i18n::Lang::En).is_ok());
 }

@@ -17,7 +17,8 @@ pub mod wordle;
 
 pub use content::*;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 use crate::party;
 
@@ -334,7 +335,7 @@ pub const MAX_BET: i64 = 500;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::play::*;
 
     #[test]
     fn game_keys_round_trip() {

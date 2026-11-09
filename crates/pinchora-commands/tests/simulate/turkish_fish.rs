@@ -1,9 +1,9 @@
 //! Turkish for the fish group, played through the real handlers.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_game::lang::lower;
 
-use super::*;
+use crate::*;
 
 /// The label of the first button that starts with `prefix`.
 fn label_starting(reply: &Reply, prefix: &str) -> String {
@@ -255,7 +255,7 @@ async fn a_turkish_angler_shops_gears_casts_reels_sells_and_reads_the_book() {
     assert!(
         catch.description().starts_with(&format!(
             "*{flavor}*\n**{} cm** · kovandaki değeri **",
-            pinchora_core::server_stats::decimal_in(Lang::Tr, size, 1)
+            pinchora_core::admin::server_stats::decimal_in(Lang::Tr, size, 1)
         )),
         "{}",
         catch.description()

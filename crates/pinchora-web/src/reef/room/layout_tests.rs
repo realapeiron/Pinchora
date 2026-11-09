@@ -1,4 +1,4 @@
-use super::*;
+use crate::reef::room::*;
 use std::{cell::Cell, future::ready};
 
 fn layout(revision: &str) -> Layout {
@@ -14,7 +14,7 @@ fn layout(revision: &str) -> Layout {
     }
 }
 
-fn room_with_member() -> (Room, mpsc::Receiver<super::super::Event>) {
+fn room_with_member() -> (Room, mpsc::Receiver<crate::reef::Event>) {
     let (outgoing, incoming) = mpsc::channel(64);
     let (close, _) = tokio::sync::watch::channel(None);
     let member = Member {

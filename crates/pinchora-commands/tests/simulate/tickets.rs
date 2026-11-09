@@ -7,10 +7,11 @@
 //! history, and keeps the transcript pages handlers send (the harness reads every other file as a picture).
 
 use pinchora_commands::{on_ticket_place_deleted, tickets_tick};
-use pinchora_core::tickets::{Question, Topic};
+use pinchora_core::community::tickets::Question;
+use pinchora_core::community::tickets::Topic;
 use pinchora_db::{NewTicket, PanelWrite, TicketOpen, TicketPanelSaved};
 
-use super::*;
+use crate::*;
 
 // /Ticket mock
 
@@ -298,7 +299,7 @@ async fn save_panel(
                 title: "Need help?",
                 description: "Press a button.",
                 color: 0xff6b4a,
-                style: pinchora_core::tickets::PanelStyle::Buttons,
+                style: pinchora_core::community::tickets::PanelStyle::Buttons,
                 topics,
                 questions,
                 support_roles: roles,
@@ -673,10 +674,10 @@ async fn a_ticket_opens_from_a_panel_is_claimed_closed_rated_and_reopened() {
     let anonymised = sim.app.db.transcript(ticket.id).await.unwrap().unwrap();
     assert!(!anonymised.author_ids.iter().any(|(_, id)| *id == mentioned));
     assert_eq!(
-        pinchora_core::tickets::render_mentions(
+        pinchora_core::community::tickets::render_mentions(
             &format!("<@{mentioned}>"),
             &std::collections::HashMap::new(),
-            pinchora_core::i18n::Lang::En
+            pinchora_core::infra::i18n::Lang::En
         ),
         "@Deleted user"
     );
@@ -1102,7 +1103,7 @@ async fn tickets_speak_turkish() {
     let (admin, member) = (unique(), unique());
     let panel_channel = unique();
     sim.app
-        .set_guild_lang(sim.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(sim.guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     sim.locale = "tr";
@@ -1311,7 +1312,7 @@ async fn ticket_operations_faq_and_support_hours_speak_turkish() {
     };
     let (admin, member, panel_channel) = (unique(), unique(), unique());
     sim.app
-        .set_guild_lang(sim.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(sim.guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     sim.locale = "tr";
@@ -1593,7 +1594,12 @@ async fn ticket_claim_mode_message_guard_respects_the_module_switch() {
     for enabled in [false, true] {
         sim.app
             .db
-            .set_module(sim.guild, pinchora_core::modules::Module::Tickets, Some(enabled), None)
+            .set_module(
+                sim.guild,
+                pinchora_core::admin::modules::Module::Tickets,
+                Some(enabled),
+                None,
+            )
             .await
             .unwrap();
         sim.app.forget_guild_settings(sim.guild).await;
@@ -1615,7 +1621,8 @@ async fn ticket_claim_mode_message_guard_respects_the_module_switch() {
 
 #[tokio::test]
 async fn workflows_open_ticket_does_not_trigger_ticket_opened_workflows() {
-    use pinchora_core::workflows::{Definition, Event};
+    use pinchora_core::admin::workflows::Definition;
+    use pinchora_core::admin::workflows::Event;
     let Some((sim, world)) = ticket_sim("workflows_ticket_depth").await else {
         return;
     };
@@ -1625,7 +1632,7 @@ async fn workflows_open_ticket_does_not_trigger_ticket_opened_workflows() {
     let next = sim.app.db.save_workflow(sim.guild, None, &next, user).await.unwrap();
     let first: Definition = serde_json::from_value(json!({"name":"open","enabled":true,"trigger":{"kind":"button"},"conditions":[],"actions":[{"kind":"open_ticket","panel_id":panel,"topic":0}]})).unwrap();
     let first = sim.app.db.save_workflow(sim.guild, None, &first, user).await.unwrap();
-    let result = pinchora_commands::workflows::engine::run(
+    let result = pinchora_commands::admin::workflows::engine::run(
         &sim.app,
         &first,
         Event {
@@ -1658,10 +1665,10 @@ async fn workflow_ticket_counts(sim: &Sim, observers: &[i64], expected: [usize; 
 }
 
 async fn workflow_open_result(sim: &Sim, row: &pinchora_db::WorkflowRow, user: u64) -> String {
-    pinchora_commands::workflows::engine::run(
+    pinchora_commands::admin::workflows::engine::run(
         &sim.app,
         row,
-        pinchora_core::workflows::Event {
+        pinchora_core::admin::workflows::Event {
             kind: "button".into(),
             user_id: user.to_string(),
             channel_id: sim.channel.to_string(),
@@ -1675,7 +1682,7 @@ async fn workflow_open_result(sim: &Sim, row: &pinchora_db::WorkflowRow, user: u
 
 #[tokio::test]
 async fn workflows_open_ticket_obeys_panel_category_user_cooldown_and_eligibility_limits() {
-    use pinchora_core::workflows::Definition;
+    use pinchora_core::admin::workflows::Definition;
     let Some((sim, world)) = ticket_sim("workflows_ticket_limits").await else {
         return;
     };
@@ -1772,7 +1779,7 @@ async fn workflows_open_ticket_obeys_panel_category_user_cooldown_and_eligibilit
 #[tokio::test]
 async fn workflows_observe_confirmed_timeout_web_closes_and_force_open_exactly_once() {
     use pinchora_commands::close_ticket_from_web;
-    use pinchora_core::workflows::Definition;
+    use pinchora_core::admin::workflows::Definition;
     let _ticker = TICKET_TICK_LOCK.lock().await;
     let Some((mut sim, world)) = ticket_sim("workflows_ticket_transitions").await else {
         return;

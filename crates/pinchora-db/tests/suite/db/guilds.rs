@@ -1,4 +1,4 @@
-use super::*;
+use crate::db::*;
 
 #[tokio::test]
 async fn server_points_accrue_give_and_take() {

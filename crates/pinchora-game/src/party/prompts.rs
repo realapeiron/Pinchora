@@ -3,7 +3,8 @@
 
 use std::sync::LazyLock;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
@@ -171,8 +172,8 @@ impl PartyContent {
 mod tests {
     use std::collections::HashSet;
 
-    use super::*;
     use crate::party::filter::is_profane_for;
+    use crate::party::prompts::*;
 
     #[test]
     fn there_are_about_two_hundred_of_each_in_every_category() {

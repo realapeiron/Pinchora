@@ -17,12 +17,12 @@ use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
 use chrono::{DateTime, Duration, Utc};
 use moka::future::Cache as Moka;
-use pinchora_core::{
-    i18n::Lang,
-    logging::LogCategory,
-    moderation::{CaseKind, Rank, may_act},
-    t,
-};
+use pinchora_core::admin::logging::LogCategory;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::moderation::Rank;
+use pinchora_core::moderation::moderation::may_act;
+use pinchora_core::t;
 use pinchora_db::{CaseRow, NewCase, OpenedCase};
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::ResolvedUser;
@@ -42,12 +42,17 @@ pub(crate) use channels::{Lock, Purge, Slowmode, Unlock};
 pub(crate) use members::{Ban, Kick, Nick, RoleCommand, Timeout, Unban, Untimeout};
 pub(crate) use warns::{Unwarn, Warn, Warnings};
 
-use crate::{
-    App, Cx,
-    leveling::private_channel,
-    roles::error_code,
-    util::{BRAND, DANGER, SUCCESS, WARN, mention, relative, resolved_display_name},
-};
+use crate::App;
+use crate::Cx;
+use crate::infra::util::BRAND;
+use crate::infra::util::DANGER;
+use crate::infra::util::SUCCESS;
+use crate::infra::util::WARN;
+use crate::infra::util::mention;
+use crate::infra::util::relative;
+use crate::infra::util::resolved_display_name;
+use crate::progression::leveling::private_channel;
+use crate::roles::roles::error_code;
 
 /// The name cases give the bot when it acts on its own (the warn ladder, a temporary ban that ends).
 pub(crate) const BOT_NAME: &str = "Pinchora";
@@ -289,7 +294,7 @@ impl Ranks {
     /// reach.
     pub(crate) fn refusal(&self, lang: Lang, target: &ResolvedUser, verb: &str) -> Option<String> {
         let top = match &target.member {
-            Some(member) => self::top(&self.table, member.roles.iter().map(|r| r.get())),
+            Some(member) => crate::commands::moderation::top(&self.table, member.roles.iter().map(|r| r.get())),
             None => -1,
         };
         let rank = Rank {
@@ -303,10 +308,9 @@ impl Ranks {
 
     /// Whether the bot itself may act on `target` (the warn ladder, where the bot is the moderator).
     pub(crate) fn bot_may(&self, lang: Lang, target: &ResolvedUser, verb: &str) -> Option<String> {
-        let top = target
-            .member
-            .as_ref()
-            .map_or(-1, |m| self::top(&self.table, m.roles.iter().map(|r| r.get())));
+        let top = target.member.as_ref().map_or(-1, |m| {
+            crate::commands::moderation::top(&self.table, m.roles.iter().map(|r| r.get()))
+        });
         let rank = Rank {
             id: target.resolved.id.get(),
             top,
@@ -322,7 +326,7 @@ impl Ranks {
         match app.http.guild_member(Id::new(guild.max(1)), Id::new(user.max(1))).await {
             Ok(response) => {
                 let member = response.model().await.ok()?;
-                let top = self::top(&self.table, member.roles.iter().map(|r| r.get()));
+                let top = crate::commands::moderation::top(&self.table, member.roles.iter().map(|r| r.get()));
                 Some(Rank { id: user, top })
             }
             Err(error) if error_code(&error) == Some(UNKNOWN_MEMBER) => Some(Rank { id: user, top: -1 }),
@@ -398,7 +402,7 @@ pub(crate) async fn record(
         tracing::warn!(%error, guild, "could not note the direct message");
     }
     post_case(app, guild, case).await;
-    parity::appeal_hint(app, guild, case).await;
+    crate::commands::moderation::policy::appeal_hint(app, guild, case).await;
     metrics::counter!("pinchora_mod_cases_total", "kind" => act.kind.key()).increment(1);
     Ok(opened)
 }
@@ -786,7 +790,7 @@ pub fn spawn_ticker(app: Arc<App>) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::commands::moderation::*;
 
     fn case(kind: &str, details: Option<&str>, duration: Option<i64>) -> CaseRow {
         CaseRow {
@@ -852,6 +856,9 @@ mod tests {
     }
 }
 
-pub mod parity;
+pub mod policy;
 
+pub(crate) mod anti_nuke;
+pub(crate) mod automod;
 pub(crate) mod report_context;
+pub(crate) mod verification;

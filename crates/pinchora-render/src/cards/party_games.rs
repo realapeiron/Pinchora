@@ -3,9 +3,12 @@
 
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{
@@ -1144,7 +1147,7 @@ impl PromptCard<'_> {
 mod tests {
     use image::RgbaImage;
 
-    use super::*;
+    use crate::cards::party_games::*;
     use crate::{Renderer, encode_png};
 
     fn size(svg: &str) -> (u32, u32) {

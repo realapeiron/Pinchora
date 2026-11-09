@@ -159,7 +159,7 @@ pub fn navigation(room: &RoomData) -> (Grid, Vec<Target>) {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::reef::navigation::*;
     #[test]
     fn shared_astar_fixtures() {
         #[derive(Deserialize)]

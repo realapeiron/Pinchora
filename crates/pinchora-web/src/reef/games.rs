@@ -2,7 +2,9 @@
 mod transition;
 use transition::transition;
 
-use super::{RoomKey, socket::room_access, spaces::limit};
+use crate::reef::RoomKey;
+use crate::reef::socket::room_access;
+use crate::reef::spaces::limit;
 use crate::{
     error::{ApiError, ApiJson, ApiResult},
     extract::CurrentSession,
@@ -14,7 +16,8 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use pinchora_core::{i18n::Lang, modules::Module};
+use pinchora_core::admin::modules::Module;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_db::{NewReefGame, ReefFence, ReefGame, ReefGamePlayer, ReefGameStep};
 use pinchora_game::play::room::Session;
 use serde::{Deserialize, Serialize};
@@ -25,7 +28,7 @@ pub fn router() -> Router<WebState> {
         .route("/rooms/{room}/games", get(lobby).post(create))
         .route("/games/{id}", get(read))
         .route("/games/{id}/actions", post(act))
-        .merge(super::picross::router())
+        .merge(crate::reef::picross::router())
         .layer(DefaultBodyLimit::max(4096))
 }
 fn error(code: &'static str, status: StatusCode) -> ApiError {
@@ -341,7 +344,7 @@ async fn settle_deadline(db: &pinchora_db::Db, g: &ReefGame) -> anyhow::Result<R
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::reef::games::*;
     #[test]
     fn wire_actions_reject_unknown_scores_and_unbounded_answers() {
         let a = json!({"request_id":"one","revision":"0","action":"move","code":"e2e4"});

@@ -1,13 +1,13 @@
 //! The word and quiz games in Turkish: a player whose Discord is set to Turkish gets Turkish content, the
 //! Turkish alphabet and keyboard, and a daily wordle of their own.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_game::{
     lang,
     play::{find_question, hangman::Hangman, trivia, wordle},
 };
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn a_turkish_player_gets_the_turkish_daily_wordle_with_the_turkish_keyboard() {

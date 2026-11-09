@@ -43,7 +43,7 @@ impl Rng {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::rng::*;
 
     #[test]
     fn the_same_seed_replays_and_numbers_stay_in_range() {

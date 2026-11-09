@@ -8,16 +8,22 @@
 //! unset. Each step's images are saved as `target/sim/<test>/<step>-<filename>`; run with
 //! `--nocapture` to read the steps as they happen.
 
-use std::{
-    cell::{Cell, RefCell},
-    collections::HashMap,
-    fmt::{self, Write as _},
-    path::{Path, PathBuf},
-    sync::{
-        Arc, LazyLock, Mutex, Once,
-        atomic::{AtomicBool, AtomicU16, AtomicU64, AtomicUsize, Ordering},
-    },
-};
+use std::cell::Cell;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Write as _;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::Mutex;
+use std::sync::Once;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU16;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 use axum::{
     Router,
@@ -73,12 +79,12 @@ mod basics;
 mod board;
 #[path = "simulate/branding.rs"]
 mod branding;
-#[path = "simulate/leveling_parity.rs"]
-mod leveling_parity;
-#[path = "simulate/party_v2.rs"]
-mod party_v2;
+#[path = "simulate/leveling_policy.rs"]
+mod leveling_policy;
 #[path = "simulate/quick.rs"]
 mod quick;
+#[path = "simulate/reef_party.rs"]
+mod reef_party;
 // Welcome and goodbye images from the dashboard's editor.
 #[path = "simulate/cards.rs"]
 mod cards;
@@ -92,10 +98,10 @@ mod achievements;
 mod anti_nuke;
 #[path = "simulate/automod.rs"]
 mod automod;
-#[path = "simulate/community_pack.rs"]
-mod community_pack;
-#[path = "simulate/community_v2.rs"]
-mod community_v2;
+#[path = "simulate/community_engagement.rs"]
+mod community_engagement;
+#[path = "simulate/community_tools.rs"]
+mod community_tools;
 #[path = "simulate/events.rs"]
 mod events;
 #[path = "simulate/moderation.rs"]
@@ -103,8 +109,8 @@ mod moderation;
 #[path = "simulate/utility.rs"]
 mod utility;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
-#[path = "simulate/w9a.rs"]
-mod w9a;
+#[path = "simulate/command_integrity.rs"]
+mod command_integrity;
 // Text commands with a server's prefix, through the same handlers.
 #[path = "simulate/text.rs"]
 mod text;
@@ -183,8 +189,7 @@ mod tempvoice;
 #[path = "simulate/command_tree.rs"]
 mod command_tree;
 
-#[path = "support/fixture_lock.rs"]
-mod fixture_lock;
+pinchora_testkit::fixture_lock!(fixture_lock);
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -503,7 +508,7 @@ async fn discord(
     let path = uri.path().to_owned();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
-    if let Some(answer) = mod_parity::mock(&mock, &method, &uri, &parts, &headers, &body) {
+    if let Some(answer) = crate::moderation_policy::mock(&mock, &method, &uri, &parts, &headers, &body) {
         return answer;
     }
     if let Some(answer) = roles::mock(&mock, &method, &uri, &parts, &body) {
@@ -512,7 +517,7 @@ async fn discord(
     if let Some(answer) = command_control::mock(&mock, &method, &parts) {
         return answer;
     }
-    if let Some(answer) = community_pack::mock(&mock, &method, &parts, &body) {
+    if let Some(answer) = crate::community_engagement::mock(&mock, &method, &parts, &body) {
         return answer;
     }
     match (&method, parts.as_slice()) {
@@ -2045,7 +2050,10 @@ async fn turkish_players_get_turkish_text_and_cards() {
         "{}",
         config.content()
     );
-    assert_eq!(sim.app.guild_lang(sim.guild).await, pinchora_core::i18n::Lang::Tr);
+    assert_eq!(
+        sim.app.guild_lang(sim.guild).await,
+        pinchora_core::infra::i18n::Lang::Tr
+    );
 
     // The rest of the everyday commands, in Turkish.
     let daily = sim.command(user, "daily", json!([])).await;
@@ -8050,7 +8058,7 @@ async fn voice_xp_pays_once_a_minute_to_members_with_company() {
     );
 
     // The week's board counts voice XP too.
-    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let week = pinchora_core::progression::leveling::week_start(sim.app.now());
     let board = sim.app.db.weekly_leaderboard(sim.guild, week, 10, 0).await.unwrap();
     assert_eq!(board.iter().find(|r| r.user_id as u64 == a).map(|r| r.value), Some(160));
 
@@ -8333,7 +8341,7 @@ async fn one_pod_prunes_old_weekly_xp_per_hour() {
     }
     let guild = sim.guild;
     let (old_user, recent_user, later_user) = (unique(), unique(), unique());
-    let this_week = pinchora_core::leveling::week_start(chrono::Utc::now());
+    let this_week = pinchora_core::progression::leveling::week_start(chrono::Utc::now());
     let grant = pinchora_db::XpGrant {
         server_xp: 10,
         global_xp: 0,
@@ -8670,7 +8678,7 @@ async fn the_weekly_board_counts_this_week_and_shows_last_weeks_podium() {
         return;
     };
     let (chatter, early, mid, late, fourth) = (unique(), unique(), unique(), unique(), unique());
-    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let week = pinchora_core::progression::leveling::week_start(sim.app.now());
     let grant = |xp| pinchora_db::XpGrant {
         server_xp: xp,
         global_xp: 0,
@@ -8716,7 +8724,7 @@ async fn the_weekly_board_counts_this_week_and_shows_last_weeks_podium() {
         .command(chatter, "leaderboard", json!([text_option("board", "weekly")]))
         .await;
     assert_eq!(png_height(&next), 826);
-    let new_week = pinchora_core::leveling::week_start(sim.app.now());
+    let new_week = pinchora_core::progression::leveling::week_start(sim.app.now());
     assert_eq!(new_week, week + chrono::Duration::weeks(1));
     assert!(
         sim.app
@@ -11751,7 +11759,9 @@ fn known_fish() -> Vec<&'static str> {
 
 /// Total XP at the start of `level`.
 fn xp_for_level(level: u32) -> i64 {
-    (0..level).map(|l| pinchora_core::leveling::xp_to_next(l) as i64).sum()
+    (0..level)
+        .map(|l| pinchora_core::progression::leveling::xp_to_next(l) as i64)
+        .sum()
 }
 
 fn footer(reply: &Reply) -> &str {
@@ -12198,7 +12208,7 @@ async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
         catch.description()
     );
     // Boots and tins are no catch for the weekly board; everything else is.
-    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let week = pinchora_core::progression::leveling::week_start(sim.app.now());
     let board = db.weekly_catch_board(sim.guild, week, 10, 0).await.unwrap();
     assert_eq!(board.len(), usize::from(!fish.junk), "{}", fish.id);
 
@@ -12686,7 +12696,7 @@ async fn the_weekly_catch_board_ranks_by_size_for_the_species() {
     let Some(mut sim) = Sim::new("the_weekly_catch_board_ranks_by_size_for_the_species").await else {
         return;
     };
-    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let week = pinchora_core::progression::leveling::week_start(sim.app.now());
     let (viewer, dave, alice, bob, carol, erin) = (unique(), unique(), unique(), unique(), unique(), unique());
 
     // Nobody has fished this week: an empty board of the usual size.
@@ -12765,7 +12775,7 @@ async fn the_weekly_catch_board_ranks_by_size_for_the_species() {
         .command(viewer, "leaderboard", json!([text_option("board", "catch")]))
         .await;
     assert_eq!(png_height(&next), 826);
-    let new_week = pinchora_core::leveling::week_start(sim.app.now());
+    let new_week = pinchora_core::progression::leveling::week_start(sim.app.now());
     assert!(
         sim.app
             .db
@@ -14201,7 +14211,7 @@ async fn pearl_under(sim: &Sim, session: i64) -> usize {
 /// whoever opens or clicks it.
 async fn turkish_server(sim: &Sim) {
     sim.app
-        .set_guild_lang(sim.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(sim.guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .expect("set the server's language");
 }
@@ -14396,7 +14406,9 @@ async fn open_heist(sim: &mut Sim, host: u64) -> Reply {
 
 #[tokio::test]
 async fn a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says() {
-    use pinchora_game::party::heist::{self, Role, Tier};
+    use pinchora_game::party::heist;
+    use pinchora_game::party::heist::Role;
+    use pinchora_game::party::heist::Tier;
     let Some(mut sim) = Sim::new("a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says").await else {
         return;
     };
@@ -14497,7 +14509,9 @@ async fn a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says() {
 
 #[tokio::test]
 async fn a_busted_heist_pays_nobody_and_a_lone_crew_member_is_called_off_by_the_janitor() {
-    use pinchora_game::party::heist::{self, Role, Tier};
+    use pinchora_game::party::heist;
+    use pinchora_game::party::heist::Role;
+    use pinchora_game::party::heist::Tier;
     let _serial = SWEEPS.lock().await;
     let Some(mut sim) =
         Sim::new("a_busted_heist_pays_nobody_and_a_lone_crew_member_is_called_off_by_the_janitor").await
@@ -15111,8 +15125,8 @@ async fn module_off_refuses_commands_and_xp() {
             .await
             .unwrap()
             .iter()
-            .any(|(m, r)| *m == pinchora_core::modules::Module::Welcome
-                && r.mode != pinchora_core::modules::ChannelMode::All)
+            .any(|(m, r)| *m == pinchora_core::admin::modules::Module::Welcome
+                && r.mode != pinchora_core::admin::modules::ChannelMode::All)
     );
 
     // The party and the duel games are different modules, and the shell game's switch is the
@@ -15330,7 +15344,7 @@ async fn module_names_autocomplete_and_a_typed_name_works() {
     sim.permissions = MANAGE_GUILD;
 
     // More modules than Discord's 25 choices: the box suggests as you type, 25 at most.
-    assert!(pinchora_core::modules::Module::ALL.len() > 25);
+    assert!(pinchora_core::admin::modules::Module::ALL.len() > 25);
     let all = suggestions(&sim, member, "toggle", "").await;
     assert_eq!(all.len(), 25);
     let chess = suggestions(&sim, member, "channels", "chess").await;
@@ -15339,7 +15353,7 @@ async fn module_names_autocomplete_and_a_typed_name_works() {
     let keys: Vec<&str> = party.iter().map(|(_, key)| key.as_str()).collect();
     assert!(keys.contains(&"party") && keys.contains(&"party_games"), "{keys:?}");
     assert!(suggestions(&sim, member, "toggle", "zzzz").await.is_empty());
-    for module in pinchora_core::modules::Module::ALL {
+    for module in pinchora_core::admin::modules::Module::ALL {
         let found = suggestions(&sim, member, "toggle", module.label()).await;
         assert!(found.iter().any(|(_, key)| key == module.key()), "{}", module.key());
     }
@@ -15493,8 +15507,8 @@ mod verification;
 #[path = "simulate/command_control.rs"]
 mod command_control;
 
-#[path = "simulate/mod_parity.rs"]
-mod mod_parity;
+#[path = "simulate/moderation_policy.rs"]
+mod moderation_policy;
 
 #[path = "simulate/web_house_edit.rs"]
 mod web_house_edit;
@@ -15538,8 +15552,8 @@ async fn blocked_partner_cannot_use_an_already_open_discord_editor() {
         .await;
     assert!(denied.ephemeral && denied.content().contains("cannot apply"));
 }
-#[path = "simulate/economy_v2.rs"]
-mod economy_v2;
+#[path = "simulate/economy_player.rs"]
+mod economy_player;
 
 #[path = "simulate/workflows.rs"]
 mod workflows;

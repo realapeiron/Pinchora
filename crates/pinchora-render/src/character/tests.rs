@@ -1,4 +1,4 @@
-use super::*;
+use crate::character::*;
 
 fn looks() -> Vec<String> {
     let mut ids: Vec<String> = atlas()

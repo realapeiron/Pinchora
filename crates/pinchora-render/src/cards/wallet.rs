@@ -1,8 +1,14 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
+use crate::cards::Backdrop;
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::avatar_frame;
+use crate::cards::backdrop;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{HEART, SHELL, STAR, background, compact_in, escape, sprite, truncate},

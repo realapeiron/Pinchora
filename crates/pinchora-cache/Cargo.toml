@@ -16,6 +16,7 @@ tracing.workspace = true
 twilight-gateway-queue.workspace = true
 
 [dev-dependencies]
+pinchora-testkit = { path = "../pinchora-testkit" }
 sqlx.workspace = true
 tokio.workspace = true
 twilight-gateway-queue.workspace = true

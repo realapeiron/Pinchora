@@ -1,0 +1,143 @@
+//! The logged-in user and the servers they can manage.
+
+use std::time::Duration;
+
+use axum::{Json, extract::State};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::{Value, json};
+
+use crate::auth::session::Session;
+use crate::discord;
+use crate::discord::UserGuild;
+use crate::error::ApiError;
+use crate::error::ApiResult;
+use crate::extract::CurrentSession;
+use crate::state::WebState;
+
+/// How often one user may make the dashboard ask Discord for their server list again.
+const REFRESH_COOLDOWN: Duration = Duration::from_secs(10);
+
+/// `GET /api/me`: who is logged in, and the token writes must carry.
+pub async fn me(State(state): State<WebState>, current: CurrentSession) -> Json<Value> {
+    let s = &current.session;
+    let language = state.app.user_lang_choice(s.user_id).await.map(Lang::code);
+    Json(json!({
+        "user": {
+            "id": s.user_id.to_string(),
+            "username": s.username,
+            "global_name": s.global_name,
+            "avatar_url": avatar_url(s),
+        },
+        "csrf": s.csrf,
+        "language": language,
+        "capabilities": { "message_content": state.settings.message_content },
+    }))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LanguageChoice {
+    language: String,
+}
+
+/// Keep the web switcher and the player's `/language` pick in sync.
+pub async fn language(
+    State(state): State<WebState>,
+    current: CurrentSession,
+    Json(choice): Json<LanguageChoice>,
+) -> ApiResult<Json<Value>> {
+    let current_lang = state
+        .app
+        .user_lang_choice(current.session.user_id)
+        .await
+        .unwrap_or_default();
+    let lang = Lang::from_code(&choice.language)
+        .ok_or_else(|| ApiError::malformed(t!(current_lang, "language.choose-supported")))?;
+    state
+        .app
+        .set_user_lang(current.session.user_id, Some(lang))
+        .await
+        .map_err(ApiError::internal)?;
+    Ok(Json(json!({ "language": lang.code() })))
+}
+
+/// The user's avatar on Discord's CDN, or the default one their id picks.
+pub fn avatar_url(s: &Session) -> String {
+    match &s.avatar {
+        Some(hash) => format!("https://cdn.discordapp.com/avatars/{}/{hash}.png?size=64", s.user_id),
+        None => format!("https://cdn.discordapp.com/embed/avatars/{}.png", (s.user_id >> 22) % 6),
+    }
+}
+
+/// A server on the picker.
+#[derive(Serialize)]
+struct GuildEntry {
+    id: String,
+    name: String,
+    icon_url: Option<String>,
+    owner: bool,
+    bot_present: bool,
+    /// Adds the bot, when it is not there yet.
+    invite_url: Option<String>,
+}
+
+/// `GET /api/me/guilds`: the servers the user manages, the ones with the bot first.
+pub async fn guilds(State(state): State<WebState>, mut current: CurrentSession) -> ApiResult<Json<Value>> {
+    let list = discord::user_guilds(&state, &mut current, true).await?;
+    Ok(Json(
+        json!({ "items": entries(&state, list, current.session.user_id).await? }),
+    ))
+}
+
+/// `POST /api/me/guilds/refresh`: asks Discord again now, at most once per ten seconds.
+pub async fn refresh_guilds(State(state): State<WebState>, mut current: CurrentSession) -> ApiResult<Json<Value>> {
+    let key = format!("web:guilds-refresh:{}", current.session.user_id);
+    if let Some(left) = state.app.cache.try_cooldown(&key, REFRESH_COOLDOWN).await? {
+        return Err(ApiError::too_many(left.as_secs() + 1));
+    }
+    let list = discord::user_guilds(&state, &mut current, true).await?;
+    Ok(Json(
+        json!({ "items": entries(&state, list, current.session.user_id).await? }),
+    ))
+}
+
+async fn entries(state: &WebState, list: Vec<UserGuild>, user: u64) -> ApiResult<Vec<GuildEntry>> {
+    let mut managed = Vec::new();
+    for guild in list {
+        if let Some(id) = guild.id()
+            && (guild.can_manage() || !crate::dashboard_access::areas(state, id, user).await?.is_empty())
+        {
+            managed.push((id, guild));
+        }
+    }
+    let ids: Vec<u64> = managed.iter().map(|(id, _)| *id).collect();
+    let present = discord::bots_present(state, &ids).await;
+    let mut entries: Vec<GuildEntry> = managed
+        .into_iter()
+        .zip(present)
+        .map(|((id, g), bot_present)| GuildEntry {
+            icon_url: icon_url(id, g.icon.as_deref()),
+            invite_url: (!bot_present)
+                .then(|| discord::invite_url(&state.settings, state.app.application_id.get(), id)),
+            id: g.id,
+            name: g.name,
+            owner: g.owner,
+            bot_present,
+        })
+        .collect();
+    entries.sort_by(|a, b| {
+        b.bot_present
+            .cmp(&a.bot_present)
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+    Ok(entries)
+}
+
+/// A server's icon on Discord's CDN.
+pub fn icon_url(guild: u64, icon: Option<&str>) -> Option<String> {
+    icon.filter(|hash| hash.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+        .map(|hash| format!("https://cdn.discordapp.com/icons/{guild}/{hash}.png?size=128"))
+}

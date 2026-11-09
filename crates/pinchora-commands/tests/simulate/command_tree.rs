@@ -1,8 +1,9 @@
-use super::*;
-use pinchora_commands::routing::{MANIFEST, route};
+use crate::*;
+use pinchora_commands::infra::routing::MANIFEST;
+use pinchora_commands::infra::routing::route;
 
 pub(super) fn setup_options(path: &str, options: &Value) -> Option<(String, String, String, Vec<Value>)> {
-    let route = route(path).filter(|r| r.active() && pinchora_commands::routing::is_admin_path(&r.canonical))?;
+    let route = route(path).filter(|r| r.active() && pinchora_commands::infra::routing::is_admin_path(&r.canonical))?;
     let mut arguments = options.as_array().unwrap();
     while let Some(option) = arguments.first().filter(|o| o["type"] == 1 || o["type"] == 2) {
         arguments = option["options"].as_array().unwrap();
@@ -18,7 +19,7 @@ pub(super) fn setup_options(path: &str, options: &Value) -> Option<(String, Stri
 
 #[tokio::test]
 async fn setup_every_action_refuses_without_manage_server_without_mutation() {
-    use pinchora_core::config_backup::Names;
+    use pinchora_core::admin::config_backup::Names;
     let Some(mut sim) = Sim::new("setup_every_action_refuses").await else {
         return;
     };
@@ -28,7 +29,7 @@ async fn setup_every_action_refuses_without_manage_server_without_mutation() {
         sim.permissions = permissions;
         for route in MANIFEST
             .iter()
-            .filter(|r| r.active() && pinchora_commands::routing::is_admin_path(&r.canonical))
+            .filter(|r| r.active() && pinchora_commands::infra::routing::is_admin_path(&r.canonical))
         {
             let parts: Vec<_> = route.canonical.split(' ').collect();
             let reply = sim
@@ -96,7 +97,8 @@ async fn setup_groups_reach_the_same_handlers_as_legacy_paths() {
 
 #[tokio::test]
 async fn setup_cannot_bypass_antinuke_owner_checks_or_legacy_policy() {
-    use pinchora_core::command_control::{Config, Rule};
+    use pinchora_core::admin::command_control::Config;
+    use pinchora_core::admin::command_control::Rule;
     let Some(mut sim) = Sim::new("setup_policy_and_owner").await else {
         return;
     };
@@ -295,7 +297,8 @@ async fn setup_slices_seven_eight_eleven_reach_legacy_handlers() {
 
 #[tokio::test]
 async fn command_path_migration_is_idempotent_and_keeps_conflicting_restrictions() {
-    use pinchora_core::command_control::{Config, Rule};
+    use pinchora_core::admin::command_control::Config;
+    use pinchora_core::admin::command_control::Rule;
     let Some(sim) = Sim::new("command_path_migration").await else {
         return;
     };
@@ -358,14 +361,14 @@ async fn command_path_migration_is_idempotent_and_keeps_conflicting_restrictions
             .constraints
             .contains_key("sticky")
     );
-    assert_eq!(migrated, pinchora_commands::routing::normalize_control(&config));
+    assert_eq!(migrated, pinchora_commands::infra::routing::normalize_control(&config));
     sim.app.db.set_command_control(sim.guild, &migrated).await.unwrap();
     assert_eq!(sim.app.db.command_control(sim.guild).await.unwrap(), migrated);
 }
 
 #[tokio::test]
 async fn player_additions_keep_arguments_and_original_modules() {
-    use pinchora_core::modules::Module;
+    use pinchora_core::admin::modules::Module;
     let Some(mut sim) = Sim::new("tree_player_additions").await else {
         return;
     };
@@ -380,7 +383,7 @@ async fn player_additions_keep_arguments_and_original_modules() {
             )
             .await;
         assert!(
-            reply.content() == pinchora_core::t!(pinchora_core::i18n::Lang::En, "bio.updated"),
+            reply.content() == pinchora_core::t!(pinchora_core::infra::i18n::Lang::En, "bio.updated"),
             "{reply}"
         );
     }
@@ -458,7 +461,7 @@ async fn wrapped_keeps_dm_access_while_info_actions_keep_the_guild_guard() {
             "info wrapped" => assert_eq!(Some(content), old),
             _ => assert_eq!(
                 content,
-                pinchora_core::t!(pinchora_core::i18n::Lang::En, "error.guild-only")
+                pinchora_core::t!(pinchora_core::infra::i18n::Lang::En, "error.guild-only")
             ),
         }
     }
@@ -487,11 +490,12 @@ pub(super) fn canonical_fixture(mut data: Value) -> Value {
 
 #[tokio::test]
 async fn old_backup_preview_preserves_split_constraints_and_aliases() {
-    use pinchora_core::{
-        command_control::{Config, Rule},
-        config_backup::{Import, Names, Policy},
-        i18n::Lang,
-    };
+    use pinchora_core::admin::command_control::Config;
+    use pinchora_core::admin::command_control::Rule;
+    use pinchora_core::admin::config_backup::Import;
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
+    use pinchora_core::infra::i18n::Lang;
     let Some(sim) = Sim::new("old_backup_command_paths").await else {
         return;
     };
@@ -545,7 +549,7 @@ async fn old_backup_preview_preserves_split_constraints_and_aliases() {
     .await
     .unwrap();
     assert!(preview.can_import, "{:?}", preview.errors);
-    let expected = pinchora_commands::routing::normalize_control(&config);
+    let expected = pinchora_commands::infra::routing::normalize_control(&config);
     assert_eq!(
         serde_json::from_value::<Config>(normalized.sections["command_control"][0]["config"].clone()).unwrap(),
         expected
@@ -634,7 +638,7 @@ async fn saved_discord_overrides_keep_user_role_channel_precedence_after_id_remo
         .await;
     assert_eq!(
         allowed.content(),
-        pinchora_core::t!(pinchora_core::i18n::Lang::En, "bio.updated")
+        pinchora_core::t!(pinchora_core::infra::i18n::Lang::En, "bio.updated")
     );
 }
 

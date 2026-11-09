@@ -1,154 +1,197 @@
+pub mod admin;
+pub mod community;
+pub mod economy;
 #[cfg(test)]
-#[path = "../tests/support/isolation.rs"]
-mod fixture_isolation;
+pinchora_testkit::isolation!(fixture_isolation);
+pub mod games;
+pub mod house;
+pub mod infra;
+pub mod integrations;
+pub mod moderation;
+pub mod progression;
+pub mod roles;
+pub mod social;
 
-mod app;
-mod auto;
-pub mod branding;
-mod card_images;
-mod catalog;
 mod commands;
-pub use commands::suggest::refresh_suggestion_message;
-mod community_pack;
-mod components;
-mod custom;
-mod cx;
-mod defer;
-mod event_rsvp;
-mod events;
-pub mod feeds;
-mod game;
-mod gate;
-mod hooks;
-mod house_view;
-mod invalidations;
-#[cfg(test)]
-mod landing_assets;
-mod lang;
-mod leveling;
-mod log_audit;
-mod message_studio;
-mod responder;
-mod roles;
-pub mod routing;
-mod server_events;
-mod server_log;
-mod starboard;
-mod stats;
-pub mod status;
-mod text;
-mod tickets;
-mod trackers;
-pub use trackers::{spawn_ticker as spawn_trackers_ticker, tick as trackers_tick};
-mod leveling_parity;
-mod util;
-mod utility;
-mod voice_xp;
-pub use leveling_parity::{
-    post_weekly_highlights as leveling_highlights_tick, spawn_ticker as spawn_leveling_parity_ticker,
-};
-mod xp_admin;
-pub use utility::{
-    bot_permissions as utility_bot_permissions, creator_may_ping as utility_creator_may_ping,
-    spawn_ticker as spawn_utility_ticker, tick as utility_tick,
-};
-pub use xp_admin::{
-    ImportMode, ImportProgress, ImportRequest, import_mee6, import_mee6_with_fetch, mee6_resting, sync_member_roles,
-};
+pub use crate::admin::afk_sticky_sender::bot_permissions as utility_bot_permissions;
+pub use crate::admin::afk_sticky_sender::creator_may_ping as utility_creator_may_ping;
+pub use crate::admin::afk_sticky_sender::spawn_ticker as spawn_utility_ticker;
+pub use crate::admin::afk_sticky_sender::tick as utility_tick;
+pub use crate::commands::community::suggest::refresh_suggestion_message;
+pub use crate::community::trackers::spawn_ticker as spawn_trackers_ticker;
+pub use crate::community::trackers::tick as trackers_tick;
+pub use crate::progression::leveling_policy::post_weekly_highlights as leveling_highlights_tick;
+pub use crate::progression::leveling_policy::spawn_ticker as spawn_leveling_policy_ticker;
+pub use crate::progression::xp_admin::ImportMode;
+pub use crate::progression::xp_admin::ImportProgress;
+pub use crate::progression::xp_admin::ImportRequest;
+pub use crate::progression::xp_admin::import_mee6;
+pub use crate::progression::xp_admin::import_mee6_with_fetch;
+pub use crate::progression::xp_admin::mee6_resting;
+pub use crate::progression::xp_admin::sync_member_roles;
 
-pub use app::{App, PreviewError};
-pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
-pub use catalog::{command_catalog, command_catalog_tr, site_facts};
-pub use commands::achievements::{
-    evaluate as evaluate_achievements, invalidate as invalidate_achievements, on_message as achievement_tick,
-    source_enabled as achievement_source_enabled,
-};
-pub use commands::community_v2::{spawn_ticker as spawn_community_v2_ticker, tick as community_v2_tick};
-pub use commands::invites::{
-    grant_invite_reward, reconcile_all_invite_rewards, refresh_created_snapshot as refresh_created_invite_snapshot,
-    refresh_deleted_snapshot as refresh_deleted_invite_snapshot, refresh_snapshot as refresh_invite_snapshot,
-    spawn_reward_ticker as spawn_invite_reward_ticker,
-};
-pub use commands::pet::{current_needs as player_pet_needs, is_asleep as player_pet_asleep, pet_png as player_pet_png};
-pub use commands::role_panels::{check_emoji, rules_problem as role_rules_problem};
-pub use commands::roles_pack::{
-    ColorRoleReport, ColorStop, PaletteColor, PostRefusal, PostedPanel, color_stop_text, create_palette_roles,
-    delete_color_role, give_after_verify, palette as color_palette, post_panel as post_role_panel,
-    spawn_ticker as spawn_roles_ticker, start_sticky_snapshot, sticky_changed, tick as roles_tick,
-};
-pub use commands::{
-    collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
-    customcommand::reserved_names as reserved_command_names,
-    definitions as command_definitions,
-    games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
-    level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},
-    moderation::{lift_expired_bans, refresh_post as refresh_case_post, spawn_ticker as spawn_moderation_ticker},
-    modules::{announce_guild_change, module_diff},
-    partner::partner_name,
-    party_games::{spawn_ticker as spawn_party_ticker, tick as party_tick},
-    remind::{spawn_ticker as spawn_reminder_ticker, tick as reminder_tick},
-    tempvoice::{
-        forget_setup as forget_temp_voice, missing_permissions as temp_voice_gaps, room_members as temp_voice_members,
-        spawn_ticker as spawn_tempvoice_ticker, tick as tempvoice_tick,
-    },
-};
-pub use community_pack::{spawn_ticker as spawn_community_ticker, tick as community_tick};
-pub use custom::{
-    Rendered, Spec, def_diff, embed_of, escape_markdown, mention_ids, pick as pick_random, render_message, scrub_value,
-    templates,
-};
-pub use cx::Cx;
-pub use defer::Deferral;
-pub use event_rsvp::{
-    check_manage_events as check_event_sync_permission, on_scheduled_event_update, publish as publish_event,
-    refresh_card as refresh_event_card, spawn_ticker as spawn_event_ticker, sync_discord as sync_discord_event,
-    tick as event_tick,
-};
-pub use events::on_reaction;
-pub use events::{
-    PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,
-    on_member_update, on_message, on_permissions_changed, on_voice_state_update, voice_snapshot,
-};
-pub use feeds::{spawn_ticker as spawn_feeds_ticker, tick as feeds_tick};
-pub use hooks::ReactionEvent;
-pub use house_view::{
-    RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
-    seed_at as house_seed_at,
-};
-pub use invalidations::listen as listen_for_invalidations;
-pub use leveling::open_private_channel;
-pub use log_audit::on_audit_log_entry;
-pub use message_studio::{EventMember as StudioEventMember, event_text as studio_event_text};
-pub use responder::Responder;
-pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
-pub use server_log::{on_message_delete, on_message_delete_bulk, on_message_update};
-pub use starboard::{
-    cleanup_one as cleanup_starboard_copy, on_message as on_starboard_message, on_reaction as on_starboard_reaction,
-    on_update as on_starboard_update, reconcile_one as reconcile_starboard_post,
-    spawn_ticker as spawn_starboard_ticker, tick as starboard_tick,
-};
-pub use stats::{
-    cards::server_card_png as stats_card_png, counter_problem as stats_counter_problem,
-    counter_value as stats_counter_value, counters::missing_permission as stats_missing_permission,
-    flush as stats_flush, refresh_counters as stats_refresh_counters, spawn_ticker as spawn_stats_ticker,
-    sweep as stats_sweep,
-};
-pub use text::on_text_command;
-pub use tickets::{
-    PanelPost as TicketPanelPost, close_from_web as close_ticket_from_web, on_place_deleted as on_ticket_place_deleted,
-    post_panel as post_ticket_panel, refresh_status_board as refresh_ticket_status_board,
-    spawn_ticker as spawn_tickets_ticker, tick as tickets_tick,
-};
-pub use util::fill;
-pub use voice_xp::{
-    VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,
-    spawn_ticker as spawn_voice_ticker, switched_off as voice_switched_off, switched_on as voice_switched_on,
-    tick as voice_tick,
-};
+pub use crate::admin::card_images::CardSubject;
+pub use crate::admin::card_images::ServerCard;
+pub use crate::admin::card_images::atlas_has;
+pub use crate::admin::card_images::card_png;
+pub use crate::admin::card_images::classic_card;
+pub use crate::admin::card_images::deliver;
+pub use crate::admin::card_images::preview_png;
+pub use crate::admin::card_images::server_card;
+pub use crate::admin::catalog::command_catalog;
+pub use crate::admin::catalog::command_catalog_tr;
+pub use crate::admin::catalog::site_facts;
+pub use crate::admin::custom::Rendered;
+pub use crate::admin::custom::Spec;
+pub use crate::admin::custom::def_diff;
+pub use crate::admin::custom::embed_of;
+pub use crate::admin::custom::escape_markdown;
+pub use crate::admin::custom::mention_ids;
+pub use crate::admin::custom::pick as pick_random;
+pub use crate::admin::custom::render_message;
+pub use crate::admin::custom::scrub_value;
+pub use crate::admin::custom::templates;
+pub use crate::admin::stats::cards::server_card_png as stats_card_png;
+pub use crate::admin::stats::counter_problem as stats_counter_problem;
+pub use crate::admin::stats::counter_value as stats_counter_value;
+pub use crate::admin::stats::counters::missing_permission as stats_missing_permission;
+pub use crate::admin::stats::flush as stats_flush;
+pub use crate::admin::stats::refresh_counters as stats_refresh_counters;
+pub use crate::admin::stats::spawn_ticker as spawn_stats_ticker;
+pub use crate::admin::stats::sweep as stats_sweep;
+pub use crate::commands::admin::customcommand::reserved_names as reserved_command_names;
+pub use crate::commands::admin::modules::announce_guild_change;
+pub use crate::commands::admin::modules::module_diff;
+pub use crate::commands::admin::tempvoice::forget_setup as forget_temp_voice;
+pub use crate::commands::admin::tempvoice::missing_permissions as temp_voice_gaps;
+pub use crate::commands::admin::tempvoice::room_members as temp_voice_members;
+pub use crate::commands::admin::tempvoice::spawn_ticker as spawn_tempvoice_ticker;
+pub use crate::commands::admin::tempvoice::tick as tempvoice_tick;
+pub use crate::commands::community::invites::grant_invite_reward;
+pub use crate::commands::community::invites::reconcile_all_invite_rewards;
+pub use crate::commands::community::invites::refresh_created_snapshot as refresh_created_invite_snapshot;
+pub use crate::commands::community::invites::refresh_deleted_snapshot as refresh_deleted_invite_snapshot;
+pub use crate::commands::community::invites::refresh_snapshot as refresh_invite_snapshot;
+pub use crate::commands::community::invites::spawn_reward_ticker as spawn_invite_reward_ticker;
+pub use crate::commands::community::partner::partner_name;
+pub use crate::commands::community::remind::spawn_ticker as spawn_reminder_ticker;
+pub use crate::commands::community::remind::tick as reminder_tick;
+pub use crate::commands::community::tools::spawn_ticker as spawn_community_tools_ticker;
+pub use crate::commands::community::tools::tick as community_tools_tick;
+pub use crate::commands::games::collection::post_bottle;
+pub use crate::commands::games::collection::post_critter_drop;
+pub use crate::commands::games::collection::spawn_ticker as spawn_collection_ticker;
+pub use crate::commands::games::collection::tick as collection_tick;
+pub use crate::commands::games::games::spawn_janitor as spawn_game_janitor;
+pub use crate::commands::games::games::sweep as sweep_games;
+pub use crate::commands::games::party_games::spawn_ticker as spawn_party_ticker;
+pub use crate::commands::games::party_games::tick as party_tick;
+pub use crate::commands::progression::achievements::evaluate as evaluate_achievements;
+pub use crate::commands::progression::achievements::invalidate as invalidate_achievements;
+pub use crate::commands::progression::achievements::on_message as achievement_tick;
+pub use crate::commands::progression::achievements::source_enabled as achievement_source_enabled;
+pub use crate::commands::progression::level_roles::SyncOutcome;
+pub use crate::commands::progression::level_roles::SyncReport;
+pub use crate::commands::progression::level_roles::sync_level_roles;
+pub use crate::commands::progression::level_roles::sync_resting;
+pub use crate::commands::roles::automation::ColorRoleReport;
+pub use crate::commands::roles::automation::ColorStop;
+pub use crate::commands::roles::automation::PaletteColor;
+pub use crate::commands::roles::automation::PostRefusal;
+pub use crate::commands::roles::automation::PostedPanel;
+pub use crate::commands::roles::automation::color_stop_text;
+pub use crate::commands::roles::automation::create_palette_roles;
+pub use crate::commands::roles::automation::delete_color_role;
+pub use crate::commands::roles::automation::give_after_verify;
+pub use crate::commands::roles::automation::palette as color_palette;
+pub use crate::commands::roles::automation::post_panel as post_role_panel;
+pub use crate::commands::roles::automation::spawn_ticker as spawn_roles_ticker;
+pub use crate::commands::roles::automation::start_sticky_snapshot;
+pub use crate::commands::roles::automation::sticky_changed;
+pub use crate::commands::roles::automation::tick as roles_tick;
+pub use crate::commands::roles::role_panels::check_emoji;
+pub use crate::commands::roles::role_panels::rules_problem as role_rules_problem;
+pub use crate::commands::social::pet::current_needs as player_pet_needs;
+pub use crate::commands::social::pet::is_asleep as player_pet_asleep;
+pub use crate::commands::social::pet::pet_png as player_pet_png;
+pub use crate::community::engagement::spawn_ticker as spawn_community_ticker;
+pub use crate::community::engagement::tick as community_tick;
+pub use crate::community::event_rsvp::check_manage_events as check_event_sync_permission;
+pub use crate::community::event_rsvp::on_scheduled_event_update;
+pub use crate::community::event_rsvp::publish as publish_event;
+pub use crate::community::event_rsvp::refresh_card as refresh_event_card;
+pub use crate::community::event_rsvp::spawn_ticker as spawn_event_ticker;
+pub use crate::community::event_rsvp::sync_discord as sync_discord_event;
+pub use crate::community::event_rsvp::tick as event_tick;
+pub use crate::community::events::PermissionChange;
+pub use crate::community::events::on_ban_add;
+pub use crate::community::events::on_ban_remove;
+pub use crate::community::events::on_guild_create;
+pub use crate::community::events::on_guild_delete;
+pub use crate::community::events::on_member_add;
+pub use crate::community::events::on_member_remove;
+pub use crate::community::events::on_member_update;
+pub use crate::community::events::on_message;
+pub use crate::community::events::on_permissions_changed;
+pub use crate::community::events::on_reaction;
+pub use crate::community::events::on_voice_state_update;
+pub use crate::community::events::voice_snapshot;
+pub use crate::community::feeds::spawn_ticker as spawn_feeds_ticker;
+pub use crate::community::feeds::tick as feeds_tick;
+pub use crate::community::server_events::spawn_ticker as spawn_events_ticker;
+pub use crate::community::server_events::tick as events_tick;
+pub use crate::community::starboard::cleanup_one as cleanup_starboard_copy;
+pub use crate::community::starboard::on_message as on_starboard_message;
+pub use crate::community::starboard::on_reaction as on_starboard_reaction;
+pub use crate::community::starboard::on_update as on_starboard_update;
+pub use crate::community::starboard::reconcile_one as reconcile_starboard_post;
+pub use crate::community::starboard::spawn_ticker as spawn_starboard_ticker;
+pub use crate::community::starboard::tick as starboard_tick;
+pub use crate::community::tickets::PanelPost as TicketPanelPost;
+pub use crate::community::tickets::close_from_web as close_ticket_from_web;
+pub use crate::community::tickets::on_place_deleted as on_ticket_place_deleted;
+pub use crate::community::tickets::post_panel as post_ticket_panel;
+pub use crate::community::tickets::refresh_status_board as refresh_ticket_status_board;
+pub use crate::community::tickets::spawn_ticker as spawn_tickets_ticker;
+pub use crate::community::tickets::tick as tickets_tick;
+pub use crate::house::house_view::RoomData;
+pub use crate::house::house_view::catalog as house_catalog;
+pub use crate::house::house_view::character_png;
+pub use crate::house::house_view::render_png as render_room_png;
+pub use crate::house::house_view::room_name as house_room_name;
+pub use crate::house::house_view::seed_at as house_seed_at;
+pub use crate::infra::app::App;
+pub use crate::infra::app::PreviewError;
+pub use crate::infra::cx::Cx;
+pub use crate::infra::defer::Deferral;
+pub use crate::infra::hooks::ReactionEvent;
+pub use crate::infra::invalidations::listen as listen_for_invalidations;
+pub use crate::infra::responder::Responder;
+pub use crate::infra::text::on_text_command;
+pub use crate::infra::util::fill;
+pub use crate::moderation::log_audit::on_audit_log_entry;
+pub use crate::moderation::server_log::on_message_delete;
+pub use crate::moderation::server_log::on_message_delete_bulk;
+pub use crate::moderation::server_log::on_message_update;
+pub use crate::progression::leveling::open_private_channel;
+pub use crate::progression::voice_xp::VoiceSnapshot;
+pub use crate::progression::voice_xp::forget as forget_voice_presence;
+pub use crate::progression::voice_xp::prune as voice_prune;
+pub use crate::progression::voice_xp::rebuild as rebuild_voice;
+pub use crate::progression::voice_xp::spawn_ticker as spawn_voice_ticker;
+pub use crate::progression::voice_xp::switched_off as voice_switched_off;
+pub use crate::progression::voice_xp::switched_on as voice_switched_on;
+pub use crate::progression::voice_xp::tick as voice_tick;
+pub use crate::social::message_studio::EventMember as StudioEventMember;
+pub use crate::social::message_studio::event_text as studio_event_text;
+pub use commands::definitions as command_definitions;
+pub use commands::moderation::lift_expired_bans;
+pub use commands::moderation::refresh_post as refresh_case_post;
+pub use commands::moderation::spawn_ticker as spawn_moderation_ticker;
 
 /// Grant a form acceptance role after rechecking the bot hierarchy and role permissions.
 pub async fn grant_community_role(app: &App, guild: u64, user: u64, role: u64) -> anyhow::Result<()> {
-    commands::roles_pack::give_safe_role(app, guild, user, role, "Form accepted").await
+    crate::commands::roles::automation::give_safe_role(app, guild, user, role, "Form accepted").await
 }
 pub async fn close_community_mail(
     app: &Arc<App>,
@@ -157,7 +200,7 @@ pub async fn close_community_mail(
     actor: u64,
     reason: Option<&str>,
 ) -> anyhow::Result<bool> {
-    community_pack::close_thread(app, guild, thread, actor, reason).await
+    crate::community::engagement::close_thread(app, guild, thread, actor, reason).await
 }
 
 use std::{sync::Arc, time::Instant};
@@ -168,14 +211,14 @@ use twilight_model::application::interaction::{Interaction, InteractionData, Int
 /// running after `defer::DEFER_AFTER` is deferred through REST before Discord's three seconds are up.
 pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction, responder: Arc<Responder>) {
     let handler = handle_interaction(app, interaction, responder.clone());
-    defer::defer_slow(&responder, defer::DEFER_AFTER, handler).await;
+    crate::infra::defer::defer_slow(&responder, crate::infra::defer::DEFER_AFTER, handler).await;
 }
 
 /// Runs one interaction to completion. Every path answers the user, errors included.
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
     let started = Instant::now();
     let data = interaction.data.take();
-    let lang = lang::resolve(&app, &interaction).await;
+    let lang = crate::infra::lang::resolve(&app, &interaction).await;
     let cx = Cx {
         app,
         interaction,
@@ -186,15 +229,15 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
     // runs nor passes a module's switch.
     if cx.interaction.kind == InteractionType::ApplicationCommandAutocomplete {
         if let Some(InteractionData::ApplicationCommand(command)) = data {
-            let allowed = command_control::autocomplete_allowed(&cx, &command)
+            let allowed = crate::admin::command_control::autocomplete_allowed(&cx, &command)
                 .await
                 .unwrap_or(false);
-            let command = routing::adapt((*command).clone()).unwrap_or(*command);
+            let command = crate::infra::routing::adapt((*command).clone()).unwrap_or(*command);
             let choices = match command.name.as_str() {
                 _ if !allowed => Vec::new(),
-                "birthday" | "birthdays" => commands::birthdays::autocomplete(&command),
-                "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
-                _ => commands::modules::autocomplete(cx.lang(), &command),
+                "birthday" | "birthdays" => crate::commands::community::birthdays::autocomplete(&command),
+                "tag" | "customcommand" => crate::commands::community::tag::autocomplete(&cx, &command).await,
+                _ => crate::commands::admin::modules::autocomplete(cx.lang(), &command),
             };
             if let Err(error) = cx.responder.suggest(choices).await {
                 tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");
@@ -203,29 +246,34 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         return;
     }
     if cx.interaction.kind == InteractionType::ApplicationCommand {
-        status::record_interaction(&cx.app.cache).await;
+        crate::admin::status::record_interaction(&cx.app.cache).await;
     }
     // The handler futures are large (every command's state in one enum); on the heap they
     // cannot overflow a worker thread's stack.
     let (label, result) = match data {
         Some(InteractionData::ApplicationCommand(command)) => {
-            let invoked = command_control::path(&command);
-            let label = routing::canonical(&invoked).to_owned();
+            let invoked = crate::admin::command_control::path(&command);
+            let label = crate::infra::routing::canonical(&invoked).to_owned();
             (label, Box::pin(commands::dispatch(&cx, *command)).await)
         }
         Some(InteractionData::MessageComponent(component)) => {
             let label = component.custom_id.split(':').next().unwrap_or_default().to_owned();
             (
                 format!("component:{label}"),
-                Box::pin(components::dispatch(&cx, &component.custom_id, &component.values)).await,
+                Box::pin(crate::infra::components::dispatch(
+                    &cx,
+                    &component.custom_id,
+                    &component.values,
+                ))
+                .await,
             )
         }
         Some(InteractionData::ModalSubmit(modal)) => {
             let label = modal.custom_id.split(':').next().unwrap_or_default().to_owned();
-            let fields = components::modal_fields(&modal.components, modal.resolved.as_ref());
+            let fields = crate::infra::components::modal_fields(&modal.components, modal.resolved.as_ref());
             (
                 format!("modal:{label}"),
-                Box::pin(components::dispatch_modal(&cx, &modal.custom_id, &fields)).await,
+                Box::pin(crate::infra::components::dispatch_modal(&cx, &modal.custom_id, &fields)).await,
             )
         }
         _ => return,
@@ -240,57 +288,62 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
     }
 }
 
-mod automod;
-mod birthdays;
-pub use automod::{
-    check_config_roles as check_automod_roles, on_native_execution as on_automod_execution,
-    on_native_rule_change as on_automod_rule_change, spawn_ticker as spawn_automod_ticker, sync_guild as sync_automod,
-};
+pub use crate::moderation::automod::check_config_roles as check_automod_roles;
+pub use crate::moderation::automod::on_native_execution as on_automod_execution;
+pub use crate::moderation::automod::on_native_rule_change as on_automod_rule_change;
+pub use crate::moderation::automod::spawn_ticker as spawn_automod_ticker;
+pub use crate::moderation::automod::sync_guild as sync_automod;
 
-mod verification;
-pub use verification::raid::{start as start_raid, unlock as unlock_raid};
-pub use verification::{
-    answer as verification_answer, challenge as verification_challenge, check_roles as check_verification_roles,
-    post as post_verification, request_help as verification_help, spawn_ticker as spawn_verification_ticker,
-    tick as verification_tick, web_identity as verification_web_identity,
-};
-mod anti_nuke;
-pub use anti_nuke::{
-    authorize_antinuke, authorize_antinuke_module, on_gateway as on_antinuke_gateway, process as on_antinuke_audit,
-    restore_antinuke, restore_antinuke_actor_roles, save_antinuke_config, spawn_ticker as spawn_antinuke_ticker,
-};
-pub use birthdays::{spawn_ticker as spawn_birthdays_ticker, tick as birthdays_tick};
+pub use crate::community::birthdays::spawn_ticker as spawn_birthdays_ticker;
+pub use crate::community::birthdays::tick as birthdays_tick;
+pub use crate::moderation::anti_nuke::authorize_antinuke;
+pub use crate::moderation::anti_nuke::authorize_antinuke_module;
+pub use crate::moderation::anti_nuke::on_gateway as on_antinuke_gateway;
+pub use crate::moderation::anti_nuke::process as on_antinuke_audit;
+pub use crate::moderation::anti_nuke::restore_antinuke;
+pub use crate::moderation::anti_nuke::restore_antinuke_actor_roles;
+pub use crate::moderation::anti_nuke::save_antinuke_config;
+pub use crate::moderation::anti_nuke::spawn_ticker as spawn_antinuke_ticker;
+pub use crate::moderation::verification::answer as verification_answer;
+pub use crate::moderation::verification::challenge as verification_challenge;
+pub use crate::moderation::verification::check_roles as check_verification_roles;
+pub use crate::moderation::verification::post as post_verification;
+pub use crate::moderation::verification::raid::start as start_raid;
+pub use crate::moderation::verification::raid::unlock as unlock_raid;
+pub use crate::moderation::verification::request_help as verification_help;
+pub use crate::moderation::verification::spawn_ticker as spawn_verification_ticker;
+pub use crate::moderation::verification::tick as verification_tick;
+pub use crate::moderation::verification::web_identity as verification_web_identity;
 
-mod command_control;
-pub use command_control::{command_reserved_aliases, control_catalog, control_validation_catalog};
+pub use crate::admin::command_control::command_reserved_aliases;
+pub use crate::admin::command_control::control_catalog;
+pub use crate::admin::command_control::control_validation_catalog;
 
-mod config_backup;
-pub use config_backup::{backup_apply, backup_names, backup_preview, backup_rate_limit, validate_backup};
+pub use crate::admin::config_backup::backup_apply;
+pub use crate::admin::config_backup::backup_names;
+pub use crate::admin::config_backup::backup_preview;
+pub use crate::admin::config_backup::backup_rate_limit;
+pub use crate::admin::config_backup::validate_backup;
 
-mod mod_parity;
-pub use commands::moderation::parity::check_config as check_mod_parity_config;
-pub use mod_parity::{
-    spawn_ticker as spawn_mod_parity_ticker, sweep as sweep_mod_parity, voice_event as on_mod_parity_voice,
-};
+pub use crate::commands::moderation::policy::check_config as check_moderation_policy_config;
+pub use crate::moderation::policy::spawn_ticker as spawn_moderation_policy_ticker;
+pub use crate::moderation::policy::sweep as sweep_moderation_policy;
+pub use crate::moderation::policy::voice_event as on_moderation_policy_voice;
 
-pub use commands::moderation::parity::review as review_mod_parity;
+pub use crate::commands::moderation::policy::review as review_moderation_policy;
 
-pub use mod_parity::seed_voice as seed_mod_parity_voice;
-pub mod roblox;
-pub use roblox::spawn_ticker as spawn_roblox_ticker;
+pub use crate::integrations::roblox::spawn_ticker as spawn_roblox_ticker;
+pub use crate::moderation::policy::seed_voice as seed_moderation_policy_voice;
 
-pub use commands::character::randomise as randomise_character;
-pub use commands::profile::{ProfileContext, profile_card_for};
+pub use crate::commands::social::character::randomise as randomise_character;
+pub use crate::commands::social::profile::ProfileContext;
+pub use crate::commands::social::profile::profile_card_for;
 
+pub use crate::commands::house::house::Who;
 pub use commands::{wallet_card_for, wallet_preview_for};
-pub mod house_edit;
-pub mod undo;
-pub use commands::house::Who;
 
-pub use commands::party_v2::tick as party_v2_tick;
+pub use crate::commands::games::reef_party::tick as reef_party_tick;
 
-mod economy_v2;
-pub use economy_v2::spawn_ticker as spawn_economy_v2_ticker;
+pub use crate::economy::player::spawn_ticker as spawn_player_economy_ticker;
 
-pub mod workflows;
-pub use workflows::spawn_ticker as spawn_workflows_ticker;
+pub use crate::admin::workflows::spawn_ticker as spawn_workflows_ticker;

@@ -1,5 +1,5 @@
 //! End-to-end member profile-code flow through mock Roblox and Discord HTTP.
-use super::*;
+use crate::*;
 use std::time::Duration;
 
 #[tokio::test]
@@ -66,7 +66,7 @@ async fn branding_roblox_profile_code_english_and_turkish() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-    pinchora_commands::roblox::install_test_endpoint(Some(&endpoint));
+    pinchora_commands::integrations::roblox::install_test_endpoint(Some(&endpoint));
     let user = unique();
     let start = sim
         .command(
@@ -214,7 +214,7 @@ async fn branding_roblox_profile_code_english_and_turkish() {
     sim.own_server(user);
     sim.mock.member_roles.lock().unwrap().insert(user, vec![admin_role]);
     assert!(
-        pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
@@ -244,14 +244,14 @@ async fn branding_roblox_profile_code_english_and_turkish() {
         .await
         .unwrap();
     assert!(
-        pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
     assert!(sim.role_changes().contains(&format!("DELETE {user} {ranked_role}")));
     banned.store(true, Ordering::SeqCst);
     assert!(
-        !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        !pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
@@ -260,20 +260,20 @@ async fn branding_roblox_profile_code_english_and_turkish() {
     assert!(changes.contains(&format!("DELETE {user} {retained_role}")));
     banned.store(false, Ordering::SeqCst);
     assert!(
-        pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
     missing.store(true, Ordering::SeqCst);
     assert!(
-        !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        !pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
     assert!(sim.role_changes().contains(&format!("DELETE {user} {verified_role}")));
     missing.store(false, Ordering::SeqCst);
     assert!(
-        pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
@@ -289,7 +289,7 @@ async fn branding_roblox_profile_code_english_and_turkish() {
     disabled.enabled = false;
     sim.app.db.roblox_save_settings(sim.guild, &disabled).await.unwrap();
     assert!(
-        !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        !pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .unwrap()
     );
@@ -307,7 +307,10 @@ async fn branding_roblox_profile_code_english_and_turkish() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(pinchora_commands::roblox::tick(&sim.app).await.unwrap(), 0);
+    assert_eq!(
+        pinchora_commands::integrations::roblox::tick(&sim.app).await.unwrap(),
+        0
+    );
     lease.release().await.unwrap();
     let key = format!("roblox:user:{user}");
     let _lease = sim
@@ -318,11 +321,11 @@ async fn branding_roblox_profile_code_english_and_turkish() {
         .unwrap()
         .unwrap();
     assert!(
-        pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+        pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
             .await
             .is_err()
     );
-    pinchora_commands::roblox::install_test_endpoint(None);
+    pinchora_commands::integrations::roblox::install_test_endpoint(None);
 }
 
 #[tokio::test]
@@ -454,9 +457,9 @@ async fn roblox_admin_rejects_overflowed_optional_ranks_and_join_prompts_are_bou
         )
         .await
         .unwrap();
-    assert!(pinchora_commands::roblox::on_join(&sim.app, sim.guild, user, false).await);
-    assert!(pinchora_commands::roblox::on_join(&sim.app, sim.guild, user, false).await);
-    assert!(pinchora_commands::roblox::on_join(&sim.app, sim.guild, unique(), false).await);
+    assert!(pinchora_commands::integrations::roblox::on_join(&sim.app, sim.guild, user, false).await);
+    assert!(pinchora_commands::integrations::roblox::on_join(&sim.app, sim.guild, user, false).await);
+    assert!(pinchora_commands::integrations::roblox::on_join(&sim.app, sim.guild, unique(), false).await);
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(sim.posts().len(), 1, "replayed and burst joins must not spam prompts");
 }

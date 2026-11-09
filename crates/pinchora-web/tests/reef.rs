@@ -3,7 +3,7 @@ use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use pinchora_cache::{Cache, Invalidation};
 use pinchora_commands::App;
-use pinchora_core::config::WebConfig;
+use pinchora_core::infra::config::WebConfig;
 use pinchora_db::{Db, Hide, NewRoom};
 use pinchora_game::{Content, character::Character};
 use pinchora_web::{WebSettings, WebState};
@@ -938,7 +938,9 @@ async fn retention_preserves_reported_evidence_and_deletion_removes_chat_but_not
         .await
         .unwrap();
     // All six Reef tables contain member data; neither exports nor automatic restore points carry it.
-    use pinchora_core::config_backup::{EXCLUDED_REEF_TABLES, Names, Policy};
+    use pinchora_core::admin::config_backup::EXCLUDED_REEF_TABLES;
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
     let guild = unique();
     site.app.db.guild_settings(guild).await.unwrap();
     sqlx::query("DELETE FROM events WHERE guild_id=$1")
@@ -1116,17 +1118,17 @@ async fn wave7_atomic_receipts_revision_races_and_shared_undo() {
         409
     );
     let rows = site.app.db.placements(owner, 0).await.unwrap();
-    let result = pinchora_commands::house_edit::apply(
+    let result = pinchora_commands::house::house_edit::apply(
         &site.app,
         pinchora_commands::Who::own(owner),
         0,
         (8, 8),
-        &pinchora_commands::house_edit::fingerprint(&rows),
-        pinchora_commands::house_edit::Operation::Undo,
+        &pinchora_commands::house::house_edit::fingerprint(&rows),
+        pinchora_commands::house::house_edit::Operation::Undo,
     )
     .await
     .unwrap();
-    assert!(matches!(result, pinchora_commands::house_edit::Outcome::Done(_)));
+    assert!(matches!(result, pinchora_commands::house::house_edit::Outcome::Done(_)));
     assert!(site.app.db.placements(owner, 0).await.unwrap().is_empty());
     assert_eq!(
         site.app
@@ -1454,13 +1456,13 @@ async fn wave7_partner_block_is_rechecked_by_the_shared_transaction() {
     // Resolve authorization first, then revoke it before the actual mutation (TOCTOU).
     site.app.db.block_signer(guest, host, "").await.unwrap();
     let before = site.app.db.placements(host, 0).await.unwrap();
-    let outcome = pinchora_commands::house_edit::apply(
+    let outcome = pinchora_commands::house::house_edit::apply(
         &site.app,
         who,
         0,
         (8, 8),
-        &pinchora_commands::house_edit::fingerprint(&before),
-        pinchora_commands::house_edit::Operation::Place {
+        &pinchora_commands::house::house_edit::fingerprint(&before),
+        pinchora_commands::house::house_edit::Operation::Place {
             item_id: item.into(),
             x: 1,
             y: 1,
@@ -1471,7 +1473,7 @@ async fn wave7_partner_block_is_rechecked_by_the_shared_transaction() {
     .unwrap();
     assert!(matches!(
         outcome,
-        pinchora_commands::house_edit::Outcome::Refused { .. }
+        pinchora_commands::house::house_edit::Outcome::Refused { .. }
     ));
     assert!(site.app.db.placements(host, 0).await.unwrap().is_empty());
     assert_eq!(

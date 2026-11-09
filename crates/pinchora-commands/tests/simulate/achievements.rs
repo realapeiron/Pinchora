@@ -1,6 +1,6 @@
 //! The manager flow and public paged card through the real handler.
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn achievements_are_managed_granted_once_and_paged() {
@@ -105,7 +105,7 @@ async fn achievements_are_managed_granted_once_and_paged() {
 async fn achievement(
     sim: &Sim,
     name: &str,
-    kind: pinchora_core::achievements::Kind,
+    kind: pinchora_core::progression::achievements::Kind,
     role: Option<u64>,
     secret: bool,
 ) -> i64 {
@@ -151,7 +151,7 @@ async fn achievement_races_grant_roles_once_and_batch_retroactive_announcements(
     achievement(
         &sim,
         "Level one",
-        pinchora_core::achievements::Kind::Level,
+        pinchora_core::progression::achievements::Kind::Level,
         Some(role_id),
         false,
     )
@@ -159,7 +159,7 @@ async fn achievement_races_grant_roles_once_and_batch_retroactive_announcements(
     achievement(
         &sim,
         "Another level",
-        pinchora_core::achievements::Kind::Level,
+        pinchora_core::progression::achievements::Kind::Level,
         None,
         false,
     )
@@ -197,7 +197,7 @@ async fn achievement_role_safety_is_rechecked_after_configuration() {
     achievement(
         &sim,
         "Unsafe now",
-        pinchora_core::achievements::Kind::Level,
+        pinchora_core::progression::achievements::Kind::Level,
         Some(role_id),
         false,
     )
@@ -231,18 +231,30 @@ async fn achievement_secret_privacy_and_server_language_survive_paging() {
         achievement(
             &sim,
             &format!("Visible {n}"),
-            pinchora_core::achievements::Kind::Custom,
+            pinchora_core::progression::achievements::Kind::Custom,
             None,
             false,
         )
         .await;
     }
-    let secret = achievement(&sim, "Secret", pinchora_core::achievements::Kind::Custom, None, true).await;
+    let secret = achievement(
+        &sim,
+        "Secret",
+        pinchora_core::progression::achievements::Kind::Custom,
+        None,
+        true,
+    )
+    .await;
     let english = sim.command(user, "achievements", json!([])).await;
     assert_eq!(english.rows(), 0, "unearned secret does not create a second page");
     sim.app
         .db
-        .grant_achievement(sim.guild, user, secret, pinchora_core::achievements::Kind::Custom)
+        .grant_achievement(
+            sim.guild,
+            user,
+            secret,
+            pinchora_core::progression::achievements::Kind::Custom,
+        )
         .await
         .unwrap();
     turkish_server(&sim).await;
@@ -291,7 +303,7 @@ async fn achievement_empty_guild_and_disabled_rules_do_not_spend_a_tick() {
     achievement(
         &sim,
         "Manual only",
-        pinchora_core::achievements::Kind::Custom,
+        pinchora_core::progression::achievements::Kind::Custom,
         None,
         false,
     )
@@ -315,7 +327,14 @@ async fn achievement_tick_budget_and_bot_recipient_fail_closed() {
         return;
     };
     let user = unique();
-    achievement(&sim, "Bounded", pinchora_core::achievements::Kind::Level, None, false).await;
+    achievement(
+        &sim,
+        "Bounded",
+        pinchora_core::progression::achievements::Kind::Level,
+        None,
+        false,
+    )
+    .await;
     sim.app.db.add_message_xp(sim.guild, user, 300, 0).await.unwrap();
     let minute = sim.app.now().timestamp().div_euclid(60);
     sim.app
@@ -371,7 +390,7 @@ async fn achievement_voice_tick_evaluates_without_a_level_up() {
     achievement(
         &sim,
         "Voice visitor",
-        pinchora_core::achievements::Kind::Level,
+        pinchora_core::progression::achievements::Kind::Level,
         None,
         false,
     )
@@ -406,7 +425,7 @@ async fn achievement_source_module_and_feature_gate_block_rewards_and_cards() {
     achievement(
         &sim,
         "Hidden while off",
-        pinchora_core::achievements::Kind::Level,
+        pinchora_core::progression::achievements::Kind::Level,
         None,
         false,
     )
@@ -418,9 +437,9 @@ async fn achievement_source_module_and_feature_gate_block_rewards_and_cards() {
         .db
         .set_module(
             sim.guild,
-            pinchora_core::modules::Module::Leveling,
+            pinchora_core::admin::modules::Module::Leveling,
             Some(true),
-            Some((pinchora_core::modules::ChannelMode::Only, &[sim.channel])),
+            Some((pinchora_core::admin::modules::ChannelMode::Only, &[sim.channel])),
         )
         .await
         .unwrap();
@@ -435,7 +454,12 @@ async fn achievement_source_module_and_feature_gate_block_rewards_and_cards() {
     );
     sim.app
         .db
-        .set_module(sim.guild, pinchora_core::modules::Module::Leveling, Some(false), None)
+        .set_module(
+            sim.guild,
+            pinchora_core::admin::modules::Module::Leveling,
+            Some(false),
+            None,
+        )
         .await
         .unwrap();
     sim.app.forget_guild_settings(sim.guild).await;
@@ -454,7 +478,7 @@ async fn achievement_source_module_and_feature_gate_block_rewards_and_cards() {
         .db
         .set_module(
             sim.guild,
-            pinchora_core::modules::Module::Achievements,
+            pinchora_core::admin::modules::Module::Achievements,
             Some(false),
             None,
         )
@@ -478,7 +502,7 @@ async fn achievement_secret_edit_is_private_even_without_cache_notification() {
         last = achievement(
             &sim,
             &format!("Rule {n}"),
-            pinchora_core::achievements::Kind::Custom,
+            pinchora_core::progression::achievements::Kind::Custom,
             None,
             false,
         )

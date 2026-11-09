@@ -1,11 +1,13 @@
 //! The commands that act on a channel: `/purge`, `/slowmode`, `/lock` and `/unlock`.
 
 use chrono::Duration;
-use pinchora_core::{
-    i18n::Lang,
-    moderation::{CaseKind, PURGE_AGE, check_reason, parse_slowmode},
-    snowflake, t,
-};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::infra::snowflake;
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::moderation::PURGE_AGE;
+use pinchora_core::moderation::moderation::check_reason;
+use pinchora_core::moderation::moderation::parse_slowmode;
+use pinchora_core::t;
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
@@ -16,12 +18,17 @@ use twilight_model::{
     id::Id,
 };
 
-use super::{
-    Act, Moderator,
-    members::{audit_reason, private, public, refusal},
-    permitted, record, reply_embed, words,
-};
 use crate::Cx;
+use crate::commands::moderation::Act;
+use crate::commands::moderation::Moderator;
+use crate::commands::moderation::members::audit_reason;
+use crate::commands::moderation::members::private;
+use crate::commands::moderation::members::public;
+use crate::commands::moderation::members::refusal;
+use crate::commands::moderation::permitted;
+use crate::commands::moderation::record;
+use crate::commands::moderation::reply_embed;
+use crate::commands::moderation::words;
 
 fn manage_messages() -> Permissions {
     Permissions::MANAGE_MESSAGES
@@ -56,7 +63,7 @@ fn allowed_in(cx: &Cx, named: Option<&InteractionChannel>, needed: Permissions) 
         Some(channel) => {
             channel.permissions.contains(needed) || channel.permissions.contains(Permissions::ADMINISTRATOR)
         }
-        None => super::allowed(cx, needed),
+        None => crate::commands::moderation::allowed(cx, needed),
     }
 }
 
@@ -122,10 +129,9 @@ impl PurgeFilter {
                 .is_none_or(|s| content.starts_with(&s.to_lowercase()))
             && self.ends.as_ref().is_none_or(|s| content.ends_with(&s.to_lowercase()))
             && self.not.as_ref().is_none_or(|s| !content.contains(&s.to_lowercase()))
-            && self
-                .regex
-                .as_ref()
-                .is_none_or(|s| pinchora_core::automod::compile(s).is_ok_and(|r| r.is_match(&message.content)))
+            && self.regex.as_ref().is_none_or(|s| {
+                pinchora_core::moderation::automod::compile(s).is_ok_and(|r| r.is_match(&message.content))
+            })
             && self
                 .contains
                 .as_deref()
@@ -235,11 +241,11 @@ impl Purge {
         if self
             .regex
             .as_ref()
-            .is_some_and(|s| pinchora_core::automod::compile(s).is_err())
+            .is_some_and(|s| pinchora_core::moderation::automod::compile(s).is_err())
             || [&self.after, &self.before]
                 .into_iter()
                 .flatten()
-                .any(|s| pinchora_core::mod_parity::id(s).is_none())
+                .any(|s| pinchora_core::moderation::policy::id(s).is_none())
         {
             return cx.reply_ephemeral(t!(lang, "parity.invalid")).await;
         }
@@ -247,8 +253,8 @@ impl Purge {
             humans: self.humans == Some(true),
             embeds: self.embeds == Some(true),
             regex: self.regex,
-            after: self.after.as_deref().and_then(pinchora_core::mod_parity::id),
-            before: self.before.as_deref().and_then(pinchora_core::mod_parity::id),
+            after: self.after.as_deref().and_then(pinchora_core::moderation::policy::id),
+            before: self.before.as_deref().and_then(pinchora_core::moderation::policy::id),
             starts: self.starts,
             ends: self.ends,
             not: self.not,
@@ -569,7 +575,7 @@ async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>,
 mod tests {
     use serde_json::json;
 
-    use super::*;
+    use crate::commands::moderation::channels::*;
 
     fn message(id_age_days: i64, author_bot: bool, content: &str, pinned: bool, files: bool) -> Message {
         let now = chrono::Utc::now();

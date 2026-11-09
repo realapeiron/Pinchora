@@ -1,6 +1,6 @@
 //! Invite routes with both the guild and item IDs in their paths.
 
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn reward_and_member_routes_accept_nested_path_ids() {
@@ -74,7 +74,7 @@ async fn dashboard_and_validation_follow_the_server_language() {
     let (guild, _, mut browser) = h.managed_server().await;
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let base = format!("/api/guilds/{guild}/invites");

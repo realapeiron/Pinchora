@@ -1,4 +1,4 @@
-use super::*;
+use crate::db::*;
 
 #[tokio::test]
 async fn contest_week_closes_once() {

@@ -3,7 +3,7 @@
 
 use pinchora_web::WebState;
 
-use super::*;
+use crate::*;
 
 fn g(guild: u64) -> String {
     format!("/api/guilds/{guild}")
@@ -765,7 +765,7 @@ async fn event_responders_check_their_triggers_channels_and_roles() {
     let export = browser.get(&format!("{path}/export")).await.json();
     assert_eq!(export["items"].as_array().unwrap().len(), 2);
     for n in 0..23 {
-        let def: pinchora_core::tags::ResponderDef = serde_json::from_value(json!({
+        let def: pinchora_core::community::tags::ResponderDef = serde_json::from_value(json!({
             "name": format!("filler {n}"), "trigger_kind": "member_leave", "responses": ["x"],
             "destination": "channel", "channel_id": GENERAL.to_string(),
         }))

@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 async fn eligible(site: &Site, user: u64) -> Browser {
     let browser = site.browser(user).await;

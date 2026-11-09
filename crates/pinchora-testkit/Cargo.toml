@@ -1,0 +1,6 @@
+[package]
+name = "pinchora-testkit"
+description = "Shared test fixture sessions and isolation protocols"
+publish = false
+version = "0.1.0"
+edition = "2024"

@@ -1,0 +1,21 @@
+pub(crate) mod birthdays;
+#[allow(clippy::module_inception)]
+pub(crate) mod community;
+pub(crate) mod contest;
+pub(crate) mod events;
+pub(crate) mod feeds;
+pub(crate) mod giveaways;
+pub(crate) mod guestbook;
+pub(crate) mod invites;
+pub(crate) mod partners;
+pub(crate) mod periodic;
+pub(crate) mod polls;
+pub(crate) mod reminders;
+pub(crate) mod starboard;
+pub(crate) mod suggestions;
+pub(crate) mod tags;
+pub(crate) mod ticket_limits;
+pub(crate) mod ticket_ops;
+pub(crate) mod tickets;
+pub(crate) mod tools;
+pub(crate) mod trackers;

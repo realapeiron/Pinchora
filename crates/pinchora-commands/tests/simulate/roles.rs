@@ -14,10 +14,11 @@ use std::{
 
 use axum::http::{Method, StatusCode, Uri};
 use pinchora_commands::{ReactionEvent, give_after_verify, on_reaction, roles_tick};
-use pinchora_core::modules::{ChannelMode, Module};
+use pinchora_core::admin::modules::ChannelMode;
+use pinchora_core::admin::modules::Module;
 use twilight_model::gateway::payload::incoming::{ReactionAdd, ReactionRemove};
 
-use super::*;
+use crate::*;
 
 /// Calls the shared mock does not keep, as (the server or the message they are about, what happened).
 static LOG: LazyLock<Mutex<Vec<(u64, String)>>> = LazyLock::new(Mutex::default);
@@ -49,7 +50,7 @@ fn seen(key: u64) -> Vec<String> {
     mine.into_iter().map(|(_, text)| text).collect()
 }
 
-/// `%F0%9F%8E%AE` as the emoji it spells.
+/// `%%9F%8E%AE` as the emoji it spells.
 fn decode(text: &str) -> String {
     let bytes = text.as_bytes();
     let mut out = Vec::new();

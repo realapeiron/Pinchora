@@ -254,7 +254,7 @@ pub fn odds(content: &Content) -> Vec<(crate::Rarity, f64)> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::pets::*;
 
     #[test]
     fn needs_decay_and_care() {

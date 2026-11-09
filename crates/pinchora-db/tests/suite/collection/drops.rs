@@ -1,4 +1,4 @@
-use super::*;
+use crate::collection::*;
 
 #[tokio::test]
 async fn wishlist_reserves_one_slot_then_releases_it() {

@@ -8,7 +8,8 @@
 
 use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 
-use pinchora_core::{i18n::Lang, items::plain};
+use pinchora_core::games::items::plain;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_render::character::Slot;
 use serde::Deserialize;
 
@@ -415,13 +416,13 @@ fn word_label<'a>(kind: &str, word: &'a str, lang: Lang) -> Cow<'a, str> {
 mod tests {
     use std::collections::{BTreeSet, HashSet};
 
-    use pinchora_core::items::soulbound;
+    use pinchora_core::games::items::soulbound;
     use pinchora_render::character::{
         ACCESSORY_TINTS, EYE_COLORS, HAIR_COLORS, OUTFIT_COLORS, SHOE_COLORS, SKIN_TONES,
     };
     use serde_json::Value;
 
-    use super::*;
+    use crate::overlay::*;
     use crate::{fishing, house, quests};
 
     fn tr() -> &'static Overlay {

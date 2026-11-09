@@ -354,7 +354,7 @@ pub fn is_hidden(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::house::*;
 
     fn content() -> Content {
         let f = r#"[

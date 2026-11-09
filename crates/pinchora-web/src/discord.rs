@@ -5,19 +5,19 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use futures_util::{StreamExt, stream};
-use pinchora_core::config::Secret;
+use pinchora_core::infra::config::Secret;
 use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use twilight_http::error::ErrorType;
 use twilight_model::id::Id;
 
-use crate::{
-    auth::session::{self, Session},
-    config::WebSettings,
-    error::{ApiError, ApiResult},
-    extract::CurrentSession,
-    state::WebState,
-};
+use crate::auth::session;
+use crate::auth::session::Session;
+use crate::config::WebSettings;
+use crate::error::ApiError;
+use crate::error::ApiResult;
+use crate::extract::CurrentSession;
+use crate::state::WebState;
 
 /// Permission bits as Discord sends them in `permissions`.
 pub const ADMINISTRATOR: u64 = 1 << 3;
@@ -369,7 +369,7 @@ pub fn session_for(user: DiscordUser, tokens: TokenResponse, now: i64) -> anyhow
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::discord::*;
 
     fn guild(owner: bool, permissions: &str) -> UserGuild {
         UserGuild {

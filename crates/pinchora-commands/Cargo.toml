@@ -37,6 +37,7 @@ twilight-util.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+pinchora-testkit = { path = "../pinchora-testkit" }
 axum.workspace = true
 redis.workspace = true
 sqlx.workspace = true

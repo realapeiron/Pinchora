@@ -5,7 +5,7 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 use serde::Deserialize;
 
 use crate::{Availability, Content, Currency, Furniture, Rarity, fishing};
@@ -571,7 +571,7 @@ pub const FRAGMENT_SHELLS: f64 = 7.0;
 /// | epic      |     13,658 |     1,950 |                    819 |
 /// | legendary |     62,166 |     8,900 |                  3,739 |
 ///
-/// The pieces are soulbound (`pinchora_core::items`): they decorate the buyer's house but are never sold,
+/// The pieces are soulbound (`pinchora_core::games::items`): they decorate the buyer's house but are never sold,
 /// gifted or donated, so fragments cannot be turned into shells at a better rate than spares pay.
 /// `fragment_prices_follow_the_catalogue` fails when the catalogue moves away from this table.
 pub fn exchange_cost(rarity: Rarity) -> i64 {
@@ -615,7 +615,7 @@ pub fn exchange_pick(content: &Content, rarity: Rarity, roll: f64) -> Option<Str
 mod tests {
     use std::collections::HashSet;
 
-    use super::*;
+    use crate::collection::*;
     use crate::play::Game;
 
     #[test]

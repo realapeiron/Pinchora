@@ -3,7 +3,8 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context as _;
-use pinchora_core::config::{Secret, WebConfig};
+use pinchora_core::infra::config::Secret;
+use pinchora_core::infra::config::WebConfig;
 use reqwest::Url;
 
 use crate::client_ip::TrustedProxies;
@@ -90,7 +91,7 @@ impl WebSettings {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::config::*;
 
     fn web() -> WebConfig {
         WebConfig::default()

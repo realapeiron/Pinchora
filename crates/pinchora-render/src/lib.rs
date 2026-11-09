@@ -336,4 +336,4 @@ pub use cards::verification::CaptchaCard;
 
 pub use cards::{ReefCard, ReefScene, ReefTile};
 
-pub mod party_v2;
+pub mod games;

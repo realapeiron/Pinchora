@@ -101,7 +101,7 @@ fn in_range(ip: IpAddr, range: IpAddr, bits: u8) -> bool {
 mod tests {
     use axum::http::HeaderValue;
 
-    use super::*;
+    use crate::client_ip::*;
 
     fn ip(s: &str) -> IpAddr {
         s.parse().unwrap()

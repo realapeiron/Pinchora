@@ -1,4 +1,4 @@
-use super::*;
+use crate::collection::*;
 
 #[tokio::test]
 async fn depth_64_claimers_have_one_winner_and_limits_survive_a_new_pool() {

@@ -1,6 +1,6 @@
 //! The dashboard keeps Discord IDs exact and never lists a private birth year.
 
-use super::*;
+use crate::*;
 use chrono::Datelike;
 
 #[tokio::test]

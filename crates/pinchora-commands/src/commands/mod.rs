@@ -1,95 +1,16 @@
-pub(crate) mod achievements;
-pub(crate) mod anti_nuke;
-pub(crate) mod automod;
-mod bio;
-pub(crate) mod birthdays;
-pub(crate) mod board;
-pub(crate) mod branding;
-pub(crate) mod character;
-pub(crate) mod collection;
-pub(crate) mod command_control;
-pub(crate) mod community_pack;
-pub(crate) mod community_v2;
-pub(crate) mod config;
-pub(crate) mod connect4;
-pub(crate) mod contest;
-pub(crate) mod customcommand;
-pub(crate) mod customize;
-mod daily;
-pub(crate) mod decorate;
-pub(crate) mod derby;
-pub(crate) mod duel;
-mod economy;
-pub(crate) mod economy_v2;
-pub(crate) mod workflows;
-pub use economy::{wallet_card_for, wallet_preview_for};
-pub(crate) mod events;
-pub(crate) mod feeds;
-pub(crate) mod fish;
-pub(crate) mod friends;
-pub(crate) mod games;
-pub(crate) mod gift;
-pub(crate) mod giveaway;
-pub(crate) mod guestbook;
-pub(crate) mod hangman;
-pub(crate) mod heist;
-pub(crate) mod help;
-pub(crate) mod house;
-pub(crate) mod info;
-pub(crate) mod interact;
-pub(crate) mod invites;
-pub(crate) mod language;
-pub(crate) mod leaderboard;
-pub(crate) mod level_roles;
+pub mod admin;
+pub mod community;
+pub mod economy;
+pub mod games;
+pub mod house;
+pub mod integrations;
+pub mod progression;
+pub mod roles;
+pub mod social;
+pub use crate::commands::economy::legacy::wallet_card_for;
+pub use crate::commands::economy::legacy::wallet_preview_for;
 pub(crate) mod moderation;
-pub(crate) mod modules;
-pub(crate) mod partner;
-pub(crate) mod party;
-pub(crate) mod party_games;
-mod periodic;
-pub(crate) mod pet;
-mod ping;
-pub(crate) mod play;
-pub(crate) mod plaza;
-mod points;
-pub(crate) mod poll;
-pub(crate) mod prefix;
-pub(crate) mod privacy;
-pub(crate) mod profile;
-pub(crate) mod quests;
-pub(crate) mod quick;
-mod rank;
-pub(crate) mod remind;
-mod rep;
-mod rep_roles;
-pub(crate) mod roblox;
-pub(crate) mod role_panels;
-pub(crate) mod roles_pack;
-pub(crate) mod rps;
-pub(crate) mod share;
-pub(crate) mod shells;
-pub(crate) mod shop;
-mod social;
-pub(crate) mod stall;
-pub(crate) mod starboard;
-pub(crate) mod stats;
-pub(crate) mod store;
-pub(crate) mod suggest;
-pub(crate) mod surge;
-pub(crate) mod tag;
-pub(crate) mod tempvoice;
-pub(crate) mod tickets;
-pub(crate) mod tickets_context;
-pub(crate) mod trackers;
-pub(crate) mod trivia;
-use crate::undo;
-mod utilities;
-pub(crate) mod utility;
-pub(crate) mod verification;
-pub(crate) mod wordle;
-mod wrapped;
-mod xp;
-pub(crate) mod xp_admin;
+use crate::admin::undo;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
@@ -103,8 +24,8 @@ macro_rules! commands {
             static COMMANDS: std::sync::LazyLock<Vec<Command>> = std::sync::LazyLock::new(|| {
                 let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
                 commands.push(moderation::report_context::definition());
-                commands.push(tickets_context::definition());
-                crate::lang::localize(&mut commands);
+                commands.push(crate::commands::community::tickets_context::definition());
+                crate::infra::lang::localize(&mut commands);
                 commands
             });
             COMMANDS.clone()
@@ -112,14 +33,14 @@ macro_rules! commands {
 
         pub fn definitions() -> Vec<Command> {
             let mut commands = legacy_definitions();
-            crate::routing::extend(&mut commands);
-            crate::routing::remove_replaced(&mut commands);
-            crate::lang::localize(&mut commands);
+            crate::infra::routing::extend(&mut commands);
+            crate::infra::routing::remove_replaced(&mut commands);
+            crate::infra::lang::localize(&mut commands);
             commands
         }
 
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
-            if crate::routing::is_admin_path(crate::routing::canonical(&crate::command_control::path(&data))) {
+            if crate::infra::routing::is_admin_path(crate::infra::routing::canonical(&crate::admin::command_control::path(&data))) {
                 if cx.guild_id().is_none() {
                     return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.guild-only")).await;
                 }
@@ -127,12 +48,12 @@ macro_rules! commands {
                     return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.needs-manage-server")).await;
                 }
             }
-            let data = crate::routing::adapt(data)?;
-            if crate::gate::refuses_command(cx, &data).await? {
+            let data = crate::infra::routing::adapt(data)?;
+            if crate::infra::gate::refuses_command(cx, &data).await? {
                 return Ok(());
             }
             if data.name == "Report" { return moderation::report_context::run(cx, data).await; }
-            if data.name == "Open ticket" { return tickets_context::run(cx, data).await; }
+            if data.name == "Open ticket" { return crate::commands::community::tickets_context::run(cx, data).await; }
             let name = data.name.clone();
             $(
                 if name == <$ty as CreateCommand>::NAME {
@@ -145,72 +66,72 @@ macro_rules! commands {
 }
 
 commands!(
-    workflows::Workflow,
-    moderation::parity::Parity,
-    community_pack::CommunityAdmin,
-    community_v2::HighlightCommand,
-    community_v2::ChecklistCommand,
-    community_v2::AutopostCommand,
-    community_v2::AnniversaryCommand,
-    community_v2::ConfessCommand,
-    community_pack::QotdCommand,
-    community_pack::CountingCommand,
-    community_pack::FormCommand,
-    community_pack::ModmailCommand,
-    branding::BrandingCommand,
-    achievements::AchievementsCommand,
-    achievements::AchievementAdmin,
-    ping::Ping,
-    help::Help,
-    profile::Profile,
-    rank::Rank,
-    leaderboard::Leaderboard,
-    daily::Daily,
-    periodic::Weekly,
-    periodic::Monthly,
-    economy::Balance,
-    economy_v2::EconomyCommand,
-    economy::Give,
-    rep::Rep,
-    bio::Bio,
-    config::ConfigCommand,
-    house::HouseCommand,
-    shop::ShopCommand,
-    shop::Inventory,
-    pet::PetCommand,
-    fish::FishCommand,
-    gift::Gift,
-    duel::DuelCommand,
-    quests::Quests,
-    stall::StallCommand,
-    plaza::PlazaCommand,
-    character::CharacterCommand,
-    points::PointsCommand,
-    store::StoreCommand,
-    customize::CustomizeCommand,
-    role_panels::RolesCommand,
-    roles_pack::AutoRolesCommand,
-    roles_pack::ColorCommand,
-    play::PlayCommand,
-    partner::PartnerCommand,
-    friends::FriendsCommand,
-    interact::Hug,
-    interact::Pat,
-    interact::Wave,
-    interact::HighFive,
-    remind::RemindCommand,
-    privacy::PrivacyCommand,
-    wrapped::Wrapped,
-    giveaway::GiveawayCommand,
-    suggest::Suggest,
-    suggest::SuggestionCommand,
-    poll::Poll,
-    collection::dex::Dex,
-    collection::beachcomb::Beachcomb,
-    collection::crabpot::CrabPot,
-    collection::drops::CritterDrop,
-    surge::SurgeCommand,
-    party_games::PartyCommand,
+    crate::commands::admin::workflows::Workflow,
+    crate::commands::moderation::policy::Parity,
+    crate::commands::community::engagement::CommunityAdmin,
+    crate::commands::community::tools::HighlightCommand,
+    crate::commands::community::tools::ChecklistCommand,
+    crate::commands::community::tools::AutopostCommand,
+    crate::commands::community::tools::AnniversaryCommand,
+    crate::commands::community::tools::ConfessCommand,
+    crate::commands::community::engagement::QotdCommand,
+    crate::commands::community::engagement::CountingCommand,
+    crate::commands::community::engagement::FormCommand,
+    crate::commands::community::engagement::ModmailCommand,
+    crate::commands::admin::branding::BrandingCommand,
+    crate::commands::progression::achievements::AchievementsCommand,
+    crate::commands::progression::achievements::AchievementAdmin,
+    crate::commands::admin::ping::Ping,
+    crate::commands::admin::help::Help,
+    crate::commands::social::profile::Profile,
+    crate::commands::progression::rank::Rank,
+    crate::commands::economy::leaderboard::Leaderboard,
+    crate::commands::economy::daily::Daily,
+    crate::commands::community::periodic::Weekly,
+    crate::commands::community::periodic::Monthly,
+    crate::commands::economy::legacy::Balance,
+    crate::commands::economy::player::EconomyCommand,
+    crate::commands::economy::legacy::Give,
+    crate::commands::progression::rep::Rep,
+    crate::commands::social::bio::Bio,
+    crate::commands::admin::config::ConfigCommand,
+    crate::commands::house::house::HouseCommand,
+    crate::commands::economy::shop::ShopCommand,
+    crate::commands::economy::shop::Inventory,
+    crate::commands::social::pet::PetCommand,
+    crate::commands::games::fish::FishCommand,
+    crate::commands::economy::gift::Gift,
+    crate::commands::games::duel::DuelCommand,
+    crate::commands::economy::quests::Quests,
+    crate::commands::economy::stall::StallCommand,
+    crate::commands::community::plaza::PlazaCommand,
+    crate::commands::social::character::CharacterCommand,
+    crate::commands::economy::points::PointsCommand,
+    crate::commands::economy::store::StoreCommand,
+    crate::commands::social::customize::CustomizeCommand,
+    crate::commands::roles::role_panels::RolesCommand,
+    crate::commands::roles::automation::AutoRolesCommand,
+    crate::commands::roles::automation::ColorCommand,
+    crate::commands::games::play::PlayCommand,
+    crate::commands::community::partner::PartnerCommand,
+    crate::commands::social::friends::FriendsCommand,
+    crate::commands::social::interact::Hug,
+    crate::commands::social::interact::Pat,
+    crate::commands::social::interact::Wave,
+    crate::commands::social::interact::HighFive,
+    crate::commands::community::remind::RemindCommand,
+    crate::commands::admin::privacy::PrivacyCommand,
+    crate::commands::progression::wrapped::Wrapped,
+    crate::commands::community::giveaway::GiveawayCommand,
+    crate::commands::community::suggest::Suggest,
+    crate::commands::community::suggest::SuggestionCommand,
+    crate::commands::community::poll::Poll,
+    crate::commands::games::collection::dex::Dex,
+    crate::commands::games::collection::beachcomb::Beachcomb,
+    crate::commands::games::collection::crabpot::CrabPot,
+    crate::commands::games::collection::drops::CritterDrop,
+    crate::commands::economy::surge::SurgeCommand,
+    crate::commands::games::party_games::PartyCommand,
     moderation::Ban,
     moderation::Unban,
     moderation::Kick,
@@ -227,49 +148,49 @@ commands!(
     moderation::RoleCommand,
     moderation::CaseCommand,
     moderation::ReasonCommand,
-    tag::Tag,
-    customcommand::CustomCommand,
-    language::LanguageCommand,
-    stats::StatsCommand,
-    starboard::StarboardCommand,
-    stats::CountersCommand,
-    tickets::TicketCommand,
-    events::EventCommand,
-    tickets::TicketsCommand,
-    automod::AutoMod,
-    command_control::CommandControl,
-    command_control::BackupCommand,
-    verification::Verify,
-    verification::Verification,
-    verification::Raid,
-    anti_nuke::AntiNuke,
-    feeds::FeedsCommand,
-    tempvoice::VoiceCommand,
-    xp_admin::XpAdmin,
-    info::Info,
-    invites::InvitesCommand,
-    invites::InviteAdmin,
-    roblox::RobloxCommand,
-    roblox::RobloxAdmin,
-    birthdays::BirthdayCommand,
-    birthdays::BirthdaysAdmin,
-    utility::AfkCommand,
-    utility::StickyCommand,
-    utility::ScheduleCommand,
-    trackers::GameCommand,
-    trackers::TrackersAdmin,
+    crate::commands::community::tag::Tag,
+    crate::commands::admin::customcommand::CustomCommand,
+    crate::commands::admin::language::LanguageCommand,
+    crate::commands::admin::stats::StatsCommand,
+    crate::commands::community::starboard::StarboardCommand,
+    crate::commands::admin::stats::CountersCommand,
+    crate::commands::community::tickets::TicketCommand,
+    crate::commands::community::events::EventCommand,
+    crate::commands::community::tickets::TicketsCommand,
+    crate::commands::moderation::automod::AutoMod,
+    crate::commands::admin::command_control::CommandControl,
+    crate::commands::admin::command_control::BackupCommand,
+    crate::commands::moderation::verification::Verify,
+    crate::commands::moderation::verification::Verification,
+    crate::commands::moderation::verification::Raid,
+    crate::commands::moderation::anti_nuke::AntiNuke,
+    crate::commands::community::feeds::FeedsCommand,
+    crate::commands::admin::tempvoice::VoiceCommand,
+    crate::commands::progression::xp_admin::XpAdmin,
+    crate::commands::admin::info::Info,
+    crate::commands::community::invites::InvitesCommand,
+    crate::commands::community::invites::InviteAdmin,
+    crate::commands::integrations::roblox::RobloxCommand,
+    crate::commands::integrations::roblox::RobloxAdmin,
+    crate::commands::community::birthdays::BirthdayCommand,
+    crate::commands::community::birthdays::BirthdaysAdmin,
+    crate::commands::admin::afk_sticky_schedule::AfkCommand,
+    crate::commands::admin::afk_sticky_schedule::StickyCommand,
+    crate::commands::admin::afk_sticky_schedule::ScheduleCommand,
+    crate::commands::community::trackers::GameCommand,
+    crate::commands::community::trackers::TrackersAdmin,
 );
 
 #[cfg(test)]
 mod quick_command_budget {
-    use super::*;
+    use crate::commands::*;
 
     #[test]
     fn quick_games_keep_the_slash_command_budget() {
         let definitions = definitions();
         assert_eq!(
             definitions.len(),
-            crate::routing::PROJECTED_ROOTS,
+            crate::infra::routing::PROJECTED_ROOTS,
             "Discord's 100-command budget must not grow"
         );
         for (name, expected) in [
@@ -300,7 +221,3 @@ mod quick_command_budget {
         }
     }
 }
-
-pub(crate) mod reef_loop;
-
-pub(crate) mod party_v2;

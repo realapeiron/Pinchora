@@ -985,8 +985,8 @@ fn flash(canvas: &mut RgbaImage, centre: (i32, i32), size: f32) {
 mod tests {
     use image::{AnimationDecoder, codecs::gif::GifDecoder};
 
-    use super::*;
     use crate::character::{Colors, Paint, Worn};
+    use crate::social::*;
 
     fn person(look: &str, n: u8, accessories: &[&str]) -> CharacterSpec {
         CharacterSpec {

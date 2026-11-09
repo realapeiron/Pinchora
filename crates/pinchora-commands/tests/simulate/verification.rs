@@ -1,6 +1,6 @@
-//! F10 flows use real Postgres/Redis and a Discord mock with mutable raid settings.
-use super::*;
-use pinchora_core::verification::Config;
+//! flows use real Postgres/Redis and a Discord mock with mutable raid settings.
+use crate::*;
+use pinchora_core::moderation::verification::Config;
 use sha2::{Digest, Sha256};
 #[derive(Clone)]
 struct SafetyMock {
@@ -421,7 +421,7 @@ async fn verification_success_resumes_after_verify_roles_and_timeout_kicks() {
         user,
         nonce,
         "a7k3m",
-        pinchora_core::i18n::Lang::En,
+        pinchora_core::infra::i18n::Lang::En,
     )
     .await
     .unwrap();
@@ -436,7 +436,7 @@ async fn verification_success_resumes_after_verify_roles_and_timeout_kicks() {
             user,
             nonce,
             "a7k3m",
-            pinchora_core::i18n::Lang::En
+            pinchora_core::infra::i18n::Lang::En
         )
         .await
         .unwrap()
@@ -679,10 +679,17 @@ async fn verification_removes_pregranted_and_racing_roles_and_rejoin_invalidates
     sim.leave(user, "Mia", false).await;
     sim.join(user, "Mia", false, None).await;
     assert!(
-        pinchora_commands::verification_answer(&sim.app, sim.guild, user, old, "A7K3M", pinchora_core::i18n::Lang::En)
-            .await
-            .unwrap()
-            .contains("expired")
+        pinchora_commands::verification_answer(
+            &sim.app,
+            sim.guild,
+            user,
+            old,
+            "A7K3M",
+            pinchora_core::infra::i18n::Lang::En
+        )
+        .await
+        .unwrap()
+        .contains("expired")
     );
     let blank = Reply::new(InteractionResponseType::ChannelMessageWithSource);
     for id in ["vf:go:999", "cq:a:a123456789abcdef0123456789abcdef:999"] {
@@ -796,7 +803,7 @@ async fn verification_slow_drip_correlated_joins_force_captcha_but_youth_alone_d
                 guild_id: sim.guild as i64,
                 user_id: unique() as i64,
                 joined_at: sim.app.now() - chrono::Duration::seconds(50 + i as i64 * 40),
-                name_family: pinchora_core::anti_raid::name_family(name),
+                name_family: pinchora_core::moderation::anti_raid::name_family(name),
                 avatar: None,
                 young: true,
                 status: "joined".into(),
@@ -1019,11 +1026,11 @@ async fn roblox_and_captcha_require_both_proofs_before_join_actions() {
             let pending = sim.app.db.roblox_pending(user).await.unwrap().unwrap();
             assert!(sim.app.db.roblox_complete(user, &pending).await.unwrap());
             assert!(
-                !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+                !pinchora_commands::integrations::roblox::sync(&sim.app, sim.guild, user)
                     .await
                     .unwrap()
             );
-            pinchora_commands::roblox::release_hold(&sim.app, sim.guild, user)
+            pinchora_commands::integrations::roblox::release_hold(&sim.app, sim.guild, user)
                 .await
                 .unwrap();
             assert!(sim.role_changes().is_empty(), "Roblox cannot bypass pending CAPTCHA");
@@ -1041,7 +1048,7 @@ async fn roblox_and_captcha_require_both_proofs_before_join_actions() {
             user,
             nonce,
             "a7k3m",
-            pinchora_core::i18n::Lang::En,
+            pinchora_core::infra::i18n::Lang::En,
         )
         .await
         .unwrap();
@@ -1055,7 +1062,7 @@ async fn roblox_and_captcha_require_both_proofs_before_join_actions() {
             sim.app.db.roblox_start(user, unique(), "Crab", "proof").await.unwrap();
             let pending = sim.app.db.roblox_pending(user).await.unwrap().unwrap();
             assert!(sim.app.db.roblox_complete(user, &pending).await.unwrap());
-            pinchora_commands::roblox::release_hold(&sim.app, sim.guild, user)
+            pinchora_commands::integrations::roblox::release_hold(&sim.app, sim.guild, user)
                 .await
                 .unwrap();
             assert!(sim.role_changes().contains(&format!("PUT {user} {after}")));

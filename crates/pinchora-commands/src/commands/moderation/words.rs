@@ -2,11 +2,12 @@
 //! the names of the kinds of cases and of the permissions the commands need.
 
 use chrono::Duration;
-use pinchora_core::{
-    i18n::Lang,
-    moderation::{CaseKind, Punishment, Refusal, Threshold},
-    t,
-};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::moderation::Punishment;
+use pinchora_core::moderation::moderation::Refusal;
+use pinchora_core::moderation::moderation::Threshold;
+use pinchora_core::t;
 
 /// A duration the short way: `1w 2d`, `2h 30m`, `45s` (two units at most), as `format_duration` writes
 /// it in English.
@@ -68,7 +69,7 @@ pub(crate) fn permission(lang: Lang, key: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::commands::moderation::words::*;
 
     #[test]
     fn durations_and_rungs_read_in_both_languages() {
@@ -77,10 +78,11 @@ mod tests {
         assert_eq!(duration(Lang::En, Duration::zero()), "0s");
         assert_eq!(duration(Lang::Tr, Duration::days(7)), "1 hafta");
         assert_eq!(duration(Lang::Tr, Duration::minutes(150)), "2 sa 30 dk");
-        let timeout = pinchora_core::moderation::check_threshold(3, "timeout", Some(Duration::hours(1))).unwrap();
+        let timeout =
+            pinchora_core::moderation::moderation::check_threshold(3, "timeout", Some(Duration::hours(1))).unwrap();
         assert_eq!(rung(Lang::En, &timeout), timeout.describe());
         assert_eq!(rung(Lang::Tr, &timeout), "3 uyarı → 1 sa susturma");
-        let kick = pinchora_core::moderation::check_threshold(1, "kick", None).unwrap();
+        let kick = pinchora_core::moderation::moderation::check_threshold(1, "kick", None).unwrap();
         assert_eq!(rung(Lang::En, &kick), "1 warn → kick");
     }
 
@@ -97,7 +99,9 @@ mod tests {
             assert!(!refusal(Lang::Tr, Refusal::Me, verb).contains("mod."), "{verb}");
         }
         for kind in CaseKind::ALL {
-            assert!(!self::kind(Lang::Tr, Some(kind), kind.key()).contains("mod."));
+            assert!(
+                !crate::commands::moderation::words::tests::kind(Lang::Tr, Some(kind), kind.key()).contains("mod.")
+            );
         }
     }
 }

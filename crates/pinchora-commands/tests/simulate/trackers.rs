@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn tracker_refusals_and_admin_route_speak_both_languages() {
@@ -59,7 +59,7 @@ async fn tracker_refusals_and_admin_route_speak_both_languages() {
         "{denied}"
     );
     sim.app
-        .set_user_lang(user, Some(pinchora_core::i18n::Lang::Tr))
+        .set_user_lang(user, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let turkish = sim

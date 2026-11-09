@@ -1,5 +1,5 @@
 //! Real nested dashboard routes and their audit trail.
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn starboard_nested_deletes_and_all_writes_are_audited() {

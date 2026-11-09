@@ -1,5 +1,6 @@
-use super::*;
-use pinchora_core::command_control::{Config, Rule};
+use crate::*;
+use pinchora_core::admin::command_control::Config;
+use pinchora_core::admin::command_control::Rule;
 use std::collections::BTreeMap;
 
 #[tokio::test]
@@ -139,7 +140,7 @@ async fn command_control_enforcement_surfaces_and_cache() {
     sim.locale = "tr";
     assert_eq!(
         sim.command(user, "balance", json!([])).await.content(),
-        pinchora_core::t!(pinchora_core::i18n::Lang::Tr, "command_control.disabled")
+        pinchora_core::t!(pinchora_core::infra::i18n::Lang::Tr, "command_control.disabled")
     );
 }
 #[tokio::test]
@@ -258,10 +259,10 @@ async fn command_control_autocomplete_and_modals_obey_policy_without_spending_co
 
 #[tokio::test]
 async fn backup_rejects_numeric_dangerous_grants_and_automod_actions() {
-    use pinchora_core::{
-        config_backup::{Import, Names, Policy},
-        i18n::Lang,
-    };
+    use pinchora_core::admin::config_backup::Import;
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
+    use pinchora_core::infra::i18n::Lang;
     let Some(sim) = Sim::new("backup_dangerous_grants").await else {
         return;
     };
@@ -366,7 +367,7 @@ async fn backup_rejects_numeric_dangerous_grants_and_automod_actions() {
 
 #[tokio::test]
 async fn backup_budgets_are_shared_per_guild_and_independent_by_operation() {
-    use pinchora_core::i18n::Lang;
+    use pinchora_core::infra::i18n::Lang;
     let Some(sim) = Sim::new("backup_rate_limit").await else {
         return;
     };
@@ -390,7 +391,8 @@ async fn backup_budgets_are_shared_per_guild_and_independent_by_operation() {
 
 #[tokio::test]
 async fn backup_editor_validation_rejects_unclean_values_limits_and_orphan_reactions() {
-    use pinchora_core::{config_backup::Names, i18n::Lang};
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::infra::i18n::Lang;
     let Some(sim) = Sim::new("backup_editor_validation").await else {
         return;
     };
@@ -435,7 +437,8 @@ async fn backup_editor_validation_rejects_unclean_values_limits_and_orphan_react
 
 #[tokio::test]
 async fn backup_restore_checks_permissions_and_writes_discord_audit() {
-    use pinchora_core::config_backup::{Names, Policy};
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
     let Some(mut sim) = Sim::new("backup_restore_audit").await else {
         return;
     };
@@ -551,10 +554,10 @@ pub(super) fn mock(state: &Mock, method: &Method, parts: &[&str]) -> Option<(Sta
 
 #[tokio::test]
 async fn backup_channel_types_are_checked_for_numeric_ids_too() {
-    use pinchora_core::{
-        config_backup::{Import, Names, Policy},
-        i18n::Lang,
-    };
+    use pinchora_core::admin::config_backup::Import;
+    use pinchora_core::admin::config_backup::Names;
+    use pinchora_core::admin::config_backup::Policy;
+    use pinchora_core::infra::i18n::Lang;
     let Some(sim) = Sim::new("backup_channel_types").await else {
         return;
     };
@@ -612,11 +615,11 @@ async fn utility_and_events_obey_command_control_on_slash_buttons_and_modals() {
                 )]),
                 ..Config::default()
             };
-            pinchora_commands::routing::normalize_control(&config)
+            pinchora_commands::infra::routing::normalize_control(&config)
                 .validate(
                     &pinchora_commands::control_catalog(),
                     &[],
-                    pinchora_core::i18n::Lang::En,
+                    pinchora_core::infra::i18n::Lang::En,
                 )
                 .unwrap();
             sim.app.db.set_command_control(sim.guild, &config).await.unwrap();

@@ -1,14 +1,20 @@
 //! `/case` and `/reason`: look a case up, and give it a reason after the fact.
 
-use pinchora_core::{
-    moderation::{CaseKind, check_reason, outranks},
-    t,
-};
+use pinchora_core::moderation::moderation::CaseKind;
+use pinchora_core::moderation::moderation::check_reason;
+use pinchora_core::moderation::moderation::outranks;
+use pinchora_core::t;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::guild::Permissions;
 
-use super::{Moderator, Ranks, case_embed, members::private, permitted, refresh_post};
-use crate::{Cx, util::mention};
+use crate::Cx;
+use crate::commands::moderation::Moderator;
+use crate::commands::moderation::Ranks;
+use crate::commands::moderation::case_embed;
+use crate::commands::moderation::members::private;
+use crate::commands::moderation::permitted;
+use crate::commands::moderation::refresh_post;
+use crate::infra::util::mention;
 
 /// Anyone who can do one of the moderation commands may read and annotate the cases.
 const STAFF: Permissions = Permissions::BAN_MEMBERS

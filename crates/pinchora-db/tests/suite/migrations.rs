@@ -50,7 +50,7 @@ async fn automod_migrates_after_newer_versions() {
 #[tokio::test]
 async fn command_domains_upgrade_applied_0066_and_preserve_constraints() {
     let _isolation = crate::support::shared().await;
-    use pinchora_core::command_control::Config;
+    use pinchora_core::admin::command_control::Config;
     use serde_json::json;
     let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
         return;
@@ -120,7 +120,7 @@ async fn command_domains_upgrade_applied_0066_and_preserve_constraints() {
 #[tokio::test]
 async fn leveling_0077_preserves_existing_xp_and_levels() {
     let _isolation = crate::support::shared().await;
-    use pinchora_core::leveling_parity::LevelingParity;
+    use pinchora_core::progression::leveling_policy::LevelingPolicy;
     let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
         return;
     };
@@ -153,7 +153,7 @@ async fn leveling_0077_preserves_existing_xp_and_levels() {
         .await
         .unwrap();
     for (user, xp, level) in fixture {
-        assert_eq!(pinchora_core::leveling::level_of(xp), level);
+        assert_eq!(pinchora_core::progression::leveling::level_of(xp), level);
         sqlx::query("INSERT INTO users(id,xp) VALUES($1,$2)")
             .bind(user)
             .bind(xp)
@@ -186,11 +186,14 @@ async fn leveling_0077_preserves_existing_xp_and_levels() {
             .unwrap(),
         0
     );
-    let defaults: LevelingParity = serde_json::from_str("{}").unwrap();
+    let defaults: LevelingPolicy = serde_json::from_str("{}").unwrap();
     for (_, user, xp) in after {
         let expected = fixture.iter().find(|r| r.0 == user).unwrap().2;
         assert_eq!(defaults.level_of(xp), expected);
-        assert_eq!(defaults.progress(xp), pinchora_core::leveling::progress(xp));
+        assert_eq!(
+            defaults.progress(xp),
+            pinchora_core::progression::leveling::progress(xp)
+        );
     }
     let global: Vec<(i64, i64)> = sqlx::query_as("SELECT id,xp FROM users ORDER BY id")
         .fetch_all(&mut *tx)

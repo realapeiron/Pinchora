@@ -1,16 +1,21 @@
 //! The settings rules as the browser needs them, written to `web/src/lib/rules.json`: the limits,
 //! catalogues and defaults the forms show, and sample checks with the exact answers
-//! `pinchora_core::settings` gives. The SPA's instant checks are tested against those samples, so a
+//! `pinchora_core::admin::settings` gives. The SPA's instant checks are tested against those samples, so a
 //! rule changed here and forgotten there fails `committed_rules_match`.
 //!
 //! Rewrite after changing a rule: `cargo test -p pinchora-web rules -- --ignored write_rules`.
 
-use pinchora_core::{
-    card_design::{self as card, CardKind, Delivery},
-    leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE},
-    settings::{self, FieldError, MessageKind},
-    tags::{self, MatchKind, TriggerKind},
-};
+use pinchora_core::admin::card_design as card;
+use pinchora_core::admin::card_design::CardKind;
+use pinchora_core::admin::card_design::Delivery;
+use pinchora_core::admin::settings;
+use pinchora_core::admin::settings::FieldError;
+use pinchora_core::admin::settings::MessageKind;
+use pinchora_core::community::tags;
+use pinchora_core::community::tags::MatchKind;
+use pinchora_core::community::tags::TriggerKind;
+use pinchora_core::progression::leveling::MAX_MULTIPLIER;
+use pinchora_core::progression::leveling::VOICE_XP_RANGE;
 use pinchora_db::{MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, MAX_XP_RULES};
 use pinchora_render::{ACCENT_PRESETS, Theme};
 use serde_json::{Value, json};

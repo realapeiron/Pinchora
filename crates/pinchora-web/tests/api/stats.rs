@@ -1,5 +1,5 @@
 //! The public stats boundary through the real router and a mock Discord server.
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn public_stats_aggregate_hidden_activity_without_channel_ids() {
@@ -9,13 +9,13 @@ async fn public_stats_aggregate_hidden_activity_without_channel_ids() {
     let (guild, owner, mut manager) = h.managed_server().await;
     h.mock.stats_public_channels.store(true, Ordering::SeqCst);
     let hour = chrono::Utc::now();
-    let mut tally = pinchora_core::server_stats::HourTally {
+    let mut tally = pinchora_core::admin::server_stats::HourTally {
         messages: 9,
         ..Default::default()
     };
     tally.channels.insert(
         GENERAL,
-        pinchora_core::server_stats::Pair {
+        pinchora_core::admin::server_stats::Pair {
             messages: 9,
             voice_minutes: 0,
         },
@@ -26,20 +26,20 @@ async fn public_stats_aggregate_hidden_activity_without_channel_ids() {
         .write_stats_batch(&format!("web-private:{guild}"), guild, hour, &tally)
         .await
         .unwrap();
-    let mut visible = pinchora_core::server_stats::HourTally {
+    let mut visible = pinchora_core::admin::server_stats::HourTally {
         messages: 2,
         ..Default::default()
     };
     visible.channels.insert(
         NEWS,
-        pinchora_core::server_stats::Pair {
+        pinchora_core::admin::server_stats::Pair {
             messages: 2,
             voice_minutes: 0,
         },
     );
     visible.public_channels.insert(
         NEWS,
-        pinchora_core::server_stats::Pair {
+        pinchora_core::admin::server_stats::Pair {
             messages: 2,
             voice_minutes: 0,
         },

@@ -51,7 +51,7 @@ async fn source_and_post_claims_lease_only_the_requested_batch() {
             panic!("feed not added");
         };
         for i in 0..3 {
-            let item = pinchora_core::feeds::Item {
+            let item = pinchora_core::community::feeds::Item {
                 id: format!("item-{i}"),
                 ..Default::default()
             };
@@ -208,7 +208,7 @@ async fn webhook_replay_is_atomic_and_cannot_break_a_poll_lease() {
             .unwrap();
     assert!(registered, "a replay must not revoke the replacement subscription");
     // Even concurrent live polls can queue only one go-live post for the same stream.
-    let items = [pinchora_core::feeds::Item {
+    let items = [pinchora_core::community::feeds::Item {
         id: format!("stream-{user}"),
         published: Some(Utc::now()),
         ..Default::default()

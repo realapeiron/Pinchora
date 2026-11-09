@@ -6,7 +6,7 @@ use pinchora_game::{Availability, Category, Content, house};
 use pinchora_render::thousands;
 use twilight_model::channel::message::Component;
 
-use super::*;
+use crate::*;
 
 /// A picture's size, once it is seen to be a PNG.
 fn size_of(reply: &Reply) -> (u32, u32) {

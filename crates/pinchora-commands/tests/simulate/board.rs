@@ -1,18 +1,29 @@
 //! Board and puzzle games through the real handlers: Reef Chess, Pearl Checkers, Sea Fleet, Pixel Picross
 //! and Tide 2048. Pictures land in `target/sim/<test>/`.
 
-use pinchora_game::play::{
-    fleet::{self, Fleet, Sea},
-    picross::{self, Puzzle},
-    tide2048,
-};
+use pinchora_game::play::fleet;
+use pinchora_game::play::fleet::Fleet;
+use pinchora_game::play::fleet::Sea;
+use pinchora_game::play::picross;
+use pinchora_game::play::picross::Puzzle;
+use pinchora_game::play::tide2048;
 use serde_json::json;
 use twilight_model::channel::message::Component;
 
-use super::{
-    Post, Reply, SWEEPS, Sim, duel, expire, forget_late_games, fund, int_option, message_of, record_of, session_of,
-    shells, unique,
-};
+use crate::Post;
+use crate::Reply;
+use crate::SWEEPS;
+use crate::Sim;
+use crate::duel;
+use crate::expire;
+use crate::forget_late_games;
+use crate::fund;
+use crate::int_option;
+use crate::message_of;
+use crate::record_of;
+use crate::session_of;
+use crate::shells;
+use crate::unique;
 
 /// Who is to move in a duel message that says `<@id>'s move` or `<@id> fires`.
 fn mover(reply: &Reply, a: u64, b: u64) -> u64 {
@@ -349,14 +360,14 @@ async fn help_and_stats_list_the_board_games() {
     };
     let user = unique();
     let help = sim.command(user, "help", json!([])).await;
-    let areas = super::help_areas(&help);
+    let areas = crate::help_areas(&help);
     for area in ["Duels", "Puzzles & word games"] {
         assert!(
             areas.iter().any(|a| a == area || a.starts_with(&format!("{area} ("))),
             "{area} in {areas:?}"
         );
     }
-    let stats = sim.command(user, "play", json!([super::sub("stats", vec![])])).await;
+    let stats = sim.command(user, "play", json!([crate::sub("stats", vec![])])).await;
     for game in [
         "Sea Fleet",
         "Pixel Picross",
@@ -812,7 +823,7 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
     let (picture, variant) = picross::daily(day);
     let puzzle = Puzzle::new(picture, variant);
 
-    let board = sim.command(user, "play", json!([super::sub("picross", vec![])])).await;
+    let board = sim.command(user, "play", json!([crate::sub("picross", vec![])])).await;
     assert!(board.ephemeral, "the puzzle is private");
     assert_eq!(png_size(&board), (540, 610));
     assert!(board.title().starts_with("Daily picross #"), "{}", board.title());
@@ -820,7 +831,7 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
     assert!(board.has_button("Mark cells") && board.has_button("Check (3 left)"));
     // Everyone gets the same puzzle on a day.
     let other = sim
-        .command(friend, "play", json!([super::sub("picross", vec![])]))
+        .command(friend, "play", json!([crate::sub("picross", vec![])]))
         .await;
     assert_eq!(other.title(), board.title());
 
@@ -887,7 +898,7 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
     assert_eq!(record_of(&sim, user, "picross").await, (1, 1));
 
     // Solved is solved: the board comes back finished, a second try pays nothing, the clock must not matter.
-    let revisit = sim.command(user, "play", json!([super::sub("picross", vec![])])).await;
+    let revisit = sim.command(user, "play", json!([crate::sub("picross", vec![])])).await;
     assert!(
         revisit.description().contains("You found a"),
         "{}",
@@ -954,7 +965,7 @@ async fn picross_streaks_pay_more_and_practice_puzzles_are_endless_but_capped() 
     }
     let (picture, variant) = picross::daily(day);
     let puzzle = Puzzle::new(picture, variant);
-    let mut board = sim.command(user, "play", json!([super::sub("picross", vec![])])).await;
+    let mut board = sim.command(user, "play", json!([crate::sub("picross", vec![])])).await;
     for y in 0..picross::SIZE {
         let values = row_values(&puzzle, y);
         if values.is_empty() {
@@ -978,7 +989,7 @@ async fn picross_streaks_pay_more_and_practice_puzzles_are_endless_but_capped() 
         .command(
             user,
             "play",
-            json!([super::sub("picross", vec![super::text_option("mode", "practice")])]),
+            json!([crate::sub("picross", vec![crate::text_option("mode", "practice")])]),
         )
         .await;
     assert_eq!(practice.title(), "Practice picross");
@@ -1033,7 +1044,7 @@ async fn tide_2048_slides_remembers_the_game_and_pays_for_a_big_tile() {
         return;
     };
     let user = unique();
-    let board = sim.command(user, "play", json!([super::sub("2048", vec![])])).await;
+    let board = sim.command(user, "play", json!([crate::sub("2048", vec![])])).await;
     assert!(board.ephemeral);
     assert_eq!(board.files[0].0, "tide2048.png");
     assert_eq!(png_size(&board), (560, 712));
@@ -1070,7 +1081,7 @@ async fn tide_2048_slides_remembers_the_game_and_pays_for_a_big_tile() {
     );
     assert_eq!(stale.files.len(), 1, "the click shows the board as it is");
     // The command picks the same game up again.
-    let again = sim.command(user, "play", json!([super::sub("2048", vec![])])).await;
+    let again = sim.command(user, "play", json!([crate::sub("2048", vec![])])).await;
     assert!(again.has_button("Finish"));
     assert_eq!(
         sim.app
@@ -1097,7 +1108,7 @@ async fn tide_2048_slides_remembers_the_game_and_pays_for_a_big_tile() {
         .execute(sim.app.db.pool())
         .await
         .expect("set the board");
-    let live = sim.command(user, "play", json!([super::sub("2048", vec![])])).await;
+    let live = sim.command(user, "play", json!([crate::sub("2048", vec![])])).await;
     assert!(
         !live.button("→").disabled && live.button("←").disabled,
         "left does nothing, right moves"
@@ -1112,7 +1123,7 @@ async fn tide_2048_slides_remembers_the_game_and_pays_for_a_big_tile() {
     assert!(over.has_button("New game") && !over.has_button("Finish"));
     assert_eq!(shells(&sim, user).await, 10);
     assert_eq!(record_of(&sim, user, "tide2048").await, (1, 0));
-    let stats = sim.command(user, "play", json!([super::sub("stats", vec![])])).await;
+    let stats = sim.command(user, "play", json!([crate::sub("stats", vec![])])).await;
     assert!(
         stats.field("🌊 Tide 2048").contains("Best score **1,234**"),
         "{}",
@@ -1145,7 +1156,7 @@ async fn tide_2048_slides_remembers_the_game_and_pays_for_a_big_tile() {
         .execute(sim.app.db.pool())
         .await
         .expect("set the moves");
-    let board = sim.command(user, "play", json!([super::sub("2048", vec![])])).await;
+    let board = sim.command(user, "play", json!([crate::sub("2048", vec![])])).await;
     let ended = sim.click(user, &board, "Finish").await;
     assert!(
         ended.description().contains("Final score **900**"),
@@ -1269,7 +1280,7 @@ async fn picross_checks_only_count_the_wrong_marks_are_limited_and_cost_reward()
     let (picture, variant) = picross::daily(day);
     let puzzle = Puzzle::new(picture, variant);
     let in_picture = puzzle.solution().iter().filter(|&&c| c).count();
-    let board = sim.command(user, "play", json!([super::sub("picross", vec![])])).await;
+    let board = sim.command(user, "play", json!([crate::sub("picross", vec![])])).await;
     assert!(board.has_button("Check (3 left)"));
 
     // The old trick: mark every cell, ask which are wrong, clear the red ones. A check now only says how many.
@@ -1351,7 +1362,7 @@ async fn picross_checks_only_count_the_wrong_marks_are_limited_and_cost_reward()
         .command(
             user,
             "play",
-            json!([super::sub("picross", vec![super::text_option("mode", "practice")])]),
+            json!([crate::sub("picross", vec![crate::text_option("mode", "practice")])]),
         )
         .await;
     let game = sim
@@ -1388,7 +1399,7 @@ async fn practice_puzzles_keep_clear_of_the_coming_dailies_and_are_never_upside_
     let user = unique();
     let day = sim.app.now().timestamp().div_euclid(86_400);
     let allowed = picross::practice_pictures(day);
-    let practice = || json!([super::sub("picross", vec![super::text_option("mode", "practice")])]);
+    let practice = || json!([crate::sub("picross", vec![crate::text_option("mode", "practice")])]);
     let first = sim.command(user, "play", practice()).await;
     for round in 0..40 {
         let game = sim

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use pinchora_commands::{PermissionChange, on_permissions_changed, on_text_command};
 
-use super::*;
+use crate::*;
 
 /// What a server overrides for one command: (target id, 1 role / 2 user / 3 channel, allowed).
 type Overrides<'a> = &'a [(u64, u8, bool)];
@@ -832,7 +832,7 @@ async fn private_text_answers_are_deleted_when_the_bot_shuts_down() {
 /// else the server's default, else English; `/setup server` follows the interaction's language.
 #[tokio::test]
 async fn text_commands_answer_in_the_members_or_the_servers_language() {
-    use pinchora_core::i18n::Lang;
+    use pinchora_core::infra::i18n::Lang;
 
     let Some(mut sim) = Sim::new("text_commands_answer_in_the_members_or_the_servers_language").await else {
         return;
@@ -908,7 +908,8 @@ async fn text_commands_answer_in_the_members_or_the_servers_language() {
 
 #[tokio::test]
 async fn legacy_paths_and_server_aliases_redirect_with_localized_daily_notices() {
-    use pinchora_core::{command_control::Config, i18n::Lang};
+    use pinchora_core::admin::command_control::Config;
+    use pinchora_core::infra::i18n::Lang;
     let Some(mut sim) = Sim::new("legacy_prefix_paths").await else {
         return;
     };

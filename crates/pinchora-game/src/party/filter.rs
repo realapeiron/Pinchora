@@ -5,7 +5,7 @@
 //! a few misspellings and letters starred out ("f*ck"). Short stems are only caught where a swear word
 //! really carries them (the start of "shitty", the end of "bullshit"), never in the middle of a name.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 /// Words nobody types in a family friendly game: strong profanity and slurs.
 const BASE: &[&str] = &[
@@ -309,7 +309,7 @@ pub fn is_profane_for(text: &str, strict: bool, lang: Lang) -> bool {
                 .filter(|chunk| !chunk.chars().any(|c| "çğıöşüÇĞİÖŞÜ".contains(c)))
                 .collect::<Vec<_>>()
                 .join(" ");
-            super::filter_tr::is_profane(text, strict) || is_profane(&english, strict)
+            crate::party::filter_tr::is_profane(text, strict) || is_profane(&english, strict)
         }
     }
 }
@@ -331,7 +331,7 @@ pub fn is_profane(text: &str, strict: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::filter::*;
 
     #[test]
     fn plain_text_passes() {

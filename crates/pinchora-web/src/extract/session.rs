@@ -2,15 +2,13 @@ use std::time::Duration;
 
 use axum::{extract::FromRequestParts, http::request::Parts};
 
-use crate::{
-    auth::{
-        csrf,
-        session::{self, SESSION_COOKIE, Session},
-    },
-    error::ApiError,
-    ratelimit,
-    state::WebState,
-};
+use crate::auth::csrf;
+use crate::auth::session;
+use crate::auth::session::SESSION_COOKIE;
+use crate::auth::session::Session;
+use crate::error::ApiError;
+use crate::ratelimit;
+use crate::state::WebState;
 
 /// Reads per session per minute.
 const READS_PER_MINUTE: i64 = 300;

@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 fn definition() -> Value {
     json!({"name":"greet","enabled":false,"trigger":{"kind":"button"},"conditions":[],"actions":[{"kind":"set_var","scope":"server","key":"visits","value":"1"}]})
 }
@@ -12,7 +12,12 @@ async fn workflows_crud_dry_run_and_audit() {
     h.state
         .app
         .db
-        .set_module(guild, pinchora_core::modules::Module::Birthdays, Some(false), None)
+        .set_module(
+            guild,
+            pinchora_core::admin::modules::Module::Birthdays,
+            Some(false),
+            None,
+        )
         .await
         .unwrap();
     h.state.app.forget_guild_settings(guild).await;

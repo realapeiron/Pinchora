@@ -1,5 +1,5 @@
 //! In-world adapters. Inventory, friendships, notes, likes and events keep their existing owners.
-use super::RoomKey;
+use crate::reef::RoomKey;
 use crate::{
     audit, discord,
     error::{ApiError, ApiJson, ApiResult},
@@ -81,7 +81,7 @@ pub async fn membership(state: &WebState, guild: u64, user: u64) -> anyhow::Resu
             .db
             .guild_modules(guild)
             .await?
-            .rule(pinchora_core::modules::Module::Plaza)
+            .rule(pinchora_core::admin::modules::Module::Plaza)
             .enabled,
         "access denied"
     );
@@ -171,7 +171,7 @@ async fn social(State(s): State<WebState>, c: CurrentSession) -> ApiResult<Json<
         let online = if p.presence {
             s.app
                 .cache
-                .reef_get(&super::routing::controller_key(other))
+                .reef_get(&crate::reef::routing::controller_key(other))
                 .await?
                 .is_some()
         } else {
@@ -364,7 +364,7 @@ async fn event_rows(s: &WebState, guild: u64, roles: &[u64]) -> ApiResult<Vec<Va
         .db
         .guild_modules(guild)
         .await?
-        .rule(pinchora_core::modules::Module::Events)
+        .rule(pinchora_core::admin::modules::Module::Events)
         .enabled
     {
         return Err(denied());
@@ -397,7 +397,7 @@ async fn schedule(
         .db
         .guild_modules(guild)
         .await?
-        .rule(pinchora_core::modules::Module::Events)
+        .rule(pinchora_core::admin::modules::Module::Events)
         .enabled
     {
         return Err(denied());
@@ -416,7 +416,7 @@ async fn schedule(
         channel_id: None,
         host_id: Some(c.session.user_id as i64),
         options: {
-            let mut options = pinchora_core::events::default_options();
+            let mut options = pinchora_core::community::events::default_options();
             options[0].capacity = 32;
             options
         },

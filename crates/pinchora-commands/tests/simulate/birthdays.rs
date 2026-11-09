@@ -1,5 +1,5 @@
 //! Birthday opt-in, privacy, setup and pixel card through the real interaction handlers.
-use super::*;
+use crate::*;
 const TICKS: fixture_lock::FixtureLock = fixture_lock::FixtureLock(7);
 
 #[tokio::test]
@@ -136,7 +136,7 @@ async fn local_midnight_posts_one_pixel_card_and_one_gift() {
         )
         .await
         .unwrap();
-    let settings = pinchora_core::birthdays::BirthdaySettings {
+    let settings = pinchora_core::community::birthdays::BirthdaySettings {
         enabled: true,
         channel_id: Some(sim.channel),
         shells_gift: 100,
@@ -196,7 +196,7 @@ async fn thousand_birthdays_are_batched_after_restart_with_safe_mentions() {
         .unwrap();
     db.save_birthday_settings(
         sim.guild,
-        &pinchora_core::birthdays::BirthdaySettings {
+        &pinchora_core::community::birthdays::BirthdaySettings {
             enabled: true,
             channel_id: Some(sim.channel),
             message: "Happy birthday {user}! <@123> <@&456>".into(),
@@ -262,7 +262,7 @@ async fn birthday_role_rechecks_safety_and_expired_grants_never_reappear() {
     .unwrap();
     db.save_birthday_settings(
         sim.guild,
-        &pinchora_core::birthdays::BirthdaySettings {
+        &pinchora_core::community::birthdays::BirthdaySettings {
             enabled: true,
             channel_id: Some(sim.channel),
             role_id: Some(role),
@@ -360,7 +360,7 @@ async fn birthday_keeps_existing_roles_and_obeys_module_switch() {
     .unwrap();
     db.save_birthday_settings(
         sim.guild,
-        &pinchora_core::birthdays::BirthdaySettings {
+        &pinchora_core::community::birthdays::BirthdaySettings {
             enabled: true,
             channel_id: Some(sim.channel),
             role_id: Some(role),
@@ -370,16 +370,26 @@ async fn birthday_keeps_existing_roles_and_obeys_module_switch() {
     )
     .await
     .unwrap();
-    db.set_module(sim.guild, pinchora_core::modules::Module::Birthdays, Some(false), None)
-        .await
-        .unwrap();
+    db.set_module(
+        sim.guild,
+        pinchora_core::admin::modules::Module::Birthdays,
+        Some(false),
+        None,
+    )
+    .await
+    .unwrap();
     sim.app.forget_guild_settings(sim.guild).await;
     pinchora_commands::birthdays_tick(&sim.app).await.unwrap();
     assert!(!sim.posts().iter().any(|p| p.channel == sim.channel));
     assert_eq!(db.user(user).await.unwrap().credits, 0);
-    db.set_module(sim.guild, pinchora_core::modules::Module::Birthdays, Some(true), None)
-        .await
-        .unwrap();
+    db.set_module(
+        sim.guild,
+        pinchora_core::admin::modules::Module::Birthdays,
+        Some(true),
+        None,
+    )
+    .await
+    .unwrap();
     sim.app.forget_guild_settings(sim.guild).await;
     pinchora_commands::birthdays_tick(&sim.app).await.unwrap();
     assert_eq!(db.user(user).await.unwrap().credits, 100);

@@ -299,7 +299,7 @@ pub fn is_profane(text: &str, strict: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::filter_tr::*;
 
     #[test]
     fn everyday_turkish_passes_even_for_strict_servers() {

@@ -1,8 +1,13 @@
-use super::{
-    Command, Envelope, Input, Peer, RoomKey,
-    navigation::{self, Grid, Target, Tile},
-    socket::room_access,
-};
+use crate::reef::Command;
+use crate::reef::Envelope;
+use crate::reef::Input;
+use crate::reef::Peer;
+use crate::reef::RoomKey;
+use crate::reef::navigation;
+use crate::reef::navigation::Grid;
+use crate::reef::navigation::Target;
+use crate::reef::navigation::Tile;
+use crate::reef::socket::room_access;
 use crate::state::WebState;
 use pinchora_commands::RoomData;
 use serde_json::{Value, json};
@@ -267,11 +272,11 @@ impl Room {
         if peer.close.borrow().is_some() {
             return;
         }
-        if let Err(reason) = super::routing::controller(state, &peer).await {
+        if let Err(reason) = crate::reef::routing::controller(state, &peer).await {
             peer.terminate(reason);
             return;
         }
-        if !super::routing::in_room(state, &peer, self.key).await {
+        if !crate::reef::routing::in_room(state, &peer, self.key).await {
             return;
         }
         if room_access(state, self.key, peer.user).await.is_err() {
@@ -326,18 +331,18 @@ impl Room {
         if member.peer.close.borrow().is_some() {
             return Ok(());
         }
-        if let Err(reason) = super::routing::controller(state, &member.peer).await {
+        if let Err(reason) = crate::reef::routing::controller(state, &member.peer).await {
             member.peer.terminate(reason);
             return Ok(());
         }
-        if !super::routing::in_room(state, &member.peer, self.key).await {
+        if !crate::reef::routing::in_room(state, &member.peer, self.key).await {
             self.leave(token);
             return Ok(());
         }
         // Recovery and duplicate-command snapshots expose the same private room as movement.
         // A remote revocation must apply before any early snapshot return.
         if let Err(error) = room_access(state, self.key, member.peer.user).await {
-            member.peer.terminate(super::socket::access_close_reason(&error));
+            member.peer.terminate(crate::reef::socket::access_close_reason(&error));
             return Ok(());
         }
         if envelope.sequence > 0 && envelope.sequence <= member.last_sequence {
@@ -360,7 +365,9 @@ impl Room {
         if let Command::GameAction { game_id, payload } = &envelope.command {
             let peer = member.peer.clone();
             let id = game_id.parse::<i64>().unwrap_or(0);
-            match super::games::action(state, peer.user, id, payload.clone(), Some(self.key), Some(&self.fence)).await {
+            match crate::reef::games::action(state, peer.user, id, payload.clone(), Some(self.key), Some(&self.fence))
+                .await
+            {
                 Ok(game) => {
                     peer.send(&self.epoch, request, json!({"type":"game_changed","game":game}));
                     for m in self.members.values().filter(|m| m.peer.user != peer.user) {
@@ -514,7 +521,7 @@ pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, i
                 tick.tick().await;
                 // A row-lock wait can exceed a second while the fence is still valid.
                 // Bound renewal by the lease window; valid still rejects expired fences.
-                if !matches!(tokio::time::timeout(pinchora_db::ReefFence::LEASE, super::routing::valid(&state, key, &fence)).await, Ok(true)) {
+                if !matches!(tokio::time::timeout(pinchora_db::ReefFence::LEASE, crate::reef::routing::valid(&state, key, &fence)).await, Ok(true)) {
                     break;
                 }
             }
@@ -554,7 +561,7 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
     loop {
         tokio::select! {
             command=input.recv()=>{
-                if !super::routing::valid(state,key,fence).await {break;}
+                if !crate::reef::routing::valid(state,key,fence).await {break;}
                 match command {
                     Some(Input::Join(peer,request))=>room.join(state,peer,request).await,
                     Some(Input::Leave(token))=>room.leave(&token),
@@ -568,7 +575,7 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                 }
             }
             _=tick.tick()=>{
-                if !super::routing::valid(state,key,fence).await {break;}
+                if !crate::reef::routing::valid(state,key,fence).await {break;}
                 let now=Instant::now();
                 let gone:Vec<_>=room.members.iter().filter(|(_,m)|m.peer.close.borrow().is_some() || m.peer.outgoing.is_closed()).map(|(k,_)|k.clone()).collect();
                 for token in gone {room.leave(&token);}
@@ -577,7 +584,7 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                 } else {empty_since=now;}
                 if refreshed.elapsed()>=Duration::from_secs(1) {
                     if key.instance.is_some() {
-                        let _=state.app.cache.reef_set_fenced(&super::routing::lease_key(key), &room.epoch,
+                        let _=state.app.cache.reef_set_fenced(&crate::reef::routing::lease_key(key), &room.epoch,
                             &format!("occupancy:{}",key.name()), &room.members.len().to_string(),
                             pinchora_db::ReefFence::LEASE.as_millis() as u64).await;
                     }
@@ -587,9 +594,9 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
                 if policy.elapsed()>=Duration::from_secs(1) {
                     let mut relocated=Vec::new();
                     for (token,member) in &room.members {
-                        if !super::routing::in_room(state,&member.peer,key).await {relocated.push(token.clone());continue;}
-                        if let Err(reason)=super::routing::controller(state,&member.peer).await {member.peer.terminate(reason);}
-                        else if let Err(error)=room_access(state,key,member.peer.user).await {member.peer.terminate(super::socket::access_close_reason(&error));}
+                        if !crate::reef::routing::in_room(state,&member.peer,key).await {relocated.push(token.clone());continue;}
+                        if let Err(reason)=crate::reef::routing::controller(state,&member.peer).await {member.peer.terminate(reason);}
+                        else if let Err(error)=room_access(state,key,member.peer.user).await {member.peer.terminate(crate::reef::socket::access_close_reason(&error));}
                     }
                     for token in relocated {room.leave(&token);}
                     policy=Instant::now();
@@ -608,7 +615,7 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::reef::room::*;
 
     #[tokio::test]
     async fn layout_and_outbox_stay_together_when_a_commit_interleaves_the_reads() {

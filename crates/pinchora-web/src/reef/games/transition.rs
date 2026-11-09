@@ -1,4 +1,8 @@
-use super::{Intent, ReefGame, ReefGamePlayer, ReefGameStep, Session};
+use crate::reef::games::Intent;
+use crate::reef::games::ReefGame;
+use crate::reef::games::ReefGamePlayer;
+use crate::reef::games::ReefGameStep;
+use crate::reef::games::Session;
 
 pub(super) fn transition(
     g: &ReefGame,

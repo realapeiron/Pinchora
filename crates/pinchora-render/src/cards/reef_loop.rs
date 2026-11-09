@@ -1,5 +1,7 @@
 //! Original procedural reef scenery with atlas fish/furniture, integer pixel scaling.
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{background, data_uri_png, escape, panel, sprite, truncate_to},
@@ -216,7 +218,7 @@ impl ReefCard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::reef_loop::*;
     #[test]
     fn atlas_pixels_scale_without_interpolation() {
         let mut sprite = image::RgbaImage::new(2, 2);

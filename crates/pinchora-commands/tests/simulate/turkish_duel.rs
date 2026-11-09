@@ -4,10 +4,11 @@
 //! whole channel reads (a challenge, a board, a time-out) stays in the server's language for its whole life,
 //! whoever clicked it. Pictures land in `target/sim/<test>/`.
 
-use pinchora_core::i18n::Lang;
-use pinchora_game::play::fleet::{self, Fleet};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_game::play::fleet;
+use pinchora_game::play::fleet::Fleet;
 
-use super::*;
+use crate::*;
 
 /// A bot the duels turn away.
 const BOT: u64 = 55;

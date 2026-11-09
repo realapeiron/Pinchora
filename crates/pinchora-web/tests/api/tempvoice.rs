@@ -2,7 +2,7 @@
 
 use pinchora_db::NewTempRoom;
 
-use super::*;
+use crate::*;
 
 fn g(guild: u64) -> String {
     format!("/api/guilds/{guild}/temp-voice")
@@ -303,7 +303,7 @@ async fn temp_voice_field_errors_follow_the_servers_language() {
     let (guild, _, mut browser) = h.managed_server().await;
     h.state
         .app
-        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .set_guild_lang(guild, Some(pinchora_core::infra::i18n::Lang::Tr))
         .await
         .unwrap();
     let bad = browser

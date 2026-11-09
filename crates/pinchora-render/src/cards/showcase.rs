@@ -4,9 +4,13 @@
 use std::fmt::Write;
 
 use image::{Rgba, RgbaImage, imageops};
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::{PIXEL, SANS, SpriteArt, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::SpriteArt;
+use crate::cards::text;
 use crate::{
     Theme, encode_png,
     svg::{data_uri_png, escape, notched_path, pixel_shadow, truncate_to},
@@ -321,7 +325,7 @@ fn house_tile(out: &mut String, t: &Theme, lang: Lang, slot: &ShowcaseSlot<'_>, 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::showcase::*;
 
     fn opaque(w: u32, h: u32, margin: u32) -> RgbaImage {
         RgbaImage::from_fn(w, h, |x, y| {

@@ -1,4 +1,4 @@
-use super::*;
+use crate::privacy::*;
 
 #[test]
 fn fixture_id_batches_never_overlap() {

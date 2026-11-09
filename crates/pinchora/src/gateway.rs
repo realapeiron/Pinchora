@@ -13,10 +13,10 @@ use pinchora_commands::{
     voice_snapshot,
 };
 use pinchora_commands::{ReactionEvent, on_reaction};
-use pinchora_core::{
-    Config, cluster,
-    telemetry::{self, Readiness},
-};
+use pinchora_core::Config;
+use pinchora_core::infra::cluster;
+use pinchora_core::infra::telemetry;
+use pinchora_core::infra::telemetry::Readiness;
 use tokio::sync::watch;
 use twilight_gateway::{
     CloseFrame, ConfigBuilder, Event, EventTypeFlags, Intents, Session, Shard, ShardId, StreamExt as _,
@@ -194,7 +194,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         loop {
             tokio::time::sleep(delay).await;
             let started = Instant::now();
-            match pinchora_commands::status::fetch_guild_counts(&counts_app.http, total).await {
+            match pinchora_commands::admin::status::fetch_guild_counts(&counts_app.http, total).await {
                 Ok(by_shard) => {
                     delay = GUILD_REFRESH;
                     if counts_tx.send(Some(GuildCounts { started, by_shard })).is_err() {
@@ -256,16 +256,16 @@ async fn run_shard(
                 if !counts_ready {
                     continue;
                 }
-                let health = pinchora_commands::status::ShardHealth {
+                let health = pinchora_commands::admin::status::ShardHealth {
                     id,
                     total,
                     latency_ms: shard.latency().recent().first().map(|d| d.as_millis() as u64),
                     guilds: guilds.len() as u64,
                     members: guilds.values().sum(),
-                    rss_mb: if process_shard { pinchora_commands::status::process_rss_mb() } else { 0 },
+                    rss_mb: if process_shard { pinchora_commands::admin::status::process_rss_mb() } else { 0 },
                     uptime_seconds: started.elapsed().as_secs(),
                 };
-                if let Err(error) = pinchora_commands::status::publish_shard(&app.cache, &health).await {
+                if let Err(error) = pinchora_commands::admin::status::publish_shard(&app.cache, &health).await {
                     tracing::debug!(shard = id, %error, "status heartbeat failed");
                 }
             }
@@ -421,7 +421,7 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::VoiceStateUpdate(event) => {
             let app2 = app.clone();
             app.spawn_event("voice_state_update", async move {
-                pinchora_commands::on_mod_parity_voice(&app2, &event.0).await;
+                pinchora_commands::on_moderation_policy_voice(&app2, &event.0).await;
                 if let Err(error) = on_voice_state_update(app2, *event).await {
                     tracing::warn!(%error, "voice handler failed");
                 }
@@ -446,7 +446,7 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             // Everything the rebuild needs is taken here, and the guild is dropped: a storm of them at
             // identify must not sit in the event slots (a message or a member joining would be dropped)
             // holding every server's member list while the database answers.
-            pinchora_commands::seed_mod_parity_voice(app, &event);
+            pinchora_commands::seed_moderation_policy_voice(app, &event);
             if let Some(snapshot) = voice_snapshot(app, *event) {
                 let app2 = app.clone();
                 app.spawn_rebuild(async move {

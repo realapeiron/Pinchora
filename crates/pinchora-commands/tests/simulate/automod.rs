@@ -1,7 +1,8 @@
-//! F1 through real gateway/interaction handlers, real Postgres/Redis and mock Discord REST.
-use super::*;
+//! through real gateway/interaction handlers, real Postgres/Redis and mock Discord REST.
+use crate::*;
 use pinchora_commands::{on_automod_execution, sync_automod};
-use pinchora_core::automod::{self as rules, Action};
+use pinchora_core::moderation::automod as rules;
+use pinchora_core::moderation::automod::Action;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -563,7 +564,14 @@ async fn automod_hierarchy_role_safety_escalation_and_warn_ladder() {
         .db
         .replace_warn_thresholds(
             sim.guild,
-            &[pinchora_core::moderation::check_threshold(1, "timeout", Some(chrono::Duration::minutes(2))).unwrap()],
+            &[
+                pinchora_core::moderation::moderation::check_threshold(
+                    1,
+                    "timeout",
+                    Some(chrono::Duration::minutes(2)),
+                )
+                .unwrap(),
+            ],
         )
         .await
         .unwrap();

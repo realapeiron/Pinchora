@@ -3,7 +3,7 @@
 use chrono::{Duration, Utc};
 use pinchora_db::{GuildInvite, InviteObservation};
 
-use super::*;
+use crate::*;
 
 fn observed(code: &str, inviter: u64, uses: i32) -> GuildInvite {
     GuildInvite {

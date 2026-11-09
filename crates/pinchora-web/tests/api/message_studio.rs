@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn configuration_delegates_can_use_every_studio_route_until_their_role_is_removed() {
@@ -33,7 +33,7 @@ async fn configuration_delegates_can_use_every_studio_route_until_their_role_is_
             guild,
             CardKind::Boost,
             None,
-            pinchora_core::card_design::Delivery::TextOnly,
+            pinchora_core::admin::card_design::Delivery::TextOnly,
             owner,
         )
         .await
@@ -336,7 +336,8 @@ async fn preview_matches_sent_content_embeds_branding_rows_and_mentions() {
     let posts = h.mock.posts.lock().unwrap();
     let wire: Value = serde_json::from_str(&posts.last().unwrap().1).unwrap();
     assert_eq!(wire["content"], preview.json()["content"]);
-    let specs: Vec<pinchora_core::tags::EmbedSpec> = serde_json::from_value(preview.json()["embeds"].clone()).unwrap();
+    let specs: Vec<pinchora_core::community::tags::EmbedSpec> =
+        serde_json::from_value(preview.json()["embeds"].clone()).unwrap();
     assert_eq!(
         wire["embeds"],
         json!(specs.iter().map(pinchora_commands::embed_of).collect::<Vec<_>>())

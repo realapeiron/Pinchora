@@ -1,18 +1,19 @@
 //! `/config moderation` (the mod-log and direct messages), `/config warn-ladder` and `/config log-ignore`.
 
-use pinchora_core::{
-    i18n::Lang,
-    logging::{LogCategory, MAX_IGNORED},
-    moderation::{MAX_THRESHOLDS, Threshold, check_threshold},
-    server_events::parse_duration,
-    t,
-};
+use pinchora_core::admin::logging::LogCategory;
+use pinchora_core::admin::logging::MAX_IGNORED;
+use pinchora_core::admin::server_events::parse_duration;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::moderation::moderation::MAX_THRESHOLDS;
+use pinchora_core::moderation::moderation::Threshold;
+use pinchora_core::moderation::moderation::check_threshold;
+use pinchora_core::t;
 use pinchora_db::ModSettings;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_model::{application::interaction::InteractionChannel, guild::Role};
 
-use super::words;
 use crate::Cx;
+use crate::commands::moderation::words;
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "moderation", desc = "Where cases go and whether members are told")]
@@ -163,7 +164,7 @@ pub struct ConfigLogIgnore {
 }
 
 /// The ignore lists in a line.
-pub(crate) fn ignore_summary(lang: Lang, config: &pinchora_core::logging::LogConfig) -> String {
+pub(crate) fn ignore_summary(lang: Lang, config: &pinchora_core::admin::logging::LogConfig) -> String {
     let list = |ids: &[u64], f: fn(u64) -> String| {
         if ids.is_empty() {
             t!(lang, "mod.setup.none")
@@ -261,7 +262,7 @@ impl LogCategoryChoice {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::commands::moderation::setup::*;
 
     #[test]
     fn every_category_can_be_picked() {

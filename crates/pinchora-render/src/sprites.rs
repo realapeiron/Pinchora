@@ -466,7 +466,7 @@ fn draw_glyph(img: &mut RgbaImage, glyph: &[&str], x: u32, y: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::sprites::*;
 
     /// A solid `w`×`h` pet in a larger frame with an eye near its top-left corner (on the second row,
     /// which flattening keeps), so a turn or a mirror shows.
@@ -621,7 +621,7 @@ mod tests {
 
 #[cfg(test)]
 mod glimmer_tests {
-    use super::*;
+    use crate::sprites::*;
     #[test]
     fn every_atlas_sprite_has_a_deterministic_visible_glimmer() {
         let atlas = SpriteStore::from_atlas(ATLAS_PNG, ATLAS_JSON).unwrap();

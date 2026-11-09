@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::{Duration as StdDuration, Instant};
 
 use chrono::{Duration, NaiveDate, Utc};
-use pinchora_core::economy::Period;
+use pinchora_core::economy::legacy::Period;
 use pinchora_db::{
     ACTIVE, Award, BottlePrize, Commit, DROP_BOTTLE, DROP_CRITTERS, Daily, Db, DerbyJoin, DuelStart, GiveawayOpen,
     Grab, NewDrop, NewGame, NewGiveaway, NewParty, NewRoom, PENDING, Pay, Payout, PlayerChange, Reroll, ShellLimits,

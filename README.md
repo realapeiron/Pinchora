@@ -150,7 +150,7 @@ it to the end of their transaction, so a claim that lands while a delete is stil
 then finds the tombstone.
 
 One lock order holds for every transaction that touches a player's rows (written down in
-`crates/pinchora-db/src/locks.rs`): first the locks of all its players at once, in id order (a duel's two
+`crates/pinchora-db/src/infra/locks.rs`): first the locks of all its players at once, in id order (a duel's two
 players, a giveaway's host and winners, a listing's buyer and seller, everyone a delete pays back or takes a
 like from), then the object it is about (session, giveaway, pet, listing, poll), then the writes. Chat XP
 stays one statement that writes `users` first, so the trigger takes the lock before anything else. A delete
@@ -164,7 +164,7 @@ a delete that met a player out of order starts over up to twelve more), which is
 attempt left nothing behind and every claim checks what was already used inside its own transaction.
 Tombstones are dropped after 35 days, by the reminder ticker. A test inserts into every table that names a
 player and one reads the schema, so a new table or an id column (`*_by`, id arrays included) must be listed
-in `crates/pinchora-db/src/privacy.rs` before it can ship.
+in `crates/pinchora-db/src/moderation/privacy.rs` before it can ship.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
@@ -219,7 +219,7 @@ channel when the bot starts is only noticed once their state changes.
 Moderation commands check the moderator's own permission (the one Discord would ask for: Ban Members for
 `/ban`, Manage Channels in the channel named for `/mod lock`, and so on; Administrator stands for all of them)
 from the member permissions Discord sends with the interaction, and the role hierarchy the way Discord does
-(`pinchora_core::moderation::may_act`): nobody acts on the owner, on themselves or on the bot, and both the
+(`pinchora_core::moderation::moderation::may_act`): nobody acts on the owner, on themselves or on the bot, and both the
 moderator (unless they own the server) and the bot must sit strictly above the member. A refusal is private
 and nothing reaches Discord. Every action opens a case numbered per server (`mod_cases`; the counter row in
 `mod_case_counters` is taken by each insert and held to the end of its transaction, so moderators acting at
@@ -247,7 +247,7 @@ gateway's unban event unless the member is banned again by then, and on the audi
 cases opened before it, so the ticker never lifts a newer ban. Cases stay when a member deletes their data (they are the server's record, so warns and bans
 cannot be wiped that way); the moderator's name is replaced by "Deleted user", as in the dashboard audit log.
 
-The server log routes every event through `pinchora_core::logging`: an event is logged when its group's
+The server log routes every event through `pinchora_core::admin::logging`: an event is logged when its group's
 older switch (members, names, bans, voice) is on and the event is not switched off on its own, into its
 category's channel or the log channel, unless the ignore lists (members, roles, channels with what sits under
 them, bots) leave it alone. Joins, leaves, names, avatars, voice (joins, leaves, moves, server mutes and
@@ -402,7 +402,7 @@ decor fragments buy is priced at that rate: a tier costs the mean catalogue pric
 shells for a common piece is 12 fragments, 458 is 65, 2,599 is 370, 13,658 is 1,950 and 62,166 is 8,900), about
 5, 27, 155, 819 and 3,739 spares, and a unit test fails when the catalogue drifts from the table. Those pieces
 are **soulbound**: the inventory row carries a `~bound` mark on the item id (`sofa__mint~bound`, see
-`pinchora_core::items`), which placing, storing, undoing and clearing keep, and the three ways a piece can
+`pinchora_core::games::items`), which placing, storing, undoing and clearing keep, and the three ways a piece can
 leave its owner refuse it, in the database as well as in the menus: the stall listing, a gift or plaza
 donation, and a partner's house (the partner editor leaves them off its menu).
 Time-tied critters and finds (a night jelly, a summer urchin, the moon pearl) only turn up in their time of day
@@ -456,7 +456,7 @@ log, giveaway, suggestion and poll messages) speak Turkish: the catalogs are `lo
 and `settings.toml`. Replies use the member's language; what answers nobody in particular (the giveaway, suggestion, poll and
 role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/setup
 language`), and a direct message (a level-up by DM, a suggestion's verdict) uses its recipient's own pick. The checks that
-refuse a setting (`pinchora_core::settings::FieldError`) carry a catalog key beside their English text: ask
+refuse a setting (`pinchora_core::admin::settings::FieldError`) carry a catalog key beside their English text: ask
 `error.text(lang)`; role refusals have `*_in(lang, …)` twins (`role_refusal_in`, `grant_refusal_in`, …) and the pixel cards
 (`PollCard`, `LevelUpCard`) take a `lang`. The classic welcome and goodbye card (`templates::classic`, what a server that
 never opened the card editor sends) draws its default headline (`HOŞ GELDİN`, Turkish capitals by `Lang::upper`) and its
@@ -584,7 +584,7 @@ meaning; existing custom content remains available through `/tag`. New collision
 `/rewards weekly|monthly`, `/customize bio`, and `/info wrapped` retain their original arguments
 and module ownership. The player leaves under points, voice, color, plaza and event remain available.
 
-The route manifest in `crates/pinchora-commands/src/routing/manifest.json` records every original
+The route manifest in `crates/pinchora-commands/src/infra/routing/manifest.json` records every original
 leaf, final path and rollout slice. Registration validates the 100-root budget, depth and 25-option
 limits. Migration `0066` expands old parent rules onto their exact replacement actions and preserves
 independent role/channel restrictions. Recovery protection is path-aware. Help lists canonical paths
@@ -684,7 +684,7 @@ roles. The commands are in the table above (`/setup roles`, `/setup roles`, `/co
   change Discord refuses for good (the member left, the role is gone, the bot may not) is dropped; one with no
   answer is tried again. Members who leave lose the roles still waiting for them.
 - **Sticky roles** need to know what a member held when they left, which Discord's leave event does not say. The
-  bot notes a member's roles from each member update while the switch is on (this is why `hooks.rs` has a
+  bot notes a member's roles from each member update while the switch is on (this is why `infra/hooks.rs` has a
   `on_member_update` entry next to the six), reads the current members once when it is switched on (up to 10,000,
   one run per server every 10 minutes) and forgets members who left more than 60 days ago.
 - **Role panels** (module `role_panels`, now under the Roles group): *buttons* (`rr:`/`rb:`: a panel with no
@@ -1015,9 +1015,9 @@ builds only: `PINCHORA_FEEDS__DEV_ENDPOINT=127.0.0.1:<port>` sends every feed re
 (`http://127.0.0.1:<port>/<host><path>`), which the e2e tests use.
 
 Data: `feed_sources`, `feeds`, `feed_items_seen`, `feed_outbox` (migration `0056_feeds.sql`; phase 2 only
-alters them). A feed's `created_by` becomes 0 when its author deletes their data. Code: `pinchora_core::feeds`
-(sources, addresses, filters, timing), `pinchora-commands/src/feeds/` (fetcher, parsers, message, poller),
-`commands/feeds.rs`, `pinchora-db/src/feeds.rs`, `pinchora-web/src/routes/feeds.rs`, `web/src/pages/Feeds.tsx`.
+alters them). A feed's `created_by` becomes 0 when its author deletes their data. Code: `pinchora_core::community::feeds`
+(sources, addresses, filters, timing), `pinchora-commands/src/community/feeds/` (fetcher, parsers, message, poller),
+`commands/community/feeds.rs`, `pinchora-db/src/community/feeds.rs`, `pinchora-web/src/routes/integrations/feeds.rs`, `web/src/pages/Feeds.tsx`.
 
 ### Workflows
 
@@ -1205,7 +1205,7 @@ so every bot pod uses it from the next message instead of after its one-minute c
 | Community | The `/suggest` channel; critter drops on/off and where they land; timed storm surges (on/off, channel, how often) | `/community server suggestions`, `/progression economy critters`, `/progression economy surge` |
 | Audit log | Every dashboard change: who, what, before and after (kept 180 days) | |
 
-Modules (`pinchora_core::modules`) are the one place that decides what a switched-off part does: the bot
+Modules (`pinchora_core::admin::modules`) are the one place that decides what a switched-off part does: the bot
 asks `App::module_access` before every command, button and form (`gate.rs`, with tests that fail when a
 command or button prefix has no module) and in the chat, welcome, goodbye, log and voice paths. A server
 that never touched them has everything on (welcome cards and gambling stay off until they are switched on), and a module back to
@@ -1223,7 +1223,7 @@ a level-up is not posted in a level-up channel the leveling module is off in (it
 
 Every place a server sets up a role for the bot to hand out (level, reputation, store and join roles, role panels,
 custom command and auto-responder actions; on Discord and on the dashboard) checks it with one rule
-(`pinchora_core::settings::grant_refusal`), live when it is saved:
+(`pinchora_core::admin::settings::grant_refusal`), live when it is saved:
 
 - The bot must be able to give it: not `@everyone`, not managed by an integration, below the bot's highest role.
 - A role with Administrator, Manage Server, Manage Roles, Manage Channels, Manage Webhooks, Ban, Kick or Timeout
@@ -1239,7 +1239,7 @@ The dashboard's role pickers grey out, for the manager looking, what they may no
 ### Custom commands and auto-responders
 
 Servers write their own commands (`/tag name`) and messages the bot sends by itself, on the dashboard or, for
-the simple case, with `/setup commands`. Both go through the same rules (`pinchora_core::tags`: limits, the
+the simple case, with `/setup commands`. Both go through the same rules (`pinchora_core::community::tags`: limits, the
 sentences that refuse a draft, the placeholder language) and the same writes, and every change is audited and
 announced to the bot. A server has up to 50 commands and 25 auto-responders; a reply is up to 2,000 characters,
 an embed up to 6,000 in all with at most 25 fields, and a command does at most three actions.
@@ -1272,7 +1272,7 @@ an embed up to 6,000 in all with at most 25 fields, and a command does at most t
   skips (or with "replace" overwrites) names that exist, and reports what it refused. The audit entry of a
   replacing import keeps the commands it overwrote.
 
-The dashboard and the slash commands check values with the same rules (`pinchora_core::settings`): the same
+The dashboard and the slash commands check values with the same rules (`pinchora_core::admin::settings`): the same
 limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/setup`
 gives. `web/src/lib/rules.json` carries those limits and sample answers to the browser (`cargo test -p
 pinchora-web rules -- --ignored write_rules` rewrites it; a test fails while it is out of date).
@@ -1312,7 +1312,7 @@ For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://local
 ### Welcome and goodbye images
 
 The **Welcome image** page is a canvas editor for the picture a new member gets and the one that says goodbye.
-A design (`pinchora_core::card_design`, versioned JSON) is a canvas of 300 to 1600 by 150 to 1000 px, a
+A design (`pinchora_core::admin::card_design`, versioned JSON) is a canvas of 300 to 1600 by 150 to 1000 px, a
 background (none, a colour, a gradient with or without the pixel dither and sparkles, one of the 36 pixel-art
 backgrounds scaled up in whole steps, or an uploaded picture), a darkening scrim, and up to 20 layers from
 bottom to top: the **avatar** (circle, rounded, square or pixel-notched, a border, chunky pixels or smooth),
@@ -1390,7 +1390,7 @@ build with `VITE_SUPPORT_URL=https://discord.gg/<invite>` to set it. Set
 `PINCHORA_SUPPORT_URL` to the same Discord invite for the `/info bot` card and `/status` page.
 
 The showcase cards and rooms are drawn by the bot's own renderer from sample data
-(`crates/pinchora-commands/src/landing_assets.rs`: the profile card with real backgrounds, badges, showcase tiles and
+(`crates/pinchora-commands/src/admin/landing_assets.rs`: the profile card with real backgrounds, badges, showcase tiles and
 character, an isometric room, chess, connect four, wordle, the rank, wallet, welcome, level-up, leaderboard, pet and
 badge cards), committed in `web/src/site/showcase`. The [brand kit](docs/BRAND.md) supplies the mascot,
 favicons and 1200x630 link preview in `web/public`, built with `python3 tools/brand/build.py`.
@@ -1535,12 +1535,15 @@ crates/
   pinchora/           binary: gateway | interactions | web | migrate | register | commands
   pinchora-core/      config, telemetry, level/economy/cluster math, settings, module and custom-command rules,
                       languages (`i18n`, catalogs in `locales/<code>/*.toml`)
-  pinchora-db/        PostgreSQL (sqlx) + migrations runner
+  pinchora-db/        PostgreSQL (sqlx) + migrations runner; domain folders under src/
+  pinchora-testkit/   development-only fixture sessions, locks and isolation tests
   pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)
-  pinchora-commands/  slash commands, buttons, gateway event handlers; `hooks.rs` is where feature packages listen
+  pinchora-commands/  slash commands, buttons, gateway event handlers; `src/infra/hooks.rs` is where feature packages listen
                       to messages, joins, leaves, reactions, DMs and level-ups
   pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the public site's data and invite link, the SPA
+                      Rust domains: games, economy, progression, social, house, moderation, community, roles, integrations, admin
+                      Shared infrastructure lives in src/infra/; command and route domains live under commands/ and routes/
 web/                  dashboard and public site UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
 assets/fonts/         Silkscreen + Noto Sans, and Noto Sans CJK + Noto Emoji subsets as fallback (SIL OFL)

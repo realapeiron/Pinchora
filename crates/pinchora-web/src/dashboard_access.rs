@@ -61,7 +61,7 @@ pub async fn areas_for_roles(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::dashboard_access::*;
     #[test]
     fn grants_fail_closed_and_do_not_open_privileged_or_adjacent_paths() {
         let roles = vec!["roles".into()];
@@ -182,9 +182,9 @@ pub async fn check_level_rewards(state: &WebState, managed: &crate::extract::Man
 pub async fn check_module_roles(
     state: &WebState,
     managed: &crate::extract::ManagedGuild,
-    module: pinchora_core::modules::Module,
+    module: pinchora_core::admin::modules::Module,
 ) -> ApiResult<()> {
-    use pinchora_core::modules::Module;
+    use pinchora_core::admin::modules::Module;
     if managed.areas.is_none() {
         return Ok(());
     }
@@ -193,8 +193,8 @@ pub async fn check_module_roles(
     let mut roles = Vec::new();
     match module {
         Module::Workflows => {
-            fn roles_in(actions: &[pinchora_core::workflows::StepAction], roles: &mut Vec<i64>) {
-                use pinchora_core::workflows::StepAction;
+            fn roles_in(actions: &[pinchora_core::admin::workflows::StepAction], roles: &mut Vec<i64>) {
+                use pinchora_core::admin::workflows::StepAction;
                 for action in actions {
                     match action {
                         StepAction::Tag { action } => roles.extend(action.role().map(|id| id as i64)),
@@ -257,7 +257,7 @@ pub async fn check_module_roles(
 
 #[cfg(test)]
 mod route_inventory_tests {
-    use super::*;
+    use crate::dashboard_access::*;
     use std::{collections::BTreeSet, path::Path};
 
     fn enclosed(source: &str, open: char, close: char) -> &str {
@@ -289,29 +289,22 @@ mod route_inventory_tests {
     }
 
     fn registered(module: &str, prefix: &str, found: &mut BTreeSet<(String, String)>) {
-        let source = std::fs::read_to_string(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("src/routes")
-                .join(format!("{module}.rs")),
-        )
-        .unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/routes");
+        let file = root.join(format!("{module}.rs"));
+        let file = if file.exists() {
+            file
+        } else {
+            root.join(module).join("mod.rs")
+        };
+        let source = std::fs::read_to_string(file).unwrap();
         let (_, router) = source.split_once("pub fn router(").unwrap();
         let body = enclosed(router, '{', '}');
         for call in body.split(".nest(").skip(1) {
             let args = enclosed(&format!("({call}"), '(', ')').to_owned();
             let (path, child) = args.split_once(',').unwrap();
-            let child = child
-                .split("::router")
-                .next()
-                .unwrap()
-                .trim()
-                .trim_start_matches("super::");
-            let nested = format!("{module}/{child}");
-            let nested_file = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("src/routes")
-                .join(format!("{nested}.rs"));
-            let next = if nested_file.exists() { nested.as_str() } else { child };
-            registered(next, &format!("{prefix}{}", path.trim().trim_matches('"')), found);
+            let child = child.split("::router").next().unwrap().trim();
+            let next = child.strip_prefix("crate::routes::").unwrap().replace("::", "/");
+            registered(&next, &format!("{prefix}{}", path.trim().trim_matches('"')), found);
         }
         for call in body.split(".route(").skip(1) {
             let args = enclosed(&format!("({call}"), '(', ')').to_owned();
@@ -330,7 +323,7 @@ mod route_inventory_tests {
     #[test]
     fn every_registered_guild_method_is_in_the_reviewed_area_matrix() {
         let mut actual = BTreeSet::new();
-        registered("guilds", "", &mut actual);
+        registered("admin/guilds", "", &mut actual);
         // Reef player routes sit outside the dashboard router but share its management areas.
         let mut reef = BTreeSet::new();
         registered("../reef/spaces", "/reef", &mut reef);
@@ -362,7 +355,7 @@ mod route_inventory_tests {
 
 #[cfg(test)]
 mod reef_area_tests {
-    use super::*;
+    use crate::dashboard_access::*;
     #[test]
     fn wave7_guild_actions_have_explicit_community_area_mapping() {
         for path in [

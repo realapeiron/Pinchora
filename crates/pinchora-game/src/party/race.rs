@@ -1,7 +1,8 @@
 //! Wordle Race: two to four players race to find the same five-letter word, each on a board of their own.
 //! The first to solve it wins; the table sees only the colours of each other's guesses, never the letters.
 
-use crate::play::wordle::{self, Tile};
+use crate::play::wordle;
+use crate::play::wordle::Tile;
 
 pub use crate::play::wordle::{MAX_TRIES, WORD_LEN};
 
@@ -44,7 +45,7 @@ pub fn marks(guess: &str, word: &str) -> [u8; WORD_LEN] {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::party::race::*;
 
     fn guesses(words: &[&str]) -> Vec<String> {
         words.iter().map(|w| (*w).to_owned()).collect()

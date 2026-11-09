@@ -66,7 +66,7 @@ impl Cache {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::invalidate::*;
 
     #[test]
     fn messages_round_trip() {

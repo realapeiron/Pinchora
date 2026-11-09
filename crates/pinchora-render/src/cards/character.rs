@@ -2,7 +2,9 @@ use std::fmt::Write;
 
 use image::{Rgba, RgbaImage, imageops};
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     character::scale_up,
@@ -372,7 +374,7 @@ impl CharacterCard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::character::*;
     use crate::{
         Renderer,
         character::{CharacterSpec, render_character},

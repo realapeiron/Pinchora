@@ -100,11 +100,11 @@ filter = 'binary(simulate) & test(/^branding::/)'
 test-group = "sim-branding"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^leveling_parity::/)'
+filter = 'binary(simulate) & test(/^leveling_policy::/)'
 test-group = "sim-leveling"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^party_v2::/)'
+filter = 'binary(simulate) & test(/^reef_party::/)'
 test-group = "sim-party"
 
 [[profile.default.overrides]]
@@ -132,11 +132,11 @@ filter = 'binary(simulate) & test(/^automod::/)'
 test-group = "sim-automod"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^community_pack::/)'
+filter = 'binary(simulate) & test(/^community_engagement::/)'
 test-group = "sim-community"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^community_v2::/)'
+filter = 'binary(simulate) & test(/^community_tools::/)'
 test-group = "sim-personal-tools"
 
 [[profile.default.overrides]]
@@ -152,7 +152,7 @@ filter = 'binary(simulate) & test(/^utility::/)'
 test-group = "sim-utility"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^w9a::/)'
+filter = 'binary(simulate) & test(/^command_integrity::/)'
 test-group = "sim-command-integrity"
 
 [[profile.default.overrides]]
@@ -284,7 +284,7 @@ filter = 'binary(simulate) & test(/^command_control::/)'
 test-group = "sim-command-control"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^mod_parity::/)'
+filter = 'binary(simulate) & test(/^moderation_policy::/)'
 test-group = "sim-moderation-policy"
 
 [[profile.default.overrides]]
@@ -300,7 +300,7 @@ filter = 'binary(simulate) & test(/^reef_loop::/)'
 test-group = "sim-reef-loop"
 
 [[profile.default.overrides]]
-filter = 'binary(simulate) & test(/^economy_v2::/)'
+filter = 'binary(simulate) & test(/^economy_player::/)'
 test-group = "sim-economy"
 
 [[profile.default.overrides]]

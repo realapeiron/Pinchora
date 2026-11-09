@@ -107,7 +107,7 @@ pub fn for_day(user: u64, day: i64) -> [Quest; 3] {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::quests::*;
 
     #[test]
     fn three_distinct_quests_that_change_daily() {

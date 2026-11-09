@@ -5,12 +5,15 @@
 use image::{Rgba, RgbaImage};
 use serde::{Deserialize, Serialize};
 
-use super::{
-    ACCESSORY_TINTS, Paint, atlas,
-    look::{Anchors, OUTLINE},
-    palette::{derive_ramp, ramp_of, rgb},
-    tint_art,
-};
+use crate::character::ACCESSORY_TINTS;
+use crate::character::Paint;
+use crate::character::atlas;
+use crate::character::look::Anchors;
+use crate::character::look::OUTLINE;
+use crate::character::palette::derive_ramp;
+use crate::character::palette::ramp_of;
+use crate::character::palette::rgb;
+use crate::character::tint_art;
 
 /// Where an accessory is worn; one per slot. Ordered as they are drawn over each other.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -517,10 +520,10 @@ fn hair_line(hat: &Pen, a: &Anchors, origin: (i32, i32)) -> Vec<(i32, i32)> {
 pub fn accessory_icon(id: &str, tint: Option<Paint>, size: u32) -> Option<RgbaImage> {
     let art = accessory(id)?;
     // The narrowest head, so hats come out small enough to show at twice their size.
-    let a = super::look_anchors("shavebreeze");
+    let a = crate::character::look_anchors("shavebreeze");
     let canvas = (a.width as u32 + 120, a.height as u32 + 120);
     let origin = (60, 60);
-    let skin = super::Colors::default().skin_ramp();
+    let skin = crate::character::Colors::default().skin_ramp();
     let drawn = draw(art, tint, &a, &skin, canvas, origin);
     let mut img = RgbaImage::new(canvas.0, canvas.1);
     for layer in [&drawn.behind, &drawn.front] {
@@ -541,7 +544,7 @@ pub fn accessory_icon(id: &str, tint: Option<Paint>, size: u32) -> Option<RgbaIm
     }
     let crop = image::imageops::crop_imm(&img, x0, y0, x1 - x0 + 1, y1 - y0 + 1).to_image();
     let k = (size / crop.width().max(crop.height())).max(1);
-    let big = super::scale_up(&crop, k);
+    let big = crate::character::scale_up(&crop, k);
     let mut out = RgbaImage::new(size.max(big.width()), size.max(big.height()));
     let (ox, oy) = ((out.width() - big.width()) / 2, (out.height() - big.height()) / 2);
     image::imageops::overlay(&mut out, &big, i64::from(ox), i64::from(oy));

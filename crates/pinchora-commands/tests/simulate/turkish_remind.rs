@@ -1,10 +1,10 @@
 //! Turkish for the remind group, played through the real handlers: `/remind` and the direct messages
 //! the ticker sends, `/leaderboard` and `/info wrapped`.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::infra::i18n::Lang;
 
 #[allow(unused_imports)]
-use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn reminders_are_set_listed_cancelled_and_delivered_in_turkish() {
@@ -303,7 +303,7 @@ async fn the_leaderboards_are_drawn_in_turkish() {
     let Some(mut sim) = Sim::new("the_leaderboards_are_drawn_in_turkish").await else {
         return;
     };
-    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let week = pinchora_core::progression::leveling::week_start(sim.app.now());
     let last = week - chrono::Duration::weeks(1);
     let (viewer, alice, bob, carol) = (unique(), unique(), unique(), unique());
     sim.locale = "tr";

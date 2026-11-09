@@ -1,4 +1,4 @@
-use super::*;
+use crate::privacy::*;
 
 #[tokio::test]
 async fn weekly_and_monthly_rewards_have_their_own_cooldowns() {

@@ -1,8 +1,13 @@
 use std::fmt::Write;
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
-use super::boards::{self, COLORS, Marks, OUTLINE, SQUARE};
+use crate::cards::boards;
+use crate::cards::boards::COLORS;
+use crate::cards::boards::Marks;
+use crate::cards::boards::OUTLINE;
+use crate::cards::boards::SQUARE;
 use crate::{Theme, svg::background};
 
 /// 14×14 pieces: `x` outline, `#` body, `o` highlight, `w` white, `y` gold. A pawn is a pearl on a
@@ -234,8 +239,8 @@ fn piece_color(c: char, body: &str, light: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::chess::*;
 
     /// The start position as the card wants it.
     fn start() -> [u8; 64] {

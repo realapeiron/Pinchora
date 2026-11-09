@@ -1,6 +1,8 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, text};
+use crate::cards::PIXEL;
+use crate::cards::SANS;
+use crate::cards::text;
 use crate::{
     Theme,
     svg::{CRAB, STAR, background, escape, panel, sprite, truncate_to},
@@ -153,8 +155,8 @@ impl ColorCard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Renderer;
+    use crate::cards::color::*;
 
     fn card(n: usize, selected: Option<usize>) -> ColorCard {
         ColorCard {

@@ -6,7 +6,8 @@
 use std::path::Path;
 
 use image::{Rgba, RgbaImage};
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use pinchora_game::{Content, lang};
 use pinchora_render::{
     BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, GridSlot, HelpCard, HelpRow, ItemGridCard,
