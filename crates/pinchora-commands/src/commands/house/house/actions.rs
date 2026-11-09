@@ -564,11 +564,6 @@ impl HouseEditAction<'_> {
         cx.update(data).await?;
         Ok(None)
     }
-
-    async fn unchanged(&mut self) -> anyhow::Result<Option<String>> {
-        let note = String::new();
-        Ok(Some(note))
-    }
 }
 
 pub(crate) async fn on_edit(
@@ -639,7 +634,7 @@ pub(crate) async fn on_edit(
         "u" => edit.undo_edit().await?,
         "n" => edit.next_room().await?,
         "x" => edit.close_editor().await?,
-        _ => edit.unchanged().await?,
+        _ => Some(String::new()),
     };
     let Some(note) = note else {
         return Ok(());

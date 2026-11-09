@@ -272,7 +272,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         "keep" => edit.keep_outfit(&mut args).await?,
         "hex" => edit.choose_hex().await?,
         "name" => edit.name_outfits().await?,
-        _ => edit.expired_action().await?,
+        _ => return expired(cx).await,
     };
     if !continued {
         return Ok(());

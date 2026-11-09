@@ -281,8 +281,8 @@ impl EconomyCommand {
             Self::Bid(c) => bid(cx, c).await,
             Self::Close(c) => close_auction(cx, c).await,
             Self::Trade(c) => trade(cx, c, l).await,
-            Self::Review(c) => review_trade(cx, c).await,
-            Self::Tools(c) => economy_tools(cx, c).await,
+            Self::Review(c) => review(cx, c.id).await,
+            Self::Tools(c) => admin(cx, c).await,
         }
     }
 }
@@ -679,12 +679,4 @@ async fn trade(cx: &Cx, c: Trade, l: pinchora_core::infra::i18n::Lang) -> anyhow
         review(cx, v["id"].as_i64().unwrap()).await?;
     }
     Ok(())
-}
-
-async fn review_trade(cx: &Cx, c: Review) -> anyhow::Result<()> {
-    review(cx, c.id).await
-}
-
-async fn economy_tools(cx: &Cx, c: Tools) -> anyhow::Result<()> {
-    admin(cx, c).await
 }

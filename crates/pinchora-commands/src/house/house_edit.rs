@@ -225,6 +225,10 @@ struct RoomOperation<'a> {
 }
 
 impl RoomOperation<'_> {
+    fn find_piece(&self, id: &str) -> Option<PlacementRow> {
+        self.before.iter().find(|p| p.id.to_string() == id).cloned()
+    }
+
     fn place(&mut self, item_id: String, x: i16, y: i16, flipped: bool) -> Result<PreparedEdit, Outcome> {
         let content = Content::get();
         let who = self.who;
@@ -254,7 +258,6 @@ impl RoomOperation<'_> {
         let content = Content::get();
         let who = self.who;
         let before = self.before;
-        let find = |id: &str| self.before.iter().find(|p| p.id.to_string() == id).cloned();
 
         // Discord also forbids moving the owner's pieces while decorating as a guest.
         if who.owner != who.stock {
@@ -263,7 +266,7 @@ impl RoomOperation<'_> {
                 message: "Only the owner can move this piece.".into(),
             });
         }
-        let Some(p) = find(&id) else {
+        let Some(p) = self.find_piece(&id) else {
             return Err(refused("that piece is no longer here"));
         };
         let mut step = Step::new(
@@ -291,9 +294,8 @@ impl RoomOperation<'_> {
         let content = Content::get();
         let who = self.who;
         let before = self.before;
-        let find = |id: &str| self.before.iter().find(|p| p.id.to_string() == id).cloned();
 
-        let Some(p) = find(&id) else {
+        let Some(p) = self.find_piece(&id) else {
             return Err(refused("that piece is no longer here"));
         };
         let mut step = Step::new(
@@ -319,9 +321,8 @@ impl RoomOperation<'_> {
     fn flip(&mut self, id: String) -> Result<PreparedEdit, Outcome> {
         let content = Content::get();
         let who = self.who;
-        let find = |id: &str| self.before.iter().find(|p| p.id.to_string() == id).cloned();
 
-        let Some(p) = find(&id) else {
+        let Some(p) = self.find_piece(&id) else {
             return Err(refused("that piece is no longer here"));
         };
         let item = content.item(&p.item_id);

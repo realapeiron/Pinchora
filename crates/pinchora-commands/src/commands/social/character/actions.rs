@@ -375,9 +375,4 @@ impl CharacterEdit<'_> {
         }
         Ok(true)
     }
-
-    pub(super) async fn expired_action(&mut self) -> anyhow::Result<bool> {
-        expired(self.cx).await?;
-        Ok(false)
-    }
 }
