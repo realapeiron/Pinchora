@@ -218,7 +218,7 @@ impl Cache {
 }
 
 #[cfg(test)]
-pinchora_testkit::fixture_lock!(fixture_lock);
+use pinchora_testkit::fixture_lock;
 
 #[cfg(test)]
 mod tests {

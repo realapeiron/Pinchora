@@ -189,7 +189,7 @@ mod tempvoice;
 #[path = "simulate/command_tree.rs"]
 mod command_tree;
 
-pinchora_testkit::fixture_lock!(fixture_lock);
+use pinchora_testkit::fixture_lock;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

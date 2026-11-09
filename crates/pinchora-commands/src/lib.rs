@@ -2,7 +2,7 @@ pub mod admin;
 pub mod community;
 mod economy;
 #[cfg(test)]
-pinchora_testkit::isolation!(fixture_isolation);
+use pinchora_testkit::isolation as fixture_isolation;
 mod games;
 pub mod house;
 pub mod infra;
