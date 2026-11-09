@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-assets"
+description = "Tools for preparing Pinchora image assets"
 version.workspace = true
 edition.workspace = true
 publish = false

@@ -81,16 +81,18 @@ impl Db {
     pub async fn lock_antinuke(&self, guild: u64) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
         loop {
             let mut tx = self.pool.begin().await?;
-            let locked: bool = sqlx::query_scalar(
+            let locked = sqlx::query_scalar::<_, bool>(
                 "SELECT pg_try_advisory_xact_lock(hashtextextended('antinuke-runtime:' || $1::text,0))",
             )
             .bind(sql_id(guild))
             .fetch_one(&mut *tx)
-            .await?;
-            if locked {
+            .await;
+            if matches!(locked, Ok(true)) {
                 return Ok(tx);
             }
-            tx.rollback().await?;
+            let released = tx.rollback().await;
+            locked?;
+            released?;
             tokio::time::sleep(std::time::Duration::from_millis(25)).await;
         }
     }

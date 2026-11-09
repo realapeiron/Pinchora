@@ -90,78 +90,88 @@ pub async fn authorize(app: &App, guild: u64, actor: u64) -> anyhow::Result<()> 
 }
 pub async fn save_config(app: &std::sync::Arc<App>, guild: u64, actor: u64, next: &Config) -> anyhow::Result<()> {
     let lang = app.guild_lang(guild).await;
-    let _guard = app.db.lock_antinuke(guild).await?;
-    let old = app.db.antinuke_config(guild).await?;
-    let owner = owner(app, guild).await?;
-    rules::check_edit(&old, next, owner, actor, lang).map_err(anyhow::Error::msg)?;
-    let (roles, bot) = require(
-        app,
-        guild,
-        if next.enabled {
-            Permissions::VIEW_AUDIT_LOG
-        } else {
-            Permissions::empty()
-        },
-        lang,
-    )
-    .await?;
-    for id in &next.vip_roles {
-        if !roles.iter().any(|r| r.id.to_string() == *id && r.id.get() != guild) {
-            anyhow::bail!(t!(lang, "anti_nuke.invalid"));
-        }
-    }
-    if let Some(id) = &next.quarantine_role_id {
-        let role = roles
-            .iter()
-            .find(|r| r.id.to_string() == *id)
-            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.invalid")))?;
-        let member = app
-            .http
-            .guild_member(Id::new(guild), Id::new(actor))
-            .await?
-            .model()
-            .await?;
-        let grantor = Grantor {
-            owner: actor == owner,
-            administrator: powers(&roles, guild, &member).contains(Permissions::ADMINISTRATOR),
-            top_role: Some(top(&roles, &member)),
-        };
-        if next.vip_roles.contains(id)
-            || role
-                .permissions
-                .intersects(Permissions::SEND_MESSAGES | Permissions::CONNECT)
-        {
-            anyhow::bail!(t!(lang, "anti_nuke.quarantine_unsafe"));
-        }
-        if let Some(why) = settings::action_role_refusal_in(lang, facts(role, guild), grantor, &role.name)
-            .or_else(|| settings::role_refusal_in(lang, facts(role, guild), Some(top(&roles, &bot)), &role.name))
-        {
-            anyhow::bail!(why);
-        }
-    }
-    if let Some(channel) = &next.log_channel_id {
-        let ch = app.http.channel(Id::new(channel.parse()?)).await?.model().await?;
-        if ch.guild_id.map(|g| g.get()) != Some(guild) {
-            anyhow::bail!(t!(lang, "anti_nuke.invalid"));
-        }
-    }
-    if next.enabled && !old.enabled {
-        app.cache
-            .antinuke_activation(guild, app.now().timestamp_millis(), true)
-            .await?;
-    }
-    app.db.save_antinuke(guild, actor, next).await?;
-    app.announce_guild_change(guild).await;
-    staff(app, guild, actor, "antinuke.settings", &t!(lang, "anti_nuke.saved")).await?;
-    drop(_guard);
-    if next.enabled {
-        let owned = app.clone();
-        app.spawn_rebuild(async move {
-            if let Err(error) = super::seed(&owned, guild).await {
-                tracing::warn!(%error,guild,"anti-nuke snapshot seed failed");
+    let mut guard = Some(app.db.lock_antinuke(guild).await?);
+    let mut released = Ok(());
+    let result = async {
+        let old = app.db.antinuke_config(guild).await?;
+        let owner = owner(app, guild).await?;
+        rules::check_edit(&old, next, owner, actor, lang).map_err(anyhow::Error::msg)?;
+        let (roles, bot) = require(
+            app,
+            guild,
+            if next.enabled {
+                Permissions::VIEW_AUDIT_LOG
+            } else {
+                Permissions::empty()
+            },
+            lang,
+        )
+        .await?;
+        for id in &next.vip_roles {
+            if !roles.iter().any(|r| r.id.to_string() == *id && r.id.get() != guild) {
+                anyhow::bail!(t!(lang, "anti_nuke.invalid"));
             }
-        });
+        }
+        if let Some(id) = &next.quarantine_role_id {
+            let role = roles
+                .iter()
+                .find(|r| r.id.to_string() == *id)
+                .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.invalid")))?;
+            let member = app
+                .http
+                .guild_member(Id::new(guild), Id::new(actor))
+                .await?
+                .model()
+                .await?;
+            let grantor = Grantor {
+                owner: actor == owner,
+                administrator: powers(&roles, guild, &member).contains(Permissions::ADMINISTRATOR),
+                top_role: Some(top(&roles, &member)),
+            };
+            if next.vip_roles.contains(id)
+                || role
+                    .permissions
+                    .intersects(Permissions::SEND_MESSAGES | Permissions::CONNECT)
+            {
+                anyhow::bail!(t!(lang, "anti_nuke.quarantine_unsafe"));
+            }
+            if let Some(why) = settings::action_role_refusal_in(lang, facts(role, guild), grantor, &role.name)
+                .or_else(|| settings::role_refusal_in(lang, facts(role, guild), Some(top(&roles, &bot)), &role.name))
+            {
+                anyhow::bail!(why);
+            }
+        }
+        if let Some(channel) = &next.log_channel_id {
+            let ch = app.http.channel(Id::new(channel.parse()?)).await?.model().await?;
+            if ch.guild_id.map(|g| g.get()) != Some(guild) {
+                anyhow::bail!(t!(lang, "anti_nuke.invalid"));
+            }
+        }
+        if next.enabled && !old.enabled {
+            app.cache
+                .antinuke_activation(guild, app.now().timestamp_millis(), true)
+                .await?;
+        }
+        app.db.save_antinuke(guild, actor, next).await?;
+        app.announce_guild_change(guild).await;
+        staff(app, guild, actor, "antinuke.settings", &t!(lang, "anti_nuke.saved")).await?;
+        released = guard.take().unwrap().rollback().await;
+        if next.enabled {
+            let owned = app.clone();
+            app.spawn_rebuild(async move {
+                if let Err(error) = super::seed(&owned, guild).await {
+                    tracing::warn!(%error,guild,"anti-nuke snapshot seed failed");
+                }
+            });
+        }
+        Ok(())
     }
+    .await;
+    if let Some(guard) = guard {
+        released = guard.rollback().await;
+    }
+    result?;
+    released?;
     Ok(())
 }
 pub(super) async fn is_vip(app: &App, guild: u64, user: u64, c: &Config) -> anyhow::Result<bool> {

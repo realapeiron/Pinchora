@@ -13,119 +13,127 @@ use twilight_model::{
 /// is never automatically retried: the durable claim remains failed for staff inspection.
 pub async fn restore(app: &App, guild: u64, id: i64, actor: u64, automatic: bool) -> anyhow::Result<String> {
     let lang = app.guild_lang(guild).await;
-    let _guard = app.db.lock_antinuke(guild).await?;
-    if !automatic {
-        safety::authorize(app, guild, actor).await?;
-    }
-    let root = app
-        .db
-        .antinuke_event(guild, id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_found")))?;
-    if !matches!(root.kind.as_str(), "channel_delete" | "role_delete" | "ban" | "vip_ban") {
-        anyhow::bail!(t!(lang, "anti_nuke.not_restorable"));
-    }
-    if root.reverted || root.recovery_state != "ready" {
-        anyhow::bail!(t!(lang, "anti_nuke.busy"));
-    }
-    let c = app.db.antinuke_config(guild).await?;
-    if automatic
-        && (!c.enabled
-            || pinchora_core::anti_nuke::exempt(
-                &c,
-                safety::owner(app, guild).await?,
-                app.application_id.get(),
-                root.actor_id as u64,
-            )
-            || !(c.auto_restore || (root.kind == "vip_ban" && c.revert_vip_bans)))
-    {
-        anyhow::bail!(t!(lang, "anti_nuke.exempt"));
-    }
-    if !app
-        .guild_modules(guild)
-        .await?
-        .rule(pinchora_core::modules::Module::AntiNuke)
-        .enabled
-    {
-        anyhow::bail!(t!(lang, "anti_nuke.off"));
-    }
-    let window = root.details["window_secs"]
-        .as_u64()
-        .and_then(|n| u32::try_from(n).ok())
-        .filter(|n| (5..=300).contains(n))
-        .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_restorable")))?;
-    let mut events = app
-        .db
-        .antinuke_recovery_window(guild, root.actor_id, &root.kind, root.created_at, window)
-        .await?;
-    // Insert lower positions first, otherwise a later insertion shifts previously restored
-    // roles/channels. Categories must exist before their children are remapped.
-    if matches!(root.kind.as_str(), "channel_delete" | "role_delete") {
-        let snapshot_kind = if root.kind == "channel_delete" {
-            "channel"
-        } else {
-            "role"
-        };
-        let mut ordered = vec![];
-        for e in events {
-            let snapshot = if let Some(target) = e.target_id {
-                app.db.antinuke_snapshot(guild, snapshot_kind, target as u64).await?
+    let guard = app.db.lock_antinuke(guild).await?;
+    let result = async {
+        if !automatic {
+            safety::authorize(app, guild, actor).await?;
+        }
+        let root = app
+            .db
+            .antinuke_event(guild, id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_found")))?;
+        if !matches!(root.kind.as_str(), "channel_delete" | "role_delete" | "ban" | "vip_ban") {
+            anyhow::bail!(t!(lang, "anti_nuke.not_restorable"));
+        }
+        if root.reverted || root.recovery_state != "ready" {
+            anyhow::bail!(t!(lang, "anti_nuke.busy"));
+        }
+        let c = app.db.antinuke_config(guild).await?;
+        if automatic
+            && (!c.enabled
+                || pinchora_core::anti_nuke::exempt(
+                    &c,
+                    safety::owner(app, guild).await?,
+                    app.application_id.get(),
+                    root.actor_id as u64,
+                )
+                || !(c.auto_restore || (root.kind == "vip_ban" && c.revert_vip_bans)))
+        {
+            anyhow::bail!(t!(lang, "anti_nuke.exempt"));
+        }
+        if !app
+            .guild_modules(guild)
+            .await?
+            .rule(pinchora_core::modules::Module::AntiNuke)
+            .enabled
+        {
+            anyhow::bail!(t!(lang, "anti_nuke.off"));
+        }
+        let window = root.details["window_secs"]
+            .as_u64()
+            .and_then(|n| u32::try_from(n).ok())
+            .filter(|n| (5..=300).contains(n))
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_restorable")))?;
+        let mut events = app
+            .db
+            .antinuke_recovery_window(guild, root.actor_id, &root.kind, root.created_at, window)
+            .await?;
+        // Insert lower positions first, otherwise a later insertion shifts previously restored
+        // roles/channels. Categories must exist before their children are remapped.
+        if matches!(root.kind.as_str(), "channel_delete" | "role_delete") {
+            let snapshot_kind = if root.kind == "channel_delete" {
+                "channel"
             } else {
-                None
+                "role"
             };
-            let category = snapshot.as_ref().is_some_and(|s| s["type"] == 4);
-            let position = if snapshot_kind == "role" {
-                e.details["deleted_position"].as_i64()
+            let mut ordered = vec![];
+            for e in events {
+                let snapshot = if let Some(target) = e.target_id {
+                    app.db.antinuke_snapshot(guild, snapshot_kind, target as u64).await?
+                } else {
+                    None
+                };
+                let category = snapshot.as_ref().is_some_and(|s| s["type"] == 4);
+                let position = if snapshot_kind == "role" {
+                    e.details["deleted_position"].as_i64()
+                } else {
+                    snapshot.as_ref().and_then(|s| s["position"].as_i64())
+                }
+                .unwrap_or(i64::MAX);
+                ordered.push((!category, position, e));
+            }
+            ordered.sort_by_key(|(category, position, _)| (*category, *position));
+            events = ordered.into_iter().map(|(_, _, e)| e).collect();
+        }
+        let mut done = 0;
+        let mut failed = 0;
+        let mut why = None;
+        for event in events {
+            if event.reverted || event.recovery_state != "ready" {
+                continue;
+            }
+            // Preflight permissions before claiming: no side effects means the click can be retried.
+            let permission = match event.kind.as_str() {
+                "role_delete" => Permissions::MANAGE_ROLES,
+                "channel_delete" => Permissions::MANAGE_CHANNELS,
+                _ => Permissions::BAN_MEMBERS,
+            };
+            safety::require(app, guild, permission, lang).await?;
+            if !app.db.claim_antinuke_restore(guild, event.id).await? {
+                continue;
+            }
+            let mut attempted = false;
+            let result = restore_one(app, guild, &event, (!automatic).then_some(actor), &mut attempted).await;
+            if result.is_err() && !attempted {
+                app.db.reset_antinuke_restore(guild, event.id).await?;
             } else {
-                snapshot.as_ref().and_then(|s| s["position"].as_i64())
+                app.db.finish_antinuke_restore(guild, event.id, result.is_ok()).await?;
             }
-            .unwrap_or(i64::MAX);
-            ordered.push((!category, position, e));
-        }
-        ordered.sort_by_key(|(category, position, _)| (*category, *position));
-        events = ordered.into_iter().map(|(_, _, e)| e).collect();
-    }
-    let mut done = 0;
-    let mut failed = 0;
-    let mut why = None;
-    for event in events {
-        if event.reverted || event.recovery_state != "ready" {
-            continue;
-        }
-        // Preflight permissions before claiming: no side effects means the click can be retried.
-        let permission = match event.kind.as_str() {
-            "role_delete" => Permissions::MANAGE_ROLES,
-            "channel_delete" => Permissions::MANAGE_CHANNELS,
-            _ => Permissions::BAN_MEMBERS,
-        };
-        safety::require(app, guild, permission, lang).await?;
-        if !app.db.claim_antinuke_restore(guild, event.id).await? {
-            continue;
-        }
-        let mut attempted = false;
-        let result = restore_one(app, guild, &event, (!automatic).then_some(actor), &mut attempted).await;
-        if result.is_err() && !attempted {
-            app.db.reset_antinuke_restore(guild, event.id).await?;
-        } else {
-            app.db.finish_antinuke_restore(guild, event.id, result.is_ok()).await?;
-        }
-        match result {
-            Ok(()) => done += 1,
-            Err(error) => {
-                failed += 1;
-                why = Some(error.to_string());
+            match result {
+                Ok(()) => done += 1,
+                Err(error) => {
+                    failed += 1;
+                    why = Some(error.to_string());
+                }
             }
         }
+        let text = t!(
+            lang,
+            "anti_nuke.restored",
+            done = pinchora_core::server_stats::grouped_in(lang, done),
+            failed = pinchora_core::server_stats::grouped_in(lang, failed)
+        );
+        let text = why.map_or_else(|| text.clone(), |why| format!("{text} · {why}"));
+        safety::staff(app, guild, actor, "antinuke.restore", &text).await?;
+        Ok(text)
     }
-    let text = t!(
-        lang,
-        "anti_nuke.restored",
-        done = pinchora_core::server_stats::grouped_in(lang, done),
-        failed = pinchora_core::server_stats::grouped_in(lang, failed)
-    );
-    let text = why.map_or_else(|| text.clone(), |why| format!("{text} · {why}"));
-    safety::staff(app, guild, actor, "antinuke.restore", &text).await?;
-    Ok(text)
+    .await;
+    let released = guard.rollback().await;
+    result.and_then(|value| {
+        released?;
+        Ok(value)
+    })
 }
 async fn restore_one(
     app: &App,
@@ -394,24 +402,32 @@ pub(super) async fn restore_member(app: &App, guild: u64, user: u64, actor: Opti
 }
 pub async fn restore_actor_roles(app: &App, guild: u64, id: i64, actor: u64) -> anyhow::Result<String> {
     let lang = app.guild_lang(guild).await;
-    let _guard = app.db.lock_antinuke(guild).await?;
-    safety::authorize(app, guild, actor).await?;
-    let event = app
-        .db
-        .antinuke_event(guild, id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_found")))?;
-    let backup = app
-        .db
-        .antinuke_backup(guild, event.actor_id as u64)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.no_snapshot")))?;
-    if !backup.quarantined {
-        anyhow::bail!(t!(lang, "anti_nuke.not_restorable"));
+    let guard = app.db.lock_antinuke(guild).await?;
+    let result = async {
+        safety::authorize(app, guild, actor).await?;
+        let event = app
+            .db
+            .antinuke_event(guild, id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_found")))?;
+        let backup = app
+            .db
+            .antinuke_backup(guild, event.actor_id as u64)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.no_snapshot")))?;
+        if !backup.quarantined {
+            anyhow::bail!(t!(lang, "anti_nuke.not_restorable"));
+        }
+        restore_member(app, guild, event.actor_id as u64, Some(actor)).await?;
+        safety::staff(app, guild, actor, "antinuke.roles.restore", &t!(lang, "anti_nuke.done")).await?;
+        Ok(t!(lang, "anti_nuke.done"))
     }
-    restore_member(app, guild, event.actor_id as u64, Some(actor)).await?;
-    safety::staff(app, guild, actor, "antinuke.roles.restore", &t!(lang, "anti_nuke.done")).await?;
-    Ok(t!(lang, "anti_nuke.done"))
+    .await;
+    let released = guard.rollback().await;
+    result.and_then(|value| {
+        released?;
+        Ok(value)
+    })
 }
 
 async fn check_restore_role(

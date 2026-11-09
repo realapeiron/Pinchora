@@ -781,49 +781,67 @@ impl Db {
     pub async fn sweep_economy(&self, now: DateTime<Utc>) -> anyhow::Result<()> {
         // Transaction-scoped leadership releases on cancellation, crash or connection loss.
         let mut leader = self.pool().begin().await?;
-        let acquired: bool =
-            sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('economy:sweep',0))")
-                .fetch_one(&mut *leader)
-                .await?;
-        if !acquired {
-            return Ok(());
-        }
-        let auctions: Vec<(i64, i64)> = sqlx::query_as(
+        let result = async {
+            let acquired: bool =
+                sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('economy:sweep',0))")
+                    .fetch_one(&mut *leader)
+                    .await?;
+            if !acquired {
+                return Ok(false);
+            }
+            let auctions: Vec<(i64, i64)> = sqlx::query_as(
             "SELECT id,seller_id FROM economy_auctions WHERE status='open' AND ends_at<=$1 ORDER BY ends_at LIMIT 100",
         )
         .bind(now)
         .fetch_all(self.pool())
         .await?;
-        for (a, u) in auctions {
-            if let Err(e) = retry("economy_settle", || async move {
-                self.economy_action_once(u, &format!("worker:settle:{a}"), &Action::SettleAuction { id: a }, now)
-                    .await
-            })
-            .await
-                && e.downcast_ref::<Rejected>().is_none()
-            {
-                return Err(e);
+            for (a, u) in auctions {
+                if let Err(e) = retry("economy_settle", || async move {
+                    self.economy_action_once(u, &format!("worker:settle:{a}"), &Action::SettleAuction { id: a }, now)
+                        .await
+                })
+                .await
+                    && e.downcast_ref::<Rejected>().is_none()
+                {
+                    return Err(e);
+                }
             }
-        }
-        let trades: Vec<(i64, i64)> = sqlx::query_as(
+            let trades: Vec<(i64, i64)> = sqlx::query_as(
             "SELECT id,user_a FROM economy_trades WHERE status='open' AND expires_at<=$1 ORDER BY expires_at LIMIT 100",
         )
         .bind(now)
         .fetch_all(self.pool())
         .await?;
-        for (t, u) in trades {
-            if let Err(e) = retry("economy_expire", || async move {
-                self.economy_action_once(u, &format!("worker:expire:{t}"), &Action::CancelTrade { id: t }, now)
-                    .await
-            })
-            .await
-                && e.downcast_ref::<Rejected>().is_none()
-            {
-                return Err(e);
+            for (t, u) in trades {
+                if let Err(e) = retry("economy_expire", || async move {
+                    self.economy_action_once(u, &format!("worker:expire:{t}"), &Action::CancelTrade { id: t }, now)
+                        .await
+                })
+                .await
+                    && e.downcast_ref::<Rejected>().is_none()
+                {
+                    return Err(e);
+                }
+            }
+            anyhow::Ok(true)
+        }
+        .await;
+        match result {
+            Ok(true) => {
+                leader.commit().await?;
+                Ok(())
+            }
+            Ok(false) => {
+                leader.rollback().await?;
+                Ok(())
+            }
+            Err(error) => {
+                if let Err(release_error) = leader.rollback().await {
+                    tracing::warn!(%release_error, "market leadership rollback failed after sweep error");
+                }
+                Err(error)
             }
         }
-        leader.commit().await?;
-        Ok(())
     }
 }
 
