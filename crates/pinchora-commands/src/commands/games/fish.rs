@@ -1,6 +1,6 @@
 use std::{str::Split, sync::Arc, time::Duration};
 
-use chrono::{Timelike, Utc};
+use chrono::Timelike;
 use pinchora_core::infra::i18n::Lang;
 use pinchora_core::progression::leveling;
 use pinchora_core::progression::leveling::week_start;
@@ -252,7 +252,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     }
     let nonce: u32 = rand::random();
     let delay_ms = fishing::bite_delay_ms(rand::random::<f64>());
-    let bite_at = Utc::now().timestamp_millis() + delay_ms;
+    let bite_at = cx.app.now().timestamp_millis() + delay_ms;
     // What the cast was made with: the reel works from this, so a gear change in between counts next time.
     let state = format!(
         "{bite_at}:{}:{}:{}",
@@ -288,7 +288,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     let bite_title = t!(lang, "fish.cast.bite-title");
     let (responder, app) = (Arc::clone(&cx.responder), Arc::clone(&cx.app));
     cx.app.spawn(async move {
-        let wait = bite_at - Utc::now().timestamp_millis();
+        let wait = bite_at - app.now().timestamp_millis();
         tokio::time::sleep(Duration::from_millis(wait.max(0) as u64)).await;
         if let Ok(None) = app.cache.get(&format!("cast:{user}:{nonce}")).await {
             return;
@@ -343,7 +343,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     .unwrap_or_else(|| gear.starter_rod());
     let bait = parts.next().and_then(|id| gear.bait(id));
 
-    let now = Utc::now();
+    let now = cx.app.now();
     let late_by = now.timestamp_millis() - bite_at;
     match fishing::reel_result(late_by, rod.window_ms) {
         Reel::Early => {

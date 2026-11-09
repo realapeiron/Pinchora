@@ -329,7 +329,7 @@ pub async fn preview(
         &session.user_id.to_string(),
         PREVIEWS_PER_MINUTE,
         Duration::from_secs(60),
-        (state.preview_clock)(),
+        state.app.now(),
     )
     .await?;
     ratelimit::check_at(
@@ -338,7 +338,7 @@ pub async fn preview(
         &managed.id.to_string(),
         PREVIEWS_PER_GUILD_PER_MINUTE,
         Duration::from_secs(60),
-        (state.preview_clock)(),
+        state.app.now(),
     )
     .await?;
     let design = design_of(&body.design)?;

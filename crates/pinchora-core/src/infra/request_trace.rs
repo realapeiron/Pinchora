@@ -1,8 +1,16 @@
-use axum::{extract::Request, middleware::Next, response::Response};
+use axum::{
+    extract::{MatchedPath, Request},
+    middleware::Next,
+    response::Response,
+};
 use tracing::Instrument;
 
 pub async fn request(request: Request, next: Next) -> Response {
-    let span = request_span(request.method().as_str(), request.uri().path());
+    let path = request
+        .extensions()
+        .get::<MatchedPath>()
+        .map_or("<unmatched>", MatchedPath::as_str);
+    let span = request_span(request.method().as_str(), path);
     async move {
         let response = next.run(request).await;
         tracing::Span::current().record("status", response.status().as_u16());

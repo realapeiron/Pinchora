@@ -95,13 +95,9 @@ pub struct DiscordApi {
 }
 
 impl DiscordApi {
-    pub fn new(base: &str) -> Self {
+    pub fn new(base: &str, http: reqwest::Client) -> Self {
         Self {
-            http: reqwest::Client::builder()
-                .timeout(Duration::from_secs(10))
-                .user_agent("Pinchora dashboard (https://github.com/realapeiron/Pinchora)")
-                .build()
-                .expect("reqwest client"),
+            http,
             base: base.to_owned(),
         }
     }

@@ -2499,12 +2499,12 @@ fn blank_design() -> Value {
 
 #[tokio::test]
 async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy() {
-    let Some(mut h) = Harness::new("card_preview_limit").await else {
+    let Some(h) = Harness::new("card_preview_limit").await else {
         return;
     };
     // Freeze the last second of a minute even if rendering crosses the real minute boundary.
-    h.state.preview_clock = || chrono::DateTime::from_timestamp(1_800_000_059, 0).unwrap();
-    h.router = pinchora_web::router(h.state.clone());
+    let at = chrono::DateTime::from_timestamp(1_800_000_059, 0).unwrap();
+    h.state.services().infrastructure.clock.freeze(at);
     let (guild, _, mut browser) = h.managed_server().await;
     let path = format!("/api/guilds/{guild}/preview/card");
     for n in 1..=20 {
@@ -2562,8 +2562,7 @@ async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy(
     );
 
     // Crossing the boundary opens a fresh guild bucket, including for another manager.
-    h.state.preview_clock = || chrono::DateTime::from_timestamp(1_800_000_060, 0).unwrap();
-    h.router = pinchora_web::router(h.state.clone());
+    h.state.app.shift_clock(chrono::Duration::seconds(1));
     colleague.router = h.router.clone();
     let renewed = colleague
         .write(Method::POST, &path, json!({ "design": blank_design() }))

@@ -62,6 +62,18 @@ mod tests {
                 .await
                 .unwrap();
         }
+        assert!(try_lock(&mut observer, &key).await);
+        let skipped: Option<()> = run_job_lease(&mut holder, &key, async {
+            panic!("contended lease must not poll work")
+        })
+        .await
+        .unwrap();
+        assert_eq!(skipped, None);
+        sqlx::query("SELECT pg_advisory_unlock(hashtextextended($1,0))")
+            .bind(&key)
+            .execute(&mut observer)
+            .await
+            .unwrap();
         holder.close().await.unwrap();
         observer.close().await.unwrap();
     }

@@ -209,14 +209,19 @@ use twilight_model::application::interaction::{Interaction, InteractionData, Int
 
 /// [`handle_interaction`] for the gateway, where nothing else answers for a slow handler: one still
 /// running after `defer::DEFER_AFTER` is deferred through REST before Discord's three seconds are up.
+#[tracing::instrument(name = "discord.interaction", skip_all, fields(request_id = %interaction.id, guild_id = ?interaction.guild_id))]
 pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction, responder: Arc<Responder>) {
-    let handler = handle_interaction(app, interaction, responder.clone());
+    let handler = dispatch_interaction(app, interaction, responder.clone());
     crate::infra::defer::defer_slow(&responder, crate::infra::defer::DEFER_AFTER, handler).await;
 }
 
 /// Runs one interaction to completion. Every path answers the user, errors included.
 #[tracing::instrument(name = "discord.interaction", skip_all, fields(request_id = %interaction.id, guild_id = ?interaction.guild_id))]
-pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
+pub async fn handle_interaction(app: Arc<App>, interaction: Interaction, responder: Arc<Responder>) {
+    dispatch_interaction(app, interaction, responder).await;
+}
+
+async fn dispatch_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
     let started = Instant::now();
     let data = interaction.data.take();
     let lang = crate::infra::lang::resolve(&app, &interaction).await;

@@ -77,6 +77,9 @@ mod basics;
 mod board;
 #[path = "simulate/branding.rs"]
 mod branding;
+#[path = "simulate/fishing.rs"]
+mod fishing;
+use fishing::{seed_cast, seed_fixed_cast};
 #[path = "simulate/tracing.rs"]
 mod interaction_tracing;
 #[path = "simulate/leveling_policy.rs"]
@@ -11772,27 +11775,6 @@ fn footer(reply: &Reply) -> &str {
         .map_or("", |f| f.text.as_str())
 }
 
-/// Puts a cast of `user` in the cache as if it had bitten `late_ms` ago. `state` is the part of the
-/// value after the time (`spot:rod:bait`), or empty for a cast that carries none.
-async fn seed_cast(sim: &Sim, user: u64, nonce: u32, late_ms: i64, state: &str) -> String {
-    let at = chrono::Utc::now().timestamp_millis() - late_ms;
-    let value = if state.is_empty() {
-        at.to_string()
-    } else {
-        format!("{at}:{state}")
-    };
-    sim.app
-        .cache
-        .put(
-            &format!("cast:{user}:{nonce}"),
-            &value,
-            std::time::Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
-    format!("fr:{user}:{nonce}")
-}
-
 /// The reel button as the cast message carries it.
 fn casting() -> Reply {
     Reply::new(InteractionResponseType::ChannelMessageWithSource)
@@ -12121,24 +12103,24 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
 
     // The window to Reel! is the rod's. 2.6 s after the bite is too slow for the starter rod...
     let slow = unique();
-    let id = seed_cast(&sim, slow, 1, 2_600, "").await;
+    let id = seed_fixed_cast(&sim, slow, 1, 2_600, "").await;
     let missed = sim.component(slow, &id, &[], &casting()).await;
     assert_eq!(missed.title(), "Too slow!");
     // ...but fine for the Reedline Rod, whichever way the cast carries it.
-    let id = seed_cast(&sim, angler, 2, 2_600, "").await;
+    let id = seed_fixed_cast(&sim, angler, 2, 2_600, "").await;
     let caught = sim.component(angler, &id, &[], &casting()).await;
     assert!(caught.title().contains("You caught"), "{}", caught.title());
     // A cast remembers the rod it was made with: a rod swapped in afterwards changes nothing.
     let swapper = unique();
-    let id = seed_cast(&sim, swapper, 3, 3_200, "shore:starweave_rod:-").await;
+    let id = seed_fixed_cast(&sim, swapper, 3, 3_200, "shore:starweave_rod:-").await;
     let caught = sim.component(swapper, &id, &[], &casting()).await;
     assert!(caught.title().contains("You caught"), "{}", caught.title());
-    let id = seed_cast(&sim, swapper, 4, 2_600, "shore:driftwood_rod:-").await;
+    let id = seed_fixed_cast(&sim, swapper, 4, 2_600, "shore:driftwood_rod:-").await;
     assert_eq!(sim.component(swapper, &id, &[], &casting()).await.title(), "Too slow!");
     // Too early is still too early, and somebody else's line is theirs.
-    let id = seed_cast(&sim, swapper, 5, -800, "shore:driftwood_rod:-").await;
+    let id = seed_fixed_cast(&sim, swapper, 5, -800, "shore:driftwood_rod:-").await;
     assert_eq!(sim.component(swapper, &id, &[], &casting()).await.title(), "Too early!");
-    let id = seed_cast(&sim, swapper, 6, 100, "").await;
+    let id = seed_fixed_cast(&sim, swapper, 6, 100, "").await;
     let theirs = sim.component(unique(), &id, &[], &casting()).await;
     assert!(theirs.content().contains("someone else's line"), "{}", theirs.content());
 

@@ -22,6 +22,7 @@ pub struct Infrastructure {
     pub http: Arc<Client>,
     pub interaction_http: Arc<Client>,
     pub web: reqwest::Client,
+    pub oauth_http: reqwest::Client,
     pub clock: Clock,
     tasks: TaskTracker,
     shutdown: CancellationToken,
@@ -38,6 +39,11 @@ impl Infrastructure {
             web: reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .user_agent("Pinchora (https://github.com/realapeiron/Pinchora)")
+                .build()
+                .expect("reqwest client"),
+            oauth_http: reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .user_agent("Pinchora dashboard (https://github.com/realapeiron/Pinchora)")
                 .build()
                 .expect("reqwest client"),
             clock: Clock::default(),
