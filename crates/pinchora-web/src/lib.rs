@@ -84,7 +84,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
 
 /// Every route of the dashboard: `/auth/*`, `/api/*`, the fonts and the SPA.
 pub fn router(state: WebState) -> axum::Router {
-    routes::router(state)
+    routes::router(state).layer(axum::middleware::from_fn(telemetry::trace_request))
 }
 
 /// Deletes audit rows past their retention once an hour.

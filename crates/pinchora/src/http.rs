@@ -40,7 +40,8 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     let router = Router::new()
         .route("/interactions", post(endpoint))
         .route("/healthz", get(|| async { "ok" }))
-        .with_state(state);
+        .with_state(state)
+        .layer(axum::middleware::from_fn(telemetry::trace_request));
     let listener = tokio::net::TcpListener::bind(config.interactions.bind).await?;
     tracing::info!(bind = %config.interactions.bind, "interactions endpoint listening");
     ready.set(true);
@@ -90,11 +91,15 @@ async fn endpoint(State(state): State<Arc<HttpState>>, headers: HeaderMap, body:
         }
     };
     if interaction.kind == InteractionType::Ping {
-        return Json(InteractionResponse {
-            kind: InteractionResponseType::Pong,
-            data: None,
-        })
-        .into_response();
+        let span =
+            tracing::info_span!("discord.interaction", request_id = %interaction.id, guild_id = ?interaction.guild_id);
+        return span.in_scope(|| {
+            Json(InteractionResponse {
+                kind: InteractionResponseType::Pong,
+                data: None,
+            })
+            .into_response()
+        });
     }
 
     let (tx, mut rx) = oneshot::channel();

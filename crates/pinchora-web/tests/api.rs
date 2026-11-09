@@ -8,6 +8,8 @@
 
 #[path = "support/contracts.rs"]
 mod contracts;
+#[path = "api/infrastructure.rs"]
+mod infrastructure;
 #[path = "api/contracts.rs"]
 mod read_contracts;
 
@@ -62,14 +64,12 @@ mod server_tools_review;
 #[path = "api/web_i18n.rs"]
 mod web_i18n;
 
-// Custom commands and auto-responders.
+#[path = "api/roles.rs"]
+mod roles;
 #[path = "api/stats.rs"]
 mod stats;
 #[path = "api/tags.rs"]
 mod tags;
-// The roles page: auto roles, sticky roles, role panels and colour roles.
-#[path = "api/roles.rs"]
-mod roles;
 // Tickets: settings, panels, the tickets list and transcripts.
 #[path = "api/community_engagement.rs"]
 mod community_engagement;

@@ -6,6 +6,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+pinchora-services.workspace = true
 pinchora-core.workspace = true
 pinchora-db.workspace = true
 pinchora-cache.workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "pinchora-services"
+publish = false
+description = "Shared application infrastructure and service composition"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pinchora-db.workspace = true
+pinchora-cache.workspace = true
+pinchora-core.workspace = true
+pinchora-game.workspace = true
+pinchora-render.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+twilight-http.workspace = true
+metrics.workspace = true
+tracing.workspace = true
+reqwest = { workspace = true, features = ["form", "json"] }

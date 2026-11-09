@@ -1,3 +1,5 @@
+pub use crate::infra::request_trace::request as trace_request;
+
 use std::{
     net::SocketAddr,
     sync::{
@@ -68,7 +70,8 @@ pub async fn serve_ops(bind: SocketAddr, metrics: PrometheusHandle, ready: Readi
                 }
             }),
         )
-        .with_state((metrics, ready));
+        .with_state((metrics, ready))
+        .layer(axum::middleware::from_fn(trace_request));
     let listener = tokio::net::TcpListener::bind(bind).await?;
     tracing::info!(%bind, "ops server listening");
     axum::serve(listener, app).await?;

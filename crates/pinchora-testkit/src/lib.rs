@@ -4,3 +4,4 @@ pub mod connection;
 pub mod fixture_family;
 pub mod fixture_lock;
 pub mod isolation;
+pub mod traces;

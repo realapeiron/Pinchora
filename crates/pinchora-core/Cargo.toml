@@ -6,6 +6,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+rand.workspace = true
 regex.workspace = true
 anyhow.workspace = true
 axum.workspace = true

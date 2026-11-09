@@ -215,6 +215,7 @@ pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction,
 }
 
 /// Runs one interaction to completion. Every path answers the user, errors included.
+#[tracing::instrument(name = "discord.interaction", skip_all, fields(request_id = %interaction.id, guild_id = ?interaction.guild_id))]
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
     let started = Instant::now();
     let data = interaction.data.take();

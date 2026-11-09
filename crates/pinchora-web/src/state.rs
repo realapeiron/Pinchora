@@ -17,6 +17,10 @@ pub struct WebState {
 }
 
 impl WebState {
+    pub fn services(&self) -> &Arc<pinchora_services::Services> {
+        &self.app.services
+    }
+
     /// Stop room actors and sockets when a pod drains. Remaining pods acquire a fresh fencing epoch.
     pub fn drain_reef(&self) {
         self.reef.shutdown.send_replace(true);

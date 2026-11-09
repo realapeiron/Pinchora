@@ -509,7 +509,10 @@ pub fn spawn_ticker(app: Arc<App>) {
         wake.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             wake.tick().await;
-            if let Err(error) = Box::pin(tick(&app)).await {
+            if let Err(error) = pinchora_services::infra::Job::new("tickets")
+                .run(Box::pin(tick(&app)))
+                .await
+            {
                 tracing::warn!(%error, "tickets tick failed");
             }
         }

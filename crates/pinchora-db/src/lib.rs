@@ -4,6 +4,7 @@ pub mod economy;
 mod games;
 mod house;
 mod infra;
+pub use infra::run_job_lease;
 mod integrations;
 mod moderation;
 mod progression;

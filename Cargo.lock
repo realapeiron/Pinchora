@@ -2061,6 +2061,7 @@ dependencies = [
  "pinchora-db",
  "pinchora-game",
  "pinchora-render",
+ "pinchora-services",
  "pinchora-testkit",
  "rand 0.10.3",
  "redis",
@@ -2090,6 +2091,7 @@ dependencies = [
  "chrono-tz",
  "figment",
  "metrics-exporter-prometheus",
+ "rand 0.10.3",
  "regex",
  "serde",
  "serde_json",
@@ -2108,6 +2110,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "chrono-tz",
+ "futures-util",
  "pinchora-core",
  "pinchora-testkit",
  "serde",
@@ -2144,11 +2147,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pinchora-services"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "metrics",
+ "pinchora-cache",
+ "pinchora-core",
+ "pinchora-db",
+ "pinchora-game",
+ "pinchora-render",
+ "reqwest",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "twilight-http",
+]
+
+[[package]]
 name = "pinchora-testkit"
 version = "0.1.0"
 dependencies = [
  "sqlx",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2172,6 +2196,7 @@ dependencies = [
  "pinchora-db",
  "pinchora-game",
  "pinchora-render",
+ "pinchora-services",
  "pinchora-testkit",
  "rand 0.10.3",
  "reqwest",

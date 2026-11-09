@@ -95,7 +95,7 @@ pub fn run(root: &Path) -> Result {
         return Err(format!("dependency direction:\n{}", errors.join("\n")).into());
     }
     println!("depcheck: {} transitional edges", used.len());
-    Ok(())
+    crate::boundary::run(root, &meta)
 }
 
 // Dev helpers must not become a tunnel from lower layers to adapters.

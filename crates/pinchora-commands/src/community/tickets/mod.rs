@@ -166,21 +166,15 @@ pub async fn close_from_web(app: &Arc<App>, ticket: Ticket, by: u64, name: Strin
 
 /// Create or edit the configured status message. The ticker also calls this after missed events.
 pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
-    let mut lock = app.db.pool().begin().await?;
-    let acquired: bool =
-        sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('ticket-status:' || $1::text, 0))")
-            .bind(guild as i64)
-            .fetch_one(&mut *lock)
-            .await?;
-    let result = if acquired {
-        refresh_status_board_locked(app, guild).await
-    } else {
-        Ok(())
-    };
-    // Dropping the transaction only queues rollback. Release the lock before returning,
-    // including throttled refreshes and failed edits, so the next caller can acquire it.
-    lock.commit().await?;
-    result
+    let worker = app.clone();
+    pinchora_services::infra::Job::new("ticket_status")
+        .leased(
+            &app.services.infrastructure,
+            format!("ticket-status:{}", guild as i64),
+            async move { refresh_status_board_locked(&worker, guild).await },
+        )
+        .await?;
+    Ok(())
 }
 
 async fn refresh_status_board_locked(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {

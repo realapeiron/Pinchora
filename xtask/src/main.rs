@@ -10,6 +10,7 @@ use serde_json::Value;
 const START: &str = "<!-- crate-table:start -->";
 const END: &str = "<!-- crate-table:end -->";
 
+mod boundary;
 mod contracts;
 mod dependency;
 mod names;

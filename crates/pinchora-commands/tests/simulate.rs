@@ -8,13 +8,11 @@
 //! unset. Each step's images are saved as `target/sim/<test>/<step>-<filename>`; run with
 //! `--nocapture` to read the steps as they happen.
 
-use std::cell::Cell;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Write as _;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
@@ -79,6 +77,8 @@ mod basics;
 mod board;
 #[path = "simulate/branding.rs"]
 mod branding;
+#[path = "simulate/tracing.rs"]
+mod interaction_tracing;
 #[path = "simulate/leveling_policy.rs"]
 mod leveling_policy;
 #[path = "simulate/quick.rs"]

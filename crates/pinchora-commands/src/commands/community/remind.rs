@@ -840,7 +840,7 @@ pub fn spawn_ticker(app: Arc<App>) {
         let mut rounds = 0u32;
         loop {
             wake.tick().await;
-            if let Err(error) = tick(&app).await {
+            if let Err(error) = pinchora_services::infra::Job::new("reminders").run(tick(&app)).await {
                 tracing::warn!(%error, "reminder tick failed");
             }
             rounds = rounds.wrapping_add(1);
