@@ -271,184 +271,18 @@ impl EconomyCommand {
         let user = cx.author()?.id.get();
         let l = cx.lang();
         match self {
-            Self::Jobs(c) => {
-                if let Some(job) = c.job {
-                    if let Some(v) = execute(cx, &Action::StartShift { job }).await? {
-                        shift_panel(cx, &v).await?;
-                    }
-                    Ok(())
-                } else {
-                    let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
-                    panel(
-                        cx,
-                        t!(l, "eco.jobs"),
-                        t!(
-                            l,
-                            "eco.jobs_help",
-                            shifts = s["player"]["shifts"].as_i64().unwrap_or(0),
-                            today = s["shifts_today"]
-                        ),
-                        vec![],
-                    )
-                    .await
-                }
-            }
-            Self::Provisions(c) => match c.action.as_deref() {
-                Some("tend") => done(cx, Action::Tend).await,
-                Some("claim") => done(cx, Action::Provisions).await,
-                _ => panel(cx, t!(l, "eco.provisions"), t!(l, "eco.provisions_help"), vec![]).await,
-            },
-            Self::Chest(c) => {
-                if c.open == Some(true) {
-                    done(cx, Action::Chest).await
-                } else {
-                    panel(cx, t!(l, "eco.chest"), t!(l, "eco.chest_help"), vec![]).await
-                }
-            }
-            Self::Season(c) => {
-                if let Some(tier) = c.tier {
-                    done(cx, Action::Season { tier: tier as i32 }).await
-                } else {
-                    let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
-                    let xp = if s["player"]["season"] == s["season"] {
-                        s["player"]["season_xp"].as_i64().unwrap_or(0)
-                    } else {
-                        0
-                    };
-                    panel(
-                        cx,
-                        t!(l, "eco.season"),
-                        t!(
-                            l,
-                            "eco.season_help",
-                            xp = xp,
-                            claimed = s["season_claimed"],
-                            end = s["season_ends"].as_str().unwrap_or("")
-                        ),
-                        vec![],
-                    )
-                    .await
-                }
-            }
-            Self::Prestige(c) => {
-                if c.confirm == Some(true) {
-                    let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
-                    done(
-                        cx,
-                        Action::Prestige {
-                            expected: s["player"]["prestige"].as_i64().unwrap_or(0) as i32,
-                        },
-                    )
-                    .await
-                } else {
-                    panel(cx, t!(l, "eco.prestige"), t!(l, "eco.prestige_help"), vec![]).await
-                }
-            }
-            Self::Donate(c) => {
-                let Some(g) = cx.guild_id() else {
-                    return cx.reply_ephemeral(t!(l, "eco.error_forbidden")).await;
-                };
-                if let Some(amount) = c.amount {
-                    done(
-                        cx,
-                        Action::Donate {
-                            guild: g.to_string(),
-                            amount,
-                        },
-                    )
-                    .await
-                } else {
-                    let s = cx.app.db.economy_settings(g).await?;
-                    panel(
-                        cx,
-                        t!(l, "eco.pool"),
-                        t!(l, "eco.pool_help", total = s["pool_total"], goal = s["pool_goal"]),
-                        vec![],
-                    )
-                    .await
-                }
-            }
-            Self::Auction(c) => {
-                if let (Some(item), Some(price)) = (c.item, c.price) {
-                    done(
-                        cx,
-                        Action::Auction {
-                            item,
-                            price,
-                            hours: c.hours.unwrap_or(24) as i32,
-                        },
-                    )
-                    .await
-                } else {
-                    let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
-                    let rows = s["auctions"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .filter(|a| a["status"] == "open")
-                        .take(10)
-                        .map(|a| {
-                            t!(
-                                l,
-                                "eco.auction_row",
-                                id = a["id"],
-                                item = a["item_id"].as_str().unwrap_or(""),
-                                price = a["minimum_bid"],
-                                end = a["ends_at"].as_str().unwrap_or("")
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    panel(
-                        cx,
-                        t!(l, "eco.auctions"),
-                        format!("{}\n{}", t!(l, "eco.auction_help"), rows),
-                        vec![],
-                    )
-                    .await
-                }
-            }
-            Self::Bid(c) => {
-                done(
-                    cx,
-                    Action::Bid {
-                        id: c.id,
-                        amount: c.amount,
-                    },
-                )
-                .await
-            }
-            Self::Close(c) => {
-                done(
-                    cx,
-                    if c.cancel == Some(true) {
-                        Action::CancelAuction { id: c.id }
-                    } else {
-                        Action::SettleAuction { id: c.id }
-                    },
-                )
-                .await
-            }
-            Self::Trade(c) => {
-                if c.user.resolved.bot {
-                    return cx.reply_ephemeral(t!(l, "eco.error_invalid")).await;
-                }
-                if let Some(v) = execute(
-                    cx,
-                    &Action::Trade {
-                        to: c.user.resolved.id.to_string(),
-                        give: offer(c.give, c.item),
-                        receive: offer(c.receive, c.request_item),
-                    },
-                )
-                .await?
-                {
-                    review(cx, v["id"].as_i64().unwrap()).await?;
-                }
-                Ok(())
-            }
-            Self::Review(c) => review(cx, c.id).await,
-            Self::Tools(c) => admin(cx, c).await,
+            Self::Jobs(c) => jobs(cx, c, user, l).await,
+            Self::Provisions(c) => provisions(cx, c, l).await,
+            Self::Chest(c) => chest(cx, c, l).await,
+            Self::Season(c) => season(cx, c, user, l).await,
+            Self::Prestige(c) => prestige(cx, c, user, l).await,
+            Self::Donate(c) => donate(cx, c, l).await,
+            Self::Auction(c) => auction(cx, c, user, l).await,
+            Self::Bid(c) => bid(cx, c).await,
+            Self::Close(c) => close_auction(cx, c).await,
+            Self::Trade(c) => trade(cx, c, l).await,
+            Self::Review(c) => review_trade(cx, c).await,
+            Self::Tools(c) => economy_tools(cx, c).await,
         }
     }
 }
@@ -657,4 +491,200 @@ async fn admin(cx: &Cx, c: Tools) -> anyhow::Result<()> {
             }
         }
     }
+}
+
+async fn jobs(cx: &Cx, c: Jobs, user: u64, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    if let Some(job) = c.job {
+        if let Some(v) = execute(cx, &Action::StartShift { job }).await? {
+            shift_panel(cx, &v).await?;
+        }
+        Ok(())
+    } else {
+        let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
+        panel(
+            cx,
+            t!(l, "eco.jobs"),
+            t!(
+                l,
+                "eco.jobs_help",
+                shifts = s["player"]["shifts"].as_i64().unwrap_or(0),
+                today = s["shifts_today"]
+            ),
+            vec![],
+        )
+        .await
+    }
+}
+
+async fn provisions(cx: &Cx, c: Provisions, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    match c.action.as_deref() {
+        Some("tend") => done(cx, Action::Tend).await,
+        Some("claim") => done(cx, Action::Provisions).await,
+        _ => panel(cx, t!(l, "eco.provisions"), t!(l, "eco.provisions_help"), vec![]).await,
+    }
+}
+
+async fn chest(cx: &Cx, c: Chest, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    if c.open == Some(true) {
+        done(cx, Action::Chest).await
+    } else {
+        panel(cx, t!(l, "eco.chest"), t!(l, "eco.chest_help"), vec![]).await
+    }
+}
+
+async fn season(cx: &Cx, c: Season, user: u64, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    if let Some(tier) = c.tier {
+        done(cx, Action::Season { tier: tier as i32 }).await
+    } else {
+        let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
+        let xp = if s["player"]["season"] == s["season"] {
+            s["player"]["season_xp"].as_i64().unwrap_or(0)
+        } else {
+            0
+        };
+        panel(
+            cx,
+            t!(l, "eco.season"),
+            t!(
+                l,
+                "eco.season_help",
+                xp = xp,
+                claimed = s["season_claimed"],
+                end = s["season_ends"].as_str().unwrap_or("")
+            ),
+            vec![],
+        )
+        .await
+    }
+}
+
+async fn prestige(cx: &Cx, c: Prestige, user: u64, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    if c.confirm == Some(true) {
+        let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
+        done(
+            cx,
+            Action::Prestige {
+                expected: s["player"]["prestige"].as_i64().unwrap_or(0) as i32,
+            },
+        )
+        .await
+    } else {
+        panel(cx, t!(l, "eco.prestige"), t!(l, "eco.prestige_help"), vec![]).await
+    }
+}
+
+async fn donate(cx: &Cx, c: Donate, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    let Some(g) = cx.guild_id() else {
+        return cx.reply_ephemeral(t!(l, "eco.error_forbidden")).await;
+    };
+    if let Some(amount) = c.amount {
+        done(
+            cx,
+            Action::Donate {
+                guild: g.to_string(),
+                amount,
+            },
+        )
+        .await
+    } else {
+        let s = cx.app.db.economy_settings(g).await?;
+        panel(
+            cx,
+            t!(l, "eco.pool"),
+            t!(l, "eco.pool_help", total = s["pool_total"], goal = s["pool_goal"]),
+            vec![],
+        )
+        .await
+    }
+}
+
+async fn auction(cx: &Cx, c: Auction, user: u64, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    if let (Some(item), Some(price)) = (c.item, c.price) {
+        done(
+            cx,
+            Action::Auction {
+                item,
+                price,
+                hours: c.hours.unwrap_or(24) as i32,
+            },
+        )
+        .await
+    } else {
+        let s = cx.app.db.economy_snapshot(user, cx.app.now()).await?;
+        let rows = s["auctions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|a| a["status"] == "open")
+            .take(10)
+            .map(|a| {
+                t!(
+                    l,
+                    "eco.auction_row",
+                    id = a["id"],
+                    item = a["item_id"].as_str().unwrap_or(""),
+                    price = a["minimum_bid"],
+                    end = a["ends_at"].as_str().unwrap_or("")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        panel(
+            cx,
+            t!(l, "eco.auctions"),
+            format!("{}\n{}", t!(l, "eco.auction_help"), rows),
+            vec![],
+        )
+        .await
+    }
+}
+
+async fn bid(cx: &Cx, c: Bid) -> anyhow::Result<()> {
+    done(
+        cx,
+        Action::Bid {
+            id: c.id,
+            amount: c.amount,
+        },
+    )
+    .await
+}
+
+async fn close_auction(cx: &Cx, c: Close) -> anyhow::Result<()> {
+    done(
+        cx,
+        if c.cancel == Some(true) {
+            Action::CancelAuction { id: c.id }
+        } else {
+            Action::SettleAuction { id: c.id }
+        },
+    )
+    .await
+}
+
+async fn trade(cx: &Cx, c: Trade, l: pinchora_core::infra::i18n::Lang) -> anyhow::Result<()> {
+    if c.user.resolved.bot {
+        return cx.reply_ephemeral(t!(l, "eco.error_invalid")).await;
+    }
+    if let Some(v) = execute(
+        cx,
+        &Action::Trade {
+            to: c.user.resolved.id.to_string(),
+            give: offer(c.give, c.item),
+            receive: offer(c.receive, c.request_item),
+        },
+    )
+    .await?
+    {
+        review(cx, v["id"].as_i64().unwrap()).await?;
+    }
+    Ok(())
+}
+
+async fn review_trade(cx: &Cx, c: Review) -> anyhow::Result<()> {
+    review(cx, c.id).await
+}
+
+async fn economy_tools(cx: &Cx, c: Tools) -> anyhow::Result<()> {
+    admin(cx, c).await
 }

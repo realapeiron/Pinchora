@@ -345,17 +345,10 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
 
     let now = Utc::now();
     let late_by = now.timestamp_millis() - bite_at;
-    let miss = |title: &str, text: &str| InteractionResponseData {
-        embeds: Some(vec![
-            EmbedBuilder::new().color(WARN).title(title).description(text).build(),
-        ]),
-        components: Some(Vec::new()),
-        ..Default::default()
-    };
     match fishing::reel_result(late_by, rod.window_ms) {
         Reel::Early => {
             return cx
-                .update(miss(
+                .update(missed_catch(
                     &t!(lang, "fish.reel.too-early"),
                     &t!(lang, "fish.reel.too-early-text"),
                 ))
@@ -363,7 +356,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         }
         Reel::Late => {
             return cx
-                .update(miss(
+                .update(missed_catch(
                     &t!(lang, "fish.reel.too-slow"),
                     &t!(lang, "fish.reel.too-slow-text"),
                 ))
@@ -371,48 +364,38 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         }
         Reel::Caught => {}
     }
-    let clock = cx.app.now();
-    let Some(fish) = fishing::catch_fish(
-        content,
-        spot,
-        clock.hour(),
-        chrono::Datelike::month(&clock),
-        Tackle { luck: rod.luck, bait },
-        rand::random::<f64>(),
-        rand::random::<f64>(),
-    ) else {
-        return cx
-            .update(miss(
-                &t!(lang, "fish.reel.nothing"),
-                &t!(lang, "fish.reel.nothing-text"),
-            ))
-            .await;
+    land_catch(cx, user, spot, rod, bait, late_by).await
+}
+
+/// The embed that tells of a fish-book milestone just paid.
+fn milestone_embed(lang: Lang, paid: &MilestonePaid) -> Embed {
+    let content = Content::get();
+    let (id, hint) = match &paid.reward.cosmetic {
+        Cosmetic::Badge(id) => (id, "/customize badges"),
+        Cosmetic::Background(id) => (id, "/customize background"),
     };
-    let size = fishing::roll_size(fish, rand::random::<f64>(), rand::random::<f64>());
-    let ratio = fishing::size_ratio(fish, size);
-    let value = fishing::sale_value(fish, size);
-    let milestones = milestone_rewards(gear);
-    let known = known_fish();
-    let log = cx
-        .app
-        .db
-        .record_catch(
-            user,
-            NewCatch {
-                fish_id: &fish.id,
-                size_cm: size,
-                ratio: f64::from(ratio),
-                // Boots and tins are no catch to brag about.
-                weekly: cx.guild_id().filter(|_| !fish.junk).map(|g| (g, week_start(clock))),
-                milestones: &milestones,
-                known: &known,
-            },
-        )
-        .await?;
-    cx.app.quest(user, pinchora_game::quests::QuestKind::Fish).await;
-    let sprite = cx.app.sprites.fish(&fish.id);
-    let png = cx
-        .app
+    let key = match (&paid.reward.cosmetic, paid.cosmetic_new) {
+        (Cosmetic::Badge(_), true) => "fish.milestone.badge-new",
+        (Cosmetic::Badge(_), false) => "fish.milestone.badge-old",
+        (Cosmetic::Background(_), true) => "fish.milestone.background-new",
+        (Cosmetic::Background(_), false) => "fish.milestone.background-old",
+    };
+    EmbedBuilder::new()
+        .color(Rarity::Legendary.color())
+        .title(t!(lang, "fish.milestone.title", species = paid.reward.species))
+        .description(t!(
+            lang,
+            key,
+            shells = thousands_in(lang, paid.reward.shells),
+            name = content.name(id, lang),
+            hint = hint
+        ))
+        .build()
+}
+
+async fn catch_image(app: &App, fish: &pinchora_game::Fish) -> anyhow::Result<Vec<u8>> {
+    let sprite = app.sprites.fish(&fish.id);
+    let png = app
         .render(move |_| {
             let factor = (144 / sprite.width().max(sprite.height()).max(1)).clamp(1, 12);
             let big = image::imageops::resize(
@@ -426,6 +409,30 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             Ok(buf.into_inner())
         })
         .await?;
+    Ok(png)
+}
+
+struct CatchCard<'a> {
+    fish: &'a pinchora_game::Fish,
+    spot: &'a Spot,
+    size: f32,
+    ratio: f32,
+    value: i64,
+    late_by: i64,
+    log: &'a pinchora_db::CatchLog,
+}
+
+fn catch_embed(lang: Lang, catch: CatchCard<'_>) -> EmbedBuilder {
+    let CatchCard {
+        fish,
+        spot,
+        size,
+        ratio,
+        value,
+        late_by,
+        log,
+    } = catch;
+    let content = Content::get();
     let mut notes = Vec::new();
     if log.first {
         notes.push(t!(lang, "fish.catch.new-species"));
@@ -472,7 +479,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             fish = content.name(&fish.id, lang)
         )
     };
-    let embed = EmbedBuilder::new()
+    EmbedBuilder::new()
         .color(if log.first { SUCCESS } else { fish.rarity.color() })
         .title(title)
         .description(t!(
@@ -492,7 +499,72 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             total = content.fish.len(),
             bucket = log.bucket,
             capacity = BUCKET_CAPACITY
-        )));
+        )))
+}
+
+async fn land_catch(
+    cx: &Cx,
+    user: u64,
+    spot: &Spot,
+    rod: &Rod,
+    bait: Option<&Bait>,
+    late_by: i64,
+) -> anyhow::Result<()> {
+    let content = Content::get();
+    let gear = &content.fishing;
+    let lang = cx.lang();
+    let clock = cx.app.now();
+    let Some(fish) = fishing::catch_fish(
+        content,
+        spot,
+        clock.hour(),
+        chrono::Datelike::month(&clock),
+        Tackle { luck: rod.luck, bait },
+        rand::random::<f64>(),
+        rand::random::<f64>(),
+    ) else {
+        return cx
+            .update(missed_catch(
+                &t!(lang, "fish.reel.nothing"),
+                &t!(lang, "fish.reel.nothing-text"),
+            ))
+            .await;
+    };
+    let size = fishing::roll_size(fish, rand::random::<f64>(), rand::random::<f64>());
+    let ratio = fishing::size_ratio(fish, size);
+    let value = fishing::sale_value(fish, size);
+    let milestones = milestone_rewards(gear);
+    let known = known_fish();
+    let log = cx
+        .app
+        .db
+        .record_catch(
+            user,
+            NewCatch {
+                fish_id: &fish.id,
+                size_cm: size,
+                ratio: f64::from(ratio),
+                // Boots and tins are no catch to brag about.
+                weekly: cx.guild_id().filter(|_| !fish.junk).map(|g| (g, week_start(clock))),
+                milestones: &milestones,
+                known: &known,
+            },
+        )
+        .await?;
+    cx.app.quest(user, pinchora_game::quests::QuestKind::Fish).await;
+    let png = catch_image(&cx.app, fish).await?;
+    let embed = catch_embed(
+        lang,
+        CatchCard {
+            fish,
+            spot,
+            size,
+            ratio,
+            value,
+            late_by,
+            log: &log,
+        },
+    );
     let mut data = Cx::card(embed, "catch.png", png, Vec::new(), false);
     if let Some(embeds) = data.embeds.as_mut() {
         embeds.extend(log.paid.iter().map(|paid| milestone_embed(lang, paid)));
@@ -503,30 +575,14 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     Ok(())
 }
 
-/// The embed that tells of a fish-book milestone just paid.
-fn milestone_embed(lang: Lang, paid: &MilestonePaid) -> Embed {
-    let content = Content::get();
-    let (id, hint) = match &paid.reward.cosmetic {
-        Cosmetic::Badge(id) => (id, "/customize badges"),
-        Cosmetic::Background(id) => (id, "/customize background"),
-    };
-    let key = match (&paid.reward.cosmetic, paid.cosmetic_new) {
-        (Cosmetic::Badge(_), true) => "fish.milestone.badge-new",
-        (Cosmetic::Badge(_), false) => "fish.milestone.badge-old",
-        (Cosmetic::Background(_), true) => "fish.milestone.background-new",
-        (Cosmetic::Background(_), false) => "fish.milestone.background-old",
-    };
-    EmbedBuilder::new()
-        .color(Rarity::Legendary.color())
-        .title(t!(lang, "fish.milestone.title", species = paid.reward.species))
-        .description(t!(
-            lang,
-            key,
-            shells = thousands_in(lang, paid.reward.shells),
-            name = content.name(id, lang),
-            hint = hint
-        ))
-        .build()
+fn missed_catch(title: &str, text: &str) -> InteractionResponseData {
+    InteractionResponseData {
+        embeds: Some(vec![
+            EmbedBuilder::new().color(WARN).title(title).description(text).build(),
+        ]),
+        components: Some(Vec::new()),
+        ..Default::default()
+    }
 }
 
 #[cfg(test)]
