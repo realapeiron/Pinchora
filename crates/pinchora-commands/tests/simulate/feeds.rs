@@ -800,8 +800,24 @@ async fn new_items_are_posted_once_per_feed_even_with_two_pods() {
     let again = pod().await.unwrap();
     assert_eq!((again.polled, again.queued, again.posted), (1, 0, 0));
     let stored = sim.app.db.feed(sim.guild, feed).await.unwrap().unwrap();
-    assert_eq!(stored.last_item_id.as_deref(), Some("ep-3"));
+    // Two pods finish their posts in either order, so this field may hold either one.
+    assert!(
+        matches!(stored.last_item_id.as_deref(), Some("ep-2" | "ep-3")),
+        "{:?}",
+        stored.last_item_id
+    );
     assert!(stored.last_sent_at.is_some());
+
+    // A single pod sends in order, so it records exactly the post it sent last.
+    serve(
+        &url,
+        200,
+        rss_feed("The Reef Times", &[("ep-4", "A later update", Utc::now())]),
+    );
+    sim.app.shift_clock(chrono::Duration::minutes(30));
+    pod().await.unwrap();
+    let stored = sim.app.db.feed(sim.guild, feed).await.unwrap().unwrap();
+    assert_eq!(stored.last_item_id.as_deref(), Some("ep-4"));
 }
 
 #[tokio::test]
