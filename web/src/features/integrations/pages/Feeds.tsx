@@ -1,29 +1,26 @@
-import { t as spaT, serverText } from "../../../i18n";
-import { FeedWordsContext, useFeedWords, type FeedWords } from "../api/feedsWords";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
-
 import { Field, SwitchRow } from "../../../components/Field";
 import { MessagePreview } from "../../../components/MessagePreview";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, ChannelTag, RolePicker, RoleTag } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/Pickers";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { PlaceholderChips } from "../../../components/PlaceholderChips";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
-import { TopBar } from "../../../components/TopBar";
-import { ApiError, type FieldError, type GuildInfo, type Me, type Overview } from "../../../lib/api";
+import { serverText } from "../../../i18n";
+import { ApiError, type FieldError, type Overview } from "../../../lib/api";
+import { useDiscord } from "../../../lib/queries";
+import { useDebounced } from "../../../lib/useDebounced";
+import "../../../styles/feeds.css";
+import { NotFound } from "../../shell/pages/NotFound";
+import { PageHead } from "../../shell/pages/PageHead";
+import { Loading, Problem } from "../../shell/pages/States";
 import {
-  type Feed,
-  type FeedDraft,
-  type FeedKind,
-  type FeedList,
-  type Found,
   KIND_TAG,
   SOURCE_HELP,
-  ago,
   blankDraft,
   bodyOf,
   changedFields,
@@ -34,20 +31,19 @@ import {
   useFeeds,
   useSaveFeed,
   useTestFeed,
-  useMyChannels,
-  useStartChannel,
-  useVerifyChannel,
-  useUnlinkChannel,
-  words,
   wordsProblem,
+  type Feed,
+  type FeedDraft,
+  type FeedKind,
+  type FeedList,
+  type Found,
 } from "../api/feeds";
-import { useDiscord } from "../../../lib/queries";
-import { useDebounced } from "../../../lib/useDebounced";
-import "../../../styles/feeds.css";
-import { NotFound } from "../../shell/pages/NotFound";
-import { PageHead } from "../../shell/pages/PageHead";
-import { RequireLogin } from "../../shell/pages/RequireLogin";
-import { Loading, Problem } from "../../shell/pages/States";
+import { FeedWordsContext, useFeedWords } from "../api/feedsWords";
+import { DeleteFeedDialog, Empty, FeedRow, FoundCard, WordChips } from "./FeedPresentation";
+import { MyChannels } from "./MyFeedChannels";
+import { CARD_LABEL, KIND_LINE, channelName, kindLabel } from "./feedLabels";
+
+export { MyFeedsChannels, MyFeedsChannelsRoute } from "./MyFeedChannels";
 
 export function Feeds() {
   const overview = useOutletContext<Overview>();
@@ -176,77 +172,7 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
         ) : (
           <ul className="tag-list" aria-label={t("feeds")}>
             {list.items.map((feed) => (
-              <li key={feed.id} className="tag-row feed-row" data-feed={feed.account}>
-                <span className={`feed-kind feed-kind-${feed.kind}`} aria-hidden="true">
-                  {KIND_TAG[feed.kind]}
-                </span>
-                <div className="tag-main feed-main">
-                  <Link to={`/g/${guild}/feeds/${feed.id}`} className="tag-name">
-                    {feed.account}
-                  </Link>
-                  <p className="tag-detail muted">
-                    <span className="feed-kind-name">{kindLabel(list, feed.kind)}</span>
-                    <span aria-hidden="true"> → </span>
-                    <span className="visually-hidden"> {t("posting-in")} </span>
-                    <ChannelTag info={info} id={feed.channel_id} />
-                    {feed.ping_role_id && (
-                      <>
-                        <span aria-hidden="true"> · </span>
-                        <span className="visually-hidden">{t("pinging")} </span>
-                        <RoleTag info={info} id={feed.ping_role_id} />
-                      </>
-                    )}
-                    {feed.live_role_id && (
-                      <>
-                        <span aria-hidden="true"> · </span>
-                        <span className="visually-hidden">{t("live-now-role")} </span>
-                        <RoleTag info={info} id={feed.live_role_id} />
-                      </>
-                    )}
-                  </p>
-                  <p className={`feed-health is-${feed.health.state}`}>
-                    <span className="feed-dot" aria-hidden="true" />
-                    {feed.health.text}
-                  </p>
-                  <p className="tag-facts muted">
-                    {t("checked")} {ago(feed.health.last_checked_at, t)} {t("last-post")}{" "}
-                    {ago(feed.health.last_sent_at, t)} {t("every")} {feed.health.interval_minutes} {t("min")}
-                    {filterCount(feed) > 0 && t("count-filter-words", { count: filterCount(feed) })}
-                  </p>
-                </div>
-                <div className="tag-actions">
-                  <PixelToggle
-                    label={t("feed-account", { account: feed.account })}
-                    checked={feed.enabled}
-                    disabled={save.isPending}
-                    onChange={(enabled) => save.mutate({ id: feed.id, body: { enabled } })}
-                  />
-                  <PixelButton
-                    variant="ghost"
-                    className="button-small"
-                    aria-label={t("send-a-test-post-of-account", { account: feed.account })}
-                    disabled={testing !== null}
-                    onClick={() => runTest(feed)}
-                  >
-                    {testing === feed.id ? t("posting") : t("test")}
-                  </PixelButton>
-                  <PixelLink
-                    variant="secondary"
-                    className="button-small"
-                    href={`/g/${guild}/feeds/${feed.id}`}
-                  >
-                    {t("edit")}
-                  </PixelLink>
-                  <PixelButton
-                    variant="ghost"
-                    className="button-small"
-                    aria-label={t("delete-account", { account: feed.account })}
-                    onClick={() => setAsking(feed)}
-                  >
-                    {t("delete")}
-                  </PixelButton>
-                </div>
-              </li>
+              <FeedRow key={feed.id} {...{ feed, guild, list, info, save, testing, runTest, setAsking }} />
             ))}
           </ul>
         )}
@@ -255,237 +181,10 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
         )}
       </Panel>
       <MyChannels list={list} />
-      {asking && (
-        <div className="dialog-backdrop" role="presentation">
-          <div className="panel panel-gold dialog" role="alertdialog" aria-labelledby="delete-title">
-            <div className="panel-body">
-              <h2 id="delete-title" className="pixel-title">
-                {t("stop-following-account", { account: asking.account })}
-              </h2>
-              <p>{t("nothing-more-is-posted-from-it-posts-already")}</p>
-              {remove.isError && (
-                <p className="field-error" role="alert">
-                  {remove.error.message}
-                </p>
-              )}
-              <div className="dialog-actions">
-                <PixelButton
-                  variant="secondary"
-                  autoFocus
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      setAsking(null);
-                      remove.reset();
-                    }
-                  }}
-                  onClick={() => {
-                    setAsking(null);
-                    remove.reset();
-                  }}
-                >
-                  {t("keep-it")}
-                </PixelButton>
-                <PixelButton
-                  disabled={remove.isPending}
-                  onClick={() =>
-                    remove.mutate(asking.id, {
-                      onSuccess: () => {
-                        setToast(t("stopped-following-account", { account: asking.account }));
-                        setAsking(null);
-                      },
-                    })
-                  }
-                >
-                  {remove.isPending ? t("removing") : t("stop-following")}
-                </PixelButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {asking && <DeleteFeedDialog {...{ asking, remove, setAsking, setToast }} />}
       <Toast message={toast} onDone={clearToast} />
     </>
   );
-}
-
-const KIND_LINE: Record<FeedKind, string> = {
-  youtube: "new-videos-from-a-channel",
-  rss: "blogs-news-sites-and-podcasts",
-  reddit: "the-newest-posts-of-a-subreddit",
-  bluesky: "new-posts-of-an-account",
-  bridge: "x-instagram-and-tiktok-through-an-rss-bridge",
-  twitch: "twitch-live-help",
-  kick: "kick-live-help",
-};
-
-const CARD_LABEL: Record<FeedKind, string> = {
-  youtube: "youtube",
-  rss: "rss-podcasts",
-  reddit: "reddit",
-  bluesky: "bluesky",
-  bridge: "x-instagram-tiktok",
-  twitch: "twitch",
-  kick: "kick",
-};
-
-export function MyFeedsChannels({ me }: { me: Me }) {
-  const channels = useMyChannels();
-  if (channels.isPending) return <Loading />;
-  if (channels.isError) return <Problem error={channels.error} />;
-  return (
-    <div className="page">
-      <TopBar me={me} />
-      <main className="content content-narrow settings-page">
-        <FeedWordsContext.Provider value={channels.data.strings}>
-          <PageHead
-            title={spaT("MY CHANNELS")}
-            lead={spaT(
-              "Link your Twitch or Kick channel to receive a Live now role in servers that follow you.",
-            )}
-          />
-          <MyChannels />
-        </FeedWordsContext.Provider>
-      </main>
-    </div>
-  );
-}
-
-export function MyFeedsChannelsRoute() {
-  return <RequireLogin>{(me) => <MyFeedsChannels me={me} />}</RequireLogin>;
-}
-
-function MyChannels({ list }: { list?: FeedList }) {
-  const t = useFeedWords();
-  const channels = useMyChannels();
-  const start = useStartChannel();
-  const verify = useVerifyChannel();
-  const unlink = useUnlinkChannel();
-  const [kind, setKind] = useState<"twitch" | "kick">("twitch");
-  const [source, setSource] = useState("");
-  const selectedKind = (list?.kinds ?? channels.data?.kinds)?.find((item) => item.key === kind);
-  return (
-    <Panel title={t("my-channels")}>
-      <p className="muted">{t("my-channels-help")}</p>
-      {channels.data?.items.map((channel) => (
-        <div key={channel.kind} className="tag-row feed-row">
-          <div className="tag-main">
-            <strong>
-              {t(channel.kind)}: {channel.source}
-            </strong>
-            <p className="muted">{channel.verified_at ? t("channel-verified") : t("channel-pending")}</p>
-            {channel.code && (
-              <p>
-                {t("put-code-in-title-or-bio")}: <code>{channel.code}</code>
-              </p>
-            )}
-          </div>
-          <div className="tag-actions">
-            {!channel.verified_at && (
-              <PixelButton disabled={verify.isPending} onClick={() => verify.mutate(channel.kind)}>
-                {t("verify-channel")}
-              </PixelButton>
-            )}
-            <PixelButton
-              variant="ghost"
-              disabled={unlink.isPending}
-              onClick={() => unlink.mutate(channel.kind)}
-            >
-              {t("unlink-channel")}
-            </PixelButton>
-          </div>
-        </div>
-      ))}
-      <div className="form-grid form-grid-2">
-        <Field label={t("platform")} htmlFor="my-channel-kind">
-          <select
-            id="my-channel-kind"
-            value={kind}
-            onChange={(event) => setKind(event.target.value as "twitch" | "kick")}
-          >
-            <option value="twitch">{t("twitch")}</option>
-            <option value="kick">{t("kick")}</option>
-          </select>
-        </Field>
-        <Field label={t("channel-login")} htmlFor="my-channel-login">
-          <input id="my-channel-login" value={source} onChange={(event) => setSource(event.target.value)} />
-        </Field>
-      </div>
-      {!selectedKind?.available && (
-        <p className="field-hint muted">
-          {selectedKind?.why_not && serverText("unavailable", { unavailable: selectedKind.why_not })}
-        </p>
-      )}
-      <PixelButton
-        disabled={!source.trim() || start.isPending || !selectedKind?.available}
-        onClick={() => start.mutate({ kind, source })}
-      >
-        {t("link-channel")}
-      </PixelButton>
-      {[channels.error, start.error, verify.error, unlink.error].filter(Boolean).map((error, i) => (
-        <p className="field-error" role="alert" key={i}>
-          {serverText("error", { error: (error as Error).message })}
-        </p>
-      ))}
-    </Panel>
-  );
-}
-
-/** No feed yet: what can be followed, each a way into the form. */
-function Empty({ guild, list }: { guild: string; list: FeedList }) {
-  const t = useFeedWords();
-  return (
-    <div className="feed-empty">
-      <p className="feed-empty-lead">{t("nothing-followed-yet-pick-a-place-to-start")}</p>
-      <ul className="feed-kinds">
-        {list.kinds.map((kind) => (
-          <li key={kind.key}>
-            {kind.available ? (
-              <Link className="feed-kind-card" to={`/g/${guild}/feeds/new?kind=${kind.key}`}>
-                <span className={`feed-kind feed-kind-${kind.key}`} aria-hidden="true">
-                  {KIND_TAG[kind.key]}
-                </span>
-                <span className="feed-kind-card-text">
-                  <strong>{t(CARD_LABEL[kind.key])}</strong>
-                  <span className="muted">{t(KIND_LINE[kind.key])}</span>
-                </span>
-              </Link>
-            ) : (
-              <span
-                className="feed-kind-card is-locked"
-                title={kind.why_not ? serverText("unavailable", { unavailable: kind.why_not }) : undefined}
-              >
-                <span className={`feed-kind feed-kind-${kind.key}`} aria-hidden="true">
-                  {KIND_TAG[kind.key]}
-                </span>
-                <span className="feed-kind-card-text">
-                  <strong>{t(CARD_LABEL[kind.key])}</strong>
-                  <span className="muted">
-                    {kind.why_not
-                      ? serverText("unavailable", { unavailable: kind.why_not })
-                      : t("not-available-on-this-instance")}
-                  </span>
-                </span>
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function filterCount(feed: Feed): number {
-  return feed.filter_include.length + feed.filter_exclude.length;
-}
-
-function kindLabel(list: FeedList, kind: FeedKind): string {
-  const label = list.kinds.find((k) => k.key === kind)?.label ?? kind;
-  return kind === "rss" ? "RSS" : label;
-}
-
-function channelName(info: GuildInfo | undefined, id: string, t: FeedWords): string {
-  const channel = info?.channels.find((c) => c.id === id);
-  return channel ? `#${channel.name}` : t("its-channel");
 }
 
 // /Editor
@@ -990,54 +689,5 @@ function FeedEditor({
         }}
       />
     </>
-  );
-}
-
-/** What a check found: the source's name, its link, and its latest post. */
-function FoundCard({ found }: { found: Found }) {
-  const t = useFeedWords();
-  const latest = found.latest;
-  return (
-    <div className="feed-found" data-testid="feed-found">
-      <p className="feed-found-head">
-        <span className="badge badge-mint">{t("found")}</span>
-        <strong className="feed-found-name">
-          {found.link ? (
-            <a href={found.link} target="_blank" rel="noopener noreferrer">
-              {found.account}
-              <span className="visually-hidden"> {t("opens-in-a-new-tab")}</span>
-            </a>
-          ) : (
-            found.account
-          )}
-        </strong>
-      </p>
-      {latest ? (
-        <p className="feed-found-latest">
-          <span className="muted">{t("latest")} </span>“{latest.title || t("untitled")}”
-          {latest.published && <span className="muted"> · {ago(latest.published, t)}</span>}
-        </p>
-      ) : (
-        <p className="muted">{t("nothing-posted-yet")}</p>
-      )}
-      <p className="muted feed-found-note">
-        {t("what-is-there-now-is-not-posted-new", { minutes: found.interval_minutes })}
-      </p>
-    </div>
-  );
-}
-
-function WordChips({ text, label }: { text: string; label: string }) {
-  const t = useFeedWords();
-  const list = words(text);
-  if (list.length === 0) return null;
-  return (
-    <ul className="feed-words" aria-label={t("label-count-words", { label, count: list.length })}>
-      {list.map((word) => (
-        <li key={word} className="feed-word">
-          {word}
-        </li>
-      ))}
-    </ul>
   );
 }

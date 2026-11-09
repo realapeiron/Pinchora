@@ -1,13 +1,12 @@
-import { plural as spaPlural, translate as spaTranslate } from "../../../i18n";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
-
 import { Choice } from "../../../components/Choice";
 import { Field, SwitchRow } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, ChannelTag, RolePicker, RoleTag } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { RichText } from "../../../components/RichText";
+import { translate as spaTranslate } from "../../../i18n";
 import { ApiError, type FieldError, type GuildInfo } from "../../../lib/api";
 import {
   type Limits,
@@ -23,58 +22,10 @@ import {
   usePostPanel,
   useSavePanel,
 } from "../api/tickets";
+import { CategoryPicker, PanelPreview, SupportRoles } from "./TicketPanelFields";
+import { DeleteTicketPanel, TicketPanelRow } from "./TicketPanelList";
 
-const TONES: { value: Tone; label: string }[] = [
-  { value: "primary", label: "Blurple" },
-  { value: "secondary", label: "Grey" },
-  { value: "success", label: "Green" },
-  { value: "danger", label: "Red" },
-];
-
-const WELCOME_PLACEHOLDERS = ["{user}", "{server}", "{number}", "{topic}"];
-
-/** A `<select>` of the server's categories. */
-export function CategoryPicker({
-  id,
-  info,
-  value,
-  onChange,
-  none,
-  invalid,
-}: {
-  id: string;
-  info: GuildInfo | undefined;
-  value: string | null;
-  onChange: (id: string | null) => void;
-  none: string;
-  invalid?: boolean;
-}) {
-  const categories = (info?.channels ?? []).filter((c) => c.type === 4);
-  const known = !value || categories.some((c) => c.id === value);
-  return (
-    <select
-      id={id}
-      className="pixel-input pixel-select"
-      value={value ?? ""}
-      onChange={(event) => onChange(event.target.value || null)}
-      disabled={!info}
-      aria-invalid={invalid || undefined}
-    >
-      <option value="">{none}</option>
-      {!known && (
-        <option value={value!}>
-          {spaTranslate("Deleted category (")}
-          {value})
-        </option>
-      )}
-      {categories.map((c) => (
-        <option key={c.id} value={c.id}>
-          {`▸ ${c.name}`}
-        </option>
-      ))}
-    </select>
-  );
-}
+export { CategoryPicker, PanelPreview } from "./TicketPanelFields";
 
 /** The server's panels: the list, and the editor of the one being changed or made. */
 export function TicketPanels({
@@ -131,65 +82,10 @@ export function TicketPanels({
       ) : (
         <ul className="tk-panel-list">
           {panels.map((panel) => (
-            <li
+            <TicketPanelRow
               key={panel.id}
-              className={`tk-panel-row ${editing === panel.id ? "is-editing" : ""}`}
-              data-panel={panel.name}
-            >
-              <div className="tk-panel-main">
-                <span className="tk-panel-name">
-                  {panel.name}
-                  {panel.message_id ? (
-                    <span className="badge badge-mint">{spaTranslate("POSTED")}</span>
-                  ) : (
-                    <span className="badge tk-badge-quiet">{spaTranslate("NOT POSTED")}</span>
-                  )}
-                  {!panel.enabled && <span className="badge badge-gold">{spaTranslate("OFF")}</span>}
-                </span>
-                <p className="tk-panel-facts">
-                  <ChannelTag info={info} id={panel.channel_id} /> ·{" "}
-                  {panel.style === "buttons" ? spaTranslate("Buttons") : spaTranslate("Menu")} ·{" "}
-                  {spaPlural(panel.topics.length, { one: "{count} topic", other: "{count} topics" })}
-                  {panel.questions.length > 0 &&
-                    spaPlural(panel.questions.length, {
-                      one: " · form of {count} question",
-                      other: " · form of {count} questions",
-                    })}
-                  {panel.support_roles.length > 0 &&
-                    spaPlural(panel.support_roles.length, {
-                      one: " · {count} support role",
-                      other: " · {count} support roles",
-                    })}
-                </p>
-              </div>
-              <div className="tk-panel-actions">
-                <PixelButton
-                  variant="secondary"
-                  className="button-small"
-                  onClick={() => setEditing(editing === panel.id ? null : panel.id)}
-                  aria-expanded={editing === panel.id}
-                  aria-label={spaTranslate("Edit {arg1}", { arg1: panel.name })}
-                >
-                  {editing === panel.id ? spaTranslate("Close") : spaTranslate("Edit")}
-                </PixelButton>
-                <PixelButton
-                  className="button-small"
-                  onClick={() => publish(panel)}
-                  disabled={post.isPending}
-                  aria-label={`${panel.message_id ? spaTranslate("Update the post of") : spaTranslate("Post")} ${panel.name}`}
-                >
-                  {panel.message_id ? spaTranslate("Update post") : spaTranslate("Post")}
-                </PixelButton>
-                <PixelButton
-                  variant="ghost"
-                  className="button-small"
-                  onClick={() => setAsking(panel)}
-                  aria-label={spaTranslate("Delete {arg1}", { arg1: panel.name })}
-                >
-                  {spaTranslate("Delete")}
-                </PixelButton>
-              </div>
-            </li>
+              {...{ panel, editing, info, setEditing, publish, post, setAsking }}
+            />
           ))}
         </ul>
       )}
@@ -221,67 +117,19 @@ export function TicketPanels({
           onPost={publish}
         />
       )}
-      {asking && (
-        <div
-          className="dialog-backdrop"
-          role="presentation"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") setAsking(null);
-          }}
-        >
-          <div
-            className="panel panel-gold dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="panel-delete-title"
-          >
-            <div className="panel-body">
-              <h2 id="panel-delete-title" className="pixel-title">
-                {" "}
-                {spaTranslate("Delete “")}
-                {asking.name}”?
-              </h2>
-              <p>
-                {spaTranslate("The panel and its posted message go. Its tickets and their transcripts stay.")}
-              </p>
-              {remove.isError && (
-                <p className="field-error" role="alert">
-                  {remove.error.message}
-                </p>
-              )}
-              <div className="dialog-actions">
-                <PixelButton
-                  variant="secondary"
-                  autoFocus
-                  onClick={() => {
-                    setAsking(null);
-                    remove.reset();
-                  }}
-                >
-                  {spaTranslate("Keep it")}
-                </PixelButton>
-                <PixelButton
-                  disabled={remove.isPending}
-                  onClick={() =>
-                    remove.mutate(asking.id, {
-                      onSuccess: () => {
-                        onToast(spaTranslate("Deleted “{arg1}”.", { arg1: asking.name }));
-                        if (editing === asking.id) setEditing(null);
-                        setAsking(null);
-                      },
-                    })
-                  }
-                >
-                  {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
-                </PixelButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {asking && <DeleteTicketPanel {...{ asking, remove, editing, setEditing, setAsking, onToast }} />}
     </Panel>
   );
 }
+
+const TONES: { value: Tone; label: string }[] = [
+  { value: "primary", label: "Blurple" },
+  { value: "secondary", label: "Grey" },
+  { value: "success", label: "Green" },
+  { value: "danger", label: "Red" },
+];
+
+const WELCOME_PLACEHOLDERS = ["{user}", "{server}", "{number}", "{topic}"];
 
 type TabKey = "buttons" | "behaviour" | "form" | "log";
 
@@ -900,128 +748,5 @@ function PanelEditor({
         </PixelButton>
       </div>
     </section>
-  );
-}
-
-/** The panel's support roles as chips, with a labelled picker to add one. */
-function SupportRoles({
-  id,
-  info,
-  ids,
-  max,
-  onChange,
-}: {
-  id: string;
-  info: GuildInfo | undefined;
-  ids: string[];
-  max: number;
-  onChange: (next: string[]) => void;
-}) {
-  const [pick, setPick] = useState<string | null>(null);
-  const full = ids.length >= max;
-  const nameOf = (role: string) => info?.roles.find((r) => r.id === role)?.name ?? role;
-  return (
-    <div className="id-list">
-      {ids.length === 0 ? (
-        <p className="muted id-list-empty">
-          {spaTranslate("No support role: only managers see the tickets.")}
-        </p>
-      ) : (
-        <ul className="channel-chips" aria-label={spaTranslate("Support roles")}>
-          {ids.map((role) => (
-            <li key={role} className="channel-chip">
-              <RoleTag info={info} id={role} />
-              <button
-                type="button"
-                className="chip-remove"
-                aria-label={spaTranslate("Remove {arg1}", { arg1: nameOf(role) })}
-                onClick={() => onChange(ids.filter((x) => x !== role))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="module-add">
-        <RolePicker
-          id={id}
-          info={info}
-          value={pick}
-          onChange={setPick}
-          none={full ? `Up to ${max}` : spaTranslate("Pick a role")}
-          disabled={full}
-        />
-        <PixelButton
-          variant="secondary"
-          className="button-small"
-          disabled={!pick || full || ids.includes(pick)}
-          onClick={() => {
-            if (pick) onChange([...ids, pick]);
-            setPick(null);
-          }}
-        >
-          {spaTranslate("Add role")}
-        </PixelButton>
-      </div>
-    </div>
-  );
-}
-
-/** The panel as Discord shows it: the bot, the embed, the buttons or the menu. */
-export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelledBy?: string }) {
-  const color = /^#?[0-9a-fA-F]{6}$/.test(draft.color.trim())
-    ? `#${draft.color.trim().replace(/^#/, "")}`
-    : "#ff6b4a";
-  const topics = draft.topics.filter((t) => t.label.trim());
-  return (
-    <div className={`discord ${draft.enabled ? "" : "dc-off"}`} role="region" aria-labelledby={labelledBy}>
-      <div className="discord-head">
-        <span className="discord-avatar" aria-hidden="true" />
-        <strong>Pinchora</strong>
-        <span className="discord-tag">{spaTranslate("APP")}</span>
-      </div>
-      <div className="embed-card" style={{ borderLeftColor: color }}>
-        <div className="embed-main">
-          <p className="embed-title">
-            {draft.title.trim() ? <RichText text={draft.title} /> : spaTranslate("Untitled panel")}
-          </p>
-          {draft.description.trim() && (
-            <p className="embed-description">
-              <RichText text={draft.description} />
-            </p>
-          )}
-          <p className="embed-footer muted">{spaTranslate("Pick a topic to open a private ticket.")}</p>
-        </div>
-      </div>
-      {draft.style === "buttons" ? (
-        <div className="dc-buttons" aria-label={spaTranslate("Buttons")}>
-          {topics.slice(0, 5).map((t, n) => (
-            <span key={n} className={`dc-button is-${t.tone}`}>
-              {t.emoji && <span aria-hidden="true">{t.emoji}</span>}
-              {t.label}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="dc-select" aria-hidden="true">
-            <span>{spaTranslate("What do you need help with?")}</span>
-            <span>▾</span>
-          </div>
-          <ul className="dc-options" aria-label={spaTranslate("Menu options")}>
-            {topics.slice(0, 25).map((t, n) => (
-              <li key={n}>
-                <span>
-                  {t.emoji && <span aria-hidden="true">{t.emoji} </span>}
-                  {t.label}
-                </span>
-                {t.description && <small>{t.description}</small>}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
   );
 }

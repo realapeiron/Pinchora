@@ -148,21 +148,7 @@ async fn operate(
 ) -> ApiResult<Response> {
     let who = resolve(&state, &mut current, &scope, true).await?;
     state.app.cache.ping().await?;
-    let receipt = match (&request.request_id, &request.expected_revision) {
-        (Some(id), Some(revision)) if !id.is_empty() && id.len() <= 100 => Some(pinchora_db::ReefEditRequest {
-            actor: current.session.user_id,
-            request: id.clone(),
-            payload: serde_json::to_string(&json!({"op":request.op,"expected":request.expected,"revision":revision}))
-                .map_err(anyhow::Error::from)?,
-            revision: revision
-                .parse::<i64>()
-                .ok()
-                .filter(|n| *n >= 0)
-                .ok_or_else(|| ApiError::malformed("Invalid revision."))?,
-        }),
-        (None, None) => None,
-        _ => return Err(ApiError::malformed("Request id and revision are required together.")),
-    };
+    let receipt = edit_receipt(&request, current.session.user_id)?;
     let _settings_guard = if matches!(&request.op, Op::Extra(_)) {
         Some(state.app.db.house_editor(who.owner).await?)
     } else {
@@ -191,135 +177,17 @@ async fn operate(
         return Ok(conflict(before));
     }
     let operation = serde_json::to_value(&request.op).map_err(anyhow::Error::from)?;
-    let mut result = match request.op {
-        Op::Edit(op) => match house_edit::apply_receipted(
-            &state.app,
-            who,
-            data.room.idx,
-            (data.width, data.depth),
-            &request.expected,
-            op,
-            receipt.as_ref(),
-        )
-        .await?
-        {
-            Outcome::Done(value) => value,
-            Outcome::Conflict(value) => return Ok(conflict(value)),
-            Outcome::Refused { code, message } => {
-                return Ok((
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    Json(json!({"code":code,"message":message,"error":{"code":code,"message":message}})),
-                )
-                    .into_response());
-            }
-        },
-        Op::Extra(op) => {
-            // The bot exposes decorating, upgrading and locking only for your own house.
-            if scope.scope != "own" && !(scope.scope == "plaza" && matches!(&op, ExtraOperation::Surface { .. })) {
-                return Err(ApiError::new(
-                    StatusCode::FORBIDDEN,
-                    "owner_only",
-                    "Only the owner can change this.",
-                ));
-            }
-            match op {
-                ExtraOperation::Surface {
-                    wallpaper,
-                    floor,
-                    confirm_price,
-                } => {
-                    if wallpaper.is_some() == floor.is_some() {
-                        return Err(ApiError::malformed("Choose one surface."));
-                    }
-                    let wall = wallpaper.is_some();
-                    let id = wallpaper.as_ref().or(floor.as_ref()).expect("one surface");
-                    let content = Content::get();
-                    let list = if wall {
-                        &content.surfaces.wallpapers
-                    } else {
-                        &content.surfaces.floors
-                    };
-                    let surface = list.iter().find(|s| &s.id == id).ok_or_else(ApiError::not_found)?;
-                    let key = format!("{}:{id}", if wall { "wp" } else { "fl" });
-                    if scope.scope == "plaza" && !state.app.db.owns(who.stock, &key).await? {
-                        return Err(ApiError::blocked("You do not own this piece."));
-                    }
-                    let (currency, label) = match surface.currency {
-                        Currency::Shells => (pinchora_db::Currency::Shells, "shells"),
-                        Currency::Pearls => (pinchora_db::Currency::Pearls, "pearls"),
-                    };
-                    let outcome = state
-                        .app
-                        .db
-                        .update_house_receipted(
-                            who.owner,
-                            data.room.idx,
-                            HouseUpdate::Surface {
-                                wallpaper: wallpaper.as_deref(),
-                                floor: floor.as_deref(),
-                                key: &key,
-                                price: surface.price,
-                                currency,
-                                confirmed: scope.scope == "own" && confirm_price == Some(surface.price),
-                            },
-                            receipt.as_ref(),
-                            |rows| house_edit::fingerprint(rows) == request.expected,
-                        )
-                        .await?;
-                    match outcome {
-                        HouseUpdateOutcome::Done => {},
-                        HouseUpdateOutcome::Conflict => return fresh_conflict(&state, who, data.room.idx).await,
-                        HouseUpdateOutcome::Confirm { balance } => return Ok((StatusCode::CONFLICT, Json(json!({"code":"confirm", "price":surface.price,"currency":label,"balance":balance,"error":{"code":"confirm","message":"Confirm this purchase."}}))).into_response()),
-                        HouseUpdateOutcome::Insufficient { balance } => return Ok((StatusCode::UNPROCESSABLE_ENTITY, Json(json!({"code":"insufficient","balance":balance,"error":{"code":"insufficient","message":"Not enough currency."}}))).into_response()),
-                    }
-                }
-                ExtraOperation::Upgrade { from_tier } => {
-                    if !(1..6).contains(&from_tier) {
-                        return Err(ApiError::blocked("Your house is already at the largest tier."));
-                    }
-                    let next = house::tier(from_tier + 1);
-                    let content = Content::get();
-                    let new_rooms: Vec<NewRoom> = house::ROOM_ORDER
-                        .iter()
-                        .skip(house::tier(from_tier).rooms)
-                        .take(next.rooms - house::tier(from_tier).rooms)
-                        .map(|name| {
-                            let r = content.room_type(name).expect("built-in room type");
-                            NewRoom {
-                                room_type: (*name).into(),
-                                wallpaper: r.default_wallpaper.clone(),
-                                floor: r.default_floor.clone(),
-                            }
-                        })
-                        .collect();
-                    match state.app.db.update_house_receipted(who.owner, data.room.idx,
-                        HouseUpdate::Upgrade { from_tier, price: next.price, rooms: &new_rooms }, receipt.as_ref(),
-                        |rows| house_edit::fingerprint(rows) == request.expected).await? {
-                        HouseUpdateOutcome::Done => {},
-                        HouseUpdateOutcome::Insufficient { balance } => return Ok((StatusCode::PAYMENT_REQUIRED, Json(json!({"code":"insufficient","balance":balance,"error":{"code":"insufficient","message":"Not enough shells."}}))).into_response()),
-                        _ => return fresh_conflict(&state, who, data.room.idx).await,
-                    }
-                }
-                ExtraOperation::Lock { locked } => {
-                    if state
-                        .app
-                        .db
-                        .update_house_receipted(
-                            who.owner,
-                            data.room.idx,
-                            HouseUpdate::Lock(locked),
-                            receipt.as_ref(),
-                            |rows| house_edit::fingerprint(rows) == request.expected,
-                        )
-                        .await?
-                        != HouseUpdateOutcome::Done
-                    {
-                        return fresh_conflict(&state, who, data.room.idx).await;
-                    }
-                }
-            }
-            house_edit::versioned_snapshot(&state.app, who, data.room.idx, &data.placements).await?
-        }
+    let change = HouseChange {
+        state: &state,
+        who,
+        data: &data,
+        scope: &scope,
+        receipt: receipt.as_ref(),
+        expected: &request.expected,
+    };
+    let mut result = match change.apply(request.op).await? {
+        Ok(value) => value,
+        Err(response) => return Ok(response),
     };
     result["scope"] = json!(scope.scope);
     result["whose"] = json!(who.owner.to_string());
@@ -438,4 +306,213 @@ async fn guestbook(State(state): State<WebState>, current: CurrentSession) -> Ap
     Ok(Json(
         json!({"notes":notes.iter().map(|n| json!({"id":n.id.to_string(),"author_name":n.author_name,"body":n.body,"created_at":n.created_at})).collect::<Vec<_>>(),"total":total}),
     ))
+}
+
+struct HouseChange<'a> {
+    state: &'a WebState,
+    who: Who,
+    data: &'a pinchora_commands::RoomData,
+    scope: &'a Scope,
+    receipt: Option<&'a pinchora_db::ReefEditRequest>,
+    expected: &'a str,
+}
+
+impl HouseChange<'_> {
+    async fn apply(&self, op: Op) -> ApiResult<Result<Value, Response>> {
+        let Self {
+            state,
+            who,
+            data,
+            scope,
+            receipt,
+            expected,
+        } = *self;
+        let result = match op {
+            Op::Edit(op) => match house_edit::apply_receipted(
+                &state.app,
+                who,
+                data.room.idx,
+                (data.width, data.depth),
+                expected,
+                op,
+                receipt,
+            )
+            .await?
+            {
+                Outcome::Done(value) => value,
+                Outcome::Conflict(value) => return Ok(Err(conflict(value))),
+                Outcome::Refused { code, message } => {
+                    return Ok(Err((
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        Json(json!({"code":code,"message":message,"error":{"code":code,"message":message}})),
+                    )
+                        .into_response()));
+                }
+            },
+            Op::Extra(op) => {
+                // The bot exposes decorating, upgrading and locking only for your own house.
+                if scope.scope != "own" && !(scope.scope == "plaza" && matches!(&op, ExtraOperation::Surface { .. })) {
+                    return Err(ApiError::new(
+                        StatusCode::FORBIDDEN,
+                        "owner_only",
+                        "Only the owner can change this.",
+                    ));
+                }
+                let response = match op {
+                    ExtraOperation::Surface {
+                        wallpaper,
+                        floor,
+                        confirm_price,
+                    } => self.change_surface(wallpaper, floor, confirm_price).await?,
+                    ExtraOperation::Upgrade { from_tier } => self.upgrade_house(from_tier).await?,
+                    ExtraOperation::Lock { locked } => self.lock_house(locked).await?,
+                };
+                if let Some(response) = response {
+                    return Ok(Err(response));
+                }
+                house_edit::versioned_snapshot(&state.app, who, data.room.idx, &data.placements).await?
+            }
+        };
+        Ok(Ok(result))
+    }
+    async fn change_surface(
+        &self,
+        wallpaper: Option<String>,
+        floor: Option<String>,
+        confirm_price: Option<i64>,
+    ) -> ApiResult<Option<Response>> {
+        let Self {
+            state,
+            who,
+            data,
+            scope,
+            receipt,
+            expected,
+        } = *self;
+
+        if wallpaper.is_some() == floor.is_some() {
+            return Err(ApiError::malformed("Choose one surface."));
+        }
+        let wall = wallpaper.is_some();
+        let id = wallpaper.as_ref().or(floor.as_ref()).expect("one surface");
+        let content = Content::get();
+        let list = if wall {
+            &content.surfaces.wallpapers
+        } else {
+            &content.surfaces.floors
+        };
+        let surface = list.iter().find(|s| &s.id == id).ok_or_else(ApiError::not_found)?;
+        let key = format!("{}:{id}", if wall { "wp" } else { "fl" });
+        if scope.scope == "plaza" && !state.app.db.owns(who.stock, &key).await? {
+            return Err(ApiError::blocked("You do not own this piece."));
+        }
+        let (currency, label) = match surface.currency {
+            Currency::Shells => (pinchora_db::Currency::Shells, "shells"),
+            Currency::Pearls => (pinchora_db::Currency::Pearls, "pearls"),
+        };
+        let outcome = state
+            .app
+            .db
+            .update_house_receipted(
+                who.owner,
+                data.room.idx,
+                HouseUpdate::Surface {
+                    wallpaper: wallpaper.as_deref(),
+                    floor: floor.as_deref(),
+                    key: &key,
+                    price: surface.price,
+                    currency,
+                    confirmed: scope.scope == "own" && confirm_price == Some(surface.price),
+                },
+                receipt,
+                |rows| house_edit::fingerprint(rows) == expected,
+            )
+            .await?;
+        match outcome {
+            HouseUpdateOutcome::Done => {},
+            HouseUpdateOutcome::Conflict => return fresh_conflict(state, who, data.room.idx).await.map(Some),
+            HouseUpdateOutcome::Confirm { balance } => return Ok(Some((StatusCode::CONFLICT, Json(json!({"code":"confirm", "price":surface.price,"currency":label,"balance":balance,"error":{"code":"confirm","message":"Confirm this purchase."}}))).into_response())),
+            HouseUpdateOutcome::Insufficient { balance } => return Ok(Some((StatusCode::UNPROCESSABLE_ENTITY, Json(json!({"code":"insufficient","balance":balance,"error":{"code":"insufficient","message":"Not enough currency."}}))).into_response())),
+        }
+        Ok(None)
+    }
+    async fn upgrade_house(&self, from_tier: i16) -> ApiResult<Option<Response>> {
+        let Self {
+            state,
+            who,
+            data,
+            receipt,
+            expected,
+            ..
+        } = *self;
+
+        if !(1..6).contains(&from_tier) {
+            return Err(ApiError::blocked("Your house is already at the largest tier."));
+        }
+        let next = house::tier(from_tier + 1);
+        let content = Content::get();
+        let new_rooms: Vec<NewRoom> = house::ROOM_ORDER
+            .iter()
+            .skip(house::tier(from_tier).rooms)
+            .take(next.rooms - house::tier(from_tier).rooms)
+            .map(|name| {
+                let r = content.room_type(name).expect("built-in room type");
+                NewRoom {
+                    room_type: (*name).into(),
+                    wallpaper: r.default_wallpaper.clone(),
+                    floor: r.default_floor.clone(),
+                }
+            })
+            .collect();
+        match state.app.db.update_house_receipted(who.owner, data.room.idx,
+            HouseUpdate::Upgrade { from_tier, price: next.price, rooms: &new_rooms }, receipt,
+            |rows| house_edit::fingerprint(rows) == expected).await? {
+            HouseUpdateOutcome::Done => {},
+            HouseUpdateOutcome::Insufficient { balance } => return Ok(Some((StatusCode::PAYMENT_REQUIRED, Json(json!({"code":"insufficient","balance":balance,"error":{"code":"insufficient","message":"Not enough shells."}}))).into_response())),
+            _ => return fresh_conflict(state, who, data.room.idx).await.map(Some),
+        }
+        Ok(None)
+    }
+    async fn lock_house(&self, locked: bool) -> ApiResult<Option<Response>> {
+        let Self {
+            state,
+            who,
+            data,
+            receipt,
+            expected,
+            ..
+        } = *self;
+
+        if state
+            .app
+            .db
+            .update_house_receipted(who.owner, data.room.idx, HouseUpdate::Lock(locked), receipt, |rows| {
+                house_edit::fingerprint(rows) == expected
+            })
+            .await?
+            != HouseUpdateOutcome::Done
+        {
+            return fresh_conflict(state, who, data.room.idx).await.map(Some);
+        }
+        Ok(None)
+    }
+}
+
+fn edit_receipt(request: &Request, actor: u64) -> ApiResult<Option<pinchora_db::ReefEditRequest>> {
+    let receipt = match (&request.request_id, &request.expected_revision) {
+        (Some(id), Some(revision)) if !id.is_empty() && id.len() <= 100 => Some(pinchora_db::ReefEditRequest {
+            actor,
+            request: id.clone(),
+            payload: serde_json::to_string(&json!({"op":request.op,"expected":request.expected,"revision":revision}))
+                .map_err(anyhow::Error::from)?,
+            revision: revision
+                .parse::<i64>()
+                .ok()
+                .filter(|n| *n >= 0)
+                .ok_or_else(|| ApiError::malformed("Invalid revision."))?,
+        }),
+        (None, None) => None,
+        _ => return Err(ApiError::malformed("Request id and revision are required together.")),
+    };
+    Ok(receipt)
 }
