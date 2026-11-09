@@ -1,12 +1,12 @@
 //! Birthdays use the real Postgres test database, including a concurrent claim.
 use chrono::Utc;
 
-use crate::support::db_eight as db;
+use crate::support::db;
 use crate::support::ids;
 #[tokio::test]
 async fn opt_in_and_once_across_pods() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, other, user, unbadged] = ids();
     db.set_birthday(
         user,
@@ -101,7 +101,7 @@ async fn opt_in_and_once_across_pods() {
 #[tokio::test]
 async fn date_lock_survives_removal_and_privacy_stays_editable() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let mut input = pinchora_db::BirthdayInput {
         month: 1,
@@ -138,8 +138,8 @@ async fn date_lock_survives_removal_and_privacy_stays_editable() {
 
 #[tokio::test]
 async fn real_year_cap_private_profiles_and_durable_delivery() {
-    let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let _isolation = crate::support::exclusive().await;
+    let Some(db) = db(8).await else { return };
     let [user, guild, other, role, channel] = ids();
     let now = Utc::now();
     db.add_xp(
@@ -275,7 +275,7 @@ async fn real_year_cap_private_profiles_and_durable_delivery() {
 async fn deleting_data_cannot_reset_the_yearly_claim_or_date_lock() {
     let _isolation = crate::support::exclusive().await;
     use chrono::Datelike;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user, guild] = ids();
     let now = Utc::now();
     let input = pinchora_db::BirthdayInput {

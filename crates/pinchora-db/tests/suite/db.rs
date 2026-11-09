@@ -7,7 +7,7 @@ use pinchora_db::{
     PairOutcome, RepOutcome, Tally, TransferOutcome, TripClaim, TripPayout, Wake, XpGrant, XpTarget,
 };
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;

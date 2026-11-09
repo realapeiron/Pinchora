@@ -8,7 +8,7 @@ use pinchora_core::{
 };
 use pinchora_db::{Db, PatchRefused};
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -33,7 +33,7 @@ fn rule_of(states: &[(Module, ModuleRule)], module: Module) -> ModuleRule {
 #[tokio::test]
 async fn a_server_nobody_configured_has_everything_on_except_welcome_cards_and_gambling() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
     let states = db.module_states(guild).await.unwrap();
     assert_eq!(states.len(), Module::ALL.len());
@@ -54,7 +54,7 @@ async fn a_server_nobody_configured_has_everything_on_except_welcome_cards_and_g
 #[tokio::test]
 async fn a_module_switch_and_its_channels_are_stored_together_and_a_default_rule_leaves_no_row() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, a, b] = ids();
 
     let off = db.set_module(guild, Module::Pets, Some(false), None).await.unwrap();
@@ -97,7 +97,7 @@ async fn a_module_switch_and_its_channels_are_stored_together_and_a_default_rule
 #[tokio::test]
 async fn the_switches_that_live_in_settings_columns_stay_there() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, channel] = ids();
 
     // Leveling: the column holds the switch, the row only the channel rule.
@@ -163,7 +163,7 @@ async fn the_switches_that_live_in_settings_columns_stay_there() {
 #[tokio::test]
 async fn a_patch_that_would_put_the_least_points_above_the_most_is_refused_as_the_row_is_written() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
     let set = |min: Option<i64>, max: Option<i64>| GuildSettingsPatch {
         points_min: min,

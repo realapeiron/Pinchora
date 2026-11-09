@@ -17,7 +17,7 @@ fn fixture_id_batches_never_overlap() {
 #[tokio::test]
 async fn deleting_a_player_leaves_nothing_in_any_table() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [low, high, guild_a, other_low, other_high, guild_b] = ids();
     // The pair table keeps the smaller id first, so the player is on each side of it in turn.
     let mut filled = fill_and_delete(&db, low, high, guild_a).await;
@@ -33,7 +33,7 @@ async fn deleting_a_player_leaves_nothing_in_any_table() {
 #[tokio::test]
 async fn every_table_is_a_player_table_or_says_it_is_not() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let tables: Vec<(String,)> = sqlx::query_as(
         "SELECT table_name::TEXT FROM information_schema.tables
          WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' ORDER BY table_name",
@@ -139,7 +139,7 @@ async fn every_table_is_a_player_table_or_says_it_is_not() {
 #[tokio::test]
 async fn hiding_from_the_boards_and_the_house_shortlist() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     // Later than anything an earlier run left in the shared database, so these are on top.
     let [shown, hidden, viewer] = ids();
     for (user, xp) in [(shown, 0i64), (hidden, 1)] {
@@ -197,7 +197,7 @@ async fn hiding_from_the_boards_and_the_house_shortlist() {
 #[tokio::test]
 async fn reminders_go_out_once_and_survive_a_crash() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     // The exclusive guard makes old fixtures safe to clear before the bounded worker scan.
     sqlx::query("DELETE FROM reminders").execute(db.pool()).await.unwrap();
     let [user, other] = ids();
@@ -308,7 +308,7 @@ async fn reminders_go_out_once_and_survive_a_crash() {
 #[tokio::test]
 async fn at_most_25_reminders_are_open_even_when_added_at_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let due = Utc::now() + Duration::hours(1);
     let mut adds = Vec::new();
@@ -335,7 +335,7 @@ async fn at_most_25_reminders_are_open_even_when_added_at_once() {
 #[tokio::test]
 async fn the_months_are_counted_where_things_happen() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user, other, guild] = ids();
     let month = Utc::now().date_naive();
     let this_year = chrono::Datelike::year(&month);

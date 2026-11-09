@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn a_heist_pays_the_crew_once_up_to_their_daily_limit() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a, b, c] = ids();
     let id = lobby(&db, "heist", guild, channel, a, 0).await;
     assert_eq!(db.heist_join(id, a, "A", 0, 3).await.unwrap(), CrewJoin::Joined);
@@ -57,7 +57,7 @@ async fn a_heist_pays_the_crew_once_up_to_their_daily_limit() {
 #[tokio::test]
 async fn a_heist_with_too_few_in_the_crew_is_called_off() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a] = ids();
     let id = lobby(&db, "heist", guild, channel, a, 0).await;
     db.heist_join(id, a, "A", 0, 8).await.unwrap();
@@ -75,7 +75,7 @@ async fn a_heist_with_too_few_in_the_crew_is_called_off() {
 #[tokio::test]
 async fn a_storm_counts_sandbags_per_helper_and_pays_the_helpers_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a, b] = ids();
     let storm = db
         .open_party_game(NewGame {
@@ -149,7 +149,7 @@ async fn a_storm_counts_sandbags_per_helper_and_pays_the_helpers_once() {
 #[tokio::test]
 async fn a_storm_that_runs_out_of_time_pays_the_consolation_and_a_daily_limit_applies() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a] = ids();
     let mut total = 0;
     for round in 0..3 {
@@ -190,7 +190,7 @@ async fn a_storm_that_runs_out_of_time_pays_the_consolation_and_a_daily_limit_ap
 #[tokio::test]
 async fn storm_settings_schedule_the_next_storm_and_one_pod_takes_each_slot() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild] = ids();
     let defaults = db.party_settings(guild).await.unwrap();
     assert!(!defaults.surge_enabled && defaults.surge_channel_id.is_none() && defaults.surge_every_hours == 24);

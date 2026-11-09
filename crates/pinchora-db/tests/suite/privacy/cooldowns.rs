@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn weekly_and_monthly_rewards_have_their_own_cooldowns() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let now = micros(Utc::now());
 
@@ -74,7 +74,7 @@ async fn weekly_and_monthly_rewards_have_their_own_cooldowns() {
 #[tokio::test]
 async fn deleting_and_coming_back_resets_no_cooldown() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user, alt, other_alt] = ids();
     let now = micros(Utc::now());
     let weekly = |at| db.claim_period(user, Period::Weekly, at);
@@ -204,7 +204,7 @@ async fn deleting_and_coming_back_resets_no_cooldown() {
 #[tokio::test]
 async fn paid_visits_likes_wordle_and_walks_survive_deleting() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guest, h1, h2, h3, liker, host] = ids();
     let now = micros(Utc::now());
     let day = now.date_naive();
@@ -316,7 +316,7 @@ async fn paid_visits_likes_wordle_and_walks_survive_deleting() {
 #[tokio::test]
 async fn the_games_limits_survive_deleting() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user, alt, solver, idler] = ids();
     // Early in today (UTC), so the walks below stay on the day the heist cap counts in.
     let now = micros(Utc::now().date_naive().and_hms_opt(0, 30, 0).unwrap().and_utc());

@@ -2,7 +2,7 @@
 use pinchora_core::community::CountResult;
 use pinchora_db::Db;
 
-use crate::support::db_eight_unwrap as db;
+use crate::support::db;
 fn ids() -> (u64, u64, u64) {
     let base = crate::support::id();
     (base, base + 1, base + 2)
@@ -10,7 +10,7 @@ fn ids() -> (u64, u64, u64) {
 #[tokio::test]
 async fn counting_updates_are_serial_and_records_survive_reset() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, channel, user) = ids();
     db.save_counting(guild, channel, true, true, None).await.unwrap();
     let (first, second) = tokio::join!(
@@ -27,7 +27,7 @@ async fn counting_updates_are_serial_and_records_survive_reset() {
 #[tokio::test]
 async fn counting_failure_without_reset_keeps_the_last_counter() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, channel, user) = ids();
     db.save_counting(guild, channel, false, false, None).await.unwrap();
     assert_eq!(
@@ -48,7 +48,7 @@ async fn counting_failure_without_reset_keeps_the_last_counter() {
 #[tokio::test]
 async fn qotd_uses_the_whole_queue_before_repeating() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, _, user) = ids();
     for text in ["First?", "Second?", "Third?"] {
         let id = db.suggest_qotd(guild, user, text).await.unwrap().unwrap();
@@ -65,7 +65,7 @@ async fn qotd_uses_the_whole_queue_before_repeating() {
 #[tokio::test]
 async fn bundled_qotd_pack_has_300_bilingual_questions() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, _, _) = ids();
     assert_eq!(db.seed_qotd(guild).await.unwrap(), 300);
     assert_eq!(db.seed_qotd(guild).await.unwrap(), 0);
@@ -76,7 +76,7 @@ async fn bundled_qotd_pack_has_300_bilingual_questions() {
 #[tokio::test]
 async fn form_submission_can_be_decided_once_and_is_guild_scoped() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, _, user) = ids();
     let form: i64 =
         sqlx::query_scalar("INSERT INTO forms(guild_id,name,questions) VALUES($1,'Helper',$2) RETURNING id")
@@ -97,7 +97,7 @@ async fn form_submission_can_be_decided_once_and_is_guild_scoped() {
 #[tokio::test]
 async fn community_user_rows_are_removed_by_privacy_deletion() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, channel, user) = ids();
     db.suggest_qotd(guild, user, "A private suggestion?").await.unwrap();
     db.save_counting(guild, channel, true, false, None).await.unwrap();
@@ -141,7 +141,7 @@ fn draft(guild: u64, name: &str) -> pinchora_db::FormRow {
 #[tokio::test]
 async fn concurrent_form_creation_and_submissions_obey_limits() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, _, user) = ids();
     for i in 0..9 {
         assert!(
@@ -208,7 +208,7 @@ async fn concurrent_form_creation_and_submissions_obey_limits() {
 #[tokio::test]
 async fn qotd_claim_is_atomic_across_connections_and_restarts() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, _, user) = ids();
     let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 8).unwrap();
     let id = db.suggest_qotd(guild, user, "Today?").await.unwrap().unwrap();
@@ -253,7 +253,7 @@ async fn qotd_claim_is_atomic_across_connections_and_restarts() {
 #[tokio::test]
 async fn reviewer_deletion_preserves_other_members_data_and_exports_exclude_answers() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let (guild, channel, user) = ids();
     let staff = user + 1;
     let form = db.save_form(&draft(guild, "Private form")).await.unwrap().unwrap();

@@ -14,7 +14,7 @@ use pinchora_db::{
     PeriodOutcome, RepOutcome, RiotLink, USER_COLUMNS, VisitOutcome, XpGrant, ZEROED_COLUMNS,
 };
 
-use crate::support::db_eight as db;
+use crate::support::db;
 
 /// Ids unique per run, and larger than any earlier run's, so the suite can run repeatedly
 /// against one database.

@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn gambling_is_off_until_a_manager_turns_it_on() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild] = ids();
     assert!(
         !db.gambling_enabled(guild).await.unwrap(),
@@ -18,7 +18,7 @@ async fn gambling_is_off_until_a_manager_turns_it_on() {
 #[tokio::test]
 async fn the_shell_game_holds_the_stake_pays_a_right_guess_and_refunds_a_forgotten_game() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, player, other] = ids();
     db.earn_shells(player, 200, "test").await.unwrap();
     let limits = ShellLimits {
@@ -95,7 +95,7 @@ async fn the_shell_game_holds_the_stake_pays_a_right_guess_and_refunds_a_forgott
 #[tokio::test]
 async fn the_shell_table_closes_for_a_player_who_is_down_up_or_out_of_games() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, player] = ids();
     db.earn_shells(player, 1_000, "test").await.unwrap();
     let table = |stake: i64| NewGame {
@@ -174,7 +174,7 @@ async fn the_shell_table_closes_for_a_player_who_is_down_up_or_out_of_games() {
 #[tokio::test]
 async fn daily_grants_never_pass_the_cap_even_all_at_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let grants = (0..12).map(|_| {
         let db = db.clone();
@@ -195,7 +195,7 @@ async fn daily_grants_never_pass_the_cap_even_all_at_once() {
 #[tokio::test]
 async fn share_or_grab_pays_from_the_pool_once_up_to_the_cap() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, host, guest] = ids();
     let session = db
         .create_game(NewGame {
@@ -280,7 +280,7 @@ async fn share_or_grab_pays_from_the_pool_once_up_to_the_cap() {
 #[tokio::test]
 async fn a_shell_game_is_settled_on_the_day_the_table_started() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, forgetful, lucky] = ids();
     for user in [forgetful, lucky] {
         db.earn_shells(user, 500, "test").await.unwrap();

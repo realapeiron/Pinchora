@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a, b, c, d] = ids();
     for user in [a, b, c, d] {
         db.earn_shells(user, 100, "test").await.unwrap();
@@ -64,7 +64,7 @@ async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {
 #[tokio::test]
 async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, other, a, b, c] = ids();
     for user in [a, b, c] {
         db.earn_shells(user, 100, "test").await.unwrap();
@@ -105,7 +105,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
 #[tokio::test]
 async fn a_friendly_derby_moves_no_shells_and_names_the_winning_backers() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a, b] = ids();
     let id = lobby(&db, "derby", guild, channel, a, 0).await;
     db.derby_join(id, a, "A", 3, 30, LOSS).await.unwrap();
@@ -118,7 +118,7 @@ async fn a_friendly_derby_moves_no_shells_and_names_the_winning_backers() {
 #[tokio::test]
 async fn leaving_a_derby_refunds_and_a_short_wallet_cannot_join() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a, broke] = ids();
     db.earn_shells(a, 100, "test").await.unwrap();
     db.earn_shells(broke, 10, "test").await.unwrap();
@@ -150,7 +150,7 @@ async fn leaving_a_derby_refunds_and_a_short_wallet_cannot_join() {
 #[tokio::test]
 async fn a_channel_holds_one_derby_and_one_heist_and_a_server_one_storm() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, host] = ids();
     let first = lobby(&db, "derby", guild, channel, host, 0).await;
     let again = NewGame {
@@ -203,7 +203,7 @@ async fn a_channel_holds_one_derby_and_one_heist_and_a_server_one_storm() {
 #[tokio::test]
 async fn simultaneous_derby_endings_pay_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, channel, a, b] = ids();
     for user in [a, b] {
         db.earn_shells(user, 100, "test").await.unwrap();
@@ -225,7 +225,7 @@ async fn simultaneous_derby_endings_pay_once() {
 #[tokio::test]
 async fn derby_stakes_count_against_a_daily_loss_limit_until_they_come_back() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, c1, c2, c3, c4, c5, player, other, host] = ids();
     db.earn_shells(player, 2_000, "test").await.unwrap();
     db.earn_shells(other, 2_000, "test").await.unwrap();
@@ -304,7 +304,7 @@ async fn derby_stakes_count_against_a_daily_loss_limit_until_they_come_back() {
 #[tokio::test]
 async fn a_derby_stake_is_settled_on_the_day_it_was_put_up() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [guild, c1, c2, host, leaver, loner] = ids();
     for user in [leaver, loner] {
         db.earn_shells(user, 500, "test").await.unwrap();

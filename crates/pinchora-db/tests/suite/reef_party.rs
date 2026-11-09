@@ -1,4 +1,4 @@
-use crate::support::db_eight_unwrap as db;
+use crate::support::db;
 use crate::support::id;
 use chrono::{Duration, Utc};
 use pinchora_db::{NewGame, ReefMove};
@@ -18,7 +18,7 @@ fn new(host: u64, channel: u64) -> NewGame<'static> {
 #[tokio::test]
 async fn concurrent_opens_and_finishes_have_one_winner() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else {
+    let Some(db) = db(8).await else {
         return;
     };
     let (host, channel) = (id(), id() + 1);
@@ -49,7 +49,7 @@ async fn concurrent_opens_and_finishes_have_one_winner() {
 #[tokio::test]
 async fn daily_cap_is_shared_across_sessions() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else {
+    let Some(db) = db(8).await else {
         return;
     };
     let host = id();
@@ -78,7 +78,7 @@ async fn daily_cap_is_shared_across_sessions() {
 #[tokio::test]
 async fn deadline_and_stale_membership_cannot_move() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else {
+    let Some(db) = db(8).await else {
         return;
     };
     let host = id();
@@ -124,7 +124,7 @@ async fn deadline_and_stale_membership_cannot_move() {
 #[tokio::test]
 async fn legacy_multiplayer_creation_cannot_overlap() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else {
+    let Some(db) = db(8).await else {
         return;
     };
     let (host, channel) = (id(), id() + 1);
@@ -157,7 +157,7 @@ async fn legacy_multiplayer_creation_cannot_overlap() {
 #[tokio::test]
 async fn erasure_removes_seat_identity_and_cannot_restore_deleted_rewards() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else {
+    let Some(db) = db(8).await else {
         return;
     };
     let host = id();
@@ -211,7 +211,7 @@ async fn erasure_removes_seat_identity_and_cannot_restore_deleted_rewards() {
 #[tokio::test]
 async fn concurrent_session_rewards_cannot_exceed_the_daily_cap() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let host = id();
     let now = Utc::now();
     let mut tasks = tokio::task::JoinSet::new();
@@ -246,7 +246,7 @@ async fn concurrent_session_rewards_cannot_exceed_the_daily_cap() {
 #[tokio::test]
 async fn concurrent_legacy_and_reef_starts_share_the_channel_lock() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     for _ in 0..8 {
         let now = Utc::now();
         let channel = id();

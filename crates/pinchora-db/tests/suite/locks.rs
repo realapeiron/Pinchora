@@ -15,18 +15,11 @@ use pinchora_db::{
     ShellPick, ShellStart, StallBuy, TripClaim, TripPayout, Wake, XpGrant,
 };
 
-async fn db_with(pool: u32) -> Option<Db> {
-    let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
-    let db = Db::connect_waiting(&url, pool, std::time::Duration::from_secs(60))
-        .await
-        .expect("connect");
-    db.migrate().await.expect("migrate");
-    Some(db)
-}
+use crate::support::db as db_with;
 
 /// Ids unique per run, and larger than any earlier run's, so the suite can run repeatedly
 /// against one database.
-use crate::support::ids_seven as ids;
+use crate::support::spaced_ids as ids;
 
 fn duel(host: u64, guest: u64, bet: i64, guild: u64) -> NewGame<'static> {
     NewGame {

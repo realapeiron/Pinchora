@@ -4,7 +4,7 @@ use super::*;
 async fn guild_settings_reads_a_concurrent_first_insert_after_it_commits() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(3).await else { return };
-    let [guild] = ids();
+    let [guild] = ids(7);
     let mut first = db.pool().begin().await.unwrap();
     sqlx::query("INSERT INTO guilds (id) VALUES ($1)")
         .bind(guild as i64)
@@ -22,7 +22,7 @@ async fn guild_settings_reads_a_concurrent_first_insert_after_it_commits() {
 async fn accepting_a_duel_while_its_host_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, guest, guild] = ids();
+    let [host, guest, guild] = ids(7);
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 100, "test").await.unwrap();
     let session = db.create_game(duel(host, guest, 10, guild)).await.unwrap();
@@ -51,7 +51,7 @@ async fn accepting_a_duel_while_its_host_deletes_their_data() {
 async fn settling_a_duel_while_its_winner_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [winner, loser, guild] = ids();
+    let [winner, loser, guild] = ids(7);
     db.earn_shells(winner, 100, "test").await.unwrap();
     db.earn_shells(loser, 100, "test").await.unwrap();
     let session = db.create_game(duel(winner, loser, 10, guild)).await.unwrap();
@@ -82,7 +82,7 @@ async fn settling_a_duel_while_its_winner_deletes_their_data() {
 async fn ending_a_giveaway_while_its_host_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, guest, guild] = ids();
+    let [host, guest, guild] = ids(7);
     db.earn_shells(host, 100, "test").await.unwrap();
     let GiveawayOpen::Started(giveaway) = db
         .create_giveaway(NewGiveaway {
@@ -128,7 +128,7 @@ async fn ending_a_giveaway_while_its_host_deletes_their_data() {
 async fn chat_xp_while_the_player_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [user, guild] = ids();
+    let [user, guild] = ids(7);
     let grant = XpGrant {
         server_xp: 5,
         global_xp: 5,
@@ -167,7 +167,7 @@ async fn chat_xp_while_the_player_deletes_their_data() {
 async fn claiming_a_trip_while_the_owner_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [owner] = ids();
+    let [owner] = ids(7);
     let pet = db.adopt(owner, "cat", "Tom").await.unwrap();
     assert!(
         db.start_trip(
@@ -208,7 +208,7 @@ async fn claiming_a_trip_while_the_owner_deletes_their_data() {
 async fn waking_a_pet_while_the_owner_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [owner] = ids();
+    let [owner] = ids(7);
     db.earn_shells(owner, 100, "test").await.unwrap();
     let pet = db.adopt(owner, "cat", "Tom").await.unwrap();
     let day = (Utc::now().timestamp() / 86_400) as i32;
@@ -248,7 +248,7 @@ async fn waking_a_pet_while_the_owner_deletes_their_data() {
 async fn buying_from_a_stall_while_the_seller_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [seller, buyer] = ids();
+    let [seller, buyer] = ids(7);
     db.earn_shells(seller, 5, "test").await.unwrap();
     db.earn_shells(buyer, 100, "test").await.unwrap();
     db.grant_item(seller, "chair", 1).await.unwrap();
@@ -276,7 +276,7 @@ async fn a_like_landing_while_the_delete_starts_cannot_cross_a_pair_call() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(6).await else { return };
     // `ids` count upwards: the host's lock comes before the deleter's in id order.
-    let [host, deleter_id] = ids();
+    let [host, deleter_id] = ids(7);
     let today = Utc::now().date_naive();
     sqlx::query("INSERT INTO houses (user_id) VALUES ($1)")
         .bind(host as i64)
@@ -327,7 +327,7 @@ async fn friends_who_delete_their_data_at_once_both_get_through() {
     let Some(db) = db_with(8).await else { return };
     let day = Utc::now().date_naive();
     for _ in 0..4 {
-        let [a, b] = ids();
+        let [a, b] = ids(7);
         db.earn_shells(a, 10, "test").await.unwrap();
         db.earn_shells(b, 10, "test").await.unwrap();
         db.befriend(a, b).await.unwrap();
@@ -358,7 +358,7 @@ async fn friends_who_delete_their_data_at_once_both_get_through() {
 async fn rerolling_a_giveaway_while_an_entrant_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, first, leaving, last, guild] = ids();
+    let [host, first, leaving, last, guild] = ids(7);
     let GiveawayOpen::Started(giveaway) = db
         .create_giveaway(NewGiveaway {
             guild_id: guild,
@@ -433,7 +433,7 @@ async fn rerolling_a_giveaway_while_an_entrant_deletes_their_data() {
 async fn ending_a_giveaway_without_shells_while_an_entrant_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, first, leaving, guild] = ids();
+    let [host, first, leaving, guild] = ids(7);
     let GiveawayOpen::Started(giveaway) = db
         .create_giveaway(NewGiveaway {
             guild_id: guild,

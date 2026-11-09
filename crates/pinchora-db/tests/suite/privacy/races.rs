@@ -4,7 +4,7 @@ use super::*;
 #[tokio::test]
 async fn deleting_a_derby_host_gives_the_racers_their_stakes_back() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, racer, rival, guild] = ids();
     let now = micros(Utc::now());
     for player in [host, racer, rival] {
@@ -58,8 +58,9 @@ async fn deleting_a_derby_host_gives_the_racers_their_stakes_back() {
 /// Shells held for a giveaway or a duel are not lost to others, and not resurrected for the host.
 #[tokio::test]
 async fn deleting_a_host_calls_the_giveaway_off_and_keeps_the_money_in_one_place() {
-    let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let _isolation = crate::support::exclusive().await;
+    let Some(db) = db(8).await else { return };
+    sqlx::query("DELETE FROM giveaways").execute(db.pool()).await.unwrap();
     let [host, entrant, guild] = ids();
     let now = micros(Utc::now());
     db.earn_shells(host, 500, "test").await.unwrap();
@@ -114,7 +115,7 @@ async fn deleting_a_host_calls_the_giveaway_off_and_keeps_the_money_in_one_place
 #[tokio::test]
 async fn claims_that_overlap_a_delete_wait_for_it_and_pay_nothing() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user, other, host, other_host] = ids();
     let now = micros(Utc::now());
     let day = now.date_naive();
@@ -317,7 +318,7 @@ async fn claims_spread_over_a_delete_pay_nothing_and_never_fail() {
 #[tokio::test]
 async fn tracker_unlink_erases_owned_cards_and_patch_claims_are_atomic() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user, other, guild] = ids();
     let key = format!("riot:card:{user}");
     let other_key = format!("riot:card:{other}");

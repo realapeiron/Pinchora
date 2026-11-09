@@ -12,7 +12,7 @@ use pinchora_db::{
 /// The daily derby loss limit the tests pass to joins that are not about the limit.
 const LOSS: i64 = 100_000;
 
-use crate::support::db_eight as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;

@@ -4,12 +4,12 @@ use pinchora_db::{Starboard, VoteChannel};
 
 // Cleanup claims consume a global queue, so these fixtures must not claim each other's jobs.
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Old cleanup jobs otherwise fill the worker's bounded batch on repeated runs.
 /// The caller owns the exclusive suite lock before opening this fixture pool.
 async fn cleanup_db() -> Option<pinchora_db::Db> {
-    let db = db().await?;
+    let db = db(5).await?;
     sqlx::raw_sql("DELETE FROM starboard_posts; DELETE FROM starboard_copy_cleanup")
         .execute(db.pool())
         .await
@@ -44,7 +44,7 @@ fn board(guild: u64, channel: u64) -> Starboard {
 #[tokio::test]
 async fn concurrent_stars_claim_one_post_and_weighted_unstar_recounts() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, target, source, message, author, user_a, user_b] = ids();
     let board = db.save_starboard(&board(guild, target)).await.unwrap();
     let (a, b) = tokio::join!(
@@ -83,7 +83,7 @@ async fn concurrent_stars_claim_one_post_and_weighted_unstar_recounts() {
 #[tokio::test]
 async fn multiple_boards_and_vote_channels_are_independent() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, target, second, message, author, user, source] = ids();
     let a = db.save_starboard(&board(guild, target)).await.unwrap();
     let b = db.save_starboard(&board(guild, second)).await.unwrap();
@@ -114,7 +114,7 @@ async fn multiple_boards_and_vote_channels_are_independent() {
 #[tokio::test]
 async fn fourth_board_is_refused_even_from_parallel_writers() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, first, second, third, fourth, _, _] = ids();
     let boards = [
         board(guild, first),
@@ -280,7 +280,7 @@ async fn privacy_delete_recounts_other_posts_and_queues_authored_copies() {
 #[tokio::test]
 async fn stale_below_threshold_snapshot_cannot_remove_a_recovered_copy() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, target, source, message, author, voter, copy] = ids();
     let board = db.save_starboard(&board(guild, target)).await.unwrap();
     db.star_change(board.id, message, source, author, voter, Some(3))

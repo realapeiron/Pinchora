@@ -3,7 +3,7 @@
 
 use pinchora_db::{DuelStart, NewGame, PENDING, Payout, SoloStep};
 
-use crate::support::db_eight as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 fn ids<const N: usize>() -> [u64; N] {
@@ -16,7 +16,7 @@ use crate::support::shells;
 #[tokio::test]
 async fn the_best_score_only_goes_up() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     db.record_game_score(user, "tide2048", false, 900).await.unwrap();
     db.record_game_score(user, "tide2048", true, 5_000).await.unwrap();
@@ -33,7 +33,7 @@ async fn the_best_score_only_goes_up() {
 #[tokio::test]
 async fn a_picross_board_is_kept_unless_it_is_replaced() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let first = db.start_picross(user, "daily", 20_800, (3, 1), false).await.unwrap();
     assert_eq!((first.picture, first.variant, first.grid.len()), (3, 1, 100));
@@ -60,7 +60,7 @@ async fn a_picross_board_is_kept_unless_it_is_replaced() {
 #[tokio::test]
 async fn a_board_has_a_limited_number_of_checks_even_when_they_are_asked_at_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let board = db.start_picross(user, "daily", 20_820, (2, 0), false).await.unwrap();
     assert_eq!(board.checks, 0);
@@ -103,7 +103,7 @@ async fn a_board_has_a_limited_number_of_checks_even_when_they_are_asked_at_once
 #[tokio::test]
 async fn a_fleet_draft_is_kept_on_the_server_and_locked_in_once_at_its_revision() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, guest] = ids();
     let session = db
         .create_game(NewGame {
@@ -146,7 +146,7 @@ async fn a_fleet_draft_is_kept_on_the_server_and_locked_in_once_at_its_revision(
 #[tokio::test]
 async fn two_marks_at_once_make_one_change_and_a_board_is_solved_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let board = db.start_picross(user, "daily", 20_801, (0, 0), false).await.unwrap();
     let (a, b) = (format!("#{}", ".".repeat(99)), format!(".#{}", ".".repeat(98)));
@@ -185,7 +185,7 @@ async fn two_marks_at_once_make_one_change_and_a_board_is_solved_once() {
 #[tokio::test]
 async fn solved_days_come_newest_first_and_only_the_daily_counts() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     for day in [20_810, 20_812, 20_811] {
         let board = db.start_picross(user, "daily", day, (0, 0), false).await.unwrap();
@@ -209,7 +209,7 @@ async fn solved_days_come_newest_first_and_only_the_daily_counts() {
 #[tokio::test]
 async fn a_solo_game_moves_one_click_at_a_time_and_ends_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [user] = ids();
     let game = db.start_solo(user, "tide2048", "board0", false).await.unwrap();
     assert_eq!((game.moves, game.score, game.status.as_str()), (0, 0, "playing"));
@@ -258,7 +258,7 @@ async fn a_solo_game_moves_one_click_at_a_time_and_ends_once() {
 #[tokio::test]
 async fn a_forfeited_wager_goes_to_the_other_player_once_and_only_if_nobody_moved() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, guest] = ids();
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 100, "test").await.unwrap();

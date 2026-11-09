@@ -7,7 +7,7 @@ use pinchora_db::{
     PollOpen, PollVote, Reroll, SuggestionVote,
 };
 
-use crate::support::db_ten as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -46,7 +46,7 @@ async fn ledger(db: &Db, users: &[u64]) -> i64 {
 #[tokio::test]
 async fn a_giveaway_holds_the_prize_and_gives_back_what_nobody_won() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, host, poor, a, b] = ids();
     db.earn_shells(host, 500, "test").await.unwrap();
 
@@ -135,7 +135,7 @@ async fn a_giveaway_holds_the_prize_and_gives_back_what_nobody_won() {
 #[tokio::test]
 async fn scheduled_giveaway_rejects_early_entries_and_preserves_bonus_weight() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, host, entrant] = ids();
     let giveaway = open(&db, guild, host, 0, 1).await;
     let start = Utc::now() + Duration::minutes(2);
@@ -179,7 +179,7 @@ async fn scheduled_giveaway_rejects_early_entries_and_preserves_bonus_weight() {
 #[tokio::test]
 async fn a_giveaway_ends_once_however_many_pods_try() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, host, a, b, c, d, e] = ids();
     db.earn_shells(host, 300, "test").await.unwrap();
     let giveaway = open(&db, guild, host, 30, 2).await;
@@ -243,7 +243,7 @@ async fn a_giveaway_ends_once_however_many_pods_try() {
 #[tokio::test]
 async fn rerolls_pick_only_entrants_who_have_not_won() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, other, host, a, b, c] = ids();
     let giveaway = open(&db, guild, host, 0, 1).await;
     for user in [a, b, c] {
@@ -275,7 +275,7 @@ async fn rerolls_pick_only_entrants_who_have_not_won() {
 #[tokio::test]
 async fn a_server_runs_a_limited_number_of_giveaways() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, host] = ids();
     for _ in 0..MAX_RUNNING_GIVEAWAYS {
         open(&db, guild, host, 0, 1).await;
@@ -300,7 +300,7 @@ async fn a_server_runs_a_limited_number_of_giveaways() {
 #[tokio::test]
 async fn polls_take_one_vote_each_and_close_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, author, a, b, c] = ids();
     let options = ["Pizza".to_owned(), "Tacos".to_owned(), "Sushi".to_owned()];
     let new = NewPoll {
@@ -350,7 +350,7 @@ async fn polls_take_one_vote_each_and_close_once() {
 #[tokio::test]
 async fn multiple_choice_votes_toggle_independently_and_close() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, author, voter] = ids();
     let options = ["A".to_owned(), "B".to_owned(), "C".to_owned()];
     let PollOpen::Started(poll) = db
@@ -398,7 +398,7 @@ async fn multiple_choice_votes_toggle_independently_and_close() {
 #[tokio::test]
 async fn a_member_cannot_open_more_polls_than_the_limit_even_all_at_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, author] = ids();
     let tasks: Vec<_> = (0..8)
         .map(|_| {
@@ -428,7 +428,7 @@ async fn a_member_cannot_open_more_polls_than_the_limit_even_all_at_once() {
 #[tokio::test]
 async fn suggestions_are_numbered_per_server_voted_on_and_decided_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, other, author, a, b, mod_] = ids();
     assert_eq!(db.suggestion_channel(guild).await.unwrap(), None);
     db.set_suggestion_channel(guild, Some(77)).await.unwrap();
@@ -512,7 +512,7 @@ async fn suggestions_are_numbered_per_server_voted_on_and_decided_once() {
 #[tokio::test]
 async fn community_quotas_are_atomic_across_dashboard_and_commands() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, user] = ids();
     let mut tasks = Vec::new();
     for n in 0..35 {
@@ -568,7 +568,7 @@ async fn community_quotas_are_atomic_across_dashboard_and_commands() {
 #[tokio::test]
 async fn confession_bans_reports_and_durable_rate_limit_preserve_anonymity() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, other, user, reporter, moderator] = ids();
     let id = db
         .submit_confession(guild, user, "private thought")
@@ -627,7 +627,7 @@ async fn confession_bans_reports_and_durable_rate_limit_preserve_anonymity() {
 #[tokio::test]
 async fn poll_storage_rejects_wrong_mode_and_out_of_range_votes() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, author, voter] = ids();
     let options = vec!["Yes".to_owned(), "No".to_owned()];
     let PollOpen::Started(poll) = db
@@ -675,7 +675,7 @@ async fn poll_storage_rejects_wrong_mode_and_out_of_range_votes() {
 #[tokio::test]
 async fn weighted_draw_and_reroll_use_transaction_entry_weights() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, host, user, other] = ids();
     let draw = open(&db, guild, host, 0, 1).await;
     db.toggle_giveaway_entry_weighted(draw.id, user, 21, Utc::now())

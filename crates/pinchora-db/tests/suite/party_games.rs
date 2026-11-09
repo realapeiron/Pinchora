@@ -5,7 +5,7 @@ use pinchora_db::{
     Commit, Db, NewEntry, NewParty, PartyGame, PartyJoin, PartyLeave, PartyVote, Pay, PlayerChange, PollChoice,
 };
 
-use crate::support::db_eight as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -61,7 +61,7 @@ async fn ledger_total(db: &Db, user: u64) -> i64 {
 #[tokio::test]
 async fn a_lobby_takes_players_up_to_its_limit_even_when_they_all_click_at_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, channel, ..] = ids::<14>();
     let game = lobby(&db, "hotpearl", host, channel).await;
     let now = Utc::now();
@@ -113,7 +113,7 @@ async fn a_lobby_takes_players_up_to_its_limit_even_when_they_all_click_at_once(
 #[tokio::test]
 async fn leaving_a_lobby_frees_the_seat_but_the_host_cannot_leave() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, guest, stranger, channel] = ids();
     let game = lobby(&db, "acronym", host, channel).await;
     let now = Utc::now();
@@ -140,7 +140,7 @@ async fn leaving_a_lobby_frees_the_seat_but_the_host_cannot_leave() {
 #[tokio::test]
 async fn two_moves_from_the_same_picture_apply_once_and_pay_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, rival, channel, ..] = ids::<4>();
     let game = lobby(&db, "hotpearl", host, channel).await;
     db.join_party(game.id, rival, "Rival", 8, Utc::now()).await.unwrap();
@@ -212,7 +212,7 @@ async fn two_moves_from_the_same_picture_apply_once_and_pay_once() {
 #[tokio::test]
 async fn a_player_is_paid_for_a_few_games_a_day_and_not_for_the_rest() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, channel, ..] = ids::<3>();
     let day = 20_001;
     let mut paid = Vec::new();
@@ -284,7 +284,7 @@ async fn a_player_is_paid_for_a_few_games_a_day_and_not_for_the_rest() {
 #[tokio::test]
 async fn written_entries_and_votes_follow_the_phase_the_round_and_the_clock() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, a, b, outsider, channel] = ids();
     let game = lobby(&db, "acronym", host, channel).await;
     let now = Utc::now();
@@ -385,7 +385,7 @@ async fn written_entries_and_votes_follow_the_phase_the_round_and_the_clock() {
 #[tokio::test]
 async fn race_boards_take_six_guesses_and_stop_once_the_word_is_found() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, rival, channel, ..] = ids::<4>();
     let game = lobby(&db, "wordrace", host, channel).await;
     db.join_party(game.id, rival, "Rival", 4, Utc::now()).await.unwrap();
@@ -458,7 +458,7 @@ async fn race_boards_take_six_guesses_and_stop_once_the_word_is_found() {
 #[tokio::test]
 async fn a_poll_counts_one_vote_each_and_lets_people_change_their_mind() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, a, b, channel] = ids();
     let poll = db
         .create_party(NewParty {
@@ -502,7 +502,7 @@ async fn a_poll_counts_one_vote_each_and_lets_people_change_their_mind() {
 #[tokio::test]
 async fn due_games_come_oldest_first_and_a_channel_holds_one_game() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     // The exclusive guard makes old fixtures safe to clear before the bounded worker scan.
     sqlx::query("DELETE FROM party_games").execute(db.pool()).await.unwrap();
     let [host, channel, ..] = ids::<3>();
@@ -555,7 +555,7 @@ async fn due_games_come_oldest_first_and_a_channel_holds_one_game() {
 #[tokio::test]
 async fn message_ids_the_strict_setting_and_cleanup() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(8).await else { return };
     let [host, channel, guild, ..] = ids::<3>();
     let game = lobby(&db, "postcard", host, channel).await;
     assert!(game.location().is_none());

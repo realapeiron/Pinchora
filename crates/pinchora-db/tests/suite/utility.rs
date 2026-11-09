@@ -5,9 +5,9 @@ use pinchora_db::{ScheduledRow, UtilityStickyRow, timestamp};
 use serde_json::json;
 
 // claim_schedules is a global worker scan: it can lease another test's due rows.
-// Keep schedule fixtures exclusive, while each test still races its own callers.
+// The global scan is exclusive; per-schedule operations use unique guilds.
 
-use crate::support::db_five as db;
+use crate::support::db;
 use crate::support::id as unique;
 fn schedule(guild: u64) -> ScheduledRow {
     ScheduledRow {
@@ -49,7 +49,7 @@ fn sticky(guild: u64) -> UtilityStickyRow {
 async fn delivery_intent_survives_crashes_and_fences_stale_workers() {
     let _isolation = crate::support::exclusive().await;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let guild = unique();
     let id = db.add_schedule(&schedule(guild)).await.unwrap().unwrap();
     let (a, b) = tokio::join!(db.claim_schedule_now(guild, id), db.claim_schedule_now(guild, id));
@@ -101,7 +101,7 @@ async fn delivery_intent_survives_crashes_and_fences_stale_workers() {
 async fn overdue_recurrence_coalesces_and_guild_limit_is_atomic() {
     let _isolation = crate::support::shared().await;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let guild = unique();
     for _ in 0..19 {
         db.add_schedule(&schedule(guild)).await.unwrap().unwrap();
@@ -129,7 +129,7 @@ async fn overdue_recurrence_coalesces_and_guild_limit_is_atomic() {
 async fn recurrence_with_nanoseconds_round_trips_at_postgres_precision() {
     let _isolation = crate::support::shared().await;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let guild = unique();
     let id = db.add_schedule(&schedule(guild)).await.unwrap().unwrap();
     let row = db.claim_schedule_now(guild, id).await.unwrap().unwrap();
@@ -151,7 +151,7 @@ async fn recurrence_with_nanoseconds_round_trips_at_postgres_precision() {
 #[tokio::test]
 async fn sticky_cleanup_is_atomic_and_delivery_is_fenced() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let guild = unique();
     db.upsert_sticky(&sticky(guild)).await.unwrap();
     sqlx::query("UPDATE sticky_messages SET updated_at=now()-INTERVAL '10 seconds',message_count=2,lease_until=now()+INTERVAL '45 seconds',last_message_id=123 WHERE channel_id=$1")
@@ -185,7 +185,7 @@ async fn sticky_cleanup_is_atomic_and_delivery_is_fenced() {
 async fn privacy_removes_afk_and_anonymises_creators_and_nickname_repeated_set() {
     let _isolation = crate::support::shared().await;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let user = unique();
     db.set_afk(user, user, "lunch", true).await.unwrap();
     db.set_afk(user, user, "back soon", false).await.unwrap();

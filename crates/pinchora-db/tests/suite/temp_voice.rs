@@ -7,7 +7,7 @@ use chrono::{Duration, Utc};
 use pinchora_core::temp_voice::{MAX_CREATORS, MAX_ROOMS};
 use pinchora_db::{CreatorSave, Db, NewTempRoom, RoomMake, VoiceCreator};
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -48,7 +48,7 @@ async fn made(db: &Db, new: NewTempRoom) -> pinchora_db::TempRoom {
 #[tokio::test]
 async fn room_creation_reserves_capacity_across_concurrent_discord_calls() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, owner] = ids();
     let reservation = db.reserve_temp_room(guild, owner).await.unwrap();
     let raced = tokio::time::timeout(
@@ -69,7 +69,7 @@ async fn room_creation_reserves_capacity_across_concurrent_discord_calls() {
 #[tokio::test]
 async fn a_server_has_a_limited_number_of_creators() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other, first] = ids();
     assert!(!db.voice_active(guild).await.unwrap());
     for n in 0..MAX_CREATORS as u64 {
@@ -115,7 +115,7 @@ async fn a_server_has_a_limited_number_of_creators() {
 #[tokio::test]
 async fn rooms_are_recorded_found_changed_and_forgotten() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, source, a, b, owner, other] = ids();
     let mut setup = creator(guild, source);
     setup.max_per_user = 2;
@@ -156,7 +156,7 @@ async fn rooms_are_recorded_found_changed_and_forgotten() {
 #[tokio::test]
 async fn the_owner_changes_only_hands_that_still_hold_the_room() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, source, channel, owner, heir, rival] = ids();
     made(&db, room(guild, channel, source, owner)).await;
     // Two claims race: the one that saw the old owner wins, the other finds the room taken.
@@ -179,7 +179,7 @@ async fn the_owner_changes_only_hands_that_still_hold_the_room() {
 #[tokio::test]
 async fn kicked_members_stay_out_until_invited_and_go_with_the_room() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, source, channel, owner, pest, friend] = ids();
     made(&db, room(guild, channel, source, owner)).await;
     assert!(!db.is_banned_from_room(channel, pest).await.unwrap());
@@ -199,7 +199,7 @@ async fn kicked_members_stay_out_until_invited_and_go_with_the_room() {
 #[tokio::test]
 async fn a_server_holds_a_limited_number_of_rooms() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, source, owner, first] = ids();
     for n in 0..MAX_ROOMS as u64 {
         made(&db, room(guild, first + n, source, owner + n)).await;
@@ -217,7 +217,7 @@ async fn a_server_holds_a_limited_number_of_rooms() {
 #[tokio::test]
 async fn the_sweep_walks_old_rooms_in_batches() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, source, owner, first] = ids();
     for n in 0..5 {
         made(&db, room(guild, first + n, source, owner + n)).await;
@@ -249,7 +249,7 @@ async fn the_sweep_walks_old_rooms_in_batches() {
 #[tokio::test]
 async fn deleting_a_players_data_leaves_their_room_without_an_owner_and_takes_their_kicks() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, source, channel, owner, guest, pest] = ids();
     made(&db, room(guild, channel, source, owner)).await;
     db.ban_from_room(channel, pest).await.unwrap();

@@ -8,7 +8,7 @@ use pinchora_db::{ColorAdded, ColorSettings, NewAutoRole, PanelDoc, PanelEntry, 
 
 // Pruning visits every guild; own the sweep before creating old rows.
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -25,7 +25,7 @@ async fn reset_timer_queues(db: &pinchora_db::Db) {
 #[tokio::test]
 async fn panels_keep_their_style_and_rules() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other] = ids();
 
     // A panel made the old way is plain buttons with no rules.
@@ -120,7 +120,7 @@ async fn panels_keep_their_style_and_rules() {
 #[tokio::test]
 async fn a_reactions_panel_is_found_by_its_message() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other, message] = ids();
     let (panel, _) = db.save_panel(guild, "Pings", None).await.unwrap();
     assert!(db.panel_by_message(guild, message).await.unwrap().is_none());
@@ -155,7 +155,7 @@ async fn a_reactions_panel_is_found_by_its_message() {
 #[tokio::test]
 async fn a_whole_panel_is_saved_in_one_go() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
     let entry = |role: u64, label: &str, secs: Option<i32>| PanelRoleDoc {
         role_id: role,
@@ -232,7 +232,7 @@ async fn a_whole_panel_is_saved_in_one_go() {
 #[tokio::test]
 async fn auto_roles_are_limited_per_server_and_updated_in_place() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, role] = ids();
     let join = |role_id: u64, delay_secs: i32| NewAutoRole {
         role_id,
@@ -284,7 +284,7 @@ async fn auto_roles_are_limited_per_server_and_updated_in_place() {
 async fn sticky_roles_are_kept_for_those_who_left() {
     let _isolation = crate::support::exclusive().await;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, other] = ids();
     assert!(!db.sticky_enabled(guild).await.unwrap());
     db.set_sticky(guild, true).await.unwrap();
@@ -329,7 +329,7 @@ async fn sticky_roles_are_kept_for_those_who_left() {
 #[tokio::test]
 async fn roles_on_a_timer_are_claimed_once() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     reset_timer_queues(&db).await;
     let [guild, user, role] = ids();
     let now = Utc::now();
@@ -389,7 +389,7 @@ async fn roles_on_a_timer_are_claimed_once() {
 #[tokio::test]
 async fn renewed_timer_survives_old_worker_completion() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     reset_timer_queues(&db).await;
     let [guild, user, role] = ids();
     let now = Utc::now();
@@ -422,7 +422,7 @@ async fn renewed_timer_survives_old_worker_completion() {
 #[tokio::test]
 async fn empty_update_after_leave_revokes_sticky_role() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();
     db.note_left(guild, user, Utc::now()).await.unwrap();
@@ -437,7 +437,7 @@ async fn empty_update_after_leave_revokes_sticky_role() {
 #[tokio::test]
 async fn stale_snapshot_cannot_replace_gateway_tombstone() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();
     let versions = db.sticky_snapshot_versions(guild).await.unwrap();
@@ -452,7 +452,7 @@ async fn stale_snapshot_cannot_replace_gateway_tombstone() {
 #[tokio::test]
 async fn snapshot_refreshes_roles_revoked_while_bot_was_offline() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();
     let versions = db.sticky_snapshot_versions(guild).await.unwrap();
@@ -466,7 +466,7 @@ async fn snapshot_refreshes_roles_revoked_while_bot_was_offline() {
 #[tokio::test]
 async fn expiry_removes_role_from_sticky_history() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     reset_timer_queues(&db).await;
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();
@@ -489,7 +489,7 @@ async fn expiry_removes_role_from_sticky_history() {
 #[tokio::test]
 async fn cleanup_waits_for_privacy_user_lock() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, role] = ids();
     db.schedule_removal(guild, user, role, Utc::now()).await.unwrap();
     db.remember_roles(guild, user, &[role]).await.unwrap();
@@ -517,7 +517,7 @@ async fn cleanup_waits_for_privacy_user_lock() {
 #[tokio::test]
 async fn role_member_lock_serializes_concurrent_changes() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user] = ids();
     let first = db.lock_role_member(guild, user).await.unwrap();
     let second_db = db.clone();
@@ -540,7 +540,7 @@ async fn role_member_lock_serializes_concurrent_changes() {
 #[tokio::test]
 async fn concurrent_role_locks_leave_a_connection_for_timers() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, first_user, role] = ids();
     let tasks: Vec<_> = (0..5)
         .map(|offset| {
@@ -568,7 +568,7 @@ async fn concurrent_role_locks_leave_a_connection_for_timers() {
 async fn sticky_prune_skips_a_user_being_deleted() {
     let _isolation = crate::support::exclusive().await;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();
     let before = Utc::now() - Duration::days(61);
@@ -595,7 +595,7 @@ async fn sticky_prune_skips_a_user_being_deleted() {
 #[tokio::test]
 async fn colour_roles_are_one_per_colour_and_limited() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, role] = ids();
     assert_eq!(db.color_settings(guild).await.unwrap(), ColorSettings::default());
     let settings = ColorSettings {

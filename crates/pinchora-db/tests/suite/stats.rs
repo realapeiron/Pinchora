@@ -7,7 +7,7 @@ use chrono::{Duration, Utc};
 use pinchora_core::server_stats::{HourTally, MAX_COUNTERS, Pair, RENAME_GAP};
 use pinchora_db::CounterSave;
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -38,7 +38,7 @@ fn tally(messages: i64, channel: u64, user: u64) -> HourTally {
 #[tokio::test]
 async fn a_batch_is_written_once_and_adds_to_the_hour() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, channel, user] = ids();
     let hour = Utc::now() - Duration::hours(1);
     let hour = hour - Duration::seconds(hour.timestamp().rem_euclid(3600));
@@ -73,7 +73,7 @@ async fn a_batch_is_written_once_and_adds_to_the_hour() {
 #[tokio::test]
 async fn deletion_rejects_member_rows_from_an_already_sealed_batch() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, channel, user] = ids();
     let hour = Utc::now() - Duration::minutes(1);
     db.delete_user_data(user, Utc::now()).await.unwrap();
@@ -86,7 +86,7 @@ async fn deletion_rejects_member_rows_from_an_already_sealed_batch() {
 #[tokio::test]
 async fn late_hourly_batches_recompute_yesterdays_global_messages() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, channel, user] = ids();
     let yesterday = Utc::now().date_naive() - Duration::days(1);
     db.snapshot_global_stats(yesterday).await.unwrap();
@@ -117,7 +117,7 @@ async fn late_hourly_batches_recompute_yesterdays_global_messages() {
 #[tokio::test]
 async fn publication_and_audit_commit_together() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, actor] = ids();
     db.guild_settings(guild).await.unwrap();
     assert!(
@@ -134,7 +134,7 @@ async fn publication_and_audit_commit_together() {
 #[tokio::test]
 async fn public_daily_totals_exclude_hidden_channels() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, public, hidden, user] = ids();
     let hour = Utc::now() - Duration::minutes(1);
     let mut safe = tally(2, public, user);
@@ -168,7 +168,7 @@ async fn public_daily_totals_exclude_hidden_channels() {
 #[tokio::test]
 async fn the_sweep_forgets_old_days_and_skips_rows_somebody_holds() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, channel, held_user, free_user] = ids();
     let old = Utc::now() - Duration::days(120);
     let old = old - Duration::seconds(old.timestamp().rem_euclid(3600));
@@ -243,7 +243,7 @@ async fn the_sweep_forgets_old_days_and_skips_rows_somebody_holds() {
 #[tokio::test]
 async fn a_server_has_ten_counters_and_one_pod_works_them_out_at_a_time() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let ids: [u64; 12] = ids();
     let guild = ids[0];
     for channel in &ids[1..=MAX_COUNTERS] {

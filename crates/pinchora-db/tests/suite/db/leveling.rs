@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn xp_ranks_and_settings() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, u1, u2, u3] = ids();
 
     db.add_message_xp(guild, u1, 20, 0).await.unwrap();
@@ -43,7 +43,7 @@ async fn xp_ranks_and_settings() {
 #[tokio::test]
 async fn level_roles_are_capped_and_replaceable() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other] = ids();
 
     assert!(db.level_roles(guild).await.unwrap().is_empty());
@@ -98,7 +98,7 @@ async fn level_roles_are_capped_and_replaceable() {
 #[tokio::test]
 async fn weekly_xp_is_kept_per_week_and_chat_splits_server_and_global_xp() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, a, b, c] = ids();
     let this_week = chrono::NaiveDate::from_ymd_opt(2026, 11, 2).unwrap();
     let last_week = this_week - chrono::Duration::days(7);
@@ -176,7 +176,7 @@ async fn weekly_xp_is_kept_per_week_and_chat_splits_server_and_global_xp() {
 #[tokio::test]
 async fn pruning_old_weekly_xp_has_an_index_on_the_week() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     // The primary key and the board index both lead with guild_id; with a table scan ruled out, the
     // prune must still find an index it can use for `week < ...`.
     let mut tx = db.pool().begin().await.unwrap();
@@ -199,7 +199,7 @@ async fn pruning_old_weekly_xp_has_an_index_on_the_week() {
 #[tokio::test]
 async fn xp_rules_are_capped_replaced_and_cleared() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other] = ids();
 
     assert!(db.xp_rules(guild).await.unwrap().is_empty());
@@ -252,7 +252,7 @@ async fn xp_rules_are_capped_replaced_and_cleared() {
 #[tokio::test]
 async fn rep_roles_are_capped_and_replaceable() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other] = ids();
 
     assert!(db.rep_roles(guild).await.unwrap().is_empty());
@@ -295,7 +295,7 @@ async fn rep_roles_are_capped_and_replaceable() {
 #[tokio::test]
 async fn leveling_toolkit_settings_have_safe_defaults() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
 
     let s = db.guild_settings(guild).await.unwrap();

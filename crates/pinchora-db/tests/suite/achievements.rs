@@ -4,7 +4,7 @@ use chrono::Utc;
 use pinchora_core::achievements::Kind;
 use pinchora_db::{AchievementDraft, AchievementSave, Db};
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 use crate::support::ids;
 
@@ -26,7 +26,7 @@ fn draft<'a>(name: &'a str, kind: Kind, points: i64) -> AchievementDraft<'a> {
 #[tokio::test]
 async fn progress_reads_only_the_requested_kind() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, board, channel] = ids();
     db.guild_settings(guild).await.unwrap();
     sqlx::query("INSERT INTO users(id,reputation) VALUES($1,8)")
@@ -102,7 +102,7 @@ async fn progress_reads_only_the_requested_kind() {
 #[tokio::test]
 async fn unique_grant_pays_server_points_once_and_privacy_deletes_it() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user] = ids();
     let saved = db
         .save_achievement(guild, None, &draft("First win", Kind::Custom, 150))
@@ -142,7 +142,7 @@ async fn unique_grant_pays_server_points_once_and_privacy_deletes_it() {
 #[tokio::test]
 async fn limit_and_duplicate_names_are_enforced() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
     for n in 0..25 {
         assert!(matches!(
@@ -172,7 +172,7 @@ async fn limit_and_duplicate_names_are_enforced() {
 #[tokio::test]
 async fn stale_rule_cannot_grant_after_target_or_kind_edit_and_points_saturate() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user] = ids();
     let mut rule = draft("Edited", Kind::Level, 100);
     let AchievementSave::Saved(id) = db.save_achievement(guild, None, &rule).await.unwrap() else {
@@ -229,7 +229,7 @@ async fn stale_rule_cannot_grant_after_target_or_kind_edit_and_points_saturate()
 #[tokio::test]
 async fn progress_excludes_self_fake_rejoins_bot_boards_and_weight_inflation() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, user, human, fake, board, channel] = ids();
     db.guild_settings(guild).await.unwrap();
     // Repeated attribution to the same live account is one invite; self/fake joins are zero.

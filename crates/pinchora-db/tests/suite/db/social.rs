@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn one_partner_each_even_when_pairings_race() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [x, y, z, w, v] = ids();
 
     let PairOutcome::Paired { since } = db.pair_partners(y, z).await.unwrap() else {
@@ -63,7 +63,7 @@ async fn one_partner_each_even_when_pairings_race() {
 #[tokio::test]
 async fn friends_are_mutual_and_capped() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [a, b, c] = ids();
 
     assert_eq!(db.befriend(a, b).await.unwrap(), BefriendOutcome::Added);
@@ -110,9 +110,7 @@ async fn friends_are_mutual_and_capped() {
 
     // 100 friends is the most; the other side's cap counts too.
     let [full, last] = ids();
-    let crowd = (0..MAX_FRIENDS as u64)
-        .map(|n| full + 1_000_000 + n)
-        .collect::<Vec<_>>();
+    let crowd = ids::<{ MAX_FRIENDS as usize }>();
     for friend in &crowd {
         assert_eq!(db.befriend(full, *friend).await.unwrap(), BefriendOutcome::Added);
     }
@@ -132,7 +130,7 @@ async fn friends_are_mutual_and_capped() {
 #[tokio::test]
 async fn interactions_count_per_pair_and_per_user() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [a, b, c] = ids();
 
     assert_eq!(
@@ -191,7 +189,7 @@ async fn interactions_count_per_pair_and_per_user() {
 #[tokio::test]
 async fn a_repeat_visit_moves_the_time_but_pays_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest] = ids();
     let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 5).unwrap();
 
@@ -230,7 +228,7 @@ async fn a_repeat_visit_moves_the_time_but_pays_once() {
 #[tokio::test]
 async fn friendship_respects_blocks_in_both_directions() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [a, b] = ids();
     assert!(db.befriend(a, a).await.is_err());
     db.block_signer(a, b, "B").await.unwrap();

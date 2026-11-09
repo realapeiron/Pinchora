@@ -14,10 +14,10 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     };
     // Players who are deleted all the time, and a few house owners nobody deletes (placing a piece in
     // a house whose owner deleted it in between is a foreign key error, a different matter).
-    let all = ids::<14>();
+    let all = ids::<14>(7);
     let users: Arc<Vec<u64>> = Arc::new(all[..10].to_vec());
     let owners: Arc<Vec<u64>> = Arc::new(all[10..].to_vec());
-    let [guild] = ids();
+    let [guild] = ids(7);
     for user in users.iter() {
         db.earn_shells(*user, 1_000_000, "test").await.unwrap();
     }

@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn contest_week_closes_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, a, b, voter] = ids();
     let starter = pinchora_db::NewRoom {
         room_type: "living".into(),
@@ -50,7 +50,7 @@ async fn contest_week_closes_once() {
 #[tokio::test]
 async fn fishing_gear_is_bought_equipped_and_used_up() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     // Nothing chosen yet: the shore, the starter rod, plain bait, and nothing owned.
@@ -146,7 +146,7 @@ async fn fishing_gear_is_bought_equipped_and_used_up() {
 #[tokio::test]
 async fn a_catch_goes_to_the_book_the_bucket_and_the_weekly_board() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, guild] = ids();
     let this_week = week(1);
     let catch = |fish: &'static str, size: f32, ratio: f64| NewCatch {
@@ -236,7 +236,7 @@ async fn a_catch_goes_to_the_book_the_bucket_and_the_weekly_board() {
 #[tokio::test]
 async fn book_milestones_pay_once_and_selling_keeps_the_book() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, guild] = ids();
     let milestones = [
         MilestoneReward {

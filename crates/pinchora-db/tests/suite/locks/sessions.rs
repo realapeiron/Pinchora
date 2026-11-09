@@ -4,7 +4,7 @@ use super::*;
 async fn opening_a_session_waits_for_its_host_to_finish_deleting() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, guest, guild] = ids();
+    let [host, guest, guild] = ids(7);
     db.earn_shells(host, 5, "test").await.unwrap();
     let mut delete = db.pool().begin().await.unwrap();
     Db::delete_user_data_in(&mut delete, host, Utc::now()).await.unwrap();
@@ -22,7 +22,7 @@ async fn sweeps_leave_the_rows_somebody_holds_for_the_next_one() {
     let _isolation = crate::support::exclusive().await;
     let Some(db) = db_with(4).await else { return };
 
-    let [guild, host] = ids();
+    let [guild, host] = ids(7);
     let mut old = Vec::new();
     for _ in 0..2 {
         let (id,): (i64,) = sqlx::query_as(
@@ -114,7 +114,7 @@ async fn sweeps_leave_the_rows_somebody_holds_for_the_next_one() {
 async fn settling_a_derby_while_a_racer_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, racer, leaver, guild, channel] = ids();
+    let [host, racer, leaver, guild, channel] = ids(7);
     for user in [host, racer, leaver] {
         db.earn_shells(user, 100, "test").await.unwrap();
     }
@@ -161,7 +161,7 @@ async fn settling_a_derby_while_a_racer_deletes_their_data() {
 async fn grabbing_a_card_while_the_player_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [grabber, guild] = ids();
+    let [grabber, guild] = ids(7);
     let cards: Vec<String> = ["x_one", "x_two", "x_three"].map(String::from).into();
     let drop = db
         .create_drop(NewDrop {
@@ -212,7 +212,7 @@ async fn grabbing_a_card_while_the_player_deletes_their_data() {
 async fn moving_a_party_game_while_a_paid_player_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [host, other, guild, channel] = ids();
+    let [host, other, guild, channel] = ids(7);
     let deadline = Utc::now() + Duration::hours(1);
     let game = db
         .create_party(NewParty {
@@ -281,7 +281,7 @@ async fn moving_a_party_game_while_a_paid_player_deletes_their_data() {
 async fn closing_a_contest_week_while_a_winner_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [leaving, second, third, voter, guild] = ids();
+    let [leaving, second, third, voter, guild] = ids(7);
     let week = 100;
     for user in [leaving, second, third] {
         sqlx::query(
@@ -335,7 +335,7 @@ async fn closing_a_contest_week_while_a_winner_deletes_their_data() {
 async fn voting_for_an_entry_while_its_owner_deletes_their_data() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db_with(4).await else { return };
-    let [owner, voter, guild] = ids();
+    let [owner, voter, guild] = ids(7);
     sqlx::query(
         "INSERT INTO contest_entries (guild_id, week, user_id, owner_name, room_idx, tier, room_type, wallpaper, floor)
          VALUES ($1, 7, $2, 'Name', 0, 1, 'living', 'w', 'f')",

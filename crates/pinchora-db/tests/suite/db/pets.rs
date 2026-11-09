@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn place_and_pick_up_round_trip() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [user] = ids();
     let starter = pinchora_db::NewRoom {
         room_type: "living".into(),
@@ -41,7 +41,7 @@ async fn place_and_pick_up_round_trip() {
 #[tokio::test]
 async fn a_trip_pays_once_and_freezes_the_pets_needs() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner, other] = ids();
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
     assert!(!pet.is_away(chrono::Utc::now()) && !pet.has_souvenir(chrono::Utc::now()));
@@ -132,7 +132,7 @@ async fn a_trip_pays_once_and_freezes_the_pets_needs() {
 #[tokio::test]
 async fn care_cannot_write_over_a_trip() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner, other] = ids();
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
     let now = pinchora_db::timestamp(chrono::Utc::now());
@@ -192,7 +192,7 @@ async fn care_cannot_write_over_a_trip() {
 #[tokio::test]
 async fn a_care_write_that_read_the_pet_before_a_claim_cannot_undo_the_trip_xp() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner] = ids();
     let now = chrono::Utc::now();
     let after = now + chrono::Duration::hours(2);
@@ -227,7 +227,7 @@ async fn a_care_write_that_read_the_pet_before_a_claim_cannot_undo_the_trip_xp()
 #[tokio::test]
 async fn a_care_click_racing_a_claim_or_a_trip_never_loses_the_trips_xp_or_needs() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner] = ids();
     let now = pinchora_db::timestamp(chrono::Utc::now());
     let back = now + chrono::Duration::hours(2);
@@ -298,7 +298,7 @@ async fn a_care_click_racing_a_claim_or_a_trip_never_loses_the_trips_xp_or_needs
 #[tokio::test]
 async fn waking_a_pet_is_free_once_a_day_and_costs_a_fee_after_that() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner] = ids();
     let (pet, second) = (
         db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap(),
@@ -377,7 +377,7 @@ async fn waking_a_pet_is_free_once_a_day_and_costs_a_fee_after_that() {
 #[tokio::test]
 async fn pet_timestamp_guards_accept_nanoseconds_but_reject_a_changed_microsecond() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner] = ids();
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
     // Explicit nanoseconds reproduce the Linux clock on macOS too. Keep the raw
@@ -446,7 +446,7 @@ async fn pet_timestamp_guards_accept_nanoseconds_but_reject_a_changed_microsecon
 async fn care_commits_payment_and_pet_together_under_races_and_refusals() {
     let _isolation = crate::support::shared().await;
     use pinchora_db::PetCare;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [owner] = ids();
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
     let now = chrono::Utc::now();

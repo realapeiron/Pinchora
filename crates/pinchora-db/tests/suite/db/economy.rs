@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn daily_transfer_and_rep() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     let DailyOutcome::Claimed {
@@ -53,7 +53,7 @@ async fn daily_transfer_and_rep() {
 #[tokio::test]
 async fn concurrent_transfers_never_overdraw() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [a, b] = ids();
     db.claim_daily(a).await.unwrap(); // a: 250
     db.claim_daily(b).await.unwrap(); // b: 250
@@ -75,7 +75,7 @@ async fn concurrent_transfers_never_overdraw() {
 #[tokio::test]
 async fn player_stalls() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [seller, buyer] = ids();
     db.grant_item(seller, "test_item", 1).await.unwrap();
     assert!(db.list_item(seller, "test_item", 1_000).await.unwrap());
@@ -119,7 +119,7 @@ async fn player_stalls() {
 #[tokio::test]
 async fn market_never_oversells_under_contention() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let buyers: [u64; 20] = ids();
     let hour = -(buyers[0] as i64); // a unique fake hour for this run
     db.market(hour, &[("legendary_test".into(), 100, 3)]).await.unwrap();
@@ -147,7 +147,7 @@ async fn market_never_oversells_under_contention() {
 #[tokio::test]
 async fn player_stats_collect_every_number_for_achievements() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [nobody, host, fan_a, fan_b] = ids();
     assert_eq!(db.player_stats(nobody).await.unwrap(), PlayerStats::default());
 

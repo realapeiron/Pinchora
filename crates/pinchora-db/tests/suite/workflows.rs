@@ -1,6 +1,6 @@
-//! These fixtures exercise minute-long budgets and small pools with 110 writers.
-//! Exclude unrelated fixture workloads from their acquisition and lock deadlines;
-//! all spawned writers within each test still race through the original pool.
+//! Concurrent writer regressions use exclusive guards to protect small pools and
+//! lock deadlines. Their spawned writers still race through the original pool;
+//! the guild-scoped configuration test can share access.
 use pinchora_core::workflows::{Definition, Event, Scope, StepAction, Trigger};
 use pinchora_db::Db;
 // Due-work scans are global; scheduler tests must not consume each other's fixtures.
@@ -22,7 +22,7 @@ fn definition(name: &str) -> Definition {
 }
 #[tokio::test]
 async fn workflows_enforce_caps_and_tenant_isolation() {
-    let _isolation = crate::support::exclusive().await;
+    let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
     let guild = id();
     let user = guild + 1;

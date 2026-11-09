@@ -2,7 +2,7 @@
 
 use pinchora_db::{ACTIVE, DONE, DuelStart, NewGame, PENDING, Payout};
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -29,7 +29,7 @@ use crate::support::ledger_total;
 #[tokio::test]
 async fn a_won_wager_pays_the_pot_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest, stranger] = ids();
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 100, "test").await.unwrap();
@@ -93,7 +93,7 @@ async fn a_won_wager_pays_the_pot_once() {
 #[tokio::test]
 async fn draws_and_timeouts_give_the_bets_back() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest] = ids();
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 100, "test").await.unwrap();
@@ -127,7 +127,7 @@ async fn draws_and_timeouts_give_the_bets_back() {
 #[tokio::test]
 async fn a_player_who_cannot_cover_the_bet_blocks_the_game() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest] = ids();
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 20, "test").await.unwrap();
@@ -161,7 +161,7 @@ async fn a_player_who_cannot_cover_the_bet_blocks_the_game() {
 #[tokio::test]
 async fn a_decline_that_loses_the_race_to_accept_keeps_the_bets() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest] = ids();
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 100, "test").await.unwrap();
@@ -177,7 +177,7 @@ async fn a_decline_that_loses_the_race_to_accept_keeps_the_bets() {
 #[tokio::test]
 async fn simultaneous_endings_pay_exactly_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest] = ids();
     db.earn_shells(host, 100, "test").await.unwrap();
     db.earn_shells(guest, 100, "test").await.unwrap();
@@ -214,7 +214,7 @@ async fn simultaneous_endings_pay_exactly_once() {
 #[tokio::test]
 async fn moves_only_apply_to_the_state_they_were_made_on() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, guest] = ids();
     let session = db.create_game(duel(host, guest, 0)).await.unwrap();
     assert!(
@@ -240,7 +240,7 @@ async fn moves_only_apply_to_the_state_they_were_made_on() {
 #[tokio::test]
 async fn trivia_answers_count_once_per_player() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [host, a, b] = ids();
     let round = db
         .create_game(NewGame {
@@ -260,7 +260,7 @@ async fn trivia_answers_count_once_per_player() {
 #[tokio::test]
 async fn stats_and_wordle_boards() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [user] = ids();
     db.record_game(user, "connect4", true).await.unwrap();
     db.record_game(user, "connect4", false).await.unwrap();

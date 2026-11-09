@@ -4,7 +4,7 @@
 
 use pinchora_core::card_design::{CardKind, Delivery, MAX_UPLOADS};
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// A server id unique per run, so the suite can run repeatedly against one database.
 use crate::support::id as guild;
@@ -16,7 +16,7 @@ fn upload_id(n: u128) -> String {
 #[tokio::test]
 async fn designs_are_saved_per_kind_and_cleared_back_to_classic() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let g = guild();
     assert_eq!(db.card_design(g, CardKind::Welcome).await.unwrap(), None);
     let json = r#"{"version": 1, "width": 1100}"#;
@@ -54,7 +54,7 @@ async fn designs_are_saved_per_kind_and_cleared_back_to_classic() {
 #[tokio::test]
 async fn uploads_are_kept_per_server_and_the_oldest_unused_go() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let (g, other) = (guild(), guild() + 1);
     let base = u128::from(g) * 100;
     for n in 0..MAX_UPLOADS + 3 {
@@ -91,7 +91,7 @@ async fn uploads_are_kept_per_server_and_the_oldest_unused_go() {
 #[tokio::test]
 async fn branding_null_slots_do_not_disable_upload_pruning_and_active_images_survive() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let g = guild();
     db.save_guild_branding(g, &pinchora_db::GuildBranding::default())
         .await
@@ -117,7 +117,7 @@ async fn branding_null_slots_do_not_disable_upload_pruning_and_active_images_sur
 async fn branding_reset_does_not_erase_a_concurrent_new_draft() {
     let _isolation = crate::support::shared().await;
     use pinchora_db::GuildBranding;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let g = guild();
     let before = GuildBranding {
         nickname: Some("Before".into()),

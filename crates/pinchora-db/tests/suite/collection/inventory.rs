@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn glimmer_duplicate_recycles_and_crafts_bound_loot() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, user] = ids();
     let now = Utc::now();
     let first = critter_drop(&db, guild, &["g:x_one", "x_two", "x_three"], Duration::seconds(90)).await;
@@ -51,7 +51,7 @@ async fn glimmer_duplicate_recycles_and_crafts_bound_loot() {
 #[tokio::test]
 async fn settings_start_off_and_change_one_field_at_a_time() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild] = ids();
     let s = db.collection_settings(guild).await.unwrap();
     assert!(!s.enabled && s.channel_id.is_none());
@@ -73,7 +73,7 @@ async fn settings_start_off_and_change_one_field_at_a_time() {
 #[tokio::test]
 async fn a_spare_is_recycled_and_the_day_has_a_limit() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, a] = ids();
     let now = Utc::now();
     let cap = daily("critterdrop", 2);
@@ -121,7 +121,7 @@ async fn a_spare_is_recycled_and_the_day_has_a_limit() {
 #[tokio::test]
 async fn a_beachcomb_waits_and_pays_once_per_wait() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [a] = ids();
     let now = Utc::now();
     let wait = Duration::minutes(20);
@@ -155,7 +155,7 @@ async fn a_beachcomb_waits_and_pays_once_per_wait() {
 #[tokio::test]
 async fn racing_beachcombs_pay_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [a] = ids();
     let now = Utc::now();
     let mut tasks = Vec::new();
@@ -180,7 +180,7 @@ async fn racing_beachcombs_pay_once() {
 #[tokio::test]
 async fn a_pot_soaks_then_is_hauled_in_exactly_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [a] = ids();
     let now = Utc::now();
     let cap = daily("crabpot", 3);
@@ -239,7 +239,7 @@ async fn a_pot_soaks_then_is_hauled_in_exactly_once() {
 #[tokio::test]
 async fn upgrading_a_pot_costs_shells_once_per_level() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [a] = ids();
     assert_eq!(
         db.upgrade_pot(a, 1, 400).await.unwrap(),
@@ -276,7 +276,7 @@ async fn upgrading_a_pot_costs_shells_once_per_level() {
 #[tokio::test]
 async fn fragments_buy_decor_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [a] = ids();
     assert_eq!(db.exchange_fragments(a, 25, "dewtrail_print").await.unwrap(), None);
     // 30 fragments from spares, enough for one 25-fragment piece, not for two at once.
@@ -308,7 +308,7 @@ async fn soulbound_pieces_can_be_placed_but_never_leave_their_owner() {
     let _isolation = crate::support::shared().await;
     use pinchora_db::{PlaceOutcome, Refusal, RestoreOutcome, RoomChange, SOULBOUND_GUEST};
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [a, b, editor] = ids();
     let (bound, plain) = ("dewtrail_print~bound", "dewtrail_print");
     house_of(&db, a).await;

@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn depth_64_claimers_have_one_winner_and_limits_survive_a_new_pool() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, user] = ids();
     let players: [u64; 64] = ids();
     let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
@@ -91,7 +91,7 @@ async fn depth_64_claimers_have_one_winner_and_limits_survive_a_new_pool() {
 #[tokio::test]
 async fn depth_word_attempts_persist_and_normalize_only_surrounding_space_and_case() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, a, b, c] = ids();
     let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
     db.set_drop_mode(drop.id, "word", Some("Ab12cD34")).await.unwrap();
@@ -163,7 +163,7 @@ async fn depth_word_attempts_persist_and_normalize_only_surrounding_space_and_ca
 #[tokio::test]
 async fn depth_shard_ledger_deduplicates_concurrent_retries_and_preserves_original_and_glimmers() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [user] = ids();
     sqlx::query("INSERT INTO dex_entries (user_id,entry_id,caught,kept,glimmer) VALUES ($1,'x_one',5,5,2)")
         .bind(user as i64)
@@ -253,7 +253,7 @@ async fn depth_shard_ledger_deduplicates_concurrent_retries_and_preserves_origin
 #[tokio::test]
 async fn depth_reservation_honors_consent_blocks_claim_cap_and_delivery_presence() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, user, host] = ids();
     db.earn_shells(user, 1, "test").await.unwrap();
     sqlx::query("INSERT INTO members (guild_id,user_id) VALUES ($1,$2)")
@@ -355,7 +355,7 @@ async fn depth_reservation_honors_consent_blocks_claim_cap_and_delivery_presence
 #[tokio::test]
 async fn depth_votes_are_immutable_capped_and_never_pay() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild] = ids();
     let users: [u64; 101] = ids();
     let d = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
@@ -385,7 +385,7 @@ async fn depth_votes_are_immutable_capped_and_never_pay() {
 #[tokio::test]
 async fn depth_deletion_erases_identity_without_reopening_claims_or_hourly_cooldowns() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, user, other] = ids();
     let now = Utc::now();
     sqlx::query("INSERT INTO members(guild_id,user_id) VALUES($1,$2)")

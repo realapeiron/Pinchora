@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn accessories_are_bought_once_and_outfits_keep_three_slots() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     assert!(db.owned_accessories(alice).await.unwrap().is_empty());
@@ -70,7 +70,7 @@ async fn accessories_are_bought_once_and_outfits_keep_three_slots() {
 #[tokio::test]
 async fn characters_are_saved_per_player() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     assert_eq!(db.character(alice).await.unwrap(), None, "unknown player");
@@ -104,7 +104,7 @@ async fn characters_are_saved_per_player() {
 #[tokio::test]
 async fn backgrounds_are_bought_once_and_equipped_only_when_owned() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice] = ids();
 
     assert_eq!(
@@ -166,7 +166,7 @@ async fn backgrounds_are_bought_once_and_equipped_only_when_owned() {
 #[tokio::test]
 async fn badges_are_bought_once_and_worn_in_order() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
     db.earn_shells(alice, 1_000, "test").await.unwrap();
 
@@ -227,7 +227,7 @@ async fn badges_are_bought_once_and_worn_in_order() {
 #[tokio::test]
 async fn badges_stay_automatic_until_the_player_chooses() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     // A new player has not chosen: the card picks their badges.
@@ -259,7 +259,7 @@ async fn badges_stay_automatic_until_the_player_chooses() {
 #[tokio::test]
 async fn badge_notices_are_claimed_once_and_old_news_is_not_announced() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, old, nobody] = ids();
     let list = |ids: &[&str]| ids.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
 
@@ -354,7 +354,7 @@ async fn badge_notices_are_claimed_once_and_old_news_is_not_announced() {
 #[tokio::test]
 async fn titles_are_worn_and_granted() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     assert!(db.granted_titles(alice).await.unwrap().is_empty());
@@ -390,7 +390,7 @@ async fn titles_are_worn_and_granted() {
 #[tokio::test]
 async fn card_style_and_showcase_are_saved_per_player() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [alice, bob] = ids();
 
     // A new player has the look every player starts with and an empty showcase.

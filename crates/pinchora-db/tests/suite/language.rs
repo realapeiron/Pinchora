@@ -4,7 +4,7 @@
 
 use pinchora_core::i18n::Lang;
 
-use crate::support::db_five as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
@@ -12,7 +12,7 @@ use crate::support::ids;
 #[tokio::test]
 async fn languages_are_set_read_and_cleared() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [user, guild, stranger] = ids();
     assert_eq!(db.user_language(user).await.unwrap(), None, "nobody picked one yet");
     db.set_user_language(user, Some(Lang::Tr)).await.unwrap();

@@ -1,4 +1,4 @@
-//! Ticket v2 operation state against the assigned test PostgreSQL.
+//! Ticket operation state against the assigned test PostgreSQL.
 
 use std::time::Duration;
 
@@ -234,10 +234,17 @@ async fn form_pages_are_user_bound_expiring_size_capped_and_single_use() {
 
 #[tokio::test]
 async fn close_request_deadline_is_persistent_and_private_data_is_deleted() {
-    let _isolation = crate::support::shared().await;
+    let _isolation = crate::support::exclusive().await;
     let Some((db, guild, panel)) = operation_fixture().await else {
         return;
     };
+    // The exclusive guard owns this global queue, including leftovers from older runs.
+    sqlx::query(
+        "UPDATE ticket_operations SET close_request_expires_at=NULL WHERE close_request_expires_at IS NOT NULL",
+    )
+    .execute(db.pool())
+    .await
+    .unwrap();
     let user = guild + 1;
     let TicketOpen::Opened(ticket) = db
         .open_ticket(&NewTicket {

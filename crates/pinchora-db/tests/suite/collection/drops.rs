@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn wishlist_reserves_one_slot_then_releases_it() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, wisher, other] = ids();
     assert!(db.set_wish(wisher, "x_one", true).await.unwrap());
     sqlx::query("INSERT INTO members (guild_id, user_id) VALUES ($1, $2)")
@@ -40,7 +40,7 @@ async fn wishlist_reserves_one_slot_then_releases_it() {
 #[tokio::test]
 async fn vote_reveals_one_card_and_only_that_card_can_be_claimed() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     // The exclusive guard makes old fixtures safe to clear before the bounded worker scan.
     sqlx::query("DELETE FROM collection_drops")
         .execute(db.pool())
@@ -89,7 +89,7 @@ async fn vote_reveals_one_card_and_only_that_card_can_be_claimed() {
 #[tokio::test]
 async fn hourly_roll_claims_exactly_once_and_waits_an_hour() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [user] = ids();
     let now = Utc::now();
     assert!(matches!(
@@ -118,7 +118,7 @@ async fn hourly_roll_claims_exactly_once_and_waits_an_hour() {
 #[tokio::test]
 async fn eleventh_daily_drop_claim_is_refused_without_taking_a_slot() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, user] = ids();
     let now = Utc::now();
     for n in 0..11 {
@@ -139,7 +139,7 @@ async fn eleventh_daily_drop_claim_is_refused_without_taking_a_slot() {
 #[tokio::test]
 async fn a_card_goes_to_one_player_and_each_player_takes_one() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, a, b, c] = ids();
     let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
     let now = Utc::now();
@@ -200,7 +200,7 @@ async fn a_card_goes_to_one_player_and_each_player_takes_one() {
 #[tokio::test]
 async fn racing_clicks_on_one_card_pay_one_player() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, u0, u1, u2, u3, u4, u5, u6, u7] = ids();
     let players = [u0, u1, u2, u3, u4, u5, u6, u7];
     let drop = critter_drop(&db, guild, &["x_one", "x_two", "x_three"], Duration::seconds(90)).await;
@@ -232,7 +232,7 @@ async fn racing_clicks_on_one_card_pay_one_player() {
 #[tokio::test]
 async fn a_bottle_opens_once_and_pays_its_prize() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, a, b] = ids();
     let now = Utc::now();
     let cap = daily("bottle", 10);
@@ -310,7 +310,7 @@ async fn a_bottle_opens_once_and_pays_its_prize() {
 #[tokio::test]
 async fn racing_openers_pay_one_player_and_a_spent_day_pays_nothing() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     let [guild, u0, u1, u2, u3, u4, u5] = ids();
     let players = [u0, u1, u2, u3, u4, u5];
     let now = Utc::now();
@@ -351,7 +351,7 @@ async fn racing_openers_pay_one_player_and_a_spent_day_pays_nothing() {
 #[tokio::test]
 async fn due_drops_close_once() {
     let _isolation = crate::support::exclusive().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(10).await else { return };
     // The exclusive guard makes old fixtures safe to clear before the bounded worker scan.
     sqlx::query("DELETE FROM collection_drops")
         .execute(db.pool())

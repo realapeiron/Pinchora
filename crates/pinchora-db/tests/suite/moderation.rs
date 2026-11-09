@@ -20,7 +20,7 @@ async fn db() -> Option<Db> {
 }
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
-use crate::support::ids_seven as ids;
+use crate::support::spaced_ids as ids;
 
 fn case(guild: u64, kind: CaseKind, target: u64) -> NewCase<'static> {
     NewCase {
@@ -41,7 +41,7 @@ fn case(guild: u64, kind: CaseKind, target: u64) -> NewCase<'static> {
 async fn cases_are_numbered_one_after_another_when_moderators_act_at_once() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, other, target] = ids();
+    let [guild, other, target] = ids(7);
     let mut tasks = tokio::task::JoinSet::new();
     for n in 0..20u64 {
         let db = db.clone();
@@ -81,7 +81,7 @@ async fn cases_are_numbered_one_after_another_when_moderators_act_at_once() {
 async fn warns_that_race_each_other_each_see_the_count_they_made() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, target] = ids();
+    let [guild, target] = ids(7);
     let mut tasks = tokio::task::JoinSet::new();
     for _ in 0..8 {
         let db = db.clone();
@@ -105,7 +105,7 @@ async fn warns_that_race_each_other_each_see_the_count_they_made() {
 async fn a_warn_taken_back_stops_counting_and_leaves_a_case() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, target] = ids();
+    let [guild, target] = ids(7);
     let first = db.open_case(&case(guild, CaseKind::Warn, target)).await.unwrap();
     db.open_case(&case(guild, CaseKind::Warn, target)).await.unwrap();
     assert_eq!(db.active_warns(guild, target).await.unwrap().len(), 2);
@@ -147,7 +147,7 @@ async fn temporary_bans_are_lifted_once_and_a_new_ban_replaces_the_old_end() {
         .execute(db.pool())
         .await
         .unwrap();
-    let [guild, early, late, rebanned] = ids();
+    let [guild, early, late, rebanned] = ids(7);
     let now = Utc::now();
     let temp = |target, ends| NewCase {
         duration: Some(Duration::hours(1)),
@@ -203,7 +203,7 @@ async fn the_ticker_rechecks_each_ban_and_a_hand_unban_ends_the_older_ones() {
         .execute(db.pool())
         .await
         .unwrap();
-    let [guild, mia, ana] = ids();
+    let [guild, mia, ana] = ids(7);
     let now = Utc::now();
     let temp = |target| NewCase {
         duration: Some(Duration::minutes(1)),
@@ -243,7 +243,7 @@ async fn the_ticker_rechecks_each_ban_and_a_hand_unban_ends_the_older_ones() {
 async fn a_lock_remembers_what_it_took() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, channel] = ids();
+    let [guild, channel] = ids(7);
     assert_eq!(db.lock_state(guild, channel).await.unwrap(), None, "never locked here");
     let lock = db.open_case(&case(guild, CaseKind::Lock, channel)).await.unwrap().case;
     assert_eq!(
@@ -291,7 +291,7 @@ fn servers_that_logged_before_keep_only_the_old_four_on() {
 async fn the_warn_ladder_holds_ten_rungs_one_per_count() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild] = ids();
+    let [guild] = ids(7);
     let rung = |n, action, d: Option<Duration>| check_threshold(n, action, d).unwrap();
     db.put_warn_threshold(guild, rung(3, "timeout", Some(Duration::hours(1))))
         .await
@@ -345,7 +345,7 @@ async fn the_warn_ladder_holds_ten_rungs_one_per_count() {
 async fn cases_are_found_by_member_kind_and_words_and_reasons_change() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, mia, zed] = ids();
+    let [guild, mia, zed] = ids(7);
     db.open_case(&case(guild, CaseKind::Warn, mia)).await.unwrap();
     let kick = NewCase {
         target_name: "Zed_100%",
@@ -465,7 +465,7 @@ async fn cases_are_found_by_member_kind_and_words_and_reasons_change() {
 async fn the_staff_log_reads_commands_discord_and_the_dashboard_together() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, actor, target] = ids();
+    let [guild, actor, target] = ids(7);
     db.open_case(&case(guild, CaseKind::Ban, target)).await.unwrap();
     db.record_staff_action(&NewStaffAction {
         guild,
@@ -548,7 +548,7 @@ async fn the_staff_log_reads_commands_discord_and_the_dashboard_together() {
 async fn log_settings_keep_the_old_switches_and_add_channels_events_and_ignores() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, channel, moderation] = ids();
+    let [guild, channel, moderation] = ids(7);
     let fresh = db.log_config(guild).await.unwrap();
     assert!(fresh.groups.members && fresh.groups.voice);
     assert_eq!(fresh.disabled, [LogEvent::VoiceSelf], "self mutes start off");
@@ -587,7 +587,7 @@ async fn log_settings_keep_the_old_switches_and_add_channels_events_and_ignores(
 async fn stale_ban_identity_and_delayed_unban_cannot_close_a_replacement() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, target] = ids();
+    let [guild, target] = ids(7);
     let old = db.open_case(&case(guild, CaseKind::Ban, target)).await.unwrap().case;
     let at = old.created_at + Duration::milliseconds(1);
     sqlx::query("UPDATE mod_cases SET created_at = $3 WHERE guild_id = $1 AND number = $2")
@@ -621,7 +621,7 @@ async fn stale_ban_identity_and_delayed_unban_cannot_close_a_replacement() {
 async fn ban_http_operations_are_serialized_across_pods() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };
-    let [guild, target] = ids();
+    let [guild, target] = ids(7);
     let guard = db.lock_ban(guild, target).await.unwrap();
     assert!(
         tokio::time::timeout(std::time::Duration::from_millis(100), db.lock_ban(guild, target))

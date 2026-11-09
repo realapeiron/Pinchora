@@ -3,7 +3,7 @@ use pinchora_db::{Db, FeedAdd, NewFeed};
 
 #[tokio::test]
 async fn source_and_post_claims_lease_only_the_requested_batch() {
-    let _isolation = crate::support::exclusive().await;
+    let _isolation = crate::support::shared().await;
     let Some((_, guild)) = setup().await else {
         return;
     };
@@ -139,7 +139,7 @@ async fn codes_are_member_channel_bound_single_use_and_expired_claims_are_releas
 
 #[tokio::test]
 async fn webhook_replay_is_atomic_and_cannot_break_a_poll_lease() {
-    let _isolation = crate::support::exclusive().await;
+    let _isolation = crate::support::shared().await;
     let Some((db, user)) = setup().await else { return };
     let source = format!("live{user}");
     let feed = db

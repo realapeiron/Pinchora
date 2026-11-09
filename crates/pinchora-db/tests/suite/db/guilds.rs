@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn server_points_accrue_give_and_take() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, chatter, helper, bystander] = ids();
 
     let s = db.guild_settings(guild).await.unwrap();
@@ -93,7 +93,7 @@ async fn store_purchase_checks_balance_and_stock() {
     let _isolation = crate::support::shared().await;
     use pinchora_db::StoreBuy;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, buyer, poor] = ids();
     db.give_points(guild, buyer, 100).await.unwrap();
 
@@ -156,7 +156,7 @@ async fn store_never_oversells_or_overspends_under_contention() {
     let _isolation = crate::support::shared().await;
     use pinchora_db::StoreBuy;
 
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let guild = ids::<1>()[0];
     let buyers: [u64; 20] = ids();
     for &b in &buyers {
@@ -212,7 +212,7 @@ async fn store_never_oversells_or_overspends_under_contention() {
 #[tokio::test]
 async fn store_is_capped_per_server() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
     for role in 0..pinchora_db::MAX_STORE_ITEMS as u64 {
         assert!(db.add_store_item(guild, 6_000 + role, 5, None).await.unwrap().is_some());
@@ -227,7 +227,7 @@ async fn store_is_capped_per_server() {
 #[tokio::test]
 async fn join_role_goodbye_and_log_settings() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other] = ids();
 
     // Everything starts off, and a log channel alone switches every kind of event on.
@@ -284,7 +284,7 @@ async fn join_role_goodbye_and_log_settings() {
 #[tokio::test]
 async fn role_panels_belong_to_their_server_and_keep_order() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild, other] = ids();
 
     // A panel is found by title (any case) or number, only in its own server.
@@ -363,7 +363,7 @@ async fn role_panels_belong_to_their_server_and_keep_order() {
 #[tokio::test]
 async fn role_panels_hold_at_most_25_roles_even_when_filled_at_once() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [guild] = ids();
     let (panel, _) = db.save_panel(guild, "Everything", None).await.unwrap();
 
@@ -398,7 +398,7 @@ async fn role_panels_hold_at_most_25_roles_even_when_filled_at_once() {
 #[tokio::test]
 async fn restore_is_all_or_nothing() {
     let _isolation = crate::support::shared().await;
-    let Some(db) = db().await else { return };
+    let Some(db) = db(5).await else { return };
     let [user] = ids();
     let starter = pinchora_db::NewRoom {
         room_type: "living".into(),

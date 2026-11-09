@@ -6,7 +6,7 @@ use pinchora_db::{
     RollClaim, RollStart, VoteCard,
 };
 
-use crate::support::db_ten as db;
+use crate::support::db;
 
 /// Ids unique per run, so the suite can run repeatedly against one database.
 use crate::support::ids;
