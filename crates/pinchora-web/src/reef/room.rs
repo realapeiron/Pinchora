@@ -364,67 +364,84 @@ impl Room {
         }
         if let Command::GameAction { game_id, payload } = &envelope.command {
             let peer = member.peer.clone();
-            let id = game_id.parse::<i64>().unwrap_or(0);
-            match crate::reef::games::action(state, peer.user, id, payload.clone(), Some(self.key), Some(&self.fence))
-                .await
-            {
-                Ok(game) => {
-                    peer.send(&self.epoch, request, json!({"type":"game_changed","game":game}));
-                    for m in self.members.values().filter(|m| m.peer.user != peer.user) {
-                        m.peer
-                            .send(&self.epoch, "", json!({"type":"game_changed","game_id":game_id}));
-                    }
-                }
-                Err(e) => peer.error(&self.epoch, request, e.code),
-            }
-            return Ok(());
+            return self.game_action(state, peer, request, game_id, payload).await;
         }
         if let Command::Chat { text } = &envelope.command {
             let peer = member.peer.clone();
-            if let Err(reason) = pinchora_game::chat::check(text) {
-                peer.error(&self.epoch, request, reason);
-                return Ok(());
-            }
-            let _guard = state.reef.safety.lock().await;
-            if peer.close.borrow().is_some() {
-                return Ok(());
-            }
-            let peers: Vec<_> = self
-                .members
-                .values()
-                .filter(|m| m.peer.close.borrow().is_none())
-                .map(|m| m.peer.user)
-                .collect();
-            match state
-                .app
-                .db
-                .reef_chat_fenced(self.key.owner, self.key.idx, peer.user, text, &peers, Some(&self.fence))
-                .await?
-            {
-                Err(reason) => peer.error(&self.epoch, request, reason),
-                Ok((evidence, recipients)) => {
-                    let mut event = evidence.json();
-                    event["type"] = json!("chat");
-                    event["name"] = json!(peer.name);
-                    event["room"] = json!(self.key.name());
-                    for member in self.members.values() {
-                        if recipients.contains(&member.peer.user) {
-                            member.peer.send(
-                                &self.epoch,
-                                if member.peer.user == peer.user { request } else { "" },
-                                event.clone(),
-                            );
-                        }
-                    }
-                }
-            }
-            return Ok(());
+            return self.chat(state, peer, request, text).await;
         }
         // Refresh before accepting an intention, including after missed pub/sub notifications.
         if !self.refresh(state).await? {
             self.members[token].peer.error(&self.epoch, request, "room_unavailable");
             return Ok(());
         }
+        self.move_member(token, envelope);
+        Ok(())
+    }
+    async fn game_action(
+        &self,
+        state: &WebState,
+        peer: Peer,
+        request: &str,
+        game_id: &str,
+        payload: &crate::reef::games::Action,
+    ) -> anyhow::Result<()> {
+        let id = game_id.parse::<i64>().unwrap_or(0);
+        match crate::reef::games::action(state, peer.user, id, payload.clone(), Some(self.key), Some(&self.fence)).await
+        {
+            Ok(game) => {
+                peer.send(&self.epoch, request, json!({"type":"game_changed","game":game}));
+                for m in self.members.values().filter(|m| m.peer.user != peer.user) {
+                    m.peer
+                        .send(&self.epoch, "", json!({"type":"game_changed","game_id":game_id}));
+                }
+            }
+            Err(e) => peer.error(&self.epoch, request, e.code),
+        }
+        Ok(())
+    }
+    async fn chat(&self, state: &WebState, peer: Peer, request: &str, text: &str) -> anyhow::Result<()> {
+        if let Err(reason) = pinchora_game::chat::check(text) {
+            peer.error(&self.epoch, request, reason);
+            return Ok(());
+        }
+        let _guard = state.reef.safety.lock().await;
+        if peer.close.borrow().is_some() {
+            return Ok(());
+        }
+        let peers: Vec<_> = self
+            .members
+            .values()
+            .filter(|m| m.peer.close.borrow().is_none())
+            .map(|m| m.peer.user)
+            .collect();
+        match state
+            .app
+            .db
+            .reef_chat_fenced(self.key.owner, self.key.idx, peer.user, text, &peers, Some(&self.fence))
+            .await?
+        {
+            Err(reason) => peer.error(&self.epoch, request, reason),
+            Ok((evidence, recipients)) => {
+                let mut event = evidence.json();
+                event["type"] = json!("chat");
+                event["name"] = json!(peer.name);
+                event["room"] = json!(self.key.name());
+                for member in self.members.values() {
+                    if recipients.contains(&member.peer.user) {
+                        member.peer.send(
+                            &self.epoch,
+                            if member.peer.user == peer.user { request } else { "" },
+                            event.clone(),
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    fn move_member(&mut self, token: &str, envelope: Envelope) {
+        let request = &envelope.request_id;
         let occupied: Vec<_> = self
             .members
             .iter()
@@ -435,68 +452,22 @@ impl Room {
         let now = Instant::now();
         member.advance(now.duration_since(member.advanced).as_secs_f64());
         member.advanced = now;
-        let mut event = None;
-        match envelope.command {
-            Command::MoveTo { tile } => {
-                let start = member.path.get(1).copied().unwrap_or(member.tile);
-                if let Some(mut path) = self.layout.grid.path(start, tile) {
-                    if start != member.tile {
-                        path.insert(0, member.tile);
-                    } else {
-                        member.progress = 0.0;
-                    }
-                    member.seat = None;
-                    member.using = false;
-                    member.path = path;
-                    event = Some(
-                        json!({"type":"path","user_id":member.peer.user.to_string(),"path":member.path,
-                        "position":member.position(),"speed":3,"player":member.json()}),
-                    );
-                } else {
-                    member.peer.error(&self.epoch, request, "unreachable");
-                }
+        let mut movement = Movement {
+            member,
+            layout: &self.layout,
+            epoch: &self.epoch,
+            request,
+        };
+        let event = match envelope.command {
+            Command::MoveTo { tile } => movement.move_to(tile),
+            Command::Stop => movement.stop(),
+            Command::Stand => movement.stand(),
+            Command::Use { placement_id, revision } => movement.use_target(placement_id, revision, &occupied),
+            _ => {
+                movement.member.peer.error(&self.epoch, request, "invalid_command");
+                None
             }
-            Command::Stop => {
-                member.stop();
-                event = Some(
-                    json!({"type":"path","user_id":member.peer.user.to_string(),"path":member.path,"speed":3,"player":member.json()}),
-                );
-            }
-            Command::Stand => {
-                member.seat = None;
-                member.using = false;
-                event = Some(json!({"type":"posture","player":member.json()}));
-            }
-            Command::Use { placement_id, revision } => {
-                let target = self.layout.targets.iter().find(|t| t.id == placement_id);
-                let reason = if revision != self.layout.revision {
-                    Some("stale_layout")
-                } else if member.used.is_some_and(|t| t.elapsed() < Duration::from_millis(500)) {
-                    Some("cooldown")
-                } else if target.is_none() {
-                    Some("not_usable")
-                } else if member.path.len() > 1 || !target.is_some_and(|t| t.approaches.contains(&member.tile)) {
-                    Some("too_far")
-                } else if occupied.contains(&placement_id) {
-                    Some("seat_occupied")
-                } else {
-                    None
-                };
-                if let Some(reason) = reason {
-                    member.peer.error(&self.epoch, request, reason);
-                } else {
-                    let target = target.unwrap().clone();
-                    member.used = Some(Instant::now());
-                    member.direction = target.direction.clone();
-                    member.using = target.kind == "usable";
-                    if target.kind == "seat" {
-                        member.seat = Some(target);
-                    }
-                    event = Some(json!({"type":"posture","player":member.json()}));
-                }
-            }
-            _ => member.peer.error(&self.epoch, request, "invalid_command"),
-        }
+        };
         if let Some(event) = event {
             for (recipient, member) in &self.members {
                 member.peer.send(
@@ -506,7 +477,6 @@ impl Room {
                 );
             }
         }
-        Ok(())
     }
 }
 pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, input: mpsc::Receiver<Input>) {
@@ -613,6 +583,96 @@ async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFenc
         member.peer.terminate("ownership_lost");
     }
 }
+
+struct Movement<'a> {
+    member: &'a mut Member,
+    layout: &'a Layout,
+    epoch: &'a str,
+    request: &'a str,
+}
+impl Movement<'_> {
+    fn move_to(&mut self, tile: Tile) -> Option<Value> {
+        let Self {
+            member,
+            layout,
+            epoch,
+            request,
+        } = self;
+        let mut event = None;
+
+        let start = member.path.get(1).copied().unwrap_or(member.tile);
+        if let Some(mut path) = layout.grid.path(start, tile) {
+            if start != member.tile {
+                path.insert(0, member.tile);
+            } else {
+                member.progress = 0.0;
+            }
+            member.seat = None;
+            member.using = false;
+            member.path = path;
+            event = Some(
+                json!({"type":"path","user_id":member.peer.user.to_string(),"path":member.path,
+                "position":member.position(),"speed":3,"player":member.json()}),
+            );
+        } else {
+            member.peer.error(epoch, request, "unreachable");
+        }
+        event
+    }
+    fn stop(&mut self) -> Option<Value> {
+        let member = &mut self.member;
+
+        member.stop();
+        Some(
+            json!({"type":"path","user_id":member.peer.user.to_string(),"path":member.path,"speed":3,"player":member.json()}),
+        )
+    }
+    fn stand(&mut self) -> Option<Value> {
+        let member = &mut self.member;
+
+        member.seat = None;
+        member.using = false;
+        Some(json!({"type":"posture","player":member.json()}))
+    }
+    fn use_target(&mut self, placement_id: String, revision: String, occupied: &[String]) -> Option<Value> {
+        let Self {
+            member,
+            layout,
+            epoch,
+            request,
+        } = self;
+        let mut event = None;
+
+        let target = layout.targets.iter().find(|t| t.id == placement_id);
+        let reason = if revision != layout.revision {
+            Some("stale_layout")
+        } else if member.used.is_some_and(|t| t.elapsed() < Duration::from_millis(500)) {
+            Some("cooldown")
+        } else if target.is_none() {
+            Some("not_usable")
+        } else if member.path.len() > 1 || !target.is_some_and(|t| t.approaches.contains(&member.tile)) {
+            Some("too_far")
+        } else if occupied.contains(&placement_id) {
+            Some("seat_occupied")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
+            member.peer.error(epoch, request, reason);
+        } else {
+            let target = target.unwrap().clone();
+            member.used = Some(Instant::now());
+            member.direction = target.direction.clone();
+            member.using = target.kind == "usable";
+            if target.kind == "seat" {
+                member.seat = Some(target);
+            }
+            event = Some(json!({"type":"posture","player":member.json()}));
+        }
+        event
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::reef::room::*;
