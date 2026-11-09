@@ -21,6 +21,106 @@ use crate::sql_id;
 
 type Tx<'a> = Transaction<'a, Postgres>;
 
+pub const CRITTERS: &str = "critters";
+pub const BOTTLE: &str = "bottle";
+pub const CLAIMS_PER_DAY: i32 = 10;
+pub const PROTECTION_SECS: i64 = 15;
+
+/// A critter drop or a bottle on its message.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct DropRow {
+    pub id: i64,
+    pub kind: String,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: Option<i64>,
+    pub host_id: Option<i64>,
+    pub cards: Vec<String>,
+    /// Who holds each slot; 0 while it is free.
+    pub takers: Vec<i64>,
+    pub status: String,
+    pub expires_at: DateTime<Utc>,
+    pub mode: String,
+    pub challenge_word: Option<String>,
+    pub vote_winner: Option<i16>,
+    pub created_at: DateTime<Utc>,
+    pub protected_user_id: Option<i64>,
+    pub protected_slot: Option<i16>,
+    pub protected_until: Option<DateTime<Utc>>,
+}
+
+impl DropRow {
+    pub fn is_open(&self) -> bool {
+        self.status == "open"
+    }
+
+    /// Whether `user` holds a slot.
+    pub fn taken_by(&self, user: u64) -> bool {
+        self.takers.contains(&sql_id(user))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct NewDrop<'a> {
+    pub kind: &'a str,
+    pub guild_id: u64,
+    pub channel_id: u64,
+    pub host: Option<u64>,
+    pub cards: &'a [String],
+    pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Grab {
+    /// The card is theirs.
+    Taken {
+        granted: Granted,
+        drop: Box<DropRow>,
+        /// False when the day's paying plays were used up: the card is theirs, nothing was paid.
+        paid: bool,
+    },
+    /// The drop is over, or the slot is not what the message showed.
+    Gone,
+    /// They already took a card from this drop.
+    Have {
+        slot: usize,
+    },
+    /// Somebody else got there first.
+    Lost {
+        by: u64,
+    },
+    Protected,
+    Limit,
+    Voting,
+    Challenge,
+}
+
+/// What is in a bottle besides its message.
+#[derive(Debug, Clone, Copy)]
+pub enum BottlePrize<'a> {
+    Shells(i64),
+    Fragments(i64),
+    Treasure(i64),
+    Find(Award<'a>),
+}
+
+#[derive(Debug, Clone)]
+pub enum BottleOpen {
+    Opened {
+        drop: Box<DropRow>,
+        shells: i64,
+        fragments: i64,
+        /// The find, if it held one.
+        granted: Option<Granted>,
+        paid: bool,
+    },
+    Gone,
+    /// Somebody opened it first.
+    Lost {
+        by: u64,
+    },
+}
+
 macro_rules! drop_columns {
     () => {
         "id, kind, guild_id, channel_id, message_id, host_id, cards, takers, status, expires_at, mode, challenge_word, vote_winner, created_at, protected_user_id, protected_slot, protected_until"
@@ -645,12 +745,9 @@ async fn add_fragments(tx: &mut Tx<'_>, user: u64, fragments: i64) -> anyhow::Re
 }
 
 mod dex;
-
+mod rewards;
 mod shore;
 
-mod rewards;
-pub use rewards::{
-    Award, BOTTLE, BottleOpen, BottlePrize, CLAIMS_PER_DAY, CRITTERS, CollectionRoll, CollectionSettings, Comb, Daily,
-    DexRow, DropRow, Grab, Granted, NewDrop, PROTECTION_SECS, PotHaul, PotRow, PotUpgrade, RollClaim, RollStart,
-    VoteCard, WishlistRow,
-};
+pub use dex::{CollectionRoll, CollectionSettings, DexRow, RollClaim, RollStart, VoteCard, WishlistRow};
+pub use rewards::{Award, Daily, Granted};
+pub use shore::{Comb, PotHaul, PotRow, PotUpgrade};

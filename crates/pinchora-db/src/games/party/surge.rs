@@ -1,5 +1,38 @@
 use super::*;
 
+/// A server's storm surge settings.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct PartySettings {
+    pub guild_id: i64,
+    pub surge_enabled: bool,
+    pub surge_channel_id: Option<i64>,
+    pub surge_every_hours: i32,
+    pub surge_next_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum SurgeHelp {
+    /// A sandbag was stacked: the helper's own count, the total stacked and how many have helped.
+    Helped {
+        session: GameSession,
+        mine: i64,
+        stacked: i64,
+        helpers: i64,
+    },
+    /// The storm is over, or not running.
+    Over,
+    /// This helper has stacked all they may.
+    Capped,
+}
+
+#[derive(Debug, Clone)]
+pub struct SurgeSettled {
+    pub session: GameSession,
+    pub held: bool,
+    /// Every helper with the sandbags they stacked and the shells they got.
+    pub helpers: Vec<(PartyMember, i64)>,
+}
+
 impl Db {
     // /Surge
 

@@ -387,14 +387,33 @@ export default function ReefStage({
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
       };
-      const ghostArt = {
+      const ghostArt: GhostArt = {
         id: "",
         art: null,
         bitmap: null,
         orientation: "",
         position: "",
         item: null,
-      } as GhostArt;
+      };
+      const overlays = {
+        player,
+        actor,
+        ground,
+        nameTag,
+        bubble,
+        net,
+        loaded,
+        abort,
+        motion,
+        remoteArt,
+        pendingArt,
+        tags,
+        el,
+        setWarnings,
+        seatMask,
+        placeOverlay,
+      };
+      const ghostPreparation = { loaded, abort, room, setWarnings };
       const frame = (now: number) => {
         const started = performance.now();
         const dt = last ? Math.min(100, now - last) : 0;
@@ -415,22 +434,7 @@ export default function ReefStage({
         }
         el.dataset.players = String(net.players.size);
         el.dataset.placements = String(room.placements.length);
-        const remoteDraws = drawRemotePlayers(
-          {
-            net,
-            loaded,
-            abort,
-            motion,
-            remoteArt,
-            pendingArt,
-            tags,
-            el,
-            setWarnings,
-            seatMask,
-            placeOverlay,
-          },
-          now,
-        );
+        const remoteDraws = drawRemotePlayers(overlays, now);
         announce();
         openingTime += dt;
         markerAge += dt;
@@ -457,28 +461,10 @@ export default function ReefStage({
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, el.width, el.height);
         ctx.setTransform(camera.scale, 0, 0, camera.scale, camera.x, camera.y);
-        drawLocalPlayer(
-          {
-            player,
-            actor,
-            net,
-            loaded,
-            motion,
-            remoteDraws,
-            ground,
-            nameTag,
-            bubble,
-            contextTarget,
-            focused,
-            placeOverlay,
-            seatMask,
-          },
-          ctx,
-          compositor,
-        );
+        drawLocalPlayer(overlays, remoteDraws, contextTarget, focused, ctx, compositor);
         const ghost = editBridge.current?.ghost;
         if (ghost) {
-          prepareGhost(ghostArt, ghost, { loaded, abort, room, setWarnings });
+          prepareGhost(ghostArt, ghost, ghostPreparation);
           drawGhost(ghostArt, ghost, ctx, compositor.room.origin);
         }
         drawChatBubbles(net, chatBubbles, el, placeOverlay, now);

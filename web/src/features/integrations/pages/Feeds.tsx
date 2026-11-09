@@ -1,33 +1,49 @@
-import { useCallback, useState } from "react";
-import { Link, useLocation, useOutletContext, useParams } from "react-router";
-import { serverText } from "../../../i18n";
-import "../../../styles/feeds.css";
-import { FeedWordsContext, useFeedWords } from "../api/feedsWords";
-import { DeleteFeedDialog, Empty, FeedRow, FoundCard, WordChips } from "./FeedPresentation";
-import { MyChannels } from "./MyFeedChannels";
-export { MyFeedsChannels, MyFeedsChannelsRoute } from "./MyFeedChannels";
-
-import { CARD_LABEL, KIND_LINE, channelName, kindLabel } from "./feedLabels";
-
-import { Field } from "../../../components/Field";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
+import { Field, SwitchRow } from "../../../components/Field";
+import { MessagePreview } from "../../../components/MessagePreview";
 import { Panel } from "../../../components/Panel";
+import { ChannelPicker, RolePicker } from "../../../components/Pickers";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
+import { PlaceholderChips } from "../../../components/PlaceholderChips";
+import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
-import { type Overview } from "../../../lib/api";
+import { serverText } from "../../../i18n";
+import { ApiError, type FieldError, type Overview } from "../../../lib/api";
 import { useDiscord } from "../../../lib/queries";
+import { useDebounced } from "../../../lib/useDebounced";
+import "../../../styles/feeds.css";
 import { NotFound } from "../../shell/pages/NotFound";
 import { PageHead } from "../../shell/pages/PageHead";
 import { Loading, Problem } from "../../shell/pages/States";
 import {
   KIND_TAG,
+  SOURCE_HELP,
+  blankDraft,
+  bodyOf,
+  changedFields,
+  draftOf,
+  useCheckFeed,
   useDeleteFeed,
+  useFeedPreview,
   useFeeds,
   useSaveFeed,
   useTestFeed,
+  wordsProblem,
   type Feed,
+  type FeedDraft,
+  type FeedKind,
   type FeedList,
+  type Found,
 } from "../api/feeds";
+import { FeedWordsContext, useFeedWords } from "../api/feedsWords";
+import { DeleteFeedDialog, Empty, FeedRow, FoundCard, WordChips } from "./FeedPresentation";
+import { MyChannels } from "./MyFeedChannels";
+import { CARD_LABEL, KIND_LINE, channelName, kindLabel } from "./feedLabels";
+
+export { MyFeedsChannels, MyFeedsChannelsRoute } from "./MyFeedChannels";
 
 export function Feeds() {
   const overview = useOutletContext<Overview>();
@@ -170,31 +186,6 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
     </>
   );
 }
-
-import { useEffect, useMemo, useRef } from "react";
-import { flushSync } from "react-dom";
-import { useNavigate, useSearchParams } from "react-router";
-
-import { SwitchRow } from "../../../components/Field";
-import { MessagePreview } from "../../../components/MessagePreview";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
-import { PlaceholderChips } from "../../../components/PlaceholderChips";
-import { SaveBar } from "../../../components/SaveBar";
-import { ApiError, type FieldError } from "../../../lib/api";
-import { useDebounced } from "../../../lib/useDebounced";
-import {
-  SOURCE_HELP,
-  blankDraft,
-  bodyOf,
-  changedFields,
-  draftOf,
-  useCheckFeed,
-  useFeedPreview,
-  wordsProblem,
-  type FeedDraft,
-  type FeedKind,
-  type Found,
-} from "../api/feeds";
 
 // /Editor
 
@@ -700,5 +691,3 @@ function FeedEditor({
     </>
   );
 }
-
-/** What a check found: the source's name, its link, and its latest post. */

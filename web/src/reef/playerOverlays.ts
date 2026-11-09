@@ -12,18 +12,20 @@ import type { ReefNet } from "./net";
 import type { Player } from "./player";
 
 type PlaceOverlay = (node: HTMLElement | null, point: Point, lift: number) => void;
-interface RemotePlayers {
+interface PlayerScene {
   net: ReefNet;
   loaded: Awaited<ReturnType<typeof bootstrap>>;
-  abort: AbortController;
   motion: MediaQueryList;
+  seatMask: (id: string | undefined) => ActorDraw["seat"];
+  placeOverlay: PlaceOverlay;
+}
+interface RemotePlayers extends PlayerScene {
+  abort: AbortController;
   remoteArt: Map<string, Animation>;
   pendingArt: Set<string>;
   tags: Map<string, HTMLDivElement>;
   el: HTMLCanvasElement;
   setWarnings: Dispatch<SetStateAction<string[]>>;
-  seatMask: (id: string | undefined) => ActorDraw["seat"];
-  placeOverlay: PlaceOverlay;
 }
 export function drawRemotePlayers(
   {
@@ -137,37 +139,18 @@ export function drawChatBubbles(
   }
 }
 
-interface LocalPlayer {
+interface LocalPlayerScene extends PlayerScene {
   player: Player;
   actor: SceneItem;
-  net: ReefNet;
-  loaded: Awaited<ReturnType<typeof bootstrap>>;
-  motion: MediaQueryList;
-  remoteDraws: ActorDraw[];
   ground: () => void;
   nameTag: RefObject<HTMLDivElement | null>;
   bubble: RefObject<HTMLDivElement | null>;
-  contextTarget: Target | null;
-  focused: boolean;
-  placeOverlay: PlaceOverlay;
-  seatMask: (id: string | undefined) => ActorDraw["seat"];
 }
 export function drawLocalPlayer(
-  {
-    player,
-    actor,
-    net,
-    loaded,
-    motion,
-    remoteDraws,
-    ground,
-    nameTag,
-    bubble,
-    contextTarget,
-    focused,
-    placeOverlay,
-    seatMask,
-  }: LocalPlayer,
+  { player, actor, ground, nameTag, bubble, net, loaded, motion, placeOverlay, seatMask }: LocalPlayerScene,
+  remoteDraws: ActorDraw[],
+  contextTarget: Target | null,
+  focused: boolean,
   ctx: CanvasRenderingContext2D,
   compositor: Compositor,
 ) {

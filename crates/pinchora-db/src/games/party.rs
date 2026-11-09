@@ -43,6 +43,43 @@ fn today() -> i32 {
     Utc::now().timestamp().div_euclid(86_400) as i32
 }
 
+/// Someone in a lobby or an event: a derby racer, a heist crew member or a surge helper.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct PartyMember {
+    pub user_id: i64,
+    /// The crab (derby) or the role (heist).
+    pub choice: i16,
+    /// The stake held (derby) or the sandbags stacked (surge).
+    pub amount: i64,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CrewJoin {
+    Joined,
+    /// Already in the crew; the role changed.
+    Moved,
+    Closed,
+    Full,
+}
+
+#[derive(Debug, Clone)]
+pub enum HeistSettled {
+    /// Too few joined: the crew stays home, nothing is paid.
+    CalledOff {
+        session: GameSession,
+        crew: Vec<PartyMember>,
+    },
+    /// The heist ran: `each` is the share the crew earned, `paid` what each member actually got
+    /// after their daily limit.
+    Done {
+        session: GameSession,
+        crew: Vec<PartyMember>,
+        each: i64,
+        paid: Vec<(u64, i64)>,
+    },
+}
+
 /// The pool split among `n` winners as evenly as whole shells allow: the first few get the odd ones.
 fn split(pool: i64, n: usize) -> Vec<i64> {
     let n = n.max(1) as i64;
@@ -707,13 +744,9 @@ mod tests {
 }
 
 mod derby;
-
+mod shells;
 mod surge;
 
-mod shells;
-
-mod players;
-pub use players::{
-    CrewJoin, DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, HeistSettled, PartyMember, PartySettings, ShellDone,
-    ShellLimits, ShellPick, ShellStart, SurgeHelp, SurgeSettled,
-};
+pub use derby::{DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult};
+pub use shells::{ShellDone, ShellLimits, ShellPick, ShellStart};
+pub use surge::{PartySettings, SurgeHelp, SurgeSettled};

@@ -1,5 +1,54 @@
 use super::*;
 
+/// A server's chat-drop settings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::FromRow)]
+pub struct CollectionSettings {
+    pub enabled: bool,
+    pub channel_id: Option<i64>,
+}
+
+/// One entry of a player's dex.
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct DexRow {
+    pub entry_id: String,
+    pub caught: i32,
+    pub kept: i32,
+    pub glimmer: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct WishlistRow {
+    pub entry_id: String,
+    pub ping_on_spawn: bool,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct CollectionRoll {
+    pub entry_id: String,
+    pub glimmer: bool,
+    pub rolled_at: DateTime<Utc>,
+    pub claimed_at: Option<DateTime<Utc>>,
+}
+
+pub enum RollStart {
+    Started(CollectionRoll),
+    Wait(CollectionRoll),
+    Cooldown,
+    Limit,
+}
+
+pub enum RollClaim {
+    Claimed(Granted),
+    Gone,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VoteCard {
+    Cast,
+    Gone,
+    Full,
+}
+
 impl Db {
     // /Settings
 

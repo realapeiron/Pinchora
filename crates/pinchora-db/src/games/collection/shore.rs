@@ -1,5 +1,54 @@
 use super::*;
 
+#[derive(Debug, Clone)]
+pub enum Comb {
+    Found {
+        granted: Granted,
+        paid: bool,
+    },
+    /// Not yet: they walked the shore a moment ago.
+    Wait {
+        ready_at: DateTime<Utc>,
+    },
+}
+
+/// A player's crab pot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PotRow {
+    pub level: i16,
+    /// The soak the pot was set for, while one is running.
+    pub hours: Option<i16>,
+    pub ends_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum PotHaul {
+    Hauled {
+        granted: Vec<Granted>,
+        /// False when the day's paying hauls were used up.
+        paid: bool,
+        level: i16,
+        hours: i16,
+    },
+    /// Still soaking until `ends_at`.
+    Soaking { ends_at: DateTime<Utc> },
+    /// Nothing is in the water.
+    Empty,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PotUpgrade {
+    Upgraded {
+        level: i16,
+        balance: i64,
+    },
+    /// The pot is not at the level the caller read (somebody upgraded it already).
+    Stale,
+    Poor {
+        balance: i64,
+    },
+}
+
 impl Db {
     // /Beachcomb
 

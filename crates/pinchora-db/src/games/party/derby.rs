@@ -1,5 +1,56 @@
 use super::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DerbyJoin {
+    Joined,
+    /// The player was in already and picked another crab; nothing was charged again.
+    Moved,
+    /// The lobby is closed, or gone.
+    Closed,
+    Broke {
+        balance: i64,
+    },
+    Full,
+    /// This stake would take the player past the day's derby loss limit; `net` is where they stand
+    /// (shells won less shells staked and not given back).
+    Down {
+        net: i64,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DerbyLeave {
+    /// The player left; `refund` is the stake they got back.
+    Left {
+        refund: i64,
+    },
+    NotIn,
+    Closed,
+}
+
+/// What a derby came to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DerbyOutcome {
+    /// Nobody (or too few for a race with shells at stake) joined; every stake is back.
+    Cancelled,
+    /// Nobody backed the winner; every stake is back.
+    Refunded,
+    /// Those who backed the winner shared the pool: each as (player, shells paid).
+    Paid(Vec<(u64, i64)>),
+    /// A race for fun: nothing was staked. The players who backed the winner.
+    Friendly(Vec<u64>),
+}
+
+#[derive(Debug, Clone)]
+pub struct DerbyResult {
+    /// The lobby as it was before the race.
+    pub session: GameSession,
+    pub racers: Vec<PartyMember>,
+    /// The winning crab.
+    pub winner: i16,
+    pub outcome: DerbyOutcome,
+}
+
 impl Db {
     // /Derby
 

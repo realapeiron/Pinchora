@@ -1,5 +1,48 @@
 use super::*;
 
+/// What a player may do at the shell game table in a day.
+#[derive(Debug, Clone, Copy)]
+pub struct ShellLimits {
+    pub plays: i32,
+    pub loss: i64,
+    pub win: i64,
+}
+
+#[derive(Debug, Clone)]
+pub enum ShellStart {
+    Started(GameSession),
+    Broke {
+        balance: i64,
+    },
+    /// Today's games are used up.
+    TooMany,
+    /// This stake would take the player past the day's loss limit; `net` is where they stand.
+    Down {
+        net: i64,
+    },
+    /// The player is up as far as the table lets them be today.
+    Up {
+        net: i64,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum ShellPick {
+    Done(ShellDone),
+    NotYours,
+    /// Over already, or out of time.
+    Gone,
+}
+
+#[derive(Debug, Clone)]
+pub struct ShellDone {
+    pub session: GameSession,
+    pub pearl: u8,
+    pub picked: u8,
+    /// Shells paid back; 0 for a wrong guess.
+    pub paid: i64,
+}
+
 impl Db {
     // /Shells
 

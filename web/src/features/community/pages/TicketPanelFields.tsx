@@ -50,6 +50,7 @@ export function CategoryPicker({
   );
 }
 
+/** The panel's support roles as chips, with a labelled picker to add one. */
 export function SupportRoles({
   id,
   info,

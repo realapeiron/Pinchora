@@ -1,21 +1,31 @@
-import { useState } from "react";
-import { translate as spaTranslate } from "../../../i18n";
-import { DeleteTicketPanel, TicketPanelRow } from "./TicketPanelList";
-
-export { CategoryPicker, PanelPreview } from "./TicketPanelFields";
-
+import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { Choice } from "../../../components/Choice";
+import { Field, SwitchRow } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
+import { ChannelPicker } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
+import { PixelToggle } from "../../../components/PixelToggle";
 import { RichText } from "../../../components/RichText";
-import { type GuildInfo } from "../../../lib/api";
+import { translate as spaTranslate } from "../../../i18n";
+import { ApiError, type FieldError, type GuildInfo } from "../../../lib/api";
 import {
   type Limits,
   type Panel as TicketPanel,
+  type PanelDraft,
+  type Question,
+  type Tone,
+  type Topic,
+  checkPanel,
   draftOf,
   newPanel,
   useDeletePanel,
   usePostPanel,
+  useSavePanel,
 } from "../api/tickets";
+import { CategoryPicker, PanelPreview, SupportRoles } from "./TicketPanelFields";
+import { DeleteTicketPanel, TicketPanelRow } from "./TicketPanelList";
+
+export { CategoryPicker, PanelPreview } from "./TicketPanelFields";
 
 /** The server's panels: the list, and the editor of the one being changed or made. */
 export function TicketPanels({
@@ -112,23 +122,6 @@ export function TicketPanels({
   );
 }
 
-import { type KeyboardEvent, useId, useRef } from "react";
-
-import { Choice } from "../../../components/Choice";
-import { Field, SwitchRow } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
-import { PixelToggle } from "../../../components/PixelToggle";
-import { ApiError, type FieldError } from "../../../lib/api";
-import {
-  type PanelDraft,
-  type Question,
-  type Tone,
-  type Topic,
-  checkPanel,
-  useSavePanel,
-} from "../api/tickets";
-
-import { CategoryPicker, PanelPreview, SupportRoles } from "./TicketPanelFields";
 const TONES: { value: Tone; label: string }[] = [
   { value: "primary", label: "Blurple" },
   { value: "secondary", label: "Grey" },
@@ -757,5 +750,3 @@ function PanelEditor({
     </section>
   );
 }
-
-/** The panel's support roles as chips, with a labelled picker to add one. */

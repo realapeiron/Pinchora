@@ -196,6 +196,7 @@ export function Empty({ guild, list }: { guild: string; list: FeedList }) {
 function filterCount(feed: Feed): number {
   return feed.filter_include.length + feed.filter_exclude.length;
 }
+/** What a check found: the source's name, its link, and its latest post. */
 export function FoundCard({ found }: { found: Found }) {
   const t = useFeedWords();
   const latest = found.latest;
