@@ -165,7 +165,7 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        run: npm run build:check
 
       # The Playwright smoke drives the real server: build the binary (which embeds web/dist).
       - name: Read toolchain channel
