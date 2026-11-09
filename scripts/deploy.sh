@@ -28,22 +28,31 @@ fi
 rollback_tag=
 status_file=
 logs_file=
+restore_main=false
+old_commit=
 cleanup() {
     result=$?
-    [ -z "$status_file" ] || rm -f "$status_file"
-    [ -z "$logs_file" ] || rm -f "$logs_file"
+    if [ "$result" -ne 0 ] && [ "$restore_main" = true ]; then
+        git reset --keep "$old_commit" >/dev/null || printf 'Could not restore local main\n' >&2
+    fi
+    [ -z "$status_file" ] || rm -f "$status_file" || true
+    [ -z "$logs_file" ] || rm -f "$logs_file" || true
     if [ "$result" -ne 0 ] && [ -n "$rollback_tag" ]; then
         printf 'Rollback image tag: %s\n' "$rollback_tag" >&2
     fi
+    exit "$result"
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 check_preconditions() {
-    local root local_sha remote_sha main_sha
+    local root local_sha remote_sha main_sha checkout_state
     root=$(git rev-parse --show-toplevel 2>/dev/null) || fail 'not in a Git repository'
     [ "$(pwd -P)" = "$(cd "$root" && pwd -P)" ] || fail 'run from the repository root'
     [ "$(git branch --show-current)" = main ] || fail 'checkout must be on main'
-    [ -z "$(git status --porcelain --untracked-files=all)" ] || fail 'checkout must be clean'
+    checkout_state=$(git status --porcelain --untracked-files=all) || fail 'could not inspect checkout'
+    [ -z "$checkout_state" ] || fail 'checkout must be clean'
     git check-ref-format --branch "$branch" >/dev/null 2>&1 || fail 'invalid merge branch name'
     [ "$branch" != main ] || fail 'merge branch must differ from main'
     local_sha=$(git rev-parse --verify "refs/heads/$branch" 2>/dev/null) || fail 'local merge branch is missing'
@@ -55,14 +64,27 @@ check_preconditions() {
     merge_sha=$local_sha
 }
 
+print_ci_urls() {
+    printf '%s\n' "$1" | sed -nE 's@.*(https://[^[:space:]]+/actions/runs/[0-9]+).*@CI run: \1@p' >&2
+}
+
 check_ci() {
-    local run status conclusion url reported_sha reported_branch
+    local run status conclusion url reported_sha reported_branch canonical
     run=$(gh run list --workflow ci.yml --branch "$branch" --commit "$merge_sha" --event push \
         --limit 100 --json status,conclusion,url,headSha,headBranch,createdAt \
-        --jq 'sort_by(.createdAt) | reverse | .[0] | if . == null then empty else [.status, (.conclusion // "none"), .url, .headSha, .headBranch] | @tsv end') \
-        || fail 'could not query the CI workflow'
+        --jq 'sort_by(.createdAt) | reverse | .[0] | if . == null then empty else [.status, (if .conclusion == null or .conclusion == "" then "none" else .conclusion end), .url, .headSha, .headBranch] | @tsv end') || {
+        print_ci_urls "$run"
+        fail 'could not query the CI workflow'
+    }
     [ -n "$run" ] || fail 'no CI workflow run found for the merge branch SHA'
+    print_ci_urls "$run"
     IFS="$(printf '\t')" read -r status conclusion url reported_sha reported_branch <<< "$run"
+    canonical=$(printf '%s\t%s\t%s\t%s\t%s' "$status" "$conclusion" "$url" "$reported_sha" "$reported_branch")
+    [ "$run" = "$canonical" ] || fail 'malformed CI workflow response'
+    case "$url" in
+        https://*/actions/runs/[0-9]*) ;;
+        *) fail 'CI workflow response has no run URL' ;;
+    esac
     [ "$reported_sha" = "$merge_sha" ] && [ "$reported_branch" = "$branch" ] \
         || fail "CI run does not match the merge branch SHA: $url"
     [ "$status" = completed ] && [ "$conclusion" = success ] \
@@ -70,19 +92,48 @@ check_ci() {
     printf 'CI passed for %s: %s\n' "$merge_sha" "$url"
 }
 
+preserve_running_image() {
+    local container image digest
+    container=$(docker compose ps -q gateway) || fail 'could not find the running gateway'
+    [ -n "$container" ] || fail 'no running gateway to preserve'
+    image=$(docker container inspect --format '{{.Image}}' "$container") || fail 'could not inspect the running image'
+    digest=${image#sha256:}
+    [ "$image" != "$digest" ] && [ "${#digest}" -eq 64 ] || fail 'invalid running image ID'
+    case "$digest" in
+        *[!0-9a-f]*) fail 'invalid running image ID' ;;
+    esac
+    # The mutable build tag may already point at an unsuccessful deployment.
+    docker image tag "$image" "pinchora:rollback-$digest" || fail 'could not preserve the previous image'
+    rollback_tag="pinchora:rollback-$digest"
+}
+
+advance_main() {
+    old_commit=$(git rev-parse HEAD) || fail 'could not resolve main'
+    restore_main=true
+    git merge -q --ff-only "$merge_sha" || fail 'fast-forward merge failed'
+    git push -q origin main || fail 'push of main failed'
+    restore_main=false
+}
+
 backup_database() {
     local backup_dir backup_name backup_file
     backup_dir=${PINCHORA_BACKUP_DIR:-$HOME/Development/pinchora-backups}
-    mkdir -p "$backup_dir" || fail 'could not create backup directory'
+    mkdir -p "$backup_dir" 2>/dev/null || fail 'could not create backup directory'
     backup_name=${branch//\//-}
     backup_file="$backup_dir/pinchora-before-$backup_name-$(date +%Y%m%d-%H%M).dump"
     [ ! -e "$backup_file" ] || fail 'backup destination already exists'
-    if ! docker compose exec -T postgres pg_dump -U pinchora -d pinchora -Fc > "$backup_file"; then
-        rm -f "$backup_file"
+    # Open the destination separately so shell errors cannot disclose the override path.
+    if ! { exec 3> "$backup_file"; } 2>/dev/null; then
+        fail 'could not open backup destination'
+    fi
+    if ! docker compose exec -T postgres pg_dump -U pinchora -d pinchora -Fc >&3; then
+        exec 3>&-
+        rm -f "$backup_file" 2>/dev/null || true
         fail 'database dump failed'
     fi
+    exec 3>&-
     if [ ! -s "$backup_file" ]; then
-        rm -f "$backup_file"
+        rm -f "$backup_file" 2>/dev/null || true
         fail 'database dump is empty'
     fi
     printf 'Database backup saved.\n'
@@ -163,11 +214,8 @@ if [ "$check_only" = true ]; then
 fi
 
 backup_database
-old_sha=$(git rev-parse --short HEAD)
-docker image tag pinchora:dev "pinchora:$old_sha" || fail 'could not preserve the previous image'
-rollback_tag="pinchora:$old_sha"
-git merge -q --ff-only "$branch" || fail 'fast-forward merge failed'
-git push -q origin main || fail 'push of main failed'
+preserve_running_image
+advance_main
 new_sha=$(git rev-parse --short HEAD)
 export GIT_SHA="$new_sha"
 docker compose build gateway || fail 'gateway image build failed'
