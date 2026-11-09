@@ -49,7 +49,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
     let LevelUp {
         guild,
         user,
-        before,
+        before: _,
         after,
         author,
         nick,
@@ -94,6 +94,66 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
     } else {
         app.guild_lang(guild).await
     };
+    let (text, mentions, server) = announcement_text(app, settings, &up, earned, mode, lang).await?;
+    deliver_announcement(
+        app,
+        settings,
+        &up,
+        Announcement {
+            channel,
+            mode,
+            lang,
+            text,
+            mentions,
+            server,
+        },
+    )
+    .await
+}
+
+/// The direct message channel with `user`, or `None` when they switched direct messages from servers off
+/// (`/privacy`) or Discord will not open one. Every message a server sets up to send by DM comes through here.
+pub(crate) async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
+    match app.db.dm_opt_out(user).await {
+        Ok(false) => {}
+        Ok(true) => return None,
+        Err(error) => {
+            tracing::warn!(user, %error, "could not read the direct message choice");
+            return None;
+        }
+    }
+    open_private_channel(app, user).await
+}
+
+/// The direct message channel with `user`, whatever they chose about servers' messages: for what the
+/// player asked for themselves (`/remind`), which is not a server's to switch off. `None` when Discord
+/// will not open one.
+pub async fn open_private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
+    let opened = async {
+        anyhow::Ok(
+            app.http
+                .create_private_channel(Id::new(user.max(1)))
+                .await?
+                .model()
+                .await?
+                .id,
+        )
+    };
+    opened
+        .await
+        .map_err(|error| tracing::debug!(user, %error, "could not open a direct message"))
+        .ok()
+}
+
+async fn announcement_text(
+    app: &App,
+    settings: &GuildSettings,
+    up: &LevelUp<'_>,
+    earned: Option<u64>,
+    mode: LevelUpMode,
+    lang: pinchora_core::infra::i18n::Lang,
+) -> anyhow::Result<(String, AllowedMentions, String)> {
+    let LevelUp { guild, user, after, .. } = *up;
     let template = settings
         .levelup_message
         .clone()
@@ -172,6 +232,41 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
             mentions.parse = vec![MentionType::Everyone, MentionType::Roles];
         }
     }
+    Ok((text, mentions, card_server))
+}
+
+struct Announcement {
+    channel: Id<ChannelMarker>,
+    mode: LevelUpMode,
+    lang: pinchora_core::infra::i18n::Lang,
+    text: String,
+    mentions: AllowedMentions,
+    server: String,
+}
+
+async fn deliver_announcement(
+    app: &App,
+    settings: &GuildSettings,
+    up: &LevelUp<'_>,
+    announcement: Announcement,
+) -> anyhow::Result<()> {
+    let LevelUp {
+        guild,
+        user,
+        before,
+        after,
+        author,
+        nick,
+        ..
+    } = *up;
+    let Announcement {
+        channel,
+        mode,
+        lang,
+        text,
+        mentions,
+        server: card_server,
+    } = announcement;
     let studio = crate::admin::card_images::server_card(app, settings, guild, CardKind::LevelUp).await?;
     if studio.custom || studio.delivery != CardKind::LevelUp.default_delivery() {
         let subject = crate::admin::card_images::CardSubject {
@@ -236,38 +331,4 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
     // The new level may have just earned a badge: say so right under the level-up, in its language.
     customize::announce_in(app, channel, user, lang).await;
     Ok(())
-}
-
-/// The direct message channel with `user`, or `None` when they switched direct messages from servers off
-/// (`/privacy`) or Discord will not open one. Every message a server sets up to send by DM comes through here.
-pub(crate) async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
-    match app.db.dm_opt_out(user).await {
-        Ok(false) => {}
-        Ok(true) => return None,
-        Err(error) => {
-            tracing::warn!(user, %error, "could not read the direct message choice");
-            return None;
-        }
-    }
-    open_private_channel(app, user).await
-}
-
-/// The direct message channel with `user`, whatever they chose about servers' messages: for what the
-/// player asked for themselves (`/remind`), which is not a server's to switch off. `None` when Discord
-/// will not open one.
-pub async fn open_private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
-    let opened = async {
-        anyhow::Ok(
-            app.http
-                .create_private_channel(Id::new(user.max(1)))
-                .await?
-                .model()
-                .await?
-                .id,
-        )
-    };
-    opened
-        .await
-        .map_err(|error| tracing::debug!(user, %error, "could not open a direct message"))
-        .ok()
 }

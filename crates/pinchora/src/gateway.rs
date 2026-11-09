@@ -1,3 +1,5 @@
+mod events;
+
 use std::{
     collections::HashMap,
     sync::Arc,
@@ -333,179 +335,27 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         metrics::counter!("pinchora_gateway_events_total", "event" => name).increment(1);
     }
     match event {
-        Event::InteractionCreate(interaction) => {
-            let interaction = interaction.0;
-            let responder = Arc::new(Responder::rest(app.clone(), &interaction));
-            app.spawn(handle_gateway_interaction(app.clone(), interaction, responder));
-        }
-        Event::MessageCreate(message) => {
-            let app2 = app.clone();
-            app.spawn_event("message_create", async move {
-                if let Err(error) = on_message(app2, *message).await {
-                    tracing::warn!(%error, "message handler failed");
-                }
-            });
-        }
-        Event::MessageUpdate(message) => {
-            let app2 = app.clone();
-            app.spawn_event("message_update", async move {
-                if let Err(error) = on_message_update(app2, *message).await {
-                    tracing::warn!(%error, "message edit handler failed");
-                }
-            });
-        }
-        Event::MessageDelete(event) => {
-            let app2 = app.clone();
-            app.spawn_event("message_delete", async move {
-                if let Err(error) = on_message_delete(app2, event).await {
-                    tracing::warn!(%error, "message delete handler failed");
-                }
-            });
-        }
-        Event::MessageDeleteBulk(event) => {
-            let app2 = app.clone();
-            app.spawn_event("message_delete_bulk", async move {
-                if let Err(error) = on_message_delete_bulk(app2, event).await {
-                    tracing::warn!(%error, "bulk delete handler failed");
-                }
-            });
-        }
-        Event::GuildAuditLogEntryCreate(entry) => {
-            let app2 = app.clone();
-            app.spawn_event("audit_log_entry", async move {
-                if let Err(error) = on_audit_log_entry(app2, *entry).await {
-                    tracing::warn!(%error, "audit log handler failed");
-                }
-            });
-        }
-        Event::MemberAdd(member) => {
-            let app2 = app.clone();
-            app.spawn_event("member_add", async move {
-                if let Err(error) = on_member_add(app2, *member).await {
-                    tracing::warn!(%error, "welcome handler failed");
-                }
-            });
-        }
-        Event::MemberRemove(event) => {
-            let app2 = app.clone();
-            app.spawn_event("member_remove", async move {
-                if let Err(error) = on_member_remove(app2, event).await {
-                    tracing::warn!(%error, "goodbye handler failed");
-                }
-            });
-        }
-        Event::MemberUpdate(event) => {
-            let app2 = app.clone();
-            app.spawn_event("member_update", async move {
-                if let Err(error) = on_member_update(app2, *event).await {
-                    tracing::warn!(%error, "member update handler failed");
-                }
-            });
-        }
-        Event::BanAdd(event) => {
-            let app2 = app.clone();
-            app.spawn_event("ban_add", async move {
-                if let Err(error) = on_ban_add(app2, event).await {
-                    tracing::warn!(%error, "ban handler failed");
-                }
-            });
-        }
-        Event::BanRemove(event) => {
-            let app2 = app.clone();
-            app.spawn_event("ban_remove", async move {
-                if let Err(error) = on_ban_remove(app2, event).await {
-                    tracing::warn!(%error, "unban handler failed");
-                }
-            });
-        }
-        Event::VoiceStateUpdate(event) => {
-            let app2 = app.clone();
-            app.spawn_event("voice_state_update", async move {
-                pinchora_commands::on_moderation_policy_voice(&app2, &event.0).await;
-                if let Err(error) = on_voice_state_update(app2, *event).await {
-                    tracing::warn!(%error, "voice handler failed");
-                }
-            });
-        }
-        Event::GuildCreate(event) => {
-            if let twilight_model::gateway::payload::incoming::GuildCreate::Available(ref guild) = *event {
-                let epoch = app.begin_invite_baseline(guild.id.get());
-                let app2 = app.clone();
-                let guild_id = guild.id.get();
-                app.spawn_rebuild(async move {
-                    for attempt in 0..3 {
-                        if !app2.invite_baseline_current(guild_id, epoch) { return; }
-                        match refresh_invite_snapshot(&app2, guild_id).await {
-                            Ok(()) => { app2.finish_invite_baseline(guild_id, epoch); return; }
-                            Err(error) => tracing::warn!(guild_id, attempt, %error, "invite snapshot failed; Manage Server permission is required"),
-                        }
-                        tokio::time::sleep(std::time::Duration::from_secs(1 << attempt)).await;
-                    }
-                });
-            }
-            // Everything the rebuild needs is taken here, and the guild is dropped: a storm of them at
-            // identify must not sit in the event slots (a message or a member joining would be dropped)
-            // holding every server's member list while the database answers.
-            pinchora_commands::seed_moderation_policy_voice(app, &event);
-            if let Some(snapshot) = voice_snapshot(app, *event) {
-                let app2 = app.clone();
-                app.spawn_rebuild(async move {
-                    let guild = snapshot.guild();
-                    if let Err(error) = rebuild_voice(&app2, snapshot).await {
-                        tracing::warn!(guild, %error, "guild create handler failed");
-                    }
-                });
-            }
-        }
-        Event::InviteCreate(event) => {
-            let app2 = app.clone();
-            let guild = event.guild_id.get();
-            app.spawn_event("invite_create", async move {
-                if let Err(error) = refresh_created_invite_snapshot(&app2, guild).await {
-                    tracing::warn!(guild, %error, "invite refresh failed");
-                }
-            });
-        }
-        Event::InviteDelete(event) => {
-            let app2 = app.clone();
-            let guild = event.guild_id.get();
-            app.spawn_event("invite_delete", async move {
-                if let Err(error) = refresh_deleted_invite_snapshot(&app2, guild).await {
-                    tracing::warn!(guild, %error, "invite refresh failed");
-                }
-            });
-        }
-        Event::GuildDelete(event) => {
-            let app2 = app.clone();
-            app.spawn_event("guild_delete", async move {
-                if let Err(error) = on_guild_delete(app2, event).await {
-                    tracing::warn!(%error, "guild delete handler failed");
-                }
-            });
-        }
-        Event::AutoModerationRuleCreate(event) => {
-            pinchora_commands::on_automod_rule_change(app.clone(), event.guild_id.get())
-        }
-        Event::AutoModerationRuleUpdate(event) => {
-            pinchora_commands::on_automod_rule_change(app.clone(), event.guild_id.get())
-        }
-        Event::AutoModerationRuleDelete(event) => {
-            pinchora_commands::on_automod_rule_change(app.clone(), event.guild_id.get())
-        }
-        Event::AutoModerationActionExecution(event) => {
-            let owned = app.clone();
-            app.spawn(async move {
-                if let Err(error) = pinchora_commands::on_automod_execution(owned, event).await {
-                    tracing::warn!(%error, "automod native event failed");
-                }
-            });
-        }
-        Event::GuildScheduledEventUpdate(event) => {
-            let owned = app.clone();
-            app.spawn(async move {
-                pinchora_commands::on_scheduled_event_update(owned, event).await;
-            });
-        }
+        Event::InteractionCreate(interaction) => events::interaction_create(app, *interaction),
+        Event::MessageCreate(message) => events::message_create(app, message),
+        Event::MessageUpdate(message) => events::message_update(app, message),
+        Event::MessageDelete(event) => events::message_delete(app, event),
+        Event::MessageDeleteBulk(event) => events::message_delete_bulk(app, event),
+        Event::GuildAuditLogEntryCreate(entry) => events::guild_audit_log_entry_create(app, entry),
+        Event::MemberAdd(member) => events::member_add(app, member),
+        Event::MemberRemove(event) => events::member_remove(app, event),
+        Event::MemberUpdate(event) => events::member_update(app, event),
+        Event::BanAdd(event) => events::ban_add(app, event),
+        Event::BanRemove(event) => events::ban_remove(app, event),
+        Event::VoiceStateUpdate(event) => events::voice_state_update(app, event),
+        Event::GuildCreate(event) => events::guild_create(app, event),
+        Event::InviteCreate(event) => events::invite_create(app, event),
+        Event::InviteDelete(event) => events::invite_delete(app, event),
+        Event::GuildDelete(event) => events::guild_delete(app, event),
+        Event::AutoModerationRuleCreate(event) => events::auto_moderation_rule_create(app, event),
+        Event::AutoModerationRuleUpdate(event) => events::auto_moderation_rule_update(app, event),
+        Event::AutoModerationRuleDelete(event) => events::auto_moderation_rule_delete(app, event),
+        Event::AutoModerationActionExecution(event) => events::auto_moderation_action_execution(app, event),
+        Event::GuildScheduledEventUpdate(event) => events::guild_scheduled_event_update(app, event),
         Event::ReactionAdd(event) => reacted(app, ReactionEvent::Add(event)),
         Event::ReactionRemove(event) => reacted(app, ReactionEvent::Remove(event)),
         Event::ReactionRemoveAll(event) => reacted(app, ReactionEvent::RemoveAll(event)),
@@ -515,36 +365,10 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::RoleUpdate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
         Event::RoleDelete(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
         Event::ChannelUpdate(event) => forget(app, PermissionChange::Channel(event.id.get())),
-        Event::ChannelDelete(event) => {
-            let guild = event.guild_id.map(|id| id.get());
-            let place = event.id.get();
-            forget(app, PermissionChange::Channel(place));
-            if let Some(guild) = guild {
-                let app2 = app.clone();
-                app.spawn_event("ticket_channel_delete", async move {
-                    if let Err(error) = on_ticket_place_deleted(&app2, guild, place).await {
-                        tracing::warn!(guild, place, %error, "deleted ticket channel not closed");
-                    }
-                });
-            }
-        }
-        Event::ThreadDelete(event) => {
-            let (guild, place) = (event.guild_id.get(), event.id.get());
-            forget(app, PermissionChange::Channel(place));
-            let app2 = app.clone();
-            app.spawn_event("ticket_thread_delete", async move {
-                if let Err(error) = on_ticket_place_deleted(&app2, guild, place).await {
-                    tracing::warn!(guild, place, %error, "deleted ticket thread not closed");
-                }
-            });
-        }
-        Event::CommandPermissionsUpdate(event) => {
-            forget(app, PermissionChange::CommandPermissions(event.guild_id.get()));
-        }
-        Event::Ready(ready) => {
-            tracing::info!(shard, guilds = ready.guilds.len(), "shard ready");
-            metrics::gauge!("pinchora_shard_guilds", "shard" => shard.to_string()).set(ready.guilds.len() as f64);
-        }
+        Event::ChannelDelete(event) => events::channel_delete(app, event),
+        Event::ThreadDelete(event) => events::thread_delete(app, event),
+        Event::CommandPermissionsUpdate(event) => events::command_permissions_update(app, event),
+        Event::Ready(ready) => events::ready(shard, ready),
         Event::Resumed => tracing::info!(shard, "shard resumed"),
         _ => {}
     }
