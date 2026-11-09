@@ -252,7 +252,10 @@ impl Player {
         self.until("snapshot").await
     }
     async fn close_reason(&mut self) -> String {
-        tokio::time::timeout(PROTOCOL_WAIT, async {
+        self.close_reason_within(PROTOCOL_WAIT).await
+    }
+    async fn close_reason_within(&mut self, deadline: Duration) -> String {
+        tokio::time::timeout(deadline, async {
             loop {
                 match self.socket.next().await {
                     Some(Ok(Message::Close(Some(frame)))) => return frame.reason.to_string(),
@@ -453,7 +456,10 @@ async fn upgrade_requires_exact_origin_and_authentication_timeout() {
         epoch: String::new(),
         revision: String::new(),
     };
-    assert_eq!(idle.close_reason().await, "authentication_failed");
+    assert_eq!(
+        idle.close_reason_within(Duration::from_secs(6)).await,
+        "authentication_failed"
+    );
 }
 #[tokio::test]
 async fn capacity_and_controller_replacement() {
@@ -1009,7 +1015,7 @@ async fn socket_rate_limits_and_session_expiry() {
         .put(&format!("web:sess:{}", browser.sid), "{}", Duration::from_secs(1))
         .await
         .unwrap();
-    assert_eq!(p.close_reason().await, "session_expired");
+    assert_eq!(p.close_reason_within(Duration::from_secs(6)).await, "session_expired");
 }
 
 #[tokio::test]

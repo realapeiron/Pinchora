@@ -10,8 +10,8 @@ pub struct ReefFence {
 }
 impl Db {
     pub async fn reef_acquire(&self, namespace: &str, owner: u64, idx: i16) -> anyhow::Result<Option<ReefFence>> {
-        let token = sqlx::query_scalar("INSERT INTO reef_room_leases(namespace,owner_id,room_idx,expires_at) VALUES($1,$2,$3,clock_timestamp()+interval '3 seconds') ON CONFLICT(namespace,owner_id,room_idx) DO UPDATE SET token=nextval('reef_fencing_token'),expires_at=clock_timestamp()+interval '3 seconds' WHERE reef_room_leases.expires_at<clock_timestamp() RETURNING token")
-            .bind(namespace).bind(sql_id(owner)).bind(idx).fetch_optional(self.pool()).await?;
+        let token = sqlx::query_scalar("INSERT INTO reef_room_leases(namespace,owner_id,room_idx,expires_at) VALUES($1,$2,$3,clock_timestamp()+$4*interval '1 millisecond') ON CONFLICT(namespace,owner_id,room_idx) DO UPDATE SET token=nextval('reef_fencing_token'),expires_at=clock_timestamp()+$4*interval '1 millisecond' WHERE reef_room_leases.expires_at<clock_timestamp() RETURNING token")
+            .bind(namespace).bind(sql_id(owner)).bind(idx).bind(ReefFence::LEASE.as_millis() as f64).fetch_optional(self.pool()).await?;
         Ok(token.map(|token| ReefFence {
             namespace: namespace.into(),
             owner,
@@ -24,8 +24,8 @@ impl Db {
         if !fence.lock_valid(&mut tx).await? {
             return Ok(false);
         }
-        sqlx::query("UPDATE reef_room_leases SET expires_at=clock_timestamp()+interval '3 seconds' WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4")
-            .bind(&fence.namespace).bind(sql_id(fence.owner)).bind(fence.idx).bind(fence.token).execute(&mut *tx).await?;
+        sqlx::query("UPDATE reef_room_leases SET expires_at=clock_timestamp()+$5*interval '1 millisecond' WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4")
+            .bind(&fence.namespace).bind(sql_id(fence.owner)).bind(fence.idx).bind(fence.token).bind(ReefFence::LEASE.as_millis() as f64).execute(&mut *tx).await?;
         tx.commit().await?;
         Ok(true)
     }
@@ -60,6 +60,9 @@ impl Db {
 }
 
 impl ReefFence {
+    /// Shared by durable leases, Redis ownership, and the room renewal watchdog.
+    pub const LEASE: std::time::Duration = std::time::Duration::from_secs(3);
+
     pub(crate) async fn lock_valid(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> anyhow::Result<bool> {
         // A WHERE predicate can run before a row-lock wait. Check the clock in a separate
         // statement after acquiring the lock, so waiting never resurrects an expired owner.

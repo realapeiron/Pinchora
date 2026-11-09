@@ -22,7 +22,7 @@ async fn assert_no_layout(player: &mut Player) {
 }
 
 async fn wait_for_expired_room_lease(site: &Site, owner: u64) {
-    tokio::time::timeout(PROTOCOL_WAIT, async {
+    tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let active: bool = sqlx::query_scalar(
                 "SELECT EXISTS(SELECT 1 FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=0 AND expires_at>clock_timestamp())",
@@ -231,7 +231,7 @@ async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
         .execute(&b.pool)
         .await
         .unwrap();
-    assert_eq!(q.close_reason().await, "ownership_lost");
+    assert_eq!(q.close_reason_within(Duration::from_secs(6)).await, "ownership_lost");
     wait_for_expired_room_lease(&b, host).await;
     eprintln!("recovering room {host} after killed owner at epoch {epoch}");
     let mut recovered = guest.connect().await;
@@ -411,7 +411,7 @@ async fn redis_restart_fails_closed_then_snapshot_recovers_on_two_pods() {
     drop(redis);
     let _restarted = RedisProcess::start(port).await;
     for player in [&mut p, &mut q] {
-        let reason = player.close_reason().await;
+        let reason = player.close_reason_within(Duration::from_secs(6)).await;
         assert!(
             ["routing_unavailable", "ownership_lost", "session_expired"].contains(&reason.as_str()),
             "{reason}"
@@ -945,4 +945,56 @@ async fn renewal_waits_for_a_row_lock_while_the_fence_is_still_valid() {
     let snapshot = player.until("snapshot").await;
     assert_eq!(snapshot["room_epoch"], epoch);
     assert_eq!(snapshot["players"].as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn stale_room_owners_cannot_record_visits_or_replace_occupancy() {
+    let _capacity = fixture_capacity().await;
+    let Some(site) = Site::new().await else { return };
+    let (host, guest) = (unique(), unique());
+    site.house(host).await;
+    let db = &site.app.db;
+    let cache = &site.app.cache;
+    let old = db.reef_acquire(cache.namespace(), host, 0).await.unwrap().unwrap();
+    db.reef_release(&old).await.unwrap();
+    let fresh = db.reef_acquire(cache.namespace(), host, 0).await.unwrap().unwrap();
+    assert!(fresh.token > old.token);
+    assert!(matches!(
+        db.reef_record_visit(&old, guest).await.unwrap(),
+        pinchora_db::VisitOutcome::Unavailable
+    ));
+    let visits: i64 = sqlx::query_scalar("SELECT count(*) FROM visits WHERE host_id=$1 AND guest_id=$2")
+        .bind(host as i64)
+        .bind(guest as i64)
+        .fetch_one(&site.pool)
+        .await
+        .unwrap();
+    assert_eq!(visits, 0, "a stale admission must not record a visit");
+    assert!(matches!(
+        db.reef_record_visit(&fresh, guest).await.unwrap(),
+        pinchora_db::VisitOutcome::Rewarded { reward: 0 }
+    ));
+
+    let lease = format!("lease:plaza:{host}:0:0");
+    let occupancy = format!("occupancy:plaza:{host}:0:0");
+    let ttl = pinchora_db::ReefFence::LEASE.as_millis() as u64;
+    assert!(
+        cache
+            .reef_claim(&lease, &fresh.token.to_string(), ttl, false)
+            .await
+            .unwrap()
+    );
+    assert!(
+        cache
+            .reef_set_fenced(&lease, &fresh.token.to_string(), &occupancy, "2", ttl)
+            .await
+            .unwrap()
+    );
+    assert!(
+        !cache
+            .reef_set_fenced(&lease, &old.token.to_string(), &occupancy, "1", ttl)
+            .await
+            .unwrap()
+    );
+    assert_eq!(cache.reef_get(&occupancy).await.unwrap().as_deref(), Some("2"));
 }

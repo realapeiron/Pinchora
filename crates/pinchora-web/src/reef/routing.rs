@@ -84,7 +84,12 @@ async fn acquire(state: &WebState, key: RoomKey) -> anyhow::Result<Option<Owner>
         return Ok(None);
     };
     if !cache
-        .reef_claim(&lease_key(key), &fence.token.to_string(), 3000, false)
+        .reef_claim(
+            &lease_key(key),
+            &fence.token.to_string(),
+            ReefFence::LEASE.as_millis() as u64,
+            false,
+        )
         .await?
     {
         state.app.db.reef_release(&fence).await?;
@@ -105,7 +110,11 @@ pub async fn valid(state: &WebState, key: RoomKey, fence: &ReefFence) -> bool {
         state
             .app
             .cache
-            .reef_renew(&lease_key(key), &fence.token.to_string(), 3000)
+            .reef_renew(
+                &lease_key(key),
+                &fence.token.to_string(),
+                ReefFence::LEASE.as_millis() as u64
+            )
             .await,
         Ok(true)
     ) && matches!(state.app.db.reef_renew(fence).await, Ok(true))

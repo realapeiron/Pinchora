@@ -111,6 +111,26 @@ impl Cache {
         .await?
             == 1)
     }
+
+    /// Keep ephemeral room state from being overwritten by a previous owner.
+    pub async fn reef_set_fenced(
+        &self,
+        lease: &str,
+        token: &str,
+        key: &str,
+        value: &str,
+        ttl_ms: u64,
+    ) -> anyhow::Result<bool> {
+        Ok(redis::Script::new(
+            "if redis.call('GET',KEYS[1]) ~= ARGV[1] then return 0 end redis.call('SET',KEYS[2],ARGV[2],'PX',ARGV[3]) return 1",
+        )
+        .key(self.reef_key(lease))
+        .key(self.reef_key(key))
+        .arg(token)
+        .arg(value)
+        .arg(ttl_ms)
+        .invoke_async::<i32>(&mut self.conn()).await? == 1)
+    }
 }
 
 #[cfg(test)]
