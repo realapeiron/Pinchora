@@ -132,13 +132,14 @@ pod never posts it twice.
 |---|---|---|
 | `pinchora` | Application binary and process entry points | `pinchora-cache`, `pinchora-commands`, `pinchora-core`, `pinchora-db`, `pinchora-web` |
 | `pinchora-assets` | Tools for preparing Pinchora image assets | — |
-| `pinchora-cache` | Redis coordination, cooldowns, and gateway sessions | — |
-| `pinchora-commands` | Discord commands, interactions, and gateway handlers | `pinchora-cache`, `pinchora-core`, `pinchora-db`, `pinchora-game`, `pinchora-render` |
+| `pinchora-cache` | Redis coordination, cooldowns, and gateway sessions | `pinchora-testkit` |
+| `pinchora-commands` | Discord commands, interactions, and gateway handlers | `pinchora-cache`, `pinchora-core`, `pinchora-db`, `pinchora-game`, `pinchora-render`, `pinchora-testkit` |
 | `pinchora-core` | Shared configuration, telemetry, and game rules | — |
-| `pinchora-db` | PostgreSQL access and migrations | `pinchora-core` |
+| `pinchora-db` | PostgreSQL access and migrations | `pinchora-core`, `pinchora-testkit` |
 | `pinchora-game` | Shared game logic and presentation data | `pinchora-core`, `pinchora-render` |
 | `pinchora-render` | Pixel art cards and image rendering | `pinchora-core` |
-| `pinchora-web` | Web dashboard and public API | `pinchora-cache`, `pinchora-commands`, `pinchora-core`, `pinchora-db`, `pinchora-game`, `pinchora-render` |
+| `pinchora-testkit` | Shared test fixture sessions and isolation protocols | — |
+| `pinchora-web` | Web dashboard and public API | `pinchora-cache`, `pinchora-commands`, `pinchora-core`, `pinchora-db`, `pinchora-game`, `pinchora-render`, `pinchora-testkit` |
 <!-- crate-table:end -->
 
 Architecture choices are recorded in the [decision records](adr/README.md).

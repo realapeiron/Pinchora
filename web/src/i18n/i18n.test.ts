@@ -50,7 +50,10 @@ describe("SPA message catalogs", () => {
       readFileSync(join(process.cwd(), "src/lib/commands.json"), "utf8") +
       readFileSync(join(process.cwd(), "src/lib/rules.json"), "utf8") +
       readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/community/engagement.rs"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/community/tickets/operations.rs"), "utf8") +
+      readFileSync(
+        join(process.cwd(), "../crates/pinchora-web/src/routes/community/tickets/operations.rs"),
+        "utf8",
+      ) +
       readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/house/house_edit.rs"), "utf8") +
       readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/house/house_edit.rs"), "utf8") +
       readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/commands/house/house.rs"), "utf8") +

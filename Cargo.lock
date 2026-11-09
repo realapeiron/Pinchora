@@ -2146,6 +2146,10 @@ dependencies = [
 [[package]]
 name = "pinchora-testkit"
 version = "0.1.0"
+dependencies = [
+ "sqlx",
+ "tokio",
+]
 
 [[package]]
 name = "pinchora-web"
