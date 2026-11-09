@@ -5,7 +5,7 @@
 //! member permissions Discord sends with the interaction, and the role hierarchy the way Discord does:
 //! nobody acts on the owner, on themselves or on the bot, and both the moderator and the bot must sit
 //! strictly above the member.
-
+pub(crate) mod registration;
 mod cases;
 pub(crate) mod channels;
 mod members;

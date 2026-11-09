@@ -14,10 +14,12 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 20;
-pub const PROJECTED_ROOTS: usize = 80;
+// registrations:root_budget:start
+pub const PROJECTED_ROOTS: usize = 80; // registrations:root_budget:end
 pub const FUTURE_ROOT_RESERVE: usize = 3;
 
 pub(crate) const COMMUNITY_ADMIN_PATHS: &[&str] = &[
+    // registrations:community_admin_paths:start
     "qotd settings",
     "qotd queue",
     "counting setup",
@@ -25,7 +27,7 @@ pub(crate) const COMMUNITY_ADMIN_PATHS: &[&str] = &[
     "form create",
     "form post",
     "form close",
-    "modmail settings",
+    "modmail settings", // registrations:community_admin_paths:end
 ];
 
 /// Administration roots share the original setup permission and privacy boundary.
@@ -33,12 +35,14 @@ pub fn is_admin_path(path: &str) -> bool {
     COMMUNITY_ADMIN_PATHS.contains(&path)
         || matches!(
             path.split(' ').next(),
-            Some("setup" | "safety" | "community" | "integrations" | "progression")
+            // registrations:admin_roots:start
+            Some("setup" | "safety" | "community" | "integrations" | "progression") // registrations:admin_roots:end
         )
 }
 
 /// The applied 0066 paths remain valid for stored policies, backups and typed shortcuts.
 const ADMIN_GROUP_MOVES: &[(&str, &str)] = &[
+    // registrations:admin_group_moves:start
     ("setup moderation", "safety moderation"),
     ("setup automod", "safety automod"),
     ("setup verification", "safety verification"),
@@ -54,15 +58,16 @@ const ADMIN_GROUP_MOVES: &[(&str, &str)] = &[
     ("setup invites", "integrations invites"),
     ("setup leveling", "progression leveling"),
     ("setup economy", "progression economy"),
-    ("setup achievements", "progression achievements"),
+    ("setup achievements", "progression achievements"), // registrations:admin_group_moves:end
 ];
 
 pub(crate) const PREVIOUS_ACTIONS: &[(&str, &str)] = &[
+    // registrations:previous_actions:start
     ("mod ban", "ban"),
     ("mod kick", "kick"),
     ("mod warn", "warn"),
     ("mod timeout", "timeout"),
-    ("mod purge", "purge"),
+    ("mod purge", "purge"), // registrations:previous_actions:end
 ];
 
 pub(crate) fn previous_path(route: &Route) -> String {
@@ -320,6 +325,7 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
     tree.iter_mut().find(|c| c.name == "info").unwrap().contexts =
         original.iter().find(|c| c.name == "wrapped").unwrap().contexts.clone();
     for (name, description, permissions) in [
+        // registrations:route_roots:start
         ("setup", "Server settings and tools", Some(Permissions::MANAGE_GUILD)),
         (
             "safety",
@@ -342,7 +348,7 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
             Some(Permissions::MANAGE_GUILD),
         ),
         ("mod", "Manage moderation actions and records", None),
-        ("rewards", "Claim your weekly and monthly rewards", None),
+        ("rewards", "Claim your weekly and monthly rewards", None), // registrations:route_roots:end
     ] {
         let mut root = original
             .iter()

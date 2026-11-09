@@ -81,9 +81,15 @@ async fn player_depth_session_csrf_and_shared_economy_transactions() {
 
 #[tokio::test]
 async fn web_pet_care_uses_discord_cooldown_key_and_game_xp() {
-    let Some(h) = Harness::new("player_depth_pets").await else {
+    let Some(mut h) = Harness::new("player_depth_pets").await else {
         return;
     };
+    h.router = h.router.layer(axum::Extension(pinchora_game::trips::Rolls {
+        shells: 0.5,
+        furniture: 1.0,
+        pick: 0.0,
+        story: 0.0,
+    }));
     let user = unique();
     let mut b = h.browser();
     b.login(&h, user, vec![]).await;
@@ -139,6 +145,7 @@ async fn web_pet_care_uses_discord_cooldown_key_and_game_xp() {
     let claimed = b.write(Method::POST, "/api/me/pets/claim", json!({})).await;
     assert_eq!(claimed.status, StatusCode::OK, "{}", claimed.text());
     assert_eq!(claimed.json()["items"].as_array().unwrap().len(), 1);
+    assert_eq!(claimed.json()["items"][0]["item"], Value::Null);
     assert!(
         b.write(Method::POST, "/api/me/pets/claim", json!({})).await.json()["items"]
             .as_array()

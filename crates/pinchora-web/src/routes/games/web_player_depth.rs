@@ -349,7 +349,11 @@ async fn start_trip(
     .await;
     Ok(Json(json!({"ok":true,"ends_at":ends})))
 }
-async fn claim_trips(State(st): State<WebState>, c: CurrentSession) -> ApiResult<Json<Value>> {
+async fn claim_trips(
+    State(st): State<WebState>,
+    c: CurrentSession,
+    fixture_rolls: Option<axum::Extension<Rolls>>,
+) -> ApiResult<Json<Value>> {
     let now = st.app.now();
     let user = c.session.user_id;
     let l = lang(&st, &c.session).await;
@@ -363,12 +367,15 @@ async fn claim_trips(State(st): State<WebState>, c: CurrentSession) -> ApiResult
         .filter(|p| p.has_souvenir(now))
         .take(8)
     {
-        let rolls = Rolls {
-            shells: rand::random(),
-            furniture: rand::random(),
-            pick: rand::random(),
-            story: rand::random(),
-        };
+        let rolls = fixture_rolls.as_ref().map_or_else(
+            || Rolls {
+                shells: rand::random(),
+                furniture: rand::random(),
+                pick: rand::random(),
+                story: rand::random(),
+            },
+            |rolls| rolls.0,
+        );
         let mut reward = None;
         let result=st.app.db.claim_trip(user,pet.id,now,|p,trip_id|{
             let trip=trips::get(trip_id).unwrap_or(&trips::all()[0]);

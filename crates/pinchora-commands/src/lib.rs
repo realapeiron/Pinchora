@@ -235,9 +235,11 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
             let command = crate::infra::routing::adapt((*command).clone()).unwrap_or(*command);
             let choices = match command.name.as_str() {
                 _ if !allowed => Vec::new(),
+                // registrations:autocomplete:start
                 "birthday" | "birthdays" => crate::commands::community::birthdays::autocomplete(&command),
-                "tag" | "customcommand" => crate::commands::community::tag::autocomplete(&cx, &command).await,
-                _ => crate::commands::admin::modules::autocomplete(cx.lang(), &command),
+                "tag" => crate::commands::community::tag::autocomplete(&cx, &command).await,
+                "customcommand" => crate::commands::community::tag::autocomplete(&cx, &command).await,
+                _ => crate::commands::admin::modules::autocomplete(cx.lang(), &command), // registrations:autocomplete:end
             };
             if let Err(error) = cx.responder.suggest(choices).await {
                 tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");
@@ -248,7 +250,7 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
     if cx.interaction.kind == InteractionType::ApplicationCommand {
         crate::admin::status::record_interaction(&cx.app.cache).await;
     }
-    // The handler futures are large (every command's state in one enum); on the heap they
+    // Handler futures can hold large command state; on the heap they
     // cannot overflow a worker thread's stack.
     let (label, result) = match data {
         Some(InteractionData::ApplicationCommand(command)) => {

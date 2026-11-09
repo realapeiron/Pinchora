@@ -15,3 +15,5 @@ pub(crate) mod quick;
 pub(crate) mod stats;
 pub(crate) mod tempvoice;
 pub(crate) mod workflows;
+
+pub(crate) mod registration;

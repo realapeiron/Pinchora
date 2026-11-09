@@ -18,3 +18,5 @@ pub(crate) mod tickets;
 pub(crate) mod tickets_context;
 pub(crate) mod tools;
 pub(crate) mod trackers;
+
+pub(crate) mod registration;

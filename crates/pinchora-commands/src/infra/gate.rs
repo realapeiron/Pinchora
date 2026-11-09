@@ -24,6 +24,7 @@ fn subcommand(data: &CommandData) -> Option<&str> {
 /// Whether the command's module is off here; if so, the invoker has been told and the command must
 /// not run.
 pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
+    // registrations:command_gate_overrides:start
     let module = if data.name == "tag"
         && data
             .options
@@ -35,7 +36,7 @@ pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Resu
         None
     } else {
         Module::of_command(&data.name, subcommand(data))
-    };
+    }; // registrations:command_gate_overrides:end
     let refused = refuses(cx, module).await?
         || crate::admin::command_control::refuses(cx, &crate::admin::command_control::path(data), false).await?;
     if !refused {
@@ -48,9 +49,12 @@ pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Resu
 pub(crate) async fn refuses_component(cx: &Cx, custom_id: &str) -> anyhow::Result<bool> {
     if refuses(
         cx,
+        // registrations:component_gate_overrides:start
         if custom_id.starts_with("sl:eco:") {
             Some(Module::Economy)
-        } else {
+        } else
+        // registrations:component_gate_overrides:end
+        {
             custom_id.split(':').next().and_then(Module::of_component_prefix)
         },
     )

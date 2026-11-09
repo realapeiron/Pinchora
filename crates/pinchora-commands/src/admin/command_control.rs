@@ -9,6 +9,18 @@ use twilight_model::application::{
     interaction::application_command::{CommandData, CommandOptionValue},
 };
 
+const EPHEMERAL: &[&str] = &[
+    // registrations:ephemeral:start
+    "balance",
+    "rank",
+    "profile",
+    "info",
+    "inventory",
+    "leaderboard",
+    "stats",
+    "dex", // registrations:ephemeral:end
+];
+
 pub fn control_catalog() -> Vec<Command> {
     fn walk(out: &mut Vec<Command>, path: String, description: String, permissions: &str, options: &[CommandOption]) {
         let top = path.split(' ').next().unwrap_or_default();
@@ -17,10 +29,7 @@ pub fn control_catalog() -> Vec<Command> {
             description,
             permissions: permissions.into(),
             protected: crate::infra::routing::protected(&path),
-            ephemeral_supported: matches!(
-                top,
-                "balance" | "rank" | "profile" | "info" | "inventory" | "leaderboard" | "stats" | "dex"
-            ),
+            ephemeral_supported: EPHEMERAL.contains(&top),
         });
         for option in options.iter().filter(|o| {
             matches!(
@@ -69,10 +78,7 @@ pub fn control_catalog() -> Vec<Command> {
                     .bits()
                     .to_string();
             }
-            command.ephemeral_supported = matches!(
-                root,
-                "balance" | "rank" | "profile" | "info" | "inventory" | "leaderboard" | "stats" | "dex"
-            );
+            command.ephemeral_supported = EPHEMERAL.contains(&root);
         }
     }
     out
@@ -127,6 +133,7 @@ pub(crate) fn path(data: &CommandData) -> String {
     path
 }
 /// Every prefix has one owning command. More specific paths keep subcommand rules in force.
+// registrations:component_owners:start
 pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
     Some(match prefix {
         "he" => "house edit",
@@ -234,19 +241,21 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "rx" => "roblox verify",
         _ => return None,
     })
-}
+} // registrations:component_owners:end
 pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<Option<&'static str>> {
+    // registrations:owner_prelude:start
     if custom_id.starts_with("sl:eco:") {
         return Ok(Some(if custom_id.starts_with("sl:eco:step:") {
             "economyv2 jobs"
         } else {
             "economyv2 trade-review"
         }));
-    }
+    } // registrations:owner_prelude:end
     let mut parts = custom_id.split(':');
     let prefix = parts.next().unwrap_or_default();
     let action = parts.next().unwrap_or_default();
     let path = match (prefix, action) {
+        // registrations:owner_actions:start
         ("rx", "check") => Some("roblox verify"),
         ("ev", "c") => Some("event create"),
         ("ev", "p") => Some("event attendees"),
@@ -293,7 +302,7 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
                 Some("go") => Some("xp import mee6"),
                 _ => owner(prefix),
             }
-        }
+        } // registrations:owner_actions:end
         _ => owner(prefix),
     };
     Ok(path)

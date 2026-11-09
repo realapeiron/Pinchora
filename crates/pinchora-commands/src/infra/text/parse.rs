@@ -23,13 +23,7 @@ use twilight_model::{
 pub(crate) const MAX_INTEGER: i64 = 1 << 53;
 
 /// Short names for the commands typed most, as `(alias, command)`.
-pub(crate) const ALIASES: &[(&str, &str)] = &[
-    ("bal", "balance"),
-    ("lb", "leaderboard"),
-    ("top", "leaderboard"),
-    ("h", "help"),
-    ("inv", "inventory"),
-];
+pub(crate) use super::aliases::ALIASES;
 
 /// A text command read against the tree.
 #[derive(Debug)]

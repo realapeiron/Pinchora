@@ -1,7 +1,6 @@
 {
   "files": {
     "crates/pinchora-commands/src/admin/custom.rs": 945,
-    "crates/pinchora-commands/src/commands/admin/help.rs": 874,
     "crates/pinchora-commands/src/commands/community/giveaway.rs": 904,
     "crates/pinchora-commands/src/commands/community/invites.rs": 916,
     "crates/pinchora-commands/src/commands/community/remind.rs": 945,
@@ -19,7 +18,7 @@
     "crates/pinchora-commands/src/infra/app.rs": 929,
     "crates/pinchora-commands/src/infra/responder.rs": 935,
     "crates/pinchora-commands/src/infra/routing/tests.rs": 822,
-    "crates/pinchora-commands/src/infra/text/parse.rs": 820,
+    "crates/pinchora-commands/src/infra/text/parse.rs": 814,
     "crates/pinchora-commands/src/progression/voice_xp.rs": 934,
     "crates/pinchora-commands/tests/simulate.rs": 15559,
     "crates/pinchora-commands/tests/simulate/anti_nuke.rs": 1123,

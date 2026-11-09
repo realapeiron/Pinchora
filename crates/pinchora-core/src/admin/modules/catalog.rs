@@ -403,6 +403,7 @@ impl Module {
     /// subcommand group. `None` for the commands in [`NEVER_GATED`] and for anything unknown.
     pub fn of_command(name: &str, sub: Option<&str>) -> Option<Self> {
         Some(match name {
+            // registrations:command_gates:start
             "profile" | "rank" | "leaderboard" | "bio" | "customize" | "character" | "wrapped" => Self::Profile,
             "economyv2" | "daily" | "weekly" | "monthly" | "balance" | "give" | "rep" => Self::Economy,
             "house" => Self::House,
@@ -476,6 +477,7 @@ impl Module {
             "modmail" => Self::Modmail,
             "roblox" | "robloxadmin" => Self::Roblox,
             "branding" => Self::Branding,
+            // registrations:command_gates:end
             _ => return None,
         })
     }
@@ -483,6 +485,7 @@ impl Module {
     /// The module a button, select or modal belongs to, by the `prefix` of its custom id.
     pub fn of_component_prefix(prefix: &str) -> Option<Self> {
         Some(match prefix {
+            // registrations:component_gates:start
             "lb" | "ch" | "ca" | "cz" | "ti" | "cs" | "sw" => Self::Profile,
             "he" | "hv" | "hu" | "dw" | "df" | "dn" | "gb" | "rc" => Self::House,
             "pe" | "pd" => Self::Plaza,
@@ -491,8 +494,7 @@ impl Module {
             "fr" | "fx" | "fz" => Self::Fishing,
             "qc" => Self::Quests,
             "tt" | "c4" | "rp" => Self::Duels,
-            "bs" | "ck" | "cc" | "of" | "pz" | "tz" => Self::BoardGames,
-            "d9c" => Self::BoardGames,
+            "bs" | "ck" | "cc" | "of" | "pz" | "tz" | "d9c" => Self::BoardGames,
             "d9s" => Self::Puzzles,
             "d9p" => Self::PartyGames,
             "hm" | "wo" | "tv" | "mm" | "mi" | "yl" | "ag" | "yt" | "gn" => Self::Puzzles,
@@ -531,6 +533,7 @@ impl Module {
             "rx" | "rk" => Self::Roblox,
             "wb" => Self::Branding,
             "gt" | "mc" => Self::GameTrackers,
+            // registrations:component_gates:end
             _ => return None,
         })
     }

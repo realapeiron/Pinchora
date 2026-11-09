@@ -48,6 +48,7 @@ use crate::commands::social::share;
 
 /// Routes button clicks by the `prefix:` of their custom id. Ids carry all their
 /// state, so any pod can serve any click.
+// registrations:component_dispatch:start
 pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> anyhow::Result<()> {
     if crate::infra::gate::refuses_component(cx, custom_id).await? {
         return Ok(());
@@ -173,6 +174,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         _ => cx.reply_ephemeral(t!(cx.lang(), "component.button-expired")).await,
     }
 }
+// registrations:component_dispatch:end
 
 /// Routes a submitted modal by the `prefix:` of its custom id; `fields` are its text inputs
 /// as (custom id, value).
@@ -182,6 +184,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        // registrations:modals:start
         Some("cd") => collection::drops::on_word(cx, parts, fields).await,
         Some("cq") => crate::moderation::verification::on_modal(cx, parts, fields).await,
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
@@ -216,7 +219,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("tf") => crate::community::tickets::on_form(cx, parts, fields).await,
         Some(prefix @ ("sk" | "sm")) => {
             crate::commands::admin::afk_sticky_schedule::on_modal(cx, prefix, parts, fields).await
-        }
+        } // registrations:modals:end
         _ => cx.reply_ephemeral(t!(cx.lang(), "component.form-expired")).await,
     }
 }

@@ -7,6 +7,7 @@
 //! differently, as replies to the message (see [`Responder::text`]).
 
 pub(crate) mod access;
+mod aliases;
 pub(crate) mod parse;
 
 use std::{collections::HashMap, sync::Arc, sync::LazyLock, time::Duration};
@@ -51,6 +52,7 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 /// panel that a channel reply cannot stand in for (any other private panel is caught as it is
 /// answered), or it shows the server's settings, which a reply in the channel would show to everyone.
 const SLASH_ONLY: &[&str] = &[
+    // registrations:slash_only:start
     "confess",
     "checklist",
     "highlight",
@@ -67,10 +69,15 @@ const SLASH_ONLY: &[&str] = &[
     "play 2048",
     "play picross",
     "play wordle",
-    "stall manage",
+    "stall manage", // registrations:slash_only:end
 ];
 
 /// A member's text commands count at most this often; faster ones are ignored.
+const TEXT_ALLOWED: &[&str] = &[
+    // registrations:text_allowed:start
+    "customize bio", // registrations:text_allowed:end
+];
+
 const RATE: Duration = Duration::from_millis(1_500);
 
 /// What the message says after the bot's mention or the server's prefix, and whether it was the mention.
@@ -509,7 +516,7 @@ async fn prepare(
             return Ok(Prepared::Notice(t!(lang, "config.needs-manage-server")));
         }
     }
-    if parsed.path != "customize bio"
+    if !TEXT_ALLOWED.contains(&parsed.path.as_str())
         && (crate::infra::routing::COMMUNITY_ADMIN_PATHS.contains(&parsed.path.as_str())
             || SLASH_ONLY
                 .iter()
