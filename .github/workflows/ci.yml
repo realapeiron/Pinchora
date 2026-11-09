@@ -24,13 +24,13 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: pinchora
-          POSTGRES_PASSWORD: pinchora
-          POSTGRES_DB: pinchora
+          POSTGRES_USER: pinchora_test
+          POSTGRES_PASSWORD: pinchora_test
+          POSTGRES_DB: pinchora_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U pinchora -d pinchora"
+          --health-cmd "pg_isready -U pinchora_test -d pinchora_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
@@ -44,8 +44,9 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
-      PINCHORA_TEST_DATABASE_URL: postgres://pinchora:pinchora@localhost:5432/pinchora
-      PINCHORA_TEST_REDIS_URL: redis://localhost:6379
+      PINCHORA_TEST_DATABASE_URL: postgres://pinchora_test:pinchora_test@localhost:5432/pinchora_test
+      PINCHORA_TEST_REDIS_URL: redis://localhost:6379/10
+      PINCHORA_TEST_MIX_SECS: 60
     steps:
       - uses: actions/checkout@v7
 
@@ -74,8 +75,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends redis-server
 
+      - name: Install nextest
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
+        with:
+          tool: cargo-nextest@0.9.151
+
       - name: Test
-        run: cargo test --workspace --no-fail-fast
+        run: cargo nextest run --workspace --locked --profile ci
+
+      - name: Doctests
+        if: ${{ !cancelled() }}
+        run: cargo test --workspace --locked --doc
+
+      - name: Keep Rust test report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: rust-tests
+          path: target/nextest/ci/junit.xml
+          if-no-files-found: warn
 
   web:
     name: web dashboard (lint, test, build, e2e)
@@ -84,13 +102,13 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: pinchora
-          POSTGRES_PASSWORD: pinchora
-          POSTGRES_DB: pinchora
+          POSTGRES_USER: pinchora_test
+          POSTGRES_PASSWORD: pinchora_test
+          POSTGRES_DB: pinchora_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U pinchora -d pinchora"
+          --health-cmd "pg_isready -U pinchora_test -d pinchora_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
@@ -104,8 +122,9 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
-      PINCHORA_TEST_DATABASE_URL: postgres://pinchora:pinchora@localhost:5432/pinchora
-      PINCHORA_TEST_REDIS_URL: redis://localhost:6379
+      PINCHORA_TEST_DATABASE_URL: postgres://pinchora_test:pinchora_test@localhost:5432/pinchora_test
+      PINCHORA_TEST_REDIS_URL: redis://localhost:6379/10
+      PINCHORA_TEST_MIX_SECS: 60
     defaults:
       run:
         working-directory: web
@@ -197,3 +216,37 @@ jobs:
 
       - name: Render prod overlay
         run: kubectl kustomize deploy/k8s/overlays/prod > /dev/null
+
+  supply-chain:
+    name: supply chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read toolchain channel
+        id: toolchain
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.toolchain.outputs.channel }}
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
+        with:
+          tool: cargo-deny@0.20.2,cargo-audit@0.22.2
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Dependency policy
+        run: cargo deny --locked check
+      - name: Rust advisories
+        if: ${{ !cancelled() }}
+        run: cargo audit
+      - name: Install web dependencies
+        if: ${{ !cancelled() }}
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Web advisories
+        if: ${{ !cancelled() }}
+        working-directory: web
+        run: npm audit --audit-level=high

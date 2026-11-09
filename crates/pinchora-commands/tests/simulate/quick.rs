@@ -154,6 +154,8 @@ async fn quick_solo_timeout_is_counted_once_by_the_janitor() {
 
 async fn run_public(name: &'static str, tr: bool) {
     let _serial = SWEEPS.lock().await;
+    // This flow advances both game janitors, including the shared party-game clock.
+    let _party = super::words::PARTY.lock().await;
     let Some(mut sim) = Sim::new(name).await else {
         return;
     };

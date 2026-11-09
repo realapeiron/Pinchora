@@ -9,11 +9,7 @@ use pinchora_game::{Content, character::Character};
 use pinchora_web::{WebSettings, WebState};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use std::{
-    net::SocketAddr,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{
     net::{TcpListener, TcpStream},
     task::JoinHandle,
@@ -38,15 +34,13 @@ impl Drop for Site {
         self.server.abort();
     }
 }
+// A process-local clock counter can overlap another nextest process's fixtures.
 fn unique() -> u64 {
-    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    (SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_micros() as u64)
-        * 100
-        + NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % 100
+    static NEXT: std::sync::LazyLock<std::sync::atomic::AtomicU64> =
+        std::sync::LazyLock::new(|| std::sync::atomic::AtomicU64::new(rand::random_range(1 << 58..1 << 59)));
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
+
 impl Site {
     async fn new() -> Option<Self> {
         Self::with_redis(None).await
@@ -228,7 +222,10 @@ impl Player {
                         return value;
                     }
                 } else if let Message::Close(reason) = message {
-                    panic!("unexpected close: {reason:?}");
+                    panic!(
+                        "unexpected close waiting for {kinds:?} at epoch {} sequence {}: {reason:?}",
+                        self.epoch, self.sequence
+                    );
                 }
             }
         })

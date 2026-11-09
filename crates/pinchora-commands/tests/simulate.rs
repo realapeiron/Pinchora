@@ -17,7 +17,6 @@ use std::{
         Arc, LazyLock, Mutex, Once,
         atomic::{AtomicBool, AtomicU16, AtomicU64, AtomicUsize, Ordering},
     },
-    time::SystemTime,
 };
 
 use axum::{
@@ -198,15 +197,10 @@ const MANAGE_GUILD: u64 = 1 << 5;
 /// An image a handler sent: its filename and bytes.
 type File = (String, Vec<u8>);
 
-/// Ids unique per process and, through the clock, per run, so tests can share one database.
+/// Independent random sequences prevent processes from sharing clock-resolution ties.
+/// This range still represents old Discord accounts and leaves ample counter headroom.
 fn unique() -> u64 {
-    static NEXT: LazyLock<AtomicU64> = LazyLock::new(|| {
-        let nanos = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        AtomicU64::new((nanos as u64) >> 4)
-    });
+    static NEXT: LazyLock<AtomicU64> = LazyLock::new(|| AtomicU64::new(rand::random_range(1 << 58..1 << 59)));
     NEXT.fetch_add(1, Ordering::Relaxed)
 }
 
@@ -1309,6 +1303,43 @@ struct Sim {
 
 static TEST_STARTED: tokio::sync::OnceCell<chrono::DateTime<chrono::Utc>> = tokio::sync::OnceCell::const_new();
 
+/// nextest's processes must agree on the cutoff before any of them creates a game.
+/// Cargo's threaded runner keeps the original process-wide timestamp instead.
+async fn simulation_started(db: &Db) -> chrono::DateTime<chrono::Utc> {
+    let Ok(run) = std::env::var("NEXTEST_RUN_ID") else {
+        return sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(db.pool())
+            .await
+            .expect("read simulation start from the database clock");
+    };
+    let mut tx = db.pool().begin().await.expect("start test run registration");
+    // Serialize table creation too: concurrent CREATE TABLE IF NOT EXISTS can race in pg_type.
+    sqlx::query("SELECT pg_advisory_xact_lock(749182003)")
+        .execute(&mut *tx)
+        .await
+        .expect("lock test run registration");
+    sqlx::query("CREATE SCHEMA IF NOT EXISTS test_support")
+        .execute(&mut *tx)
+        .await
+        .expect("create test support schema");
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS test_support.simulation_runs (run_id text PRIMARY KEY, started_at timestamptz NOT NULL)",
+    )
+    .execute(&mut *tx)
+    .await
+    .expect("create test run registry");
+    let started = sqlx::query_scalar(
+        "INSERT INTO test_support.simulation_runs (run_id, started_at) VALUES ($1, clock_timestamp()) \
+         ON CONFLICT (run_id) DO UPDATE SET run_id = EXCLUDED.run_id RETURNING started_at",
+    )
+    .bind(run)
+    .fetch_one(&mut *tx)
+    .await
+    .expect("read shared simulation start");
+    tx.commit().await.expect("register simulation run");
+    started
+}
+
 impl Sim {
     async fn new(name: &'static str) -> Option<Self> {
         Self::with(name, |_| {}).await
@@ -1327,15 +1358,13 @@ impl Sim {
         let db = Db::connect_waiting(&database, 5, std::time::Duration::from_secs(60))
             .await
             .expect("connect to the database");
+        let migration_started = std::time::Instant::now();
         db.migrate().await.expect("migrate");
-        TEST_STARTED
-            .get_or_init(|| async {
-                sqlx::query_scalar("SELECT clock_timestamp()")
-                    .fetch_one(db.pool())
-                    .await
-                    .expect("read simulation start from the database clock")
-            })
-            .await;
+        eprintln!(
+            "test database migration: {:?}; pool limit: 5",
+            migration_started.elapsed()
+        );
+        TEST_STARTED.get_or_init(|| simulation_started(&db)).await;
         let cache = Cache::connect(&redis).await.expect("connect to redis");
 
         let calls = Calls::default();

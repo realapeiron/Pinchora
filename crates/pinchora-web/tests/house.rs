@@ -12,7 +12,6 @@ use std::{
         Arc, LazyLock,
         atomic::{AtomicU64, Ordering},
     },
-    time::SystemTime,
 };
 
 use axum::{
@@ -61,15 +60,10 @@ const SHOWCASE: [(&str, i16, i16, bool); 21] = [
     ("duneline_runner__coral", 6, 3, false),
 ];
 
-/// Ids unique per process and, through the clock, per run, so tests can share one database.
+/// Independent random sequences prevent processes from sharing clock-resolution ties.
+/// This range still represents old Discord accounts and leaves ample counter headroom.
 fn unique() -> u64 {
-    static NEXT: LazyLock<AtomicU64> = LazyLock::new(|| {
-        let nanos = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        AtomicU64::new((nanos as u64) >> 4)
-    });
+    static NEXT: LazyLock<AtomicU64> = LazyLock::new(|| AtomicU64::new(rand::random_range(1 << 58..1 << 59)));
     NEXT.fetch_add(1, Ordering::Relaxed)
 }
 

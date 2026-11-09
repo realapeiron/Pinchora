@@ -230,6 +230,7 @@ async fn owner_pod_kill_expires_lease_and_reconnects_with_new_fence() {
         .unwrap();
     assert_eq!(q.close_reason().await, "ownership_lost");
     wait_for_expired_room_lease(&b, host).await;
+    eprintln!("recovering room {host} after killed owner at epoch {epoch}");
     let mut recovered = guest.connect().await;
     let snapshot = recovered.join(host).await;
     assert!(recovered.epoch.parse::<i64>().unwrap() > epoch);
@@ -348,8 +349,8 @@ impl RedisProcess {
         let _ = self.child.wait();
     }
     fn url(&self) -> String {
-        // Like CI's disposable service, this private process can safely use db 0.
-        format!("redis://127.0.0.1:{}", self.port)
+        // Use the same explicit test database as the shared test Redis.
+        format!("redis://127.0.0.1:{}/10", self.port)
     }
 }
 impl Drop for RedisProcess {
@@ -359,7 +360,7 @@ impl Drop for RedisProcess {
 }
 
 #[tokio::test]
-async fn private_redis_restart_loses_keys_in_default_database() {
+async fn private_redis_restart_loses_keys_in_test_database() {
     if std::env::var("PINCHORA_TEST_DATABASE_URL").is_err() {
         return;
     }
@@ -368,7 +369,7 @@ async fn private_redis_restart_loses_keys_in_default_database() {
     drop(listener);
     let redis = RedisProcess::start(port).await;
     let cache = Cache::connect_scoped(&redis.url(), "outage_probe").await.unwrap();
-    assert_eq!(cache.namespace(), "pinchora:outage_probe:db0");
+    assert_eq!(cache.namespace(), "pinchora:outage_probe:db10");
     cache
         .put("restart_probe", "before", Duration::from_secs(60))
         .await
@@ -421,6 +422,7 @@ async fn redis_restart_fails_closed_then_snapshot_recovers_on_two_pods() {
     .await
     .expect("both pods reconnect to Redis");
     wait_for_expired_room_lease(&a, host).await;
+    eprintln!("recovering room {host} after Redis restart at epoch {epoch}");
     let mut p = eligible(&a, host).await.connect().await;
     let mut q = eligible(&b, unique()).await.connect().await;
     p.join(host).await;

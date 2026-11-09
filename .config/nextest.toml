@@ -1,0 +1,271 @@
+nextest-version = "0.9.151"
+
+[profile.default]
+# Bound process-local pool fan-out on four-core CI runners.
+test-threads = 4
+retries = 0
+fail-fast = false
+# The instrumented privacy stress test took 375 seconds; regular tests exceed 80.
+# Allow 10 minutes, then 10 seconds to exit.
+slow-timeout = { period = "60s", terminate-after = 10, grace-period = "10s" }
+
+[profile.local]
+inherits = "default"
+
+[profile.ci]
+inherits = "default"
+retries = 0
+fail-fast = false
+
+[profile.ci.junit]
+path = "junit.xml"
+store-success-output = true
+
+[profile.nightly]
+inherits = "ci"
+retries = 2
+flaky-result = "fail"
+
+[profile.nightly.junit]
+path = "junit.xml"
+
+# DB integration tests include global cleanup and process-local fixture locks.
+# Reserve every slot so their sweeps cannot consume command/web fixtures.
+[[profile.default.overrides]]
+filter = 'package(pinchora-db) & kind(test)'
+threads-required = "num-test-threads"
+
+# These Redis unit tests assert ownership of the global stats-flush lease.
+# Cargo runs their binary before the simulator; preserve that exclusivity.
+[[profile.default.overrides]]
+filter = 'package(pinchora-cache) & test(/^stats::tests::/)'
+threads-required = "num-test-threads"
+
+# These flows span two fixture locks: both game tickers, or temp rooms and voice XP.
+# Reserve the runner so neither domain can consume the other flow's fixtures.
+[[profile.default.overrides]]
+filter = 'binary(simulate) & (test(/^quick::quick_public_(english|turkish)_flows$/) | test(=tempvoice::voice_xp_is_still_paid_in_a_temp_room))'
+threads-required = "num-test-threads"
+test-group = "@global"
+
+# Temp-voice fixtures share a Redis cleanup set even when their mocks are separate.
+[test-groups.temp-voice]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = 'binary(simulate) & test(/^tempvoice::/)'
+test-group = "temp-voice"
+
+# Keep these filters aligned with the fixture locks in simulate.rs and its modules.
+# The Rust locks still serialize cargo test threads; groups serialize nextest processes.
+[test-groups.bans]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)a_temporary_ban_lifted_by_hand_never_lifts_a_newer_ban$/) |
+    test(/(^|::)delayed_unban_events_preserve_the_exact_newer_ban$/) |
+    test(/(^|::)temporary_bans_end_on_the_ticker_with_a_case_of_their_own$/)
+)'''
+test-group = "bans"
+
+[test-groups.birthdays]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)birthday_keeps_existing_roles_and_obeys_module_switch$/) |
+    test(/(^|::)birthday_role_rechecks_safety_and_expired_grants_never_reappear$/) |
+    test(/(^|::)deleting_data_removes_the_birthday_role_before_erasing_its_timer$/) |
+    test(/(^|::)local_midnight_posts_one_pixel_card_and_one_gift$/) |
+    test(/(^|::)thousand_birthdays_are_batched_after_restart_with_safe_mentions$/)
+)'''
+test-group = "birthdays"
+
+[test-groups.collection]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_aloud$/) |
+    test(/(^|::)a_chat_spawn_waits_while_the_channel_has_an_open_drop$/) |
+    test(/(^|::)collection_claim_components_cannot_cross_guild_or_channel_boundaries$/) |
+    test(/(^|::)critter_drop_goes_to_the_quickest_and_each_gets_one$/) |
+    test(/(^|::)critterdrop_command_follows_the_server_setting_and_has_cooldowns$/) |
+    test(/(^|::)turkish_critter_drops_and_bottles_wash_up_get_taken_and_drift_away$/) |
+    test(/(^|::)turkish_critterdrop_command_and_settings_answer_in_turkish$/) |
+    test(/(^|::)word_drop_needs_the_typed_word_even_if_a_claim_id_is_forged$/)
+)'''
+test-group = "collection"
+
+[test-groups.community]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)qotd_daily_claim_survives_failed_send_and_local_day_boundaries$/) |
+    test(/(^|::)qotd_dst_skipped_and_repeated_hours_deliver_once_per_local_day$/)
+)'''
+test-group = "community"
+
+[test-groups.events]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)a_turkish_server_hears_its_events_in_turkish$/) |
+    test(/(^|::)giveaways_and_polls_wait_while_their_module_is_off$/) |
+    test(/(^|::)giveaways_run_pay_once_and_survive_restarts$/) |
+    test(/(^|::)polls_collect_one_vote_each_and_close_into_a_chart$/)
+)'''
+test-group = "events"
+
+# Shared flow helpers hold SWEEPS too, including macro-generated party tests.
+[test-groups.game-sweeps]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/^party_v2::/) |
+    test(/^quick::/) |
+    test(/(^|::)a_busted_heist_pays_nobody_and_a_lone_crew_member_is_called_off_by_the_janitor$/) |
+    test(/(^|::)a_busted_turkish_heist_and_a_lone_crew_member_read_in_turkish_even_when_the_janitor_ends_them$/) |
+    test(/(^|::)a_captain_who_never_places_forfeits_and_two_idle_captains_get_their_shells_back$/) |
+    test(/(^|::)a_derby_nobody_won_or_too_few_joined_gives_every_stake_back$/) |
+    test(/(^|::)a_forged_custom_id_cannot_act_on_another_kind_of_game$/) |
+    test(/(^|::)a_forgotten_shell_game_gives_the_stake_back_and_the_tables_have_daily_limits$/) |
+    test(/(^|::)a_late_click_from_a_private_message_closes_the_public_board_too$/) |
+    test(/(^|::)a_lobby_or_table_is_in_the_servers_language_whoever_opens_or_joins_it$/) |
+    test(/(^|::)a_slow_chess_player_forfeits_the_wager_and_a_game_without_one_just_ends$/) |
+    test(/(^|::)a_staked_derby_shares_the_pool_between_the_backers_and_the_janitor_runs_a_forgotten_race$/) |
+    test(/(^|::)a_staked_turkish_derby_is_refused_until_gambling_is_on_and_the_janitor_keeps_the_lobbys_language$/) |
+    test(/(^|::)a_trivia_round_collects_answers_then_reveals_and_pays$/) |
+    test(/(^|::)a_turkish_storm_surge_is_called_stacked_and_lost_in_turkish$/) |
+    test(/(^|::)a_turkish_trivia_round_asks_a_turkish_question$/) |
+    test(/(^|::)a_turkish_trivia_round_locks_answers_reveals_and_pays_the_right_one$/) |
+    test(/(^|::)a_wagered_rock_paper_scissors_match_forfeits_to_the_player_who_picked$/) |
+    test(/(^|::)an_abandoned_hangman_game_is_closed_by_the_janitor$/) |
+    test(/(^|::)connect_four_timeouts_forfeit_the_pot_even_after_a_restart$/) |
+    test(/(^|::)d9_deleted_board_does_not_block_other_channel_expiry$/) |
+    test(/(^|::)d9_idle_guests_and_self_reported_guesses_never_pay$/) |
+    test(/(^|::)d9_lobby_and_solo_expiry_release_channels_in_both_languages$/) |
+    test(/(^|::)duel_time_outs_are_in_the_servers_language$/) |
+    test(/(^|::)game_sweep_setup_retires_old_fixtures_and_preserves_live_games$/) |
+    test(/(^|::)mod_parity_autopurge_scans_past_filtered_pages_and_deletes_old_messages_singly$/) |
+    test(/(^|::)mod_parity_rejoin_restart_and_unsafe_restore_keep_original_snapshot$/) |
+    test(/(^|::)quick_solo_timeout_is_counted_once_by_the_janitor$/) |
+    test(/(^|::)share_or_grab_forfeits_in_turkish_when_somebody_never_picks$/) |
+    test(/(^|::)share_or_grab_wagers_go_by_the_picks_and_a_player_who_never_picks_forfeits$/) |
+    test(/(^|::)staked_derbies_need_the_gambling_switch_and_stop_at_the_daily_loss_limit$/) |
+    test(/(^|::)the_janitor_keeps_the_storm_card_fresh_and_the_sea_wins_when_time_runs_out$/) |
+    test(/(^|::)the_turkish_shell_game_is_off_until_a_manager_turns_it_on_and_tells_where_the_pearl_was$/) |
+    test(/(^|::)timed_storm_surges_are_switched_on_per_server_and_come_when_they_are_due$/) |
+    test(/(^|::)timed_turkish_storms_are_configured_in_turkish$/) |
+    test(/(^|::)turkish_hangman_is_lost_refuses_repeats_and_is_closed_by_the_janitor$/) |
+    test(/(^|::)unanswered_challenges_expire_without_touching_shells$/)
+)'''
+test-group = "game-sweeps"
+
+[test-groups.party]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)a_click_after_the_clock_pops_the_pearl_instead_of_playing_on$/) |
+    test(/(^|::)a_lobby_button_of_another_party_game_is_refused$/) |
+    test(/(^|::)a_lobby_can_be_cancelled_or_left_to_expire$/) |
+    test(/(^|::)a_party_table_is_in_the_servers_language_whoever_opens_or_joins_it$/) |
+    test(/(^|::)a_race_nobody_wins_ends_with_the_clock$/) |
+    test(/(^|::)a_turkish_acronym_game_goes_from_letters_to_the_final_scores$/) |
+    test(/(^|::)a_turkish_acronym_round_draws_turkish_capitals_and_checks_them$/) |
+    test(/(^|::)a_turkish_hot_pearl_goes_from_lobby_to_a_winner$/) |
+    test(/(^|::)a_turkish_hot_pearl_table_gets_turkish_syllables_and_words$/) |
+    test(/(^|::)a_turkish_postcard_game_shows_the_postcard_votes_and_scores$/) |
+    test(/(^|::)a_turkish_race_nobody_wins_ends_with_the_clock$/) |
+    test(/(^|::)a_turkish_truth_or_dare_table_takes_turns_and_ends$/) |
+    test(/(^|::)a_turkish_word_race_has_a_lobby_private_boards_and_a_result$/) |
+    test(/(^|::)a_turkish_word_race_is_played_with_the_turkish_keyboard$/) |
+    test(/(^|::)a_turkish_would_you_rather_poll_takes_votes_and_shows_the_split$/) |
+    test(/(^|::)a_turn_button_or_form_of_one_party_game_finds_no_game_of_another$/) |
+    test(/(^|::)acronym_rounds_follow_the_clock_when_nobody_hurries$/) |
+    test(/(^|::)acronym_tide_collects_phrases_then_votes_then_pays$/) |
+    test(/(^|::)caption_the_postcard_draws_a_scene_and_filters_captions$/) |
+    test(/(^|::)counting_who_is_in_edits_only_the_text_and_at_most_every_few_seconds$/) |
+    test(/(^|::)hot_pearl_goes_from_lobby_to_a_winner_who_is_not_paid_for_waiting$/) |
+    test(/(^|::)hot_pearl_pays_only_when_the_table_and_the_winner_played_words$/) |
+    test(/(^|::)late_clicks_on_form_buttons_are_answered_first_and_the_clock_step_follows$/) |
+    test(/(^|::)the_host_or_a_manager_can_stop_a_game_that_is_under_way$/) |
+    test(/(^|::)the_turkish_filter_settings_and_gambling_switch_speak_turkish$/) |
+    test(/(^|::)truth_or_dare_takes_turns_pays_for_done_and_ends_when_it_goes_quiet$/) |
+    test(/(^|::)turkish_party_lobbies_can_be_cancelled_stopped_and_expire$/) |
+    test(/(^|::)turkish_would_you_rather_and_dares_come_from_the_turkish_pools$/) |
+    test(/(^|::)wordle_race_keeps_boards_private_and_pays_the_first_solver$/) |
+    test(/(^|::)would_you_rather_hides_the_split_until_the_poll_closes$/)
+)'''
+test-group = "party"
+
+[test-groups.reminders]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)event_reminders_two_pods_respect_delivery_privacy_and_replay$/) |
+    test(/(^|::)pet_and_trip_messages_come_in_turkish$/) |
+    test(/(^|::)pet_and_trip_reminders_follow_the_pet$/) |
+    test(/(^|::)reminders_are_set_listed_cancelled_and_delivered_in_turkish$/) |
+    test(/(^|::)reminders_arrive_once_after_their_time$/)
+)'''
+test-group = "reminders"
+
+[test-groups.roles]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)auto_roles_are_given_at_once_after_a_delay_and_taken_back$/) |
+    test(/(^|::)panel_roles_can_expire$/) |
+    test(/(^|::)queued_auto_role_is_dropped_when_rule_is_removed$/) |
+    test(/(^|::)sticky_roles_come_back_when_a_member_returns$/)
+)'''
+test-group = "roles"
+
+[test-groups.tickets]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)idle_tickets_close_themselves$/) |
+    test(/(^|::)status_board_parallel_refreshes_are_throttled_without_pool_starvation$/) |
+    test(/(^|::)workflows_observe_confirmed_timeout_web_closes_and_force_open_exactly_once$/)
+)'''
+test-group = "tickets"
+
+[test-groups.utility]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)disabled_utility_leaves_afk_and_sticky_untouched$/) |
+    test(/(^|::)lost_permissions_pause_instead_of_retrying_each_tick$/) |
+    test(/(^|::)revoked_creator_permissions_suppress_everyone_here_and_role_pings$/) |
+    test(/(^|::)scheduled_claim_is_single_across_two_workers$/) |
+    test(/(^|::)sticky_counts_humans_and_ticker_posts_once$/) |
+    test(/(^|::)sticky_requires_both_count_and_gap$/)
+)'''
+test-group = "utility"
+
+[test-groups.voice-ticks]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = '''binary(simulate) & (
+    test(/(^|::)a_failed_afk_lookup_never_pays_the_afk_channel$/) |
+    test(/(^|::)a_guild_create_snapshot_replaces_who_is_remembered_in_voice$/) |
+    test(/(^|::)a_leave_or_join_that_came_in_while_a_rebuild_waited_is_not_undone_by_its_snapshot$/) |
+    test(/(^|::)a_pod_with_old_settings_cannot_write_who_is_in_voice_after_it_was_switched_off$/) |
+    test(/(^|::)module_off_refuses_commands_and_xp$/) |
+    test(/(^|::)multipliers_reach_threads_forum_posts_and_channels_in_a_category$/) |
+    test(/(^|::)servers_with_voice_xp_off_are_not_tracked_and_are_dropped_when_it_goes_off$/) |
+    test(/(^|::)voice_xp_pays_once_a_minute_to_members_with_company$/)
+)'''
+test-group = "voice-ticks"

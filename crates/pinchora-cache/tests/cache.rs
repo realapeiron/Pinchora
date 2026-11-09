@@ -11,7 +11,13 @@ async fn cache() -> Option<Cache> {
 }
 
 fn unique() -> String {
-    format!("{:?}", std::time::SystemTime::now())
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    format!(
+        "{}:{}:{:?}",
+        std::process::id(),
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        std::time::SystemTime::now()
+    )
 }
 
 #[tokio::test]

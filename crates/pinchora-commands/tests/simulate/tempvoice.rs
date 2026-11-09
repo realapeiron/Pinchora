@@ -1415,6 +1415,7 @@ async fn a_restart_puts_the_rooms_right_and_the_sweep_catches_a_missed_leave() {
 
 #[tokio::test]
 async fn voice_xp_is_still_paid_in_a_temp_room() {
+    let _voice = VOICE_TICKS.lock().await;
     let Some(mut v) = Voice::new("tempvoice_voice_xp").await else {
         return;
     };

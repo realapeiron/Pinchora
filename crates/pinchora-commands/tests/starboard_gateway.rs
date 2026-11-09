@@ -15,7 +15,7 @@ use std::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
 use twilight_http::Client;
 use twilight_model::{
@@ -27,7 +27,7 @@ async fn exercise(private: bool, reactor_bot: bool, content: bool, live: bool, u
     let _ = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::WARN)
         .try_init();
-    let base = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64) >> 4;
+    let base = rand::random_range(1u64 << 58..1u64 << 59);
     let (guild, source, target, message, author, reactor, copy) =
         (base, base + 1, base + 2, base + 3, base + 4, base + 5, base + 6);
     let db = Db::connect_waiting(

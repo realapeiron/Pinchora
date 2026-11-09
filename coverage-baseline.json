@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "measured_on": "2026-11-09",
+  "rust": {
+    "command": "cargo llvm-cov nextest --workspace --locked --profile ci --ignore-filename-regex '(/tests/|/xtask/)' --lcov --output-path target/coverage/rust.lcov",
+    "scope": "Workspace source files, including inline test modules; integration-test sources and xtask excluded. Doctests are validated separately. Null percentages mean no executable lines.",
+    "crates": {
+      "pinchora": {
+        "covered_lines": 40,
+        "total_lines": 718,
+        "line_percent": 5.57
+      },
+      "pinchora-assets": {
+        "covered_lines": 0,
+        "total_lines": 293,
+        "line_percent": 0.0
+      },
+      "pinchora-cache": {
+        "covered_lines": 993,
+        "total_lines": 1029,
+        "line_percent": 96.5
+      },
+      "pinchora-commands": {
+        "covered_lines": 64623,
+        "total_lines": 75727,
+        "line_percent": 85.34
+      },
+      "pinchora-core": {
+        "covered_lines": 10903,
+        "total_lines": 11486,
+        "line_percent": 94.92
+      },
+      "pinchora-db": {
+        "covered_lines": 22329,
+        "total_lines": 23304,
+        "line_percent": 95.82
+      },
+      "pinchora-game": {
+        "covered_lines": 10661,
+        "total_lines": 10936,
+        "line_percent": 97.49
+      },
+      "pinchora-render": {
+        "covered_lines": 16641,
+        "total_lines": 17010,
+        "line_percent": 97.83
+      },
+      "pinchora-web": {
+        "covered_lines": 18506,
+        "total_lines": 22094,
+        "line_percent": 83.76
+      }
+    }
+  },
+  "web": {
+    "command": "npm run test:coverage",
+    "scope": "All src TypeScript and TSX files, excluding test files and declarations.",
+    "covered_lines": 2727,
+    "total_lines": 10267,
+    "line_percent": 26.56
+  }
+}

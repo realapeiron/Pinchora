@@ -1,0 +1,135 @@
+name: Nightly tests and coverage
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rust:
+    name: nightly Rust tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: pinchora_test
+          POSTGRES_PASSWORD: pinchora_test
+          POSTGRES_DB: pinchora_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pinchora_test -d pinchora_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      PINCHORA_TEST_DATABASE_URL: postgres://pinchora_test:pinchora_test@localhost:5432/pinchora_test
+      PINCHORA_TEST_REDIS_URL: redis://localhost:6379/10
+      PINCHORA_TEST_MIX_SECS: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read toolchain channel
+        id: toolchain
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.toolchain.outputs.channel }}
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
+        with:
+          tool: cargo-nextest@0.9.151,cargo-llvm-cov@0.9.1
+      - name: Install private Redis test dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server
+      - name: Nightly tests with coverage
+        run: |
+          mkdir -p target/coverage
+          cargo llvm-cov nextest --workspace --locked --profile nightly \
+            --ignore-filename-regex '(/tests/|/xtask/)' \
+            --lcov --output-path target/coverage/rust.lcov
+      - name: Doctests
+        if: ${{ !cancelled() }}
+        run: cargo test --workspace --locked --doc
+      - name: Coverage summary per crate
+        if: ${{ !cancelled() }}
+        run: |
+          cargo llvm-cov report --json --summary-only --ignore-filename-regex '(/tests/|/xtask/)' --output-path target/coverage/rust.json
+          python3 - <<'PYTHON'
+          import json, pathlib, subprocess
+          report = json.loads(pathlib.Path("target/coverage/rust.json").read_text())
+          metadata = json.loads(subprocess.check_output([
+              "cargo", "metadata", "--no-deps", "--format-version", "1"
+          ]))
+          crates = {package["name"]: [0, 0] for package in metadata["packages"]
+                    if "/crates/" in package["manifest_path"]}
+          for data in report["data"]:
+              for file in data["files"]:
+                  parts = pathlib.Path(file["filename"]).parts
+                  if "crates" not in parts:
+                      continue
+                  name = parts[parts.index("crates") + 1]
+                  lines = file["summary"]["lines"]
+                  crates[name][0] += lines["covered"]
+                  crates[name][1] += lines["count"]
+          summary = {
+              name: {"covered_lines": covered, "total_lines": count,
+                     "line_percent": round(100 * covered / count, 2) if count else None}
+              for name, (covered, count) in sorted(crates.items())
+          }
+          text = json.dumps(summary, indent=2) + "\n"
+          pathlib.Path("target/coverage/crates.json").write_text(text)
+          print(text)
+          PYTHON
+      - name: Keep Rust reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: nightly-rust-coverage
+          path: |
+            target/coverage/
+            target/nextest/nightly/junit.xml
+          if-no-files-found: warn
+
+  web:
+    name: web coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:coverage
+      - name: Keep web reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: nightly-web-coverage
+          path: target/coverage/web/
+          if-no-files-found: warn
