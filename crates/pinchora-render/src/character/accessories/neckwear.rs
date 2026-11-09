@@ -1,7 +1,7 @@
 use super::*;
 
 /// The collar's left and right edge and its row.
-pub(super) fn collar(a: &Anchors) -> (i32, i32, i32) {
+fn collar(a: &Anchors) -> (i32, i32, i32) {
     let (nx, ny) = a.neck;
     let half = ((a.torso.2 - a.torso.0) / 4).clamp(5, 9);
     (nx - half, nx + half, ny)
@@ -29,12 +29,7 @@ pub(super) fn scarf(p: &mut Pens, c: &Ctx<'_>) {
     });
 }
 
-pub(super) fn necklace(
-    p: &mut Pens,
-    a: &Anchors,
-    bead: impl Fn(usize) -> Option<[u8; 3]>,
-    string: [u8; 3],
-) -> (i32, i32) {
+fn necklace(p: &mut Pens, a: &Anchors, bead: impl Fn(usize) -> Option<[u8; 3]>, string: [u8; 3]) -> (i32, i32) {
     let (l, r, y) = collar(a);
     let (l, r) = (l + 1, r - 1);
     let mid = (l + r) as f32 / 2.0;
@@ -117,29 +112,3 @@ pub(super) fn bandana(p: &mut Pens, c: &Ctx<'_>) {
 }
 
 // /Back
-
-pub(super) fn backpack(p: &mut Pens, c: &Ctx<'_>) {
-    let (_, ty, _, _) = c.a.torso;
-    let (nx, ny) = c.a.neck;
-    let (x0, x1) = (nx + 5, nx + 17);
-    let (y0, y1) = (ty + 1, ty + 18);
-    p.part(true, |f| {
-        f.rect(x0, y0 + 1, x1, y1, c.t[2]);
-        f.rect(x0 + 1, y0, x1 - 1, y0, c.t[2]);
-        f.bevel(c.t[2], c.t[3], c.t[1]);
-        // The flap, its buckle and the pocket.
-        f.rect(x0 + 1, y0 + 1, x1 - 1, y0 + 5, c.t[1]);
-        f.rect(x0 + 2, y0 + 1, x1 - 2, y0 + 1, c.t[2]);
-        f.rect(x0 + 1, y0 + 6, x1 - 1, y0 + 6, c.t[0]);
-        f.rect(x0 + 4, y1 - 7, x1 - 1, y1 - 1, c.t[3]);
-        f.rect(x0 + 4, y1 - 7, x1 - 1, y1 - 7, c.t[4]);
-        f.rect(x0 + 4, y1 - 1, x1 - 1, y1 - 1, c.t[1]);
-        f.rect(x0 + 7, y0 + 5, x0 + 8, y0 + 7, GOLD[2]);
-    });
-    // A strap over the front shoulder.
-    p.part(false, |f| {
-        f.rect(nx + 3, ny + 1, nx + 4, ty + 13, c.t[1]);
-        f.put(nx + 3, ny + 1, c.t[2]);
-        f.rect(nx + 3, ty + 9, nx + 4, ty + 9, GOLD[2]);
-    });
-}

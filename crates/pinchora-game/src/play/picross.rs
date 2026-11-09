@@ -1593,8 +1593,6 @@ pub static PICTURES: [Picture; 92] = [
     },
 ];
 
-/// How many ways a picture is set: as drawn, or mirrored sideways. Never upside down, which would make a
-/// sea creature hard to know.
 mod logic;
 #[cfg(test)]
 use logic::runs;

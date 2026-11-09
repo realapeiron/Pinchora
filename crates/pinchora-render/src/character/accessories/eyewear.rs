@@ -2,7 +2,7 @@ use super::*;
 
 // /Face
 
-pub(super) fn lens_box(a: &Anchors, i: usize, grow: i32) -> (i32, i32, i32, i32) {
+fn lens_box(a: &Anchors, i: usize, grow: i32) -> (i32, i32, i32, i32) {
     let (x0, y0, x1, y1) = a.eyes[i];
     let near = i == 1;
     let (gx, gy) = if near { (grow + 1, grow) } else { (grow, grow) };
@@ -10,12 +10,7 @@ pub(super) fn lens_box(a: &Anchors, i: usize, grow: i32) -> (i32, i32, i32, i32)
 }
 
 /// One lens: a box with its corners cut, `frame` round the edge and `fill` (glass, shine) inside.
-pub(super) fn lens(
-    f: &mut Pen,
-    (x0, y0, x1, y1): (i32, i32, i32, i32),
-    frame: [u8; 3],
-    fill: Option<([u8; 3], [u8; 3])>,
-) {
+fn lens(f: &mut Pen, (x0, y0, x1, y1): (i32, i32, i32, i32), frame: [u8; 3], fill: Option<([u8; 3], [u8; 3])>) {
     for y in y0..=y1 {
         for x in x0..=x1 {
             let edge = x == x0 || x == x1 || y == y0 || y == y1;
@@ -33,7 +28,7 @@ pub(super) fn lens(
 }
 
 /// Rings round both eyes with a bridge and a temple to the ear; `fill` fills the lenses.
-pub(super) fn frames(f: &mut Pen, a: &Anchors, frame: [u8; 3], fill: Option<([u8; 3], [u8; 3])>) {
+fn frames(f: &mut Pen, a: &Anchors, frame: [u8; 3], fill: Option<([u8; 3], [u8; 3])>) {
     for i in 0..2 {
         lens(f, lens_box(a, i, 1), frame, fill);
     }
@@ -142,8 +137,6 @@ pub(super) fn blush(p: &mut Pens, c: &Ctx<'_>) {
     p.front.rect(fx0 - 2, fy1 + 2, fx0, fy1 + 3, pink);
 }
 
-pub(super) fn mix(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
+fn mix(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     [0, 1, 2].map(|i| (f32::from(a[i]) + (f32::from(b[i]) - f32::from(a[i])) * t).round() as u8)
 }
-
-// /Neck

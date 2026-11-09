@@ -262,5 +262,3 @@ impl HaulCard {
         s
     }
 }
-
-// /Pot

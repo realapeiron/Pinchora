@@ -567,11 +567,13 @@ fn hat_span(a: &Anchors) -> (i32, i32, i32, i32) {
     (x0, x1, (x0 + x1) / 2, a.brow)
 }
 
+mod backwear;
 mod eyewear;
+mod handheld;
 mod headwear;
 mod neckwear;
-mod props;
+use backwear::*;
 use eyewear::*;
+use handheld::*;
 use headwear::*;
 use neckwear::*;
-use props::*;

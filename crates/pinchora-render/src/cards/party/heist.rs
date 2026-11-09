@@ -307,5 +307,3 @@ impl HeistCard<'_> {
         }
     }
 }
-
-// /Surge

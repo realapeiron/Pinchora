@@ -1,5 +1,7 @@
 use super::*;
 
+/// How many ways a picture is set: as drawn, or mirrored sideways. Never upside down, which would make a
+/// sea creature hard to know.
 pub const VARIANTS: u8 = 2;
 
 /// A puzzle: a picture, mirrored sideways or not (`variant` 1 or 0), so each picture makes two different
