@@ -58,6 +58,13 @@ impl ReefCard<'_> {
         );
         panel(&mut s, 24., 110., 550., 556., 6., &t.panel, &t.panel_edge);
         panel(&mut s, 594., 110., 282., 556., 6., &t.panel, &t.panel_edge);
+        let graphic = self.draw_graphic(&mut s)?;
+        self.draw_prompt(&mut s, &t, graphic);
+        self.draw_rows_and_footer(&mut s, &t);
+        s.push_str("</svg>");
+        Ok(s)
+    }
+    fn draw_graphic(&self, s: &mut String) -> anyhow::Result<bool> {
         let graphic = !self.cells.is_empty() || self.room.is_some() || self.critter.is_some();
         if !self.cells.is_empty() {
             let n = self.columns.max(1);
@@ -74,7 +81,7 @@ impl ReefCard<'_> {
                     _ => "#436579",
                 };
                 panel(
-                    &mut s,
+                    s,
                     x + 2.,
                     y + 2.,
                     size - 4.,
@@ -85,7 +92,7 @@ impl ReefCard<'_> {
                 );
                 if n == 4 {
                     text(
-                        &mut s,
+                        s,
                         x + size / 2.,
                         y + size / 2. + 8.,
                         22.,
@@ -96,9 +103,9 @@ impl ReefCard<'_> {
                         &(i + 1).to_string(),
                     );
                 } else if v == 1 {
-                    sprite(&mut s, CRAB, x + 8., y + 15., 3., "#b8436f", "#fff1e8");
+                    sprite(s, CRAB, x + 8., y + 15., 3., "#b8436f", "#fff1e8");
                 } else if v == 3 {
-                    sprite(&mut s, STAR, x + 15., y + 15., 4., "#172e45", "#fff1e8");
+                    sprite(s, STAR, x + 15., y + 15., 4., "#172e45", "#fff1e8");
                 }
             }
         }
@@ -131,6 +138,10 @@ impl ReefCard<'_> {
                 );
             }
         }
+        Ok(graphic)
+    }
+
+    fn draw_prompt(&self, s: &mut String, t: &Theme, graphic: bool) {
         let mut lines = Vec::new();
         let max_lines = if graphic { 2 } else { 13 };
         for paragraph in self.prompt.lines() {
@@ -160,11 +171,11 @@ impl ReefCard<'_> {
                     r##"<path d="M{x} 646 v-{h} h8 v-8 h8 v8 h-8 v{h}" fill="#245658"/>"##
                 );
             }
-            sprite(&mut s, CRAB, 260., 610., 5., &t.accent, &t.ink);
+            sprite(s, CRAB, 260., 610., 5., &t.accent, &t.ink);
         }
         for (i, line) in lines.iter().enumerate() {
             text(
-                &mut s,
+                s,
                 52.,
                 if graphic { 600. } else { 155. } + i as f32 * 35.,
                 if graphic { 19. } else { 25. },
@@ -175,15 +186,18 @@ impl ReefCard<'_> {
                 &escape(line),
             );
         }
+    }
+
+    fn draw_rows_and_footer(&self, s: &mut String, t: &Theme) {
         for (i, row) in self.rows.iter().take(12).enumerate() {
             let (label, x) = if let Some(label) = row.strip_prefix('★') {
-                sprite(&mut s, STAR, 610., 131. + i as f32 * 42., 2., &t.gold, &t.ink);
+                sprite(s, STAR, 610., 131. + i as f32 * 42., 2., &t.gold, &t.ink);
                 (label, 632.)
             } else {
                 (row.as_str(), 612.)
             };
             text(
-                &mut s,
+                s,
                 x,
                 145. + i as f32 * 42.,
                 17.,
@@ -196,7 +210,7 @@ impl ReefCard<'_> {
         }
         for (i, line) in wrap_laid_out(self.footer, SANS, false, 17., 818., 2).iter().enumerate() {
             text(
-                &mut s,
+                s,
                 40.,
                 701. + i as f32 * 24.,
                 17.,
@@ -207,8 +221,6 @@ impl ReefCard<'_> {
                 &escape(line),
             );
         }
-        s.push_str("</svg>");
-        Ok(s)
     }
 }
 pub fn room_png(kind: usize) -> anyhow::Result<Vec<u8>> {

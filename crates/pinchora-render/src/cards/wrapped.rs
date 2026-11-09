@@ -105,12 +105,35 @@ impl WrappedCard<'_> {
             None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
         }
 
-        // The heading: the year in big letters.
-        if self.backdrop.is_some() {
-            t.plate(&mut s, 160.0, 24.0, 320.0, 112.0);
-        }
+        self.draw_heading(&mut s, t, w);
+        self.draw_member(&mut s, t);
+        self.draw_busiest_month(&mut s, t);
+        self.draw_month_chart(&mut s, t);
+        self.draw_totals(&mut s, t);
+        self.draw_favourite_fish(&mut s, t);
+        self.draw_favourite_house(&mut s, t);
         text(
             &mut s,
+            w / 2.0,
+            1146.0,
+            12.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "middle",
+            &t!(self.lang, "card.wrapped.footer"),
+        );
+        t.draw_frame(&mut s, w, h);
+        s.push_str("</svg>");
+        s
+    }
+    fn draw_heading(&self, s: &mut String, t: &Theme, w: f32) {
+        // The heading: the year in big letters.
+        if self.backdrop.is_some() {
+            t.plate(s, 160.0, 24.0, 320.0, 112.0);
+        }
+        text(
+            s,
             w / 2.0,
             58.0,
             16.0,
@@ -121,7 +144,7 @@ impl WrappedCard<'_> {
             "PINCHORA WRAPPED",
         );
         text(
-            &mut s,
+            s,
             w / 2.0,
             122.0,
             68.0,
@@ -132,14 +155,16 @@ impl WrappedCard<'_> {
             &self.year.to_string(),
         );
         for (x, y, scale) in [(56.0, 44.0, 4.0), (548.0, 70.0, 3.0), (96.0, 96.0, 2.4)] {
-            sprite(&mut s, STAR, x, y, scale, &t.gold, "#fff7d6");
+            sprite(s, STAR, x, y, scale, &t.gold, "#fff7d6");
         }
+    }
 
+    fn draw_member(&self, s: &mut String, t: &Theme) {
         // Who it is about.
-        t.panel(&mut s, 20.0, 150.0, 600.0, 152.0, 4.0);
-        avatar_frame(&mut s, self.avatar_png, 40.0, 164.0, 124.0, 6.0, &t.gold, "avatar");
+        t.panel(s, 20.0, 150.0, 600.0, 152.0, 4.0);
+        avatar_frame(s, self.avatar_png, 40.0, 164.0, 124.0, 6.0, &t.gold, "avatar");
         text(
-            &mut s,
+            s,
             184.0,
             212.0,
             30.0,
@@ -149,9 +174,9 @@ impl WrappedCard<'_> {
             "start",
             &escape(&truncate(self.display_name, 18)),
         );
-        sprite(&mut s, STAR, 186.0, 232.0, 2.4, &t.gold, "#fff7d6");
+        sprite(s, STAR, 186.0, 232.0, 2.4, &t.gold, "#fff7d6");
         text(
-            &mut s,
+            s,
             210.0,
             246.0,
             16.0,
@@ -162,7 +187,7 @@ impl WrappedCard<'_> {
             &escape(&truncate(&self.lang.upper(self.title), 22)),
         );
         text(
-            &mut s,
+            s,
             186.0,
             280.0,
             14.0,
@@ -172,11 +197,13 @@ impl WrappedCard<'_> {
             "start",
             &t!(self.lang, "card.wrapped.subtitle"),
         );
+    }
 
+    fn draw_busiest_month(&self, s: &mut String, t: &Theme) {
         // The busiest month, with a bar for each month under it.
-        t.panel(&mut s, 20.0, 316.0, 600.0, 218.0, 4.0);
+        t.panel(s, 20.0, 316.0, 600.0, 218.0, 4.0);
         text(
-            &mut s,
+            s,
             44.0,
             350.0,
             14.0,
@@ -189,7 +216,7 @@ impl WrappedCard<'_> {
         match Self::top_month(&self.months) {
             Some((month, n)) => {
                 text(
-                    &mut s,
+                    s,
                     44.0,
                     398.0,
                     38.0,
@@ -200,7 +227,7 @@ impl WrappedCard<'_> {
                     &self.month_name(month),
                 );
                 text(
-                    &mut s,
+                    s,
                     596.0,
                     398.0,
                     15.0,
@@ -212,7 +239,7 @@ impl WrappedCard<'_> {
                 );
             }
             None => text(
-                &mut s,
+                s,
                 44.0,
                 398.0,
                 28.0,
@@ -223,6 +250,9 @@ impl WrappedCard<'_> {
                 &t!(self.lang, "card.wrapped.quiet"),
             ),
         }
+    }
+
+    fn draw_month_chart(&self, s: &mut String, t: &Theme) {
         let top = Self::top_month(&self.months).map(|(m, _)| m);
         let tallest = self.months.iter().copied().max().unwrap_or(0).max(1) as f32;
         let (base, chart_h) = (506.0, 70.0);
@@ -253,7 +283,7 @@ impl WrappedCard<'_> {
             let month = self.month_name(i + 1);
             let letter: String = month.chars().take(1).collect();
             text(
-                &mut s,
+                s,
                 x + 17.0,
                 base,
                 12.0,
@@ -264,7 +294,9 @@ impl WrappedCard<'_> {
                 &letter,
             );
         }
+    }
 
+    fn draw_totals(&self, s: &mut String, t: &Theme) {
         // The numbers, two to a row.
         let m = &self.totals;
         // Each number has a picture of its own: (what it counts, how many, the icon and its colours).
@@ -316,10 +348,10 @@ impl WrappedCard<'_> {
         ];
         for (i, (label, value, icon, color, highlight)) in tiles.iter().enumerate() {
             let (x, y) = (20.0 + (i % 2) as f32 * 308.0, 548.0 + (i / 2) as f32 * 88.0);
-            t.panel(&mut s, x, y, 292.0, 76.0, 4.0);
-            text(&mut s, x + 18.0, y + 28.0, 12.0, PIXEL, false, &t.muted, "start", label);
+            t.panel(s, x, y, 292.0, 76.0, 4.0);
+            text(s, x + 18.0, y + 28.0, 12.0, PIXEL, false, &t.muted, "start", label);
             text(
-                &mut s,
+                s,
                 x + 18.0,
                 y + 62.0,
                 28.0,
@@ -332,7 +364,7 @@ impl WrappedCard<'_> {
             // Centred in a 40 x 28 box at the right of the tile, whatever its shape.
             let (cols, rows) = (icon[0].chars().count() as f32, icon.len() as f32);
             sprite(
-                &mut s,
+                s,
                 icon,
                 x + 266.0 - cols * 2.0,
                 y + 38.0 - rows * 2.0,
@@ -341,12 +373,14 @@ impl WrappedCard<'_> {
                 highlight,
             );
         }
+    }
 
+    fn draw_favourite_fish(&self, s: &mut String, t: &Theme) {
         // The favourite fish, with its picture.
         let y = 908.0;
-        t.panel(&mut s, 20.0, y, 600.0, 100.0, 4.0);
+        t.panel(s, 20.0, y, 600.0, 100.0, 4.0);
         text(
-            &mut s,
+            s,
             44.0,
             y + 32.0,
             13.0,
@@ -359,7 +393,7 @@ impl WrappedCard<'_> {
         match &self.fish {
             Some(fish) => {
                 text(
-                    &mut s,
+                    s,
                     44.0,
                     y + 66.0,
                     22.0,
@@ -370,7 +404,7 @@ impl WrappedCard<'_> {
                     &escape(&truncate(fish.name, 22)),
                 );
                 text(
-                    &mut s,
+                    s,
                     44.0,
                     y + 88.0,
                     14.0,
@@ -401,7 +435,7 @@ impl WrappedCard<'_> {
                 }
             }
             None => text(
-                &mut s,
+                s,
                 44.0,
                 y + 70.0,
                 20.0,
@@ -412,19 +446,21 @@ impl WrappedCard<'_> {
                 &t!(self.lang, "card.wrapped.no-fish"),
             ),
         }
+    }
 
+    fn draw_favourite_house(&self, s: &mut String, t: &Theme) {
         // The house they visited most.
         let y = 1020.0;
-        t.panel(&mut s, 20.0, y, 600.0, 98.0, 4.0);
+        t.panel(s, 20.0, y, 600.0, 98.0, 4.0);
         let label = match &self.house {
             Some(house) if house.friend => t!(self.lang, "card.wrapped.house-friend"),
             _ => t!(self.lang, "card.wrapped.house"),
         };
-        text(&mut s, 44.0, y + 30.0, 13.0, PIXEL, false, &t.muted, "start", &label);
+        text(s, 44.0, y + 30.0, 13.0, PIXEL, false, &t.muted, "start", &label);
         match &self.house {
             Some(house) => {
                 text(
-                    &mut s,
+                    s,
                     44.0,
                     y + 60.0,
                     22.0,
@@ -435,7 +471,7 @@ impl WrappedCard<'_> {
                     &escape(&truncate(house.name, 22)),
                 );
                 text(
-                    &mut s,
+                    s,
                     44.0,
                     y + 82.0,
                     14.0,
@@ -450,10 +486,10 @@ impl WrappedCard<'_> {
                         num = thousands_in(self.lang, house.visits)
                     ),
                 );
-                sprite(&mut s, HOUSE, 548.0, y + 34.0, 6.0, &t.gold, "#ffffff");
+                sprite(s, HOUSE, 548.0, y + 34.0, 6.0, &t.gold, "#ffffff");
             }
             None => text(
-                &mut s,
+                s,
                 44.0,
                 y + 64.0,
                 20.0,
@@ -464,19 +500,5 @@ impl WrappedCard<'_> {
                 &t!(self.lang, "card.wrapped.no-visits"),
             ),
         }
-        text(
-            &mut s,
-            w / 2.0,
-            1146.0,
-            12.0,
-            PIXEL,
-            false,
-            &t.muted,
-            "middle",
-            &t!(self.lang, "card.wrapped.footer"),
-        );
-        t.draw_frame(&mut s, w, h);
-        s.push_str("</svg>");
-        s
     }
 }
