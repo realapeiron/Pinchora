@@ -53,6 +53,7 @@ export default function Board({ game, busy, send }: GameProps) {
       {game.board.check && <p role="status">{t("Check")}</p>}
       <div
         className="reef-board-scroll"
+        /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll the game region. */
         tabIndex={0}
         role="region"
         aria-label={t(chess ? "Reef Chess" : "Pearl Checkers")}

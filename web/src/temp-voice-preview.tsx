@@ -1,5 +1,6 @@
 import { translate as spaTranslate } from "./i18n";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { start } from "./i18n/start";
 import { createRoot } from "react-dom/client";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 
@@ -145,8 +146,10 @@ function Layout() {
 const router = createMemoryRouter([
   { path: "/", element: <Layout />, children: [{ index: true, element: <TempVoice /> }] },
 ]);
-createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={new QueryClient()}>
-    <RouterProvider router={router} />
-  </QueryClientProvider>,
-);
+await start(() => {
+  createRoot(document.getElementById("root")!).render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+});

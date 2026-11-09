@@ -9,11 +9,8 @@ import { LegacyGuildRedirect } from "./features/shell/pages/LegacyGuildRedirect"
 const GuildLayout = lazy(() =>
   import("./features/admin/pages/GuildLayout").then((m) => ({ default: m.GuildLayout })),
 );
-const MyHouse = lazy(() => import("./features/house/pages/House").then((m) => ({ default: m.MyHouse })));
-const VisitHouse = lazy(() =>
-  import("./features/house/pages/House").then((m) => ({ default: m.VisitHouse })),
-);
 import { Login } from "./features/shell/pages/Login";
+import { Loading } from "./components/States";
 import { NotFound } from "./components/NotFound";
 import { RequireLogin } from "./components/RequireLogin";
 import { Servers } from "./features/shell/pages/Servers";
@@ -87,7 +84,7 @@ const localizedRoutes: RouteObject[] = [
     element: (
       <RequireLogin>
         {() => (
-          <Suspense>
+          <Suspense fallback={<Loading full />}>
             <ModerationPage />
           </Suspense>
         )}
@@ -96,34 +93,24 @@ const localizedRoutes: RouteObject[] = [
   },
   {
     path: "/me/house",
-    element: (
-      <RequireLogin>
-        {(me) => (
-          <Suspense>
-            <MyHouse me={me} />
-          </Suspense>
-        )}
-      </RequireLogin>
-    ),
+    lazy: async () => {
+      const { MyHouse } = await import("./features/house/pages/House");
+      return { Component: () => <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> };
+    },
   },
   {
     path: "/house/:userId",
-    element: (
-      <RequireLogin>
-        {(me) => (
-          <Suspense>
-            <VisitHouse me={me} />
-          </Suspense>
-        )}
-      </RequireLogin>
-    ),
+    lazy: async () => {
+      const { VisitHouse } = await import("./features/house/pages/House");
+      return { Component: () => <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> };
+    },
   },
   {
     path: "/g/:guildId",
     element: (
       <RequireLogin>
         {(me) => (
-          <Suspense>
+          <Suspense fallback={<Loading full />}>
             <GuildLayout me={me} />
           </Suspense>
         )}
@@ -387,9 +374,10 @@ function LocalizedPages() {
 }
 
 export const router = createBrowserRouter([
-  { Component: LocalizedPages, children: localizedRoutes },
+  { Component: LocalizedPages, hydrateFallbackElement: <Loading full />, children: localizedRoutes },
   {
     path: "/me/*",
+    hydrateFallbackElement: <Loading full />,
     lazy: async () => ({ Component: (await import("./features/games/pages/player/Player")).PlayerRoutes }),
   },
 ]);

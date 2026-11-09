@@ -77,6 +77,7 @@ export default function Picross({ room }: { room: string }) {
           <div
             className="reef-board-scroll"
             role="region"
+            /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll the game region. */
             tabIndex={0}
             aria-label={t("Picross clues and cells")}
           >

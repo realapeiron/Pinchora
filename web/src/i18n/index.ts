@@ -20,8 +20,12 @@ export function loadLocale(choice: Locale): Promise<void> {
           tr = module.tr;
           englishForTurkish = new Map(Object.entries(tr).map(([key, value]) => [value, key]));
         });
-  loaded.set(choice, pending);
-  return pending;
+  const retryable = pending.catch((error: unknown) => {
+    loaded.delete(choice);
+    throw error;
+  });
+  loaded.set(choice, retryable);
+  return retryable;
 }
 
 export async function ready(): Promise<void> {
@@ -40,6 +44,8 @@ let selected: Locale | null = stored(null);
 let account: string | null = null;
 let guild: Locale | null = null;
 const listeners = new Set<() => void>();
+let selection = 0;
+let saving: Promise<unknown> = Promise.resolve();
 
 function stored(id: string | null): Locale | null {
   try {
@@ -78,6 +84,7 @@ export function useLocale(): Locale {
 /** Called after /api/me loads; the bot's /language selection is authoritative. */
 export function configureUser(id: string, choice: Locale | null) {
   if (account === id && selected === (choice ?? stored(id))) return;
+  selection++;
   account = id;
   selected = choice ?? stored(id);
   announce();
@@ -90,15 +97,25 @@ export function configureGuild(choice: Locale | null) {
 }
 
 export function clearUser() {
+  selection++;
   account = null;
   selected = stored(null);
   guild = null;
   announce();
 }
 
-/** Switch immediately and save locally. Authenticated users also save to /language. */
+/** Publish only the latest loaded choice. Authenticated users also save to /language. */
 export async function setLocale(choice: Locale, save?: (choice: Locale) => Promise<unknown>) {
-  await loadLocale(choice);
+  const request = ++selection;
+  const owner = account;
+  const previous = selected;
+  try {
+    await ready();
+  } catch (error) {
+    if (request !== selection) return;
+    throw error;
+  }
+  if (request !== selection) return;
   selected = choice;
   try {
     localStorage.setItem(`pinchora.language.${account ?? "visitor"}`, choice);
@@ -106,7 +123,25 @@ export async function setLocale(choice: Locale, save?: (choice: Locale) => Promi
     // Storage can be disabled by the browser; the current page still switches.
   }
   announce();
-  if (save) await save(choice);
+  try {
+    if (save) {
+      const pending = saving.then(() => (request === selection ? save(choice) : undefined));
+      saving = pending.catch(() => undefined);
+      await pending;
+    }
+  } catch (error) {
+    if (request !== selection || owner !== account) return;
+    selected = previous;
+    try {
+      const key = `pinchora.language.${owner ?? "visitor"}`;
+      if (previous) localStorage.setItem(key, previous);
+      else localStorage.removeItem(key);
+    } catch {
+      /* Storage can be disabled. */
+    }
+    announce();
+    throw error;
+  }
 }
 
 export function number(value: number, choice: Locale = locale()): string {
@@ -130,7 +165,7 @@ export function dateTime(value: Date | string | number, choice: Locale = locale(
 
 export function translate(key: string, values: Values = {}, choice: Locale = locale()): string {
   const catalog: Record<string, string> = choice === "tr" ? tr : en;
-  const template = catalog[key] ?? key;
+  const template = catalog[key] ?? en[key] ?? key;
   return template.replace(/\{(\w+)\}/g, (match, name: string) => {
     const value = values[name];
     return typeof value === "number" ? number(value, choice) : (value ?? match);

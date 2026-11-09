@@ -1,12 +1,14 @@
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect } from "react";
-import { ready, useLocale } from "./i18n";
+import { useLocale } from "./i18n";
+import { start } from "./i18n/start";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
 
 import { ApiError, needsLogin } from "./lib/api";
 import { router } from "./router";
 import { refreshMeta, watchMeta } from "./site/meta";
+import "./styles/house.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/site.css";
@@ -50,15 +52,15 @@ function LocalizedRouter() {
   return <RouterProvider router={router} />;
 }
 
-await ready();
+await start(() => {
+  // The tab title and tags follow the page the router is on after its catalogue is ready.
+  watchMeta(router);
 
-// The tab title and tags follow the page the router is on after its catalogue is ready.
-watchMeta(router);
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <LocalizedRouter />
-    </QueryClientProvider>
-  </StrictMode>,
-);
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <LocalizedRouter />
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+});

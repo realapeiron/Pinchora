@@ -11,7 +11,6 @@ export function LanguageSwitcher({ me, disabled = false }: { me?: Me; disabled?:
       choice,
       me ? (language) => api("/api/me/language", "POST", { language }) : undefined,
     ).catch(() => {
-      void setLocale(active);
       setError(true);
     });
   };

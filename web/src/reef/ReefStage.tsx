@@ -565,6 +565,7 @@ export default function ReefStage({
           className="reef-canvas"
           data-network={network}
           tabIndex={0}
+          /* eslint-disable-next-line jsx-a11y/no-interactive-element-to-noninteractive-role -- The focusable canvas handles the room keyboard controls. */
           role="application"
           aria-label={t("Playable room. Arrow keys move one tile. Home centres the camera.")}
           aria-describedby="reef-help"
@@ -635,6 +636,7 @@ export default function ReefStage({
           </p>
         )}
       </div>
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape closes the drawer from its focused controls. */}
       <aside
         id="reef-controls"
         className="reef-controls"

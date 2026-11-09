@@ -24,7 +24,6 @@ import {
 import { t } from "../../../reef/i18n";
 import { PageHead } from "../../../components/PageHead";
 import { Loading, Problem } from "../../../components/States";
-import "../../../styles/house.css";
 
 const ReefLoop = lazy(() => import("../components/ReefLoop").then((m) => ({ default: m.ReefLoop })));
 const RoomStage = lazy(() => import("../components/RoomStage").then((m) => ({ default: m.RoomStage })));

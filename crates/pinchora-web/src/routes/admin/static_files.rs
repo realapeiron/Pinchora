@@ -85,6 +85,9 @@ async fn spa(State(state): State<WebState>, method: Method, uri: Uri) -> Respons
     {
         let cache = if path.starts_with("assets/") {
             IMMUTABLE
+        } else if path.ends_with(".html") {
+            // A stale page would ask for hashed chunks the next deploy removed.
+            "no-cache"
         } else {
             "public, max-age=3600"
         };
