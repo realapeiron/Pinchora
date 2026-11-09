@@ -5,7 +5,7 @@
 //! cached copy straight away.
 
 #[cfg(test)]
-pinchora_testkit::isolation!(fixture_isolation);
+use pinchora_testkit::isolation as fixture_isolation;
 
 mod audit;
 mod auth;

@@ -1,8 +1,3 @@
-#[rustfmt::skip]
-#[macro_export]
-macro_rules! fixture_family {
-    ($name:ident) => {
-        mod $name {
 //! Group admission between database tests and application fixtures.
 //!
 //! Both families perform global sweeps. Each family may run concurrent tests, but
@@ -11,8 +6,7 @@ macro_rules! fixture_family {
 //! so a stream of new arrivals cannot starve a waiting family. Nested application
 //! harnesses reuse their process's admission connection instead of entering again.
 
-$crate::connection!(session);
-pub use session::connection;
+pub use crate::connection::connection;
 
 /// Hold the returned family membership on this dedicated session until fixtures
 /// are finished. Acquire it before domain locks or the DB suite's isolation lock.
@@ -115,8 +109,4 @@ mod tests {
         .await
         .expect("application admission continues when the database family drains");
     }
-}
-
-        }
-    };
 }
