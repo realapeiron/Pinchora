@@ -1,4 +1,4 @@
-//! Wave 7 editing receipts and consent-controlled house admission.
+//! Editing receipts and consent-controlled house admission.
 use crate::Db;
 use crate::infra::locks::lock_users;
 use crate::sql_id;

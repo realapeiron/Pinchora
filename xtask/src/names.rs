@@ -82,7 +82,7 @@ pub fn run(root: &Path) -> Result {
                 errors.push(format!(
                     "{}:{}: plan code in comment: {}",
                     path.display(),
-                    text[..m.start()].lines().count() + 1,
+                    text[..m.start()].matches('\n').count() + 1,
                     code.as_str()
                 ));
             }

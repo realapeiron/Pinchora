@@ -361,7 +361,7 @@ mod tests {
             }
         }
         assert_eq!(Module::parse("nope"), None);
-        // The four newer groups are filled by the phase-4 packages; until then they are empty and hidden.
+        // The four newer groups stay empty and hidden until their features are added.
         for group in [Group::Server, Group::Players, Group::Home, Group::Games] {
             assert!(Module::ALL.iter().any(|m| m.group() == group), "{group:?} is empty");
         }

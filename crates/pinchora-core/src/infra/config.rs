@@ -230,7 +230,7 @@ impl Default for LogConfig {
     }
 }
 
-/// Reserved for phase 2 Roblox OAuth. Profile-code verification uses no credentials.
+/// Reserved for Roblox OAuth. Profile-code verification uses no credentials.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct RobloxConfig {

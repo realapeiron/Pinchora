@@ -161,7 +161,7 @@ test("switching plaza remounts the queue and keyboard placement targets the new 
     const room = rooms.get(guild)!;
     if (url.pathname.endsWith("/ops")) {
       const body = route.request().postDataJSON();
-      // Revisioned rooms use the wave 7 concurrency envelope.
+      // Revisioned rooms use the concurrency envelope.
       expect(body.expected_fingerprint).toBe(guild);
       expect(body.expected_revision).toBe(room.revision);
       expect(body.request_id).toBeTruthy();

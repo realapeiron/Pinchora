@@ -43,12 +43,36 @@ impl<'a> Visit<'a> for Rules {
 }
 fn rules(root: &Path, path: &str) -> Result<Rules> {
     let mut rules = Rules::default();
-    rules.visit_file(&syn::parse_file(&std::fs::read_to_string(root.join(path))?)?);
+    let file = root.join(path);
+    rules.visit_file(&syn::parse_file(&std::fs::read_to_string(&file)?)?);
+    // A file split into submodules keeps them in a folder of the same name.
+    for part in submodules(&file.with_extension(""))? {
+        rules.visit_file(&syn::parse_file(&std::fs::read_to_string(part)?)?);
+    }
     Ok(rules)
+}
+fn submodules(folder: &Path) -> Result<Vec<std::path::PathBuf>> {
+    let mut files = Vec::new();
+    if folder.is_dir() {
+        for entry in std::fs::read_dir(folder)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                files.extend(submodules(&path)?);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                files.push(path);
+            }
+        }
+    }
+    files.sort();
+    Ok(files)
 }
 fn mapping(rules: &Rules, function: &str) -> BTreeMap<String, String> {
     let mut map = BTreeMap::new();
-    for arm in &rules.arms[function] {
+    let arms = rules
+        .arms
+        .get(function)
+        .unwrap_or_else(|| panic!("{function} was not found; update the contract scan if it moved"));
+    for arm in arms {
         for prefix in arm["prefixes"].as_array().unwrap() {
             map.insert(
                 prefix.as_str().unwrap().to_owned(),
