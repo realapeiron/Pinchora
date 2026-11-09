@@ -80,36 +80,7 @@ impl NurseryCard {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
-        text(
-            &mut s,
-            36.0,
-            62.0,
-            30.0,
-            PIXEL,
-            false,
-            &t.ink,
-            "start",
-            &escape(&self.lang.upper(&self.title)),
-        );
-        text(
-            &mut s,
-            964.0,
-            60.0,
-            18.0,
-            PIXEL,
-            false,
-            &t.gold,
-            "end",
-            &escape(&self.subtitle),
-        );
-
-        let icons: [(&[&str], &str); 4] = [
-            (FOOD, &t.accent),
-            (FUN, &t.heart),
-            (ENERGY, &t.mint),
-            (CLEAN, "#8fd3ff"),
-        ];
+        self.draw_heading(&mut s, t, w, h);
         for (i, pet) in self.pets.iter().take(Self::PER_ROW * Self::MAX_ROWS).enumerate() {
             let (col, row) = ((i % Self::PER_ROW) as f32, (i / Self::PER_ROW) as f32);
             let (x, y) = (36.0 + col * 236.0, 88.0 + row * 248.0);
@@ -148,98 +119,8 @@ impl NurseryCard {
                 );
             }
 
-            // The portrait, sitting on a shadow.
-            let (bw, bh) = Self::SPRITE_BOX;
-            let sx = x + 110.0 - pet.sprite_w as f32 / 2.0;
-            let sy = y + 40.0 + (bh as f32 - pet.sprite_h as f32);
-            let _ = write!(
-                s,
-                r##"<ellipse cx="{}" cy="{}" rx="{}" ry="6" fill="#000000" fill-opacity="{}"/><image x="{sx}" y="{sy}" width="{}" height="{}" opacity="{opacity}" href="{}"/>"##,
-                x + 110.0,
-                y + 40.0 + bh as f32 + 2.0,
-                (pet.sprite_w as f32 / 2.2).min(bw as f32 / 2.0),
-                0.25 * opacity,
-                pet.sprite_w,
-                pet.sprite_h,
-                data_uri_png(&pet.sprite_png)
-            );
-            if pet.status == PetStatus::Asleep {
-                for (n, size) in [14.0, 20.0].into_iter().enumerate() {
-                    text(
-                        &mut s,
-                        x + 162.0 + n as f32 * 16.0,
-                        y + 84.0 - n as f32 * 18.0,
-                        size,
-                        PIXEL,
-                        false,
-                        "#b8c4ff",
-                        "start",
-                        "Z",
-                    );
-                }
-            }
-            if pet.status == PetStatus::Away {
-                plate(&mut s, x + 62.0, y + 70.0, 96.0, 34.0, 0.7);
-                text(
-                    &mut s,
-                    x + 110.0,
-                    y + 94.0,
-                    20.0,
-                    PIXEL,
-                    false,
-                    &t.gold,
-                    "middle",
-                    &t!(self.lang, "card.nursery.away"),
-                );
-            }
-
-            text(
-                &mut s,
-                x + 110.0,
-                y + 146.0,
-                17.0,
-                SANS,
-                true,
-                &t.ink,
-                "middle",
-                // Cut to the cell's width (bold runs wider than the regular widths it measures).
-                &escape(&truncate_to(&pet.name, 18.5, 196.0)),
-            );
-            // Level, and how far to the next one.
-            text(
-                &mut s,
-                x + 18.0,
-                y + 170.0,
-                14.0,
-                PIXEL,
-                false,
-                &t.ink,
-                "start",
-                &t!(self.lang, "card.nursery.level", level = pet.level),
-            );
-            let bar = 104.0;
-            let _ = write!(
-                s,
-                r##"<rect x="{bx}" y="{by}" width="{bar}" height="8" fill="#0b1029"/><rect x="{bx}" y="{by}" width="{}" height="8" fill="{}"/><rect x="{bx}" y="{by}" width="{}" height="2" fill="#ffffff" fill-opacity="0.35"/>"##,
-                bar * pet.xp.clamp(0.0, 1.0),
-                t.gold,
-                bar * pet.xp.clamp(0.0, 1.0),
-                bx = x + 98.0,
-                by = y + 160.0,
-            );
-            // The four needs as little icons that dim when the need runs low, with a bar under each.
-            for (n, ((bitmap, color), value)) in icons.iter().zip(pet.needs).enumerate() {
-                let ix = x + 22.0 + n as f32 * 45.0;
-                let lit = if value >= 25 { color } else { "#3a4a86" };
-                sprite(&mut s, bitmap, ix + 4.0, y + 184.0, 3.2, lit, "#ffffff");
-                let _ = write!(
-                    s,
-                    r##"<rect x="{ix}" y="{}" width="32" height="5" fill="#0b1029"/><rect x="{ix}" y="{}" width="{}" height="5" fill="{color}"/>"##,
-                    y + 212.0,
-                    y + 212.0,
-                    32.0 * f32::from(value).clamp(0.0, 100.0) / 100.0
-                );
-            }
+            self.draw_pet_portrait(&mut s, t, pet, x, y, opacity);
+            self.draw_pet_details(&mut s, t, pet, x, y);
         }
         if self.pets.is_empty() {
             text(
@@ -267,6 +148,134 @@ impl NurseryCard {
         );
         s.push_str("</svg>");
         s
+    }
+    fn draw_heading(&self, s: &mut String, t: &Theme, w: f32, h: f32) {
+        background(s, w, h, &t.bg_top, &t.bg_bottom);
+        text(
+            s,
+            36.0,
+            62.0,
+            30.0,
+            PIXEL,
+            false,
+            &t.ink,
+            "start",
+            &escape(&self.lang.upper(&self.title)),
+        );
+        text(
+            s,
+            964.0,
+            60.0,
+            18.0,
+            PIXEL,
+            false,
+            &t.gold,
+            "end",
+            &escape(&self.subtitle),
+        );
+    }
+
+    fn draw_pet_portrait(&self, s: &mut String, t: &Theme, pet: &NurseryPet, x: f32, y: f32, opacity: f32) {
+        // The portrait, sitting on a shadow.
+        let (bw, bh) = Self::SPRITE_BOX;
+        let sx = x + 110.0 - pet.sprite_w as f32 / 2.0;
+        let sy = y + 40.0 + (bh as f32 - pet.sprite_h as f32);
+        let _ = write!(
+            s,
+            r##"<ellipse cx="{}" cy="{}" rx="{}" ry="6" fill="#000000" fill-opacity="{}"/><image x="{sx}" y="{sy}" width="{}" height="{}" opacity="{opacity}" href="{}"/>"##,
+            x + 110.0,
+            y + 40.0 + bh as f32 + 2.0,
+            (pet.sprite_w as f32 / 2.2).min(bw as f32 / 2.0),
+            0.25 * opacity,
+            pet.sprite_w,
+            pet.sprite_h,
+            data_uri_png(&pet.sprite_png)
+        );
+        if pet.status == PetStatus::Asleep {
+            for (n, size) in [14.0, 20.0].into_iter().enumerate() {
+                text(
+                    s,
+                    x + 162.0 + n as f32 * 16.0,
+                    y + 84.0 - n as f32 * 18.0,
+                    size,
+                    PIXEL,
+                    false,
+                    "#b8c4ff",
+                    "start",
+                    "Z",
+                );
+            }
+        }
+        if pet.status == PetStatus::Away {
+            plate(s, x + 62.0, y + 70.0, 96.0, 34.0, 0.7);
+            text(
+                s,
+                x + 110.0,
+                y + 94.0,
+                20.0,
+                PIXEL,
+                false,
+                &t.gold,
+                "middle",
+                &t!(self.lang, "card.nursery.away"),
+            );
+        }
+    }
+
+    fn draw_pet_details(&self, s: &mut String, t: &Theme, pet: &NurseryPet, x: f32, y: f32) {
+        let icons: [(&[&str], &str); 4] = [
+            (FOOD, &t.accent),
+            (FUN, &t.heart),
+            (ENERGY, &t.mint),
+            (CLEAN, "#8fd3ff"),
+        ];
+        text(
+            s,
+            x + 110.0,
+            y + 146.0,
+            17.0,
+            SANS,
+            true,
+            &t.ink,
+            "middle",
+            // Cut to the cell's width (bold runs wider than the regular widths it measures).
+            &escape(&truncate_to(&pet.name, 18.5, 196.0)),
+        );
+        // Level, and how far to the next one.
+        text(
+            s,
+            x + 18.0,
+            y + 170.0,
+            14.0,
+            PIXEL,
+            false,
+            &t.ink,
+            "start",
+            &t!(self.lang, "card.nursery.level", level = pet.level),
+        );
+        let bar = 104.0;
+        let _ = write!(
+            s,
+            r##"<rect x="{bx}" y="{by}" width="{bar}" height="8" fill="#0b1029"/><rect x="{bx}" y="{by}" width="{}" height="8" fill="{}"/><rect x="{bx}" y="{by}" width="{}" height="2" fill="#ffffff" fill-opacity="0.35"/>"##,
+            bar * pet.xp.clamp(0.0, 1.0),
+            t.gold,
+            bar * pet.xp.clamp(0.0, 1.0),
+            bx = x + 98.0,
+            by = y + 160.0,
+        );
+        // The four needs as little icons that dim when the need runs low, with a bar under each.
+        for (n, ((bitmap, color), value)) in icons.iter().zip(pet.needs).enumerate() {
+            let ix = x + 22.0 + n as f32 * 45.0;
+            let lit = if value >= 25 { color } else { "#3a4a86" };
+            sprite(s, bitmap, ix + 4.0, y + 184.0, 3.2, lit, "#ffffff");
+            let _ = write!(
+                s,
+                r##"<rect x="{ix}" y="{}" width="32" height="5" fill="#0b1029"/><rect x="{ix}" y="{}" width="{}" height="5" fill="{color}"/>"##,
+                y + 212.0,
+                y + 212.0,
+                32.0 * f32::from(value).clamp(0.0, 100.0) / 100.0
+            );
+        }
     }
 }
 

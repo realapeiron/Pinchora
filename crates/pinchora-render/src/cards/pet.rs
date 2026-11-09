@@ -60,8 +60,15 @@ impl PetCard {
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        self.draw_portrait(&mut s, t);
+        self.draw_identity_and_experience(&mut s, t);
+        self.draw_needs_and_mood(&mut s, t);
+        s.push_str("</svg>");
+        s
+    }
+    fn draw_portrait(&self, s: &mut String, t: &Theme) {
         let frame = format!("#{:06x}", self.rarity_color);
-        panel(&mut s, 32.0, 32.0, 300.0, 356.0, 8.0, &t.panel, &frame);
+        panel(s, 32.0, 32.0, 300.0, 356.0, 8.0, &t.panel, &frame);
         // A sleeping pet is a little faded, a pet on a trip is only a ghost of itself.
         let opacity = match self.status {
             PetStatus::Awake | PetStatus::Back => 1.0,
@@ -85,13 +92,13 @@ impl PetCard {
                 // Zs rising in the corner of the panel, bigger as they climb.
                 for (n, size) in [20.0, 28.0, 38.0].into_iter().enumerate() {
                     let (x, y) = (256.0 + n as f32 * 18.0, 124.0 - [0.0, 26.0, 54.0][n]);
-                    text(&mut s, x, y, size, PIXEL, false, "#b8c4ff", "start", "Z");
+                    text(s, x, y, size, PIXEL, false, "#b8c4ff", "start", "Z");
                 }
             }
             PetStatus::Away => {
-                plate(&mut s, 52.0, 148.0, 260.0, 80.0, 0.7);
+                plate(s, 52.0, 148.0, 260.0, 80.0, 0.7);
                 text(
-                    &mut s,
+                    s,
                     182.0,
                     180.0,
                     24.0,
@@ -102,12 +109,12 @@ impl PetCard {
                     &t!(self.lang, "card.pet.on-trip"),
                 );
                 let place = escape(&truncate(&self.place, 26));
-                text(&mut s, 182.0, 212.0, 15.0, SANS, true, &t.ink, "middle", &place);
+                text(s, 182.0, 212.0, 15.0, SANS, true, &t.ink, "middle", &place);
             }
             PetStatus::Awake | PetStatus::Back => {}
         }
         text(
-            &mut s,
+            s,
             182.0,
             352.0,
             16.0,
@@ -117,9 +124,11 @@ impl PetCard {
             "middle",
             &escape(&self.lang.upper(&self.rarity)),
         );
+    }
 
+    fn draw_identity_and_experience(&self, s: &mut String, t: &Theme) {
         text(
-            &mut s,
+            s,
             364.0,
             80.0,
             40.0,
@@ -131,7 +140,7 @@ impl PetCard {
         );
         let sub = format!("{} · {}", self.species, self.personality);
         text(
-            &mut s,
+            s,
             366.0,
             112.0,
             19.0,
@@ -143,7 +152,7 @@ impl PetCard {
         );
 
         text(
-            &mut s,
+            s,
             364.0,
             152.0,
             16.0,
@@ -154,19 +163,19 @@ impl PetCard {
             &t!(self.lang, "card.level"),
         );
         let level = self.level.to_string();
-        text(&mut s, 440.0, 154.0, 22.0, PIXEL, false, &t.ink, "start", &level);
+        text(s, 440.0, 154.0, 22.0, PIXEL, false, &t.ink, "start", &level);
         // The star follows the digits at a fixed gap, so a two-digit level does not crowd it.
         let star_x = 440.0 + pixel_width(&level, 22.0) + 22.0;
-        sprite(&mut s, STAR, star_x, 136.0, 3.4, &t.gold, "#fff7d6");
+        sprite(s, STAR, star_x, 136.0, 3.4, &t.gold, "#fff7d6");
         let maxed = self.xp_needed <= 0;
         let xp = match (maxed, self.status) {
             (true, _) => t!(self.lang, "card.pet.max-level"),
             (false, PetStatus::Asleep) => t!(self.lang, "card.pet.no-xp-asleep"),
             _ => t!(self.lang, "card.pet.xp", xp = self.xp, needed = self.xp_needed),
         };
-        text(&mut s, 828.0, 152.0, 14.0, PIXEL, false, &t.ink, "end", &xp);
+        text(s, 828.0, 152.0, 14.0, PIXEL, false, &t.ink, "end", &xp);
         segment_bar(
-            &mut s,
+            s,
             364.0,
             164.0,
             464.0,
@@ -181,7 +190,9 @@ impl PetCard {
             "#1f2a57",
             &t.panel_edge,
         );
+    }
 
+    fn draw_needs_and_mood(&self, s: &mut String, t: &Theme) {
         let labels = [
             t!(self.lang, "card.pet.hunger"),
             t!(self.lang, "card.pet.fun"),
@@ -191,19 +202,9 @@ impl PetCard {
         let colors = [&t.accent, &t.heart, &t.mint, "#8fd3ff"];
         for i in 0..4 {
             let y = 216.0 + i as f32 * 40.0;
-            text(
-                &mut s,
-                364.0,
-                y + 22.0,
-                14.0,
-                PIXEL,
-                false,
-                &t.muted,
-                "start",
-                &labels[i],
-            );
+            text(s, 364.0, y + 22.0, 14.0, PIXEL, false, &t.muted, "start", &labels[i]);
             segment_bar(
-                &mut s,
+                s,
                 470.0,
                 y,
                 358.0,
@@ -215,25 +216,13 @@ impl PetCard {
                 &t.panel_edge,
             );
         }
-        sprite(&mut s, HEART, 364.0, 380.0, 3.4, &t.heart, "#ffc2cf");
+        sprite(s, HEART, 364.0, 380.0, 3.4, &t.heart, "#ffc2cf");
         let line = match self.status {
             PetStatus::Awake => t!(self.lang, "card.pet.feeling", mood = self.lang.upper(&self.mood)),
             PetStatus::Asleep => t!(self.lang, "card.pet.asleep-line"),
             PetStatus::Away => t!(self.lang, "card.pet.away-line", back = self.lang.upper(&self.back)),
             PetStatus::Back => t!(self.lang, "card.pet.back-line"),
         };
-        text(
-            &mut s,
-            396.0,
-            398.0,
-            16.0,
-            PIXEL,
-            false,
-            &t.ink,
-            "start",
-            &escape(&line),
-        );
-        s.push_str("</svg>");
-        s
+        text(s, 396.0, 398.0, 16.0, PIXEL, false, &t.ink, "start", &escape(&line));
     }
 }

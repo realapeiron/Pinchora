@@ -166,29 +166,45 @@ impl ProfileCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
+        self.draw_backdrop(&mut s, t, &rows, w, h);
+        self.draw_left_column(&mut s, t);
+        let (bio_chars, bio_room) = self.draw_identity(&mut s, t);
+        self.draw_bio_and_character(&mut s, t, &rows, bio_chars, bio_room);
+        self.draw_showcase(&mut s, t, &rows);
+        self.draw_stats(&mut s, t, &rows);
+        self.draw_experience(&mut s, t, &rows);
+        self.draw_footer(&mut s, t, &rows);
+        t.draw_frame(&mut s, w, h);
+        s.push_str("</svg>");
+        s
+    }
+
+    fn draw_backdrop(&self, s: &mut String, t: &Theme, rows: &Rows, w: f32, h: f32) {
         match &self.backdrop {
             Some(b) => {
-                backdrop(&mut s, w, h, b, t.opacity.scrim());
+                backdrop(s, w, h, b, t.opacity.scrim());
                 // Text that is not inside a panel gets a plate of its own.
                 if self.title.is_some() {
-                    t.plate(&mut s, 288.0, 40.0, 640.0, 96.0);
+                    t.plate(s, 288.0, 40.0, 640.0, 96.0);
                 } else {
-                    t.plate(&mut s, 288.0, 44.0, 640.0, 88.0);
+                    t.plate(s, 288.0, 44.0, 640.0, 88.0);
                 }
-                t.plate(&mut s, 288.0, rows.plate.0, 640.0, rows.plate.1);
+                t.plate(s, 288.0, rows.plate.0, 640.0, rows.plate.1);
                 // The footer's small text and busy art get a second plate of their own.
                 let footer = rows.foot_y - 4.0;
-                t.footer_plate(&mut s, 288.0, footer, 640.0, rows.plate.0 + rows.plate.1 - footer);
+                t.footer_plate(s, 288.0, footer, 640.0, rows.plate.0 + rows.plate.1 - footer);
             }
-            None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
+            None => background(s, w, h, &t.bg_top, &t.bg_bottom),
         }
+    }
 
+    fn draw_left_column(&self, s: &mut String, t: &Theme) {
         // Left column: avatar, level, rep, streak.
-        avatar_frame(&mut s, self.avatar_png, 40.0, 40.0, 224.0, 8.0, &t.accent, "avatar");
+        avatar_frame(s, self.avatar_png, 40.0, 40.0, 224.0, 8.0, &t.accent, "avatar");
 
-        t.panel(&mut s, 40.0, 280.0, 224.0, 88.0, 4.0);
+        t.panel(s, 40.0, 280.0, 224.0, 88.0, 4.0);
         text(
-            &mut s,
+            s,
             60.0,
             312.0,
             18.0,
@@ -199,7 +215,7 @@ impl ProfileCard<'_> {
             &t!(self.lang, "card.level"),
         );
         text(
-            &mut s,
+            s,
             60.0,
             352.0,
             40.0,
@@ -209,12 +225,12 @@ impl ProfileCard<'_> {
             "start",
             &self.level.to_string(),
         );
-        sprite(&mut s, STAR, 200.0, 300.0, 6.0, &t.gold, "#fff7d6");
+        sprite(s, STAR, 200.0, 300.0, 6.0, &t.gold, "#fff7d6");
 
-        t.panel(&mut s, 40.0, 384.0, 224.0, 56.0, 4.0);
-        sprite(&mut s, HEART, 58.0, 396.0, 4.6, &t.heart, "#ffc2cf");
+        t.panel(s, 40.0, 384.0, 224.0, 56.0, 4.0);
+        sprite(s, HEART, 58.0, 396.0, 4.6, &t.heart, "#ffc2cf");
         text(
-            &mut s,
+            s,
             104.0,
             421.0,
             20.0,
@@ -229,10 +245,10 @@ impl ProfileCard<'_> {
             ),
         );
 
-        t.panel(&mut s, 40.0, 456.0, 224.0, 56.0, 4.0);
-        sprite(&mut s, STAR, 58.0, 468.0, 4.6, &t.mint, "#c9fff0");
+        t.panel(s, 40.0, 456.0, 224.0, 56.0, 4.0);
+        sprite(s, STAR, 58.0, 468.0, 4.6, &t.mint, "#c9fff0");
         text(
-            &mut s,
+            s,
             104.0,
             493.0,
             20.0,
@@ -242,7 +258,9 @@ impl ProfileCard<'_> {
             "start",
             &t!(self.lang, "card.days", count = self.streak.max(0)),
         );
+    }
 
+    fn draw_identity(&self, s: &mut String, t: &Theme) -> (usize, f32) {
         // Right column: name, bio, stats, XP. With a character, text keeps clear of its corner.
         let (name_room, bio_chars, bio_room) = if self.character.is_some() {
             (516.0, 38, 490.0)
@@ -262,10 +280,10 @@ impl ProfileCard<'_> {
         match self.title {
             // The title takes a line of its own between the name and the handle.
             Some(title) => {
-                text(&mut s, 296.0, 80.0, 44.0, SANS, true, &t.ink, "start", &name);
-                sprite(&mut s, STAR, 298.0, 92.0, 2.4, &t.gold, "#fff7d6");
+                text(s, 296.0, 80.0, 44.0, SANS, true, &t.ink, "start", &name);
+                sprite(s, STAR, 298.0, 92.0, 2.4, &t.gold, "#fff7d6");
                 text(
-                    &mut s,
+                    s,
                     322.0,
                     106.0,
                     16.0,
@@ -275,18 +293,22 @@ impl ProfileCard<'_> {
                     "start",
                     &escape(&truncate(&self.lang.upper(title), 24)),
                 );
-                text(&mut s, 298.0, 130.0, 20.0, SANS, false, &t.muted, "start", &handle);
+                text(s, 298.0, 130.0, 20.0, SANS, false, &t.muted, "start", &handle);
             }
             None => {
-                text(&mut s, 296.0, 88.0, 44.0, SANS, true, &t.ink, "start", &name);
-                text(&mut s, 298.0, 122.0, 22.0, SANS, false, &t.muted, "start", &handle);
+                text(s, 296.0, 88.0, 44.0, SANS, true, &t.ink, "start", &name);
+                text(s, 298.0, 122.0, 22.0, SANS, false, &t.muted, "start", &handle);
             }
         }
 
+        (bio_chars, bio_room)
+    }
+
+    fn draw_bio_and_character(&self, s: &mut String, t: &Theme, rows: &Rows, bio_chars: usize, bio_room: f32) {
         let bio_top = 140.0;
-        t.panel(&mut s, 296.0, bio_top, 624.0, rows.bio_h, 4.0);
+        t.panel(s, 296.0, bio_top, 624.0, rows.bio_h, 4.0);
         text(
-            &mut s,
+            s,
             316.0,
             bio_top + rows.bio_label_dy,
             14.0,
@@ -299,13 +321,13 @@ impl ProfileCard<'_> {
         if let Some(partner) = &self.partner {
             // The corner of the label row; a character takes the panel's right edge.
             let right = if self.character.is_some() { 806.0 } else { 900.0 };
-            self.partner_line(&mut s, partner, right, bio_top + rows.bio_label_dy);
+            self.partner_line(s, partner, right, bio_top + rows.bio_label_dy);
         }
         let no_bio = t!(self.lang, "card.no-bio");
         let bio = if self.bio.trim().is_empty() { &no_bio } else { self.bio };
         for (i, line) in wrap(bio, bio_chars, 3).iter().enumerate() {
             text(
-                &mut s,
+                s,
                 316.0,
                 bio_top + rows.bio_first_dy + i as f32 * rows.bio_leading,
                 rows.bio_size,
@@ -321,7 +343,7 @@ impl ProfileCard<'_> {
         if let Some(art) = &self.character {
             // Feet near the bottom edge of the about-me panel, head up into the title row.
             let (cx, feet) = (862.0, bio_top + rows.bio_h - 10.0);
-            pixel_shadow(&mut s, cx, feet, (art.w as f32 / 2.5).max(30.0), 6.0, 0.3);
+            pixel_shadow(s, cx, feet, (art.w as f32 / 2.5).max(30.0), 6.0, 0.3);
             let _ = write!(
                 s,
                 r#"<image x="{}" y="{}" width="{}" height="{}" image-rendering="optimizeSpeed" href="{}"/>"#,
@@ -332,11 +354,15 @@ impl ProfileCard<'_> {
                 data_uri_png(art.png)
             );
         }
+    }
 
+    fn draw_showcase(&self, s: &mut String, t: &Theme, rows: &Rows) {
         if let Some(y) = rows.show_y {
-            draw_row(&mut s, t, self.lang, self.showcase, 296.0, y, 624.0);
+            draw_row(s, t, self.lang, self.showcase, 296.0, y, 624.0);
         }
+    }
 
+    fn draw_stats(&self, s: &mut String, t: &Theme, rows: &Rows) {
         let server_rank = self
             .server_rank
             .map_or_else(|| "-".to_owned(), |r| format!("#{}", thousands_in(self.lang, r)));
@@ -355,9 +381,9 @@ impl ProfileCard<'_> {
         ];
         for (i, (label, value, icon)) in stats.iter().enumerate() {
             let x = 296.0 + i as f32 * 216.0;
-            t.panel(&mut s, x, rows.stats_y, 192.0, rows.stats_h, 4.0);
+            t.panel(s, x, rows.stats_y, 192.0, rows.stats_h, 4.0);
             text(
-                &mut s,
+                s,
                 x + 18.0,
                 rows.stats_y + rows.stats_label_dy,
                 rows.stats_label_size,
@@ -368,7 +394,7 @@ impl ProfileCard<'_> {
                 label,
             );
             text(
-                &mut s,
+                s,
                 x + 18.0,
                 rows.stats_y + rows.stats_value_dy,
                 rows.stats_value_size,
@@ -380,7 +406,7 @@ impl ProfileCard<'_> {
             );
             if let Some((sprite_rows, color)) = icon {
                 sprite(
-                    &mut s,
+                    s,
                     sprite_rows,
                     x + rows.stats_icon_dx,
                     rows.stats_y + rows.stats_icon_dy,
@@ -390,9 +416,11 @@ impl ProfileCard<'_> {
                 );
             }
         }
+    }
 
+    fn draw_experience(&self, s: &mut String, t: &Theme, rows: &Rows) {
         text(
-            &mut s,
+            s,
             296.0,
             rows.xp_y,
             16.0,
@@ -407,10 +435,10 @@ impl ProfileCard<'_> {
             thousands_in(self.lang, self.xp_current as i64),
             thousands_in(self.lang, self.xp_needed as i64)
         );
-        text(&mut s, 920.0, rows.xp_y, 16.0, PIXEL, false, &t.ink, "end", &xp_label);
+        text(s, 920.0, rows.xp_y, 16.0, PIXEL, false, &t.ink, "end", &xp_label);
         let fraction = self.xp_current as f32 / self.xp_needed.max(1) as f32;
         segment_bar(
-            &mut s,
+            s,
             296.0,
             rows.bar_y,
             624.0,
@@ -428,7 +456,7 @@ impl ProfileCard<'_> {
             t!(self.lang, "card.total-xp", xp = thousands_in(self.lang, self.total_xp))
         };
         text(
-            &mut s,
+            s,
             296.0,
             rows.foot_y + 30.0,
             14.0,
@@ -438,10 +466,12 @@ impl ProfileCard<'_> {
             "start",
             &total,
         );
+    }
 
+    fn draw_footer(&self, s: &mut String, t: &Theme, rows: &Rows) {
         // Badges run along the footer between the total and the crab, each on its rarity plate.
         for (i, badge) in self.badges.iter().take(Self::MAX_BADGES).enumerate() {
-            badge.draw(&mut s, 450.0 + i as f32 * (BadgeIcon::PLATE + 3.0), rows.foot_y);
+            badge.draw(s, 450.0 + i as f32 * (BadgeIcon::PLATE + 3.0), rows.foot_y);
         }
 
         if self.birthday_today {
@@ -454,9 +484,9 @@ impl ProfileCard<'_> {
                 t.accent
             );
         }
-        sprite(&mut s, CRAB, 804.0, rows.foot_y + 16.0, 3.0, &t.accent, "#fff1e8");
+        sprite(s, CRAB, 804.0, rows.foot_y + 16.0, 3.0, &t.accent, "#fff1e8");
         text(
-            &mut s,
+            s,
             920.0,
             rows.foot_y + 34.0,
             14.0,
@@ -466,9 +496,6 @@ impl ProfileCard<'_> {
             "end",
             "PINCHORA",
         );
-        t.draw_frame(&mut s, w, h);
-        s.push_str("</svg>");
-        s
     }
 
     /// "♥ name", its right end at `right`, on the text baseline `y`. The name is measured as it
