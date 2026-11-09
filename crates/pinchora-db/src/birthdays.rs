@@ -198,8 +198,9 @@ impl Db {
         match taken {
             Ok(true) => Ok(Some(tx)),
             result => {
-                tx.rollback().await?;
+                let released = tx.rollback().await;
                 result?;
+                released?;
                 Ok(None)
             }
         }

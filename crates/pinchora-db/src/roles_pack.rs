@@ -381,7 +381,9 @@ impl Db {
                 Ok(deleted)
             }
             Err(error) => {
-                tx.rollback().await?;
+                if let Err(release_error) = tx.rollback().await {
+                    tracing::warn!(%release_error, "transaction rollback failed after work error");
+                }
                 Err(error)
             }
         }

@@ -90,8 +90,9 @@ impl Db {
             if matches!(locked, Ok(true)) {
                 return Ok(tx);
             }
-            tx.rollback().await?;
+            let released = tx.rollback().await;
             locked?;
+            released?;
             tokio::time::sleep(std::time::Duration::from_millis(25)).await;
         }
     }

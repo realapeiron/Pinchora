@@ -302,12 +302,18 @@ pub(crate) async fn route_dm(app: &Arc<App>, guild: u64, user: u64, body: &str) 
     }
     .await;
     let created = match result {
-        Ok(created) => {
+        Ok(Some(created)) => {
             lock.commit().await?;
-            created
+            Some(created)
+        }
+        Ok(None) => {
+            lock.rollback().await?;
+            None
         }
         Err(error) => {
-            lock.rollback().await?;
+            if let Err(release_error) = lock.rollback().await {
+                tracing::warn!(%release_error, "transaction rollback failed after work error");
+            }
             return Err(error);
         }
     };

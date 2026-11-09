@@ -204,8 +204,11 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
         Ok(posted)
     }
     .await;
-    dispatch.rollback().await?;
-    result
+    let released = dispatch.rollback().await;
+    result.and_then(|value| {
+        released?;
+        Ok(value)
+    })
 }
 
 /// Keep the dispatcher stopped through data deletion, so no grant can race timer erasure.
@@ -233,7 +236,9 @@ pub(crate) async fn before_delete(app: &App, user: u64) -> anyhow::Result<sqlx::
     }
     .await;
     if let Err(error) = result {
-        guard.rollback().await?;
+        if let Err(release_error) = guard.rollback().await {
+            tracing::warn!(%release_error, "transaction rollback failed after work error");
+        }
         return Err(error);
     }
     Ok(guard)

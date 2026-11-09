@@ -91,6 +91,7 @@ pub async fn authorize(app: &App, guild: u64, actor: u64) -> anyhow::Result<()> 
 pub async fn save_config(app: &std::sync::Arc<App>, guild: u64, actor: u64, next: &Config) -> anyhow::Result<()> {
     let lang = app.guild_lang(guild).await;
     let mut guard = Some(app.db.lock_antinuke(guild).await?);
+    let mut released = Ok(());
     let result = async {
         let old = app.db.antinuke_config(guild).await?;
         let owner = owner(app, guild).await?;
@@ -154,7 +155,7 @@ pub async fn save_config(app: &std::sync::Arc<App>, guild: u64, actor: u64, next
         app.db.save_antinuke(guild, actor, next).await?;
         app.announce_guild_change(guild).await;
         staff(app, guild, actor, "antinuke.settings", &t!(lang, "anti_nuke.saved")).await?;
-        guard.take().unwrap().rollback().await?;
+        released = guard.take().unwrap().rollback().await;
         if next.enabled {
             let owned = app.clone();
             app.spawn_rebuild(async move {
@@ -167,9 +168,11 @@ pub async fn save_config(app: &std::sync::Arc<App>, guild: u64, actor: u64, next
     }
     .await;
     if let Some(guard) = guard {
-        guard.rollback().await?;
+        released = guard.rollback().await;
     }
-    result
+    result?;
+    released?;
+    Ok(())
 }
 pub(super) async fn is_vip(app: &App, guild: u64, user: u64, c: &Config) -> anyhow::Result<bool> {
     if c.vip_roles.is_empty() {

@@ -272,8 +272,11 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 cx.update(ephemeral(embed, Vec::new())).await
             }
             .await;
-            birthday_guard.rollback().await?;
-            result
+            let released = birthday_guard.rollback().await;
+            result.and_then(|value| {
+                released?;
+                Ok(value)
+            })
         }
         _ => cx.reply_ephemeral(t!(cx.lang(), "privacy.expired")).await,
     }

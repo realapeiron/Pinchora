@@ -352,8 +352,11 @@ pub async fn sweep(app: &App) -> anyhow::Result<()> {
     };
     let result = sweep_locked(app).await;
     // Dropping only queues rollback; finish it before another sweep can try the lease.
-    guard.rollback().await?;
-    result
+    let released = guard.rollback().await;
+    result.and_then(|value| {
+        released?;
+        Ok(value)
+    })
 }
 
 async fn sweep_locked(app: &App) -> anyhow::Result<()> {
@@ -388,70 +391,7 @@ async fn sweep_locked(app: &App) -> anyhow::Result<()> {
             let Some(ch) = pinchora_core::mod_parity::id(&rule.channel) else {
                 continue;
             };
-            let result = async {
-                let cursor_key = format!("modparity:purge-cursor:{g}:{ch}:{}:{}", rule.age_secs, rule.bots_only);
-                let cutoff = (((app.now() - chrono::Duration::seconds(rule.age_secs)).timestamp_millis()
-                    - 1_420_070_400_000) as u64)
-                    << 22;
-                let before = app
-                    .cache
-                    .get(&cursor_key)
-                    .await?
-                    .and_then(|s| s.parse::<u64>().ok())
-                    .filter(|id| *id > 0)
-                    .map_or(cutoff, |id| id.min(cutoff));
-                let messages = app
-                    .http
-                    .channel_messages(Id::new(ch))
-                    .before(Id::new(before))
-                    .limit(100)
-                    .await?
-                    .models()
-                    .await?;
-                // Advance even if this page only contains pinned or nonmatching authors.
-                let next = (messages.len() == 100).then(|| messages.last().unwrap().id.get());
-                let now = app.now();
-                let mut removed = 0;
-                for msg in messages {
-                    if msg.pinned
-                        || (rule.bots_only && !msg.author.bot)
-                        || pinchora_core::snowflake::timestamp(msg.id.get())
-                            > now - chrono::Duration::seconds(rule.age_secs)
-                    {
-                        continue;
-                    }
-                    if app
-                        .http
-                        .delete_message(Id::new(ch), msg.id)
-                        .reason("Autopurge")
-                        .await
-                        .is_ok()
-                    {
-                        removed += 1;
-                    }
-                }
-                if let Some(next) = next {
-                    app.cache
-                        .put(&cursor_key, &next.to_string(), Duration::from_secs(172800))
-                        .await?;
-                } else {
-                    app.cache.forget(&cursor_key).await?;
-                }
-                if removed > 0 {
-                    let act = Act {
-                        kind: CaseKind::Purge,
-                        target: ch,
-                        target_name: rule.channel,
-                        reason: None,
-                        duration: None,
-                        details: Some(removed.to_string()),
-                    };
-                    moderation::record(app, g as u64, (app.application_id.get(), "Pinchora"), &act, None).await?;
-                    moderation::parity::extra_log(app, g as u64, app.application_id.get(), act.kind, ch).await;
-                }
-                anyhow::Ok(())
-            }
-            .await;
+            let result = purge_channel(app, g, ch, rule).await;
             if let Err(e) = result {
                 tracing::warn!(error=%e,g,ch,"channel autopurge failed")
             }
@@ -459,6 +399,68 @@ async fn sweep_locked(app: &App) -> anyhow::Result<()> {
     }
     Ok(())
 }
+async fn purge_channel(app: &App, g: i64, ch: u64, rule: pinchora_core::mod_parity::AutoPurge) -> anyhow::Result<()> {
+    let cursor_key = format!("modparity:purge-cursor:{g}:{ch}:{}:{}", rule.age_secs, rule.bots_only);
+    let cutoff =
+        (((app.now() - chrono::Duration::seconds(rule.age_secs)).timestamp_millis() - 1_420_070_400_000) as u64) << 22;
+    let before = app
+        .cache
+        .get(&cursor_key)
+        .await?
+        .and_then(|s| s.parse::<u64>().ok())
+        .filter(|id| *id > 0)
+        .map_or(cutoff, |id| id.min(cutoff));
+    let messages = app
+        .http
+        .channel_messages(Id::new(ch))
+        .before(Id::new(before))
+        .limit(100)
+        .await?
+        .models()
+        .await?;
+    // Advance even if this page only contains pinned or nonmatching authors.
+    let next = (messages.len() == 100).then(|| messages.last().unwrap().id.get());
+    let now = app.now();
+    let mut removed = 0;
+    for msg in messages {
+        if msg.pinned
+            || (rule.bots_only && !msg.author.bot)
+            || pinchora_core::snowflake::timestamp(msg.id.get()) > now - chrono::Duration::seconds(rule.age_secs)
+        {
+            continue;
+        }
+        if app
+            .http
+            .delete_message(Id::new(ch), msg.id)
+            .reason("Autopurge")
+            .await
+            .is_ok()
+        {
+            removed += 1;
+        }
+    }
+    if let Some(next) = next {
+        app.cache
+            .put(&cursor_key, &next.to_string(), Duration::from_secs(172800))
+            .await?;
+    } else {
+        app.cache.forget(&cursor_key).await?;
+    }
+    if removed > 0 {
+        let act = Act {
+            kind: CaseKind::Purge,
+            target: ch,
+            target_name: rule.channel,
+            reason: None,
+            duration: None,
+            details: Some(removed.to_string()),
+        };
+        moderation::record(app, g as u64, (app.application_id.get(), "Pinchora"), &act, None).await?;
+        moderation::parity::extra_log(app, g as u64, app.application_id.get(), act.kind, ch).await;
+    }
+    anyhow::Ok(())
+}
+
 /// Seed every occupied voice channel after identify, before bulk voice operations are offered.
 pub fn seed_voice(app: &Arc<App>, event: &twilight_model::gateway::payload::incoming::GuildCreate) {
     let twilight_model::gateway::payload::incoming::GuildCreate::Available(guild) = event else {

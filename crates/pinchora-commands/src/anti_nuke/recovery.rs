@@ -129,8 +129,11 @@ pub async fn restore(app: &App, guild: u64, id: i64, actor: u64, automatic: bool
         Ok(text)
     }
     .await;
-    guard.rollback().await?;
-    result
+    let released = guard.rollback().await;
+    result.and_then(|value| {
+        released?;
+        Ok(value)
+    })
 }
 async fn restore_one(
     app: &App,
@@ -420,8 +423,11 @@ pub async fn restore_actor_roles(app: &App, guild: u64, id: i64, actor: u64) -> 
         Ok(t!(lang, "anti_nuke.done"))
     }
     .await;
-    guard.rollback().await?;
-    result
+    let released = guard.rollback().await;
+    result.and_then(|value| {
+        released?;
+        Ok(value)
+    })
 }
 
 async fn check_restore_role(

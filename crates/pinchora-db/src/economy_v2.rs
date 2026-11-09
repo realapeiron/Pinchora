@@ -787,7 +787,7 @@ impl Db {
                     .fetch_one(&mut *leader)
                     .await?;
             if !acquired {
-                return Ok(());
+                return Ok(false);
             }
             let auctions: Vec<(i64, i64)> = sqlx::query_as(
             "SELECT id,seller_id FROM economy_auctions WHERE status='open' AND ends_at<=$1 ORDER BY ends_at LIMIT 100",
@@ -823,11 +823,25 @@ impl Db {
                     return Err(e);
                 }
             }
-            anyhow::Ok(())
+            anyhow::Ok(true)
         }
         .await;
-        leader.rollback().await?;
-        result
+        match result {
+            Ok(true) => {
+                leader.commit().await?;
+                Ok(())
+            }
+            Ok(false) => {
+                leader.rollback().await?;
+                Ok(())
+            }
+            Err(error) => {
+                if let Err(release_error) = leader.rollback().await {
+                    tracing::warn!(%release_error, "market leadership rollback failed after sweep error");
+                }
+                Err(error)
+            }
+        }
     }
 }
 
