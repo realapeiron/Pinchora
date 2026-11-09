@@ -336,6 +336,12 @@ async fn workflow_schedule_concurrent_claims_skip_downtime_and_retention_deletes
 
 #[tokio::test]
 async fn workflow_member_writes_obey_the_privacy_lock_before_guild_lock() {
+    for run_first in [false, true] {
+        assert_workflow_privacy_lock_order(run_first).await;
+    }
+}
+
+async fn assert_workflow_privacy_lock_order(run_first: bool) {
     let Some(db) = db().await else { return };
     let guild = id();
     let user = guild + 1;
@@ -349,18 +355,26 @@ async fn workflow_member_writes_obey_the_privacy_lock_before_guild_lock() {
         .execute(&mut *privacy)
         .await
         .unwrap();
-    let mut variable = Box::pin(db.set_workflow_var(guild, Scope::Member, user, "private", "value", None));
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(50), &mut variable)
-            .await
-            .is_err()
-    );
     let event = Event {
         kind: "button".into(),
         user_id: user.to_string(),
         ..Default::default()
     };
     let mut run = Box::pin(db.claim_workflow_run(guild, row.id, &event));
+    // Either writer can reach Postgres first when connection acquisition is delayed.
+    if run_first {
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(50), &mut run)
+                .await
+                .is_err()
+        );
+    }
+    let mut variable = Box::pin(db.set_workflow_var(guild, Scope::Member, user, "private", "value", None));
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(50), &mut variable)
+            .await
+            .is_err()
+    );
     assert!(
         tokio::time::timeout(std::time::Duration::from_millis(50), &mut run)
             .await
@@ -375,8 +389,10 @@ async fn workflow_member_writes_obey_the_privacy_lock_before_guild_lock() {
     .unwrap()
     .unwrap();
     privacy.commit().await.unwrap();
-    variable.await.unwrap();
-    run.await.unwrap();
+    // Keep both transactions polled: either can own the user lock after privacy commits.
+    let (variable, run) = tokio::join!(variable, run);
+    variable.unwrap();
+    run.unwrap();
     db.delete_user_data(user, chrono::Utc::now()).await.unwrap();
     assert_eq!(
         db.workflow_vars(guild, user).await.unwrap(),

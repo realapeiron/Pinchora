@@ -162,9 +162,18 @@ pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<
             .bind(guild as i64)
             .fetch_one(&mut *lock)
             .await?;
-    if !acquired {
-        return Ok(());
-    }
+    let result = if acquired {
+        refresh_status_board_locked(app, guild).await
+    } else {
+        Ok(())
+    };
+    // Dropping the transaction only queues rollback. Release the lock before returning,
+    // including throttled refreshes and failed edits, so the next caller can acquire it.
+    lock.commit().await?;
+    result
+}
+
+async fn refresh_status_board_locked(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
     let settings = app.db.ticket_operation_settings(guild).await?;
     let Some(channel) = settings.status_channel_id.map(|id| id as u64) else {
         return Ok(());
@@ -215,7 +224,6 @@ pub async fn refresh_status_board(app: &Arc<App>, guild: u64) -> anyhow::Result<
     if !app.db.set_ticket_status_message(guild, channel, sent.id.get()).await? {
         app.http.delete_message(Id::new(channel), sent.id).await?;
     }
-    lock.commit().await?;
     Ok(())
 }
 

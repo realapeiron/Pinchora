@@ -242,14 +242,45 @@ fn assert_counting_down(text: &str, marker: &str, full: i64, began: std::time::I
     );
 }
 
-/// Closes the games earlier runs left late in the database. The janitor takes the oldest fifty late
-/// games of the whole database, so enough leftovers would keep it from ever reaching a test's own
-/// game; and what it does to them is nobody's business here. Call it with the sweep turn held.
+/// Closes games left by earlier runs, including deadlines that have not passed yet, and late
+/// fixtures from this run. The janitor scans globally; keep it from consuming old fixtures between
+/// assertions while preserving other tests' live games. Call it with the sweep turn held.
 async fn forget_late_games(sim: &Sim) {
-    sqlx::query("UPDATE game_sessions SET status = 'done' WHERE status <> 'done' AND expires_at < now()")
-        .execute(sim.app.db.pool())
+    sqlx::query(
+        "UPDATE game_sessions SET status = 'done' WHERE status <> 'done' AND (expires_at < now() OR created_at < $1)",
+    )
+    .bind(*TEST_STARTED.get().expect("simulation run started"))
+    .execute(sim.app.db.pool())
+    .await
+    .expect("close the late games of earlier runs");
+}
+
+#[tokio::test]
+async fn game_sweep_setup_retires_old_fixtures_and_preserves_live_games() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut live) = Sim::new("game_sweep_live_fixture").await else {
+        return;
+    };
+    let Some(mut retired) = Sim::new("game_sweep_retired_fixture").await else {
+        return;
+    };
+    live.channel = unique();
+    retired.channel = unique();
+    let live_game = session_of(&duel(&mut live, unique(), unique(), "connect4", vec![]).await);
+    let old_game = session_of(&duel(&mut retired, unique(), unique(), "connect4", vec![]).await);
+    let db = retired.app.db.clone();
+    sqlx::query("UPDATE game_sessions SET created_at=$1 WHERE id=$2")
+        .bind(*TEST_STARTED.get().expect("simulation run started") - chrono::Duration::seconds(1))
+        .bind(old_game)
+        .execute(db.pool())
         .await
-        .expect("close the late games of earlier runs");
+        .unwrap();
+    assert!(db.game(old_game).await.unwrap().unwrap().expires_at > chrono::Utc::now());
+    forget_late_games(&live).await;
+    assert_eq!(db.game(old_game).await.unwrap().unwrap().status, "done");
+    assert_eq!(db.game(live_game).await.unwrap().unwrap().status, "pending");
+    expire(&live, live_game).await;
+    forget_late_games(&live).await;
 }
 
 // /Mock Discord
@@ -1276,6 +1307,8 @@ struct Sim {
     locale: &'static str,
 }
 
+static TEST_STARTED: tokio::sync::OnceCell<chrono::DateTime<chrono::Utc>> = tokio::sync::OnceCell::const_new();
+
 impl Sim {
     async fn new(name: &'static str) -> Option<Self> {
         Self::with(name, |_| {}).await
@@ -1295,6 +1328,14 @@ impl Sim {
             .await
             .expect("connect to the database");
         db.migrate().await.expect("migrate");
+        TEST_STARTED
+            .get_or_init(|| async {
+                sqlx::query_scalar("SELECT clock_timestamp()")
+                    .fetch_one(db.pool())
+                    .await
+                    .expect("read simulation start from the database clock")
+            })
+            .await;
         let cache = Cache::connect(&redis).await.expect("connect to redis");
 
         let calls = Calls::default();

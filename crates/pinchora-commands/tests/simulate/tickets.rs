@@ -1381,12 +1381,29 @@ async fn status_board_parallel_refreshes_are_throttled_without_pool_starvation()
     for result in results {
         result.unwrap();
     }
+    assert_status_board_lock_released(&sim).await;
     let posts = take_posts(&sim);
     assert_eq!(posts.iter().filter(|p| p.channel == channel).count(), 1);
     pinchora_commands::refresh_ticket_status_board(&sim.app, sim.guild)
         .await
         .unwrap();
     assert!(take_posts(&sim).is_empty(), "edits also share the throttle");
+    assert_status_board_lock_released(&sim).await;
+    sim.app
+        .cache
+        .release_cooldown(&format!("ticket-status:{}", sim.guild))
+        .await
+        .unwrap();
+    pinchora_commands::refresh_ticket_status_board(&sim.app, sim.guild)
+        .await
+        .unwrap();
+    let edits = take_posts(&sim);
+    assert_eq!(edits.len(), 1);
+    assert_eq!(
+        only(&edits, channel, Method::PATCH).message,
+        only(&posts, channel, Method::POST).message
+    );
+    assert_status_board_lock_released(&sim).await;
     sim.app
         .cache
         .release_cooldown(&format!("ticket-status:{}", sim.guild))
@@ -1398,6 +1415,7 @@ async fn status_board_parallel_refreshes_are_throttled_without_pool_starvation()
             .await
             .is_err()
     );
+    assert_status_board_lock_released(&sim).await;
     assert!(
         take_posts(&sim).is_empty(),
         "a failed edit must not create a duplicate board"
@@ -1407,6 +1425,21 @@ async fn status_board_parallel_refreshes_are_throttled_without_pool_starvation()
         .save_ticket_operation_settings(sim.guild, &Default::default())
         .await
         .unwrap();
+}
+
+async fn assert_status_board_lock_released(sim: &Sim) {
+    // Use a separate connection so pool reuse cannot finish a pending rollback for us.
+    let mut connection =
+        <sqlx::PgConnection as sqlx::Connection>::connect(&std::env::var("PINCHORA_TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+    let acquired: bool =
+        sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('ticket-status:' || $1::text, 0))")
+            .bind(sim.guild as i64)
+            .fetch_one(&mut connection)
+            .await
+            .unwrap();
+    assert!(acquired, "a completed refresh must have released its advisory lock");
 }
 
 #[tokio::test]

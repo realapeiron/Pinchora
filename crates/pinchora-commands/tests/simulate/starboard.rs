@@ -83,7 +83,7 @@ async fn vote_channel_puts_up_before_down() {
     let Some(sim) = Sim::new("vote_channel_puts_up_before_down").await else {
         return;
     };
-    let channel = CHANNEL_ID;
+    let channel = unique();
     sim.app
         .db
         .save_vote(&pinchora_db::VoteChannel {
@@ -132,7 +132,9 @@ async fn vote_channel_puts_up_before_down() {
     );
     app.message_content = true;
     let app = Arc::new(app);
-    on_starboard_message(&app, &sim.chat(unique(), &[]).message).await;
+    let mut message = sim.chat(unique(), &[]).message;
+    message.channel_id = Id::new(channel);
+    on_starboard_message(&app, &message).await;
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         loop {
             if seen.lock().unwrap().len() >= 2 {
@@ -154,10 +156,11 @@ async fn vote_thread_flood_obeys_channel_budget() {
     let Some(sim) = Sim::new("vote_thread_flood_obeys_channel_budget").await else {
         return;
     };
+    let channel = unique();
     sim.app
         .db
         .save_vote(&pinchora_db::VoteChannel {
-            channel_id: CHANNEL_ID as i64,
+            channel_id: channel as i64,
             guild_id: sim.guild as i64,
             up_emoji: "▲".into(),
             down_emoji: "▼".into(),
@@ -203,7 +206,9 @@ async fn vote_thread_flood_obeys_channel_budget() {
         "vote-flood".into(),
     ));
     for _ in 0..10 {
-        on_starboard_message(&app, &sim.chat(unique(), &[]).message).await;
+        let mut message = sim.chat(unique(), &[]).message;
+        message.channel_id = Id::new(channel);
+        on_starboard_message(&app, &message).await;
     }
     tokio::time::sleep(std::time::Duration::from_millis(700)).await;
     assert!(threads.load(std::sync::atomic::Ordering::SeqCst) <= 1);
