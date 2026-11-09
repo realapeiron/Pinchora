@@ -33,3 +33,12 @@ const ALIASES: &[(&str, &str)] = &[
     // fixture-registrations:aliases:start
     ("fixture", "registration-fixture"), // fixture-registrations:aliases:end
 ];
+
+fn module(prefix: &str) -> &'static str {
+    match prefix {
+        // fixture-registrations:component_gates:start
+        "fixture" => "house",
+        // fixture-registrations:component_gates:end
+        _ => "unknown",
+    }
+}

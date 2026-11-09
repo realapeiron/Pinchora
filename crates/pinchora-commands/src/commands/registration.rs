@@ -8,7 +8,9 @@ use crate::Cx;
 pub(crate) type Handler =
     for<'a> fn(&'a Cx, CommandData) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>>;
 
+#[derive(Clone, Copy)]
 pub(crate) struct CommandEntry {
+    pub key: &'static str,
     pub order: usize,
     pub name: &'static str,
     pub definition: fn() -> Command,
@@ -16,13 +18,13 @@ pub(crate) struct CommandEntry {
 }
 
 macro_rules! commands {
-    (typed { $($order:literal => $ty:ty,)* }
-     context { $($context_order:literal => ($name:literal, $($module:ident)::+),)* }) => {
-        pub(crate) fn commands() -> Vec<$crate::commands::registration::CommandEntry> {
-            vec![
+    (typed { $($ty:ty,)* }
+     context { $(( $name:literal, $($module:ident)::+),)* }) => {
+        pub(crate) const COMMANDS: &[$crate::commands::registration::CommandEntry] = &[
                 $(
                     $crate::commands::registration::CommandEntry {
-                        order: $order,
+                        key: stringify!($ty),
+                        order: 0,
                         name: <$ty as twilight_interactions::command::CreateCommand>::NAME,
                         definition: || <$ty as twilight_interactions::command::CreateCommand>::create_command().into(),
                         dispatch: |cx, data| Box::pin(async move {
@@ -32,23 +34,40 @@ macro_rules! commands {
                 )*
                 $(
                     $crate::commands::registration::CommandEntry {
-                        order: $context_order,
+                        key: $name,
+                        order: 0,
                         name: $name,
                         definition: $($module)::+::definition,
                         dispatch: |cx, data| Box::pin($($module)::+::run(cx, data)),
                     },
                 )*
-            ]
-        }
+            ];
     };
 }
 pub(crate) use commands;
 
 // The checked generator consumes these tokens and emits the compatibility tables used at runtime.
 macro_rules! compatibility {
-    ($($section:ident { $($order:literal { $($entry:tt)* })* })*) => {};
+    ($($section:ident { $($entry:tt)* })*) => {};
 }
 pub(crate) use compatibility;
+
+include!("registration/command_order.rs");
+
+fn command_order(key: &str) -> usize {
+    let key: String = key.chars().filter(|c| !c.is_whitespace()).collect();
+    COMMAND_ORDER
+        .iter()
+        .position(|candidate| *candidate == key)
+        .unwrap_or(usize::MAX)
+}
+
+pub(crate) fn ordered(entries: &[CommandEntry]) -> impl Iterator<Item = CommandEntry> + '_ {
+    entries.iter().copied().map(|mut entry| {
+        entry.order = command_order(entry.key);
+        entry
+    })
+}
 
 macro_rules! domains {
     ($($domain:ident),* $(,)?) => {
@@ -58,7 +77,7 @@ macro_rules! domains {
             static ENTRIES: std::sync::LazyLock<Vec<$crate::commands::registration::CommandEntry>> =
                 std::sync::LazyLock::new(|| {
                     let mut entries = vec![];
-                    $(entries.extend($domain::registration::commands());)*
+                    $(entries.extend($crate::commands::registration::ordered($domain::registration::COMMANDS));)*
                     entries.sort_by_key(|entry| entry.order);
                     entries
                 });
@@ -81,6 +100,9 @@ pub(crate) fn legacy_definitions() -> Vec<Command> {
 }
 
 #[cfg(test)]
-mod fixture;
+pub(crate) mod fixture;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod behavior;

@@ -1,0 +1,41 @@
+{
+  "private": [
+    "roblox",
+    "robloxadmin"
+  ],
+  "slash_only": [
+    "integrations"
+  ],
+  "help_profile": [
+    "roblox",
+    "robloxadmin"
+  ],
+  "admin_group_moves": [
+    ["setup feeds", "integrations feeds"],
+    ["setup stats", "integrations stats"],
+    ["setup invites", "integrations invites"]
+  ],
+  "routes": [
+    ["roblox unverify", "roblox unverify", 18],
+    ["roblox update", "roblox update", 18],
+    ["roblox verify", "roblox verify", 18],
+    ["roblox whois", "roblox whois", 18],
+    ["robloxadmin bind-add", "integrations roblox bind-add", 18],
+    ["robloxadmin bind-list", "integrations roblox bind-list", 18],
+    ["robloxadmin bind-remove", "integrations roblox bind-remove", 18],
+    ["robloxadmin settings", "integrations roblox settings", 18]
+  ],
+  "legacy_leaves": [
+    "roblox unverify",
+    "roblox update",
+    "roblox verify",
+    "roblox whois",
+    "robloxadmin bind-add",
+    "robloxadmin bind-list",
+    "robloxadmin bind-remove",
+    "robloxadmin settings"
+  ],
+  "admin_roots": [
+    "integrations"
+  ]
+}

@@ -53,23 +53,23 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 /// answered), or it shows the server's settings, which a reply in the channel would show to everyone.
 const SLASH_ONLY: &[&str] = &[
     // registrations:slash_only:start
+    "setup",
     "confess",
     "checklist",
     "highlight",
     "remind",
-    "character",
-    "setup",
-    "safety",
     "community",
-    "integrations",
-    "progression",
-    "customize",
-    "house decorate",
-    "house edit",
+    "stall manage",
     "play 2048",
     "play picross",
     "play wordle",
-    "stall manage", // registrations:slash_only:end
+    "house decorate",
+    "house edit",
+    "integrations",
+    "safety",
+    "progression",
+    "character",
+    "customize", // registrations:slash_only:end
 ];
 
 /// A member's text commands count at most this often; faster ones are ignored.

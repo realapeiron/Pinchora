@@ -1,0 +1,59 @@
+{
+  "private": [
+    "house aquarium",
+    "house garden",
+    "house craft",
+    "house contest vote",
+    "house decorate",
+    "house edit",
+    "house lock",
+    "house upgrade"
+  ],
+  "opens_modal": [
+    "gb:s"
+  ],
+  "slash_only": [
+    "house decorate",
+    "house edit"
+  ],
+  "help_house": [
+    "house"
+  ],
+  "routes": [
+    ["house aquarium", "house aquarium", 0],
+    ["house contest enter", "house contest enter", 0],
+    ["house contest view", "house contest view", 0],
+    ["house contest vote", "house contest vote", 0],
+    ["house contest winners", "house contest winners", 0],
+    ["house craft", "house craft", 0],
+    ["house decorate", "house decorate", 0],
+    ["house edit", "house edit", 0],
+    ["house garden", "house garden", 0],
+    ["house guestbook", "house guestbook", 0],
+    ["house like", "house like", 0],
+    ["house lock", "house lock", 0],
+    ["house upgrade", "house upgrade", 0],
+    ["house view", "house view", 0],
+    ["house visit", "house visit", 0]
+  ],
+  "legacy_leaves": [
+    "house aquarium",
+    "house contest enter",
+    "house contest view",
+    "house contest vote",
+    "house contest winners",
+    "house craft",
+    "house decorate",
+    "house edit",
+    "house garden",
+    "house guestbook",
+    "house like",
+    "house lock",
+    "house upgrade",
+    "house view",
+    "house visit"
+  ],
+  "help_areas": [
+    "house"
+  ]
+}

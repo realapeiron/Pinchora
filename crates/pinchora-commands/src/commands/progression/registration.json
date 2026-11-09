@@ -1,0 +1,71 @@
+{
+  "private": [
+    "achievementadmin",
+    "xp"
+  ],
+  "slash_only": [
+    "progression"
+  ],
+  "help_levels": [
+    "xp"
+  ],
+  "help_rewards": [
+    "rep"
+  ],
+  "help_profile": [
+    "wrapped",
+    "achievements",
+    "achievementadmin"
+  ],
+  "help_start": [
+    "rank"
+  ],
+  "admin_group_moves": [
+    ["setup leveling", "progression leveling"],
+    ["setup economy", "progression economy"],
+    ["setup achievements", "progression achievements"]
+  ],
+  "ephemeral": [
+    "rank"
+  ],
+  "routes": [
+    ["achievementadmin add", "progression achievements add", 8],
+    ["achievementadmin edit", "progression achievements edit", 8],
+    ["achievementadmin grant", "progression achievements grant", 8],
+    ["achievementadmin list", "progression achievements list", 8],
+    ["achievementadmin remove", "progression achievements remove", 8],
+    ["achievements", "achievements", 0],
+    ["rank", "rank", 0],
+    ["rep", "rep", 0],
+    ["wrapped", "info wrapped", 10],
+    ["xp add", "progression leveling xp-add", 4],
+    ["xp import mee6", "progression leveling xp-import-mee6", 4],
+    ["xp remove", "progression leveling xp-remove", 4],
+    ["xp reset", "progression leveling xp-reset", 4],
+    ["xp reset-all", "progression leveling xp-reset-all", 4],
+    ["xp set", "progression leveling xp-set", 4]
+  ],
+  "legacy_leaves": [
+    "achievementadmin add",
+    "achievementadmin edit",
+    "achievementadmin grant",
+    "achievementadmin list",
+    "achievementadmin remove",
+    "achievements",
+    "rank",
+    "rep",
+    "wrapped",
+    "xp add",
+    "xp import mee6",
+    "xp remove",
+    "xp reset",
+    "xp reset-all",
+    "xp set"
+  ],
+  "help_areas": [
+    "levels"
+  ],
+  "admin_roots": [
+    "progression"
+  ]
+}

@@ -7,11 +7,14 @@ use std::{
     path::Path,
 };
 use syn::{
-    Ident, LitInt, braced,
+    Ident, braced,
     parse::{Parse, ParseStream},
 };
 
+mod ordering;
 mod output;
+mod overlap;
+mod parsing;
 #[cfg(test)]
 mod tests;
 mod validation;
@@ -20,49 +23,29 @@ mod validation;
 struct Registration {
     sections: BTreeMap<String, BTreeMap<usize, TokenStream>>,
     sources: BTreeMap<String, BTreeMap<usize, String>>,
-}
-
-impl Parse for Registration {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let mut registration = Self::default();
-        while !input.is_empty() {
-            let section = input.parse::<Ident>()?.to_string();
-            let body;
-            braced!(body in input);
-            let mut entries = BTreeMap::new();
-            let mut sources = BTreeMap::new();
-            while !body.is_empty() {
-                let order = body.parse::<LitInt>()?.base10_parse()?;
-                let entry;
-                let brace = braced!(entry in body);
-                if let Some(source) = brace.span.join().source_text() {
-                    sources.insert(order, source[1..source.len() - 1].trim().to_owned());
-                }
-                if entries.insert(order, entry.parse()?).is_some() {
-                    return Err(body.error("duplicate registration order"));
-                }
-            }
-            registration.sources.insert(section.clone(), sources);
-            if registration.sections.insert(section, entries).is_some() {
-                return Err(input.error("duplicate registration section"));
-            }
-        }
-        Ok(registration)
-    }
+    fallbacks: BTreeMap<String, BTreeSet<usize>>,
 }
 
 impl Registration {
     fn merge(&mut self, other: Self) -> Result {
-        for (section, sources) in other.sources {
-            self.sources.entry(section).or_default().extend(sources);
-        }
         for (section, entries) in other.sections {
-            let target = self.sections.entry(section.clone()).or_default();
-            for (order, tokens) in entries {
-                if target.insert(order, tokens).is_some() {
-                    return Err(format!("duplicate {section} order {order}").into());
-                }
+            let offset = self.sections.get(&section).map_or(0, BTreeMap::len);
+            if let Some(sources) = other.sources.get(&section) {
+                self.sources
+                    .entry(section.clone())
+                    .or_default()
+                    .extend(sources.iter().map(|(index, value)| (offset + index, value.clone())));
             }
+            if let Some(fallbacks) = other.fallbacks.get(&section) {
+                self.fallbacks
+                    .entry(section.clone())
+                    .or_default()
+                    .extend(fallbacks.iter().map(|index| offset + index));
+            }
+            self.sections
+                .entry(section)
+                .or_default()
+                .extend(entries.into_iter().map(|(index, value)| (offset + index, value)));
         }
         Ok(())
     }
@@ -112,12 +95,15 @@ fn read_registration(path: &Path) -> Result<Registration> {
     let file = syn::parse_file(&fs::read_to_string(path)?)?;
     let mut result = Registration::default();
     for item in &file.items {
-        if let syn::Item::Macro(item) = item
-            && item.mac.path.is_ident("compatibility")
-        {
-            result.merge(item.mac.parse_body()?)?;
+        if let syn::Item::Macro(item) = item {
+            if item.mac.path.is_ident("compatibility") {
+                result.merge(item.mac.parse_body()?)?;
+            } else if item.mac.path.is_ident("commands") {
+                parsing::commands(&mut result, &item.mac)?;
+            }
         }
     }
+    parsing::data(&mut result, &path.with_extension("json"))?;
     Ok(result)
 }
 
@@ -136,12 +122,16 @@ fn collect(root: &Path) -> Result<Registration> {
     }
     let mut result = Registration::default();
     for name in names {
+        if !folder.join(&name).join("registration.json").is_file() {
+            return Err(format!("{name}: missing registration data").into());
+        }
         let registration = read_registration(&folder.join(&name).join("registration.rs"))?;
         validation::components(root, &registration).map_err(|error| format!("{name}: {error}"))?;
         result.merge(registration)?;
     }
     validation::check(&result)?;
     validation::coverage(root, &result)?;
+    ordering::apply(root, &mut result)?;
     Ok(result)
 }
 
@@ -161,6 +151,8 @@ pub fn run(root: &Path, check: bool) -> Result {
         outputs.push((path, output::format(root, &generated)?));
     }
     outputs.extend(output::data(&registration)?);
+    outputs.extend(ordering::outputs(root, &registration)?);
+    consumed.insert("commands".to_owned());
     outputs.push(output::fixture(root)?);
     outputs.push(output::documentation(root, &registration)?);
     consumed.extend(["routes".to_owned(), "legacy_leaves".to_owned()]);
@@ -169,7 +161,7 @@ pub fn run(root: &Path, check: bool) -> Result {
     }
     let mut stale = Vec::new();
     for (path, generated) in outputs {
-        if fs::read_to_string(root.join(&path))? != generated {
+        if fs::read_to_string(root.join(&path)).ok().as_deref() != Some(&generated) {
             if check {
                 stale.push(path.display().to_string());
             } else {

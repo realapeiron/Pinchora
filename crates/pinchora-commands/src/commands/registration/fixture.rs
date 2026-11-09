@@ -11,20 +11,14 @@ impl Fixture {
 }
 
 commands! {
-    typed { 0 => Fixture, }
+    typed { Fixture, }
     context {}
 }
 
 compatibility! {
-    components { 0 { Some("fixture") => button(), } }
-    owners { 0 { "fixture" => "registration-fixture", } }
-    private { 0 { "registration-fixture", } }
-    opens_modal { 0 { "fixture:open", } }
-    help_start { 0 { "registration-fixture", } }
-    slash_only { 0 { "registration-fixture", } }
-    aliases { 0 { ("fixture", "registration-fixture"), } }
-    routes { 0 { ("registration-fixture", "registration-fixture", 0) } }
-    legacy_leaves { 0 { "registration-fixture" } }
+    components { Some("fixture") => button(), }
+    owners { "fixture" => "registration-fixture", }
+    component_gates { "fixture" => "house", }
 }
 
 fn button() -> &'static str {
@@ -35,7 +29,7 @@ include!("fixture_output.rs");
 
 #[tokio::test]
 async fn one_domain_registration_reaches_every_surface() {
-    let entries = commands();
+    let entries = super::ordered(COMMANDS).collect::<Vec<_>>();
     assert_eq!(entries.len(), 1);
     assert_eq!((entries[0].definition)().name, "registration-fixture");
     assert_eq!(entries[0].name, "registration-fixture");
@@ -52,6 +46,7 @@ async fn one_domain_registration_reaches_every_surface() {
     assert_eq!(component("fixture:open:123"), "button dispatched");
     assert_eq!(component("fixture-extra:open"), "unknown");
     assert_eq!(owner("fixture"), "registration-fixture");
+    assert_eq!(module("fixture"), "house");
     assert_eq!(PRIVATE, ["registration-fixture"]);
     assert_eq!(OPENS_MODAL, ["fixture:open"]);
     assert_eq!(HELP, ["registration-fixture"]);
@@ -59,7 +54,7 @@ async fn one_domain_registration_reaches_every_surface() {
     assert_eq!(ALIASES, [("fixture", "registration-fixture")]);
 }
 
-async fn context() -> (
+pub(crate) async fn context() -> (
     crate::Cx,
     tokio::sync::oneshot::Receiver<twilight_model::http::interaction::InteractionResponse>,
 ) {
@@ -89,6 +84,7 @@ async fn context() -> (
     ));
     let interaction = serde_json::from_value(serde_json::json!({
         "id": "1", "application_id": "1", "type": 2, "token": "fixture", "version": 1,
+        "user": {"id":"1", "username":"fixture", "discriminator":"0001", "avatar":null},
         "authorizing_integration_owners": {}, "attachment_size_limit": 10,
         "data": { "id": "1", "name": "registration-fixture", "type": 1 }
     }))

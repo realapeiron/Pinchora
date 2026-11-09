@@ -36,17 +36,13 @@ pub fn is_admin_path(path: &str) -> bool {
         || matches!(
             path.split(' ').next(),
             // registrations:admin_roots:start
-            Some("setup" | "safety" | "community" | "integrations" | "progression") // registrations:admin_roots:end
+            Some("setup" | "community" | "integrations" | "safety" | "progression") // registrations:admin_roots:end
         )
 }
 
 /// The applied 0066 paths remain valid for stored policies, backups and typed shortcuts.
 const ADMIN_GROUP_MOVES: &[(&str, &str)] = &[
     // registrations:admin_group_moves:start
-    ("setup moderation", "safety moderation"),
-    ("setup automod", "safety automod"),
-    ("setup verification", "safety verification"),
-    ("setup antinuke", "safety antinuke"),
     ("setup tickets", "community tickets"),
     ("setup starboard", "community starboard"),
     ("setup events", "community events"),
@@ -56,6 +52,10 @@ const ADMIN_GROUP_MOVES: &[(&str, &str)] = &[
     ("setup feeds", "integrations feeds"),
     ("setup stats", "integrations stats"),
     ("setup invites", "integrations invites"),
+    ("setup moderation", "safety moderation"),
+    ("setup automod", "safety automod"),
+    ("setup verification", "safety verification"),
+    ("setup antinuke", "safety antinuke"),
     ("setup leveling", "progression leveling"),
     ("setup economy", "progression economy"),
     ("setup achievements", "progression achievements"), // registrations:admin_group_moves:end

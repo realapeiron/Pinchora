@@ -236,9 +236,9 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
             let choices = match command.name.as_str() {
                 _ if !allowed => Vec::new(),
                 // registrations:autocomplete:start
+                "customcommand" => crate::commands::community::tag::autocomplete(&cx, &command).await,
                 "birthday" | "birthdays" => crate::commands::community::birthdays::autocomplete(&command),
                 "tag" => crate::commands::community::tag::autocomplete(&cx, &command).await,
-                "customcommand" => crate::commands::community::tag::autocomplete(&cx, &command).await,
                 _ => crate::commands::admin::modules::autocomplete(cx.lang(), &command), // registrations:autocomplete:end
             };
             if let Err(error) = cx.responder.suggest(choices).await {

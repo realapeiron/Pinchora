@@ -205,6 +205,7 @@ fn render(registration: &Registration, section: &str) -> Result<String> {
 pub(super) fn fixture(root: &Path) -> Result<(PathBuf, String)> {
     let folder = root.join("crates/pinchora-commands/src/commands/registration");
     let registration = read_registration(&folder.join("fixture.rs"))?;
+    validation::components(root, &registration)?;
     let path = folder.join("fixture_output.rs");
     let original = fs::read_to_string(&path)?.replace("fixture-registrations:", "registrations:");
     let output = replace(&original, &registration, &mut BTreeSet::new())?;

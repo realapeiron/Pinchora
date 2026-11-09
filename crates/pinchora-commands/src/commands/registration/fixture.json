@@ -1,0 +1,30 @@
+{
+  "private": [
+    "registration-fixture"
+  ],
+  "opens_modal": [
+    "fixture:open"
+  ],
+  "help_start": [
+    "registration-fixture"
+  ],
+  "slash_only": [
+    "registration-fixture"
+  ],
+  "aliases": [
+    [
+      "fixture",
+      "registration-fixture"
+    ]
+  ],
+  "routes": [
+    [
+      "registration-fixture",
+      "registration-fixture",
+      0
+    ]
+  ],
+  "legacy_leaves": [
+    "registration-fixture"
+  ]
+}

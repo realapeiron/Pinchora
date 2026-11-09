@@ -1,0 +1,123 @@
+{
+  "private": [
+    "gift",
+    "quests",
+    "economyv2 jobs",
+    "economyv2 provisions",
+    "economyv2 chest",
+    "economyv2 season",
+    "economyv2 prestige",
+    "economyv2 donate",
+    "economyv2 auction",
+    "economyv2 bid",
+    "economyv2 auction-close",
+    "economyv2 trade",
+    "economyv2 trade-review",
+    "economyv2 tools",
+    "stall manage",
+    "stall sell"
+  ],
+  "slash_only": [
+    "stall manage"
+  ],
+  "aliases": [
+    ["bal", "balance"],
+    ["lb", "leaderboard"],
+    ["top", "leaderboard"],
+    ["inv", "inventory"]
+  ],
+  "help_community": [
+    "points",
+    "store"
+  ],
+  "help_crowd": [
+    "surge"
+  ],
+  "help_shops": [
+    "shop",
+    "inventory",
+    "gift",
+    "stall"
+  ],
+  "help_rewards": [
+    "economyv2",
+    "give"
+  ],
+  "help_start": [
+    "leaderboard",
+    "daily",
+    "balance",
+    "quests"
+  ],
+  "ephemeral": [
+    "balance",
+    "inventory",
+    "leaderboard"
+  ],
+  "routes": [
+    ["balance", "balance", 0],
+    ["daily", "daily", 0],
+    ["economyv2 auction", "stall auction", 20],
+    ["economyv2 auction-close", "stall auction-close", 20],
+    ["economyv2 bid", "stall bid", 20],
+    ["economyv2 chest", "rewards chest", 20],
+    ["economyv2 donate", "rewards donate", 20],
+    ["economyv2 jobs", "rewards jobs", 20],
+    ["economyv2 prestige", "rewards prestige", 20],
+    ["economyv2 provisions", "rewards provisions", 20],
+    ["economyv2 season", "rewards season", 20],
+    ["economyv2 tools", "progression economy tools", 20],
+    ["economyv2 trade", "stall trade", 20],
+    ["economyv2 trade-review", "stall trade-review", 20],
+    ["gift", "gift", 0],
+    ["give", "give", 0],
+    ["inventory", "inventory", 0],
+    ["leaderboard", "leaderboard", 0],
+    ["points give", "progression economy points-give", 4],
+    ["points show", "points show", 0],
+    ["points take", "progression economy points-take", 4],
+    ["quests", "quests", 0],
+    ["shop catalog", "shop catalog", 0],
+    ["shop market", "shop market", 0],
+    ["stall manage", "stall manage", 0],
+    ["stall sell", "stall sell", 0],
+    ["stall view", "stall view", 0],
+    ["store", "store", 0],
+    ["surge", "surge", 0]
+  ],
+  "legacy_leaves": [
+    "balance",
+    "daily",
+    "economyv2 auction",
+    "economyv2 auction-close",
+    "economyv2 bid",
+    "economyv2 chest",
+    "economyv2 donate",
+    "economyv2 jobs",
+    "economyv2 prestige",
+    "economyv2 provisions",
+    "economyv2 season",
+    "economyv2 tools",
+    "economyv2 trade",
+    "economyv2 trade-review",
+    "gift",
+    "give",
+    "inventory",
+    "leaderboard",
+    "points give",
+    "points show",
+    "points take",
+    "quests",
+    "shop catalog",
+    "shop market",
+    "stall manage",
+    "stall sell",
+    "stall view",
+    "store",
+    "surge"
+  ],
+  "help_areas": [
+    "rewards",
+    "shops"
+  ]
+}

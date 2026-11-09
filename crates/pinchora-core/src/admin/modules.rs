@@ -21,16 +21,16 @@ pub const NEVER_GATED: [&str; 8] = [
     "language",
     "ping",
     "privacy",
-    "remind",
     "commandcontrol",
-    "backup", // registrations:never_gated:end
+    "backup",
+    "remind", // registrations:never_gated:end
 ];
 
 /// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
 /// module either.
 pub const NEVER_GATED_PREFIXES: [&str; 5] = [
     // registrations:never_gated_prefixes:start
-    "hp", "pr", "rm", "kc", "cf", // registrations:never_gated_prefixes:end
+    "hp", "pr", "kc", "cf", "rm", // registrations:never_gated_prefixes:end
 ];
 
 /// Where in a server a module works.

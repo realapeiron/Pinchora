@@ -25,6 +25,7 @@ fn unique(values: &[String], label: &str) -> Result {
 }
 
 pub(super) fn check(registration: &Registration) -> Result {
+    super::overlap::check(registration)?;
     for section in ["components", "modals", "owners", "command_gates", "component_gates"] {
         unique(&patterns(registration, section)?, section)?;
     }

@@ -54,6 +54,7 @@ fn missing_required_fixture_metadata_fails_generation() {
         "help_start",
         "slash_only",
         "aliases",
+        "component_gates",
     ] {
         let mut broken = registration.clone();
         broken.sections.remove(section);
@@ -111,12 +112,12 @@ fn adding_a_route_does_not_require_renumbering_other_domains() {
     let registration: Registration = syn::parse_str(
         r#"
         routes {
-            0 { ("zebra", "zebra", 0) }
-            99 { ("alpha", "alpha", 0) }
+            ("zebra", "zebra", 0),
+            ("alpha", "alpha", 0),
         }
         legacy_leaves {
-            0 { "zebra" }
-            99 { "alpha" }
+            "zebra",
+            "alpha",
         }
     "#,
     )
@@ -128,4 +129,67 @@ fn adding_a_route_does_not_require_renumbering_other_domains() {
     );
     let output = output::data(&registration).unwrap();
     assert_eq!(output[1].1, "alpha\nzebra\n");
+}
+
+#[test]
+fn overlapping_patterns_need_an_explicit_fallback() {
+    for source in [
+        r#"components { Some(kind @ ("dw" | "df")) => first(), Some("df") => second(), }"#,
+        r#"owner_actions { ("xi", _) => first(), ("xi", "confirm") => second(), }"#,
+        r#"autocomplete { _ => first(), "birthday" => second(), }"#,
+        r#"autocomplete { fallback _ => first(), fallback _ => second(), }"#,
+        r#"autocomplete { _ => first(), fallback _ => second(), }"#,
+        r#"autocomplete { _ => first(), }"#,
+        r#"owner_actions { (r"xi", "confirm") => first(), ("xi", "confirm") => second(), }"#,
+    ] {
+        let registration: Registration = syn::parse_str(source).unwrap();
+        assert!(overlap::check(&registration).is_err(), "accepted {source}");
+    }
+    let registration: Registration = syn::parse_str(
+        r#"owner_actions { ("xi", "confirm") => first(), ("xi", "cancel") => second(), }
+        autocomplete { fallback _ => first(), "birthday" => second(), }"#,
+    )
+    .unwrap();
+    assert!(overlap::check(&registration).is_ok());
+}
+
+#[test]
+fn fallback_is_last_even_when_its_domain_is_first() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let registration = collect(root).unwrap();
+    let entries = &registration.sections["autocomplete"];
+    let arm: syn::Arm = syn::parse2(entries.last_key_value().unwrap().1.clone()).unwrap();
+    assert!(matches!(arm.pat, syn::Pat::Wild(_)));
+    assert!(overlap::check(&registration).is_ok());
+}
+
+#[test]
+fn deleting_one_required_entry_cannot_hide_behind_an_existing_section() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let original = collect(root).unwrap();
+    for section in ["owners", "component_gates"] {
+        let mut broken = original.clone();
+        let entries = broken.sections.get_mut(section).unwrap();
+        let key = *entries
+            .iter()
+            .find(|(_, tokens)| source::strings(*tokens).contains(&"he".to_owned()))
+            .unwrap()
+            .0;
+        entries.remove(&key);
+        assert!(
+            validation::coverage(root, &broken).is_err(),
+            "accepted missing {section} entry"
+        );
+    }
+    let fixture =
+        read_registration(&root.join("crates/pinchora-commands/src/commands/registration/fixture.rs")).unwrap();
+    validation::components(root, &fixture).unwrap();
+    for section in ["owners", "component_gates"] {
+        let mut broken = fixture.clone();
+        broken.sections.get_mut(section).unwrap().clear();
+        assert!(
+            validation::components(root, &broken).is_err(),
+            "accepted empty fixture {section}"
+        );
+    }
 }
