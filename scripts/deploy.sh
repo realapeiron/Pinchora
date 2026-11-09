@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# Run on the host that owns the Compose stack, after CI has finished.
+set -euo pipefail
+
+usage() {
+    printf 'Usage: %s <merge-branch> [--check]\n' "$0" >&2
+}
+
+fail() {
+    printf 'Deploy aborted: %s\n' "$1" >&2
+    exit 1
+}
+
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    usage
+    exit 2
+fi
+branch=$1
+check_only=false
+if [ "$#" -eq 2 ]; then
+    if [ "$2" != '--check' ]; then
+        usage
+        exit 2
+    fi
+    check_only=true
+fi
+
+rollback_tag=
+status_file=
+logs_file=
+cleanup() {
+    result=$?
+    [ -z "$status_file" ] || rm -f "$status_file"
+    [ -z "$logs_file" ] || rm -f "$logs_file"
+    if [ "$result" -ne 0 ] && [ -n "$rollback_tag" ]; then
+        printf 'Rollback image tag: %s\n' "$rollback_tag" >&2
+    fi
+}
+trap cleanup EXIT
+
+check_preconditions() {
+    local root local_sha remote_sha main_sha
+    root=$(git rev-parse --show-toplevel 2>/dev/null) || fail 'not in a Git repository'
+    [ "$(pwd -P)" = "$(cd "$root" && pwd -P)" ] || fail 'run from the repository root'
+    [ "$(git branch --show-current)" = main ] || fail 'checkout must be on main'
+    [ -z "$(git status --porcelain --untracked-files=all)" ] || fail 'checkout must be clean'
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || fail 'invalid merge branch name'
+    [ "$branch" != main ] || fail 'merge branch must differ from main'
+    local_sha=$(git rev-parse --verify "refs/heads/$branch" 2>/dev/null) || fail 'local merge branch is missing'
+    remote_sha=$(git ls-remote --exit-code origin "refs/heads/$branch" 2>/dev/null) || fail 'origin merge branch is missing or unavailable'
+    remote_sha=${remote_sha%%[[:space:]]*}
+    [ "$local_sha" = "$remote_sha" ] || fail 'local merge branch differs from origin'
+    main_sha=$(git rev-parse HEAD)
+    git merge-base --is-ancestor "$main_sha" "$local_sha" || fail 'main is not an ancestor of the merge branch'
+    merge_sha=$local_sha
+}
+
+check_ci() {
+    local run status conclusion url reported_sha reported_branch
+    run=$(gh run list --workflow ci.yml --branch "$branch" --commit "$merge_sha" --event push \
+        --limit 100 --json status,conclusion,url,headSha,headBranch,createdAt \
+        --jq 'sort_by(.createdAt) | reverse | .[0] | if . == null then empty else [.status, (.conclusion // "none"), .url, .headSha, .headBranch] | @tsv end') \
+        || fail 'could not query the CI workflow'
+    [ -n "$run" ] || fail 'no CI workflow run found for the merge branch SHA'
+    IFS="$(printf '\t')" read -r status conclusion url reported_sha reported_branch <<< "$run"
+    [ "$reported_sha" = "$merge_sha" ] && [ "$reported_branch" = "$branch" ] \
+        || fail "CI run does not match the merge branch SHA: $url"
+    [ "$status" = completed ] && [ "$conclusion" = success ] \
+        || fail "CI run is $status/$conclusion: $url"
+    printf 'CI passed for %s: %s\n' "$merge_sha" "$url"
+}
+
+backup_database() {
+    local backup_dir backup_name backup_file
+    backup_dir=${PINCHORA_BACKUP_DIR:-$HOME/Development/pinchora-backups}
+    mkdir -p "$backup_dir" || fail 'could not create backup directory'
+    backup_name=${branch//\//-}
+    backup_file="$backup_dir/pinchora-before-$backup_name-$(date +%Y%m%d-%H%M).dump"
+    [ ! -e "$backup_file" ] || fail 'backup destination already exists'
+    if ! docker compose exec -T postgres pg_dump -U pinchora -d pinchora -Fc > "$backup_file"; then
+        rm -f "$backup_file"
+        fail 'database dump failed'
+    fi
+    if [ ! -s "$backup_file" ]; then
+        rm -f "$backup_file"
+        fail 'database dump is empty'
+    fi
+    printf 'Database backup saved.\n'
+}
+
+expected_migrations() {
+    local file version number
+    migration_count=0
+    migration_max=0
+    for file in migrations/[0-9]*.sql; do
+        [ -f "$file" ] || continue
+        version=${file##*/}
+        version=${version%%_*}
+        number=$((10#$version))
+        migration_count=$((migration_count + 1))
+        if [ "$number" -gt "$migration_max" ]; then
+            migration_max=$number
+        fi
+    done
+    [ "$migration_count" -gt 0 ] || fail 'no migration files found'
+}
+
+http_status() {
+    curl --silent --show-error --connect-timeout 5 --max-time 15 \
+        --output "$2" --write-out '%{http_code}' \
+        "http://127.0.0.1:8090$1"
+}
+
+verify_deployment() {
+    local code route actual expected errors failed
+    failed=0
+    status_file=$(mktemp) || fail 'could not create status file'
+    logs_file=$(mktemp) || fail 'could not create log file'
+
+    code=$(http_status / /dev/null) || code=000
+    printf 'GET /: %s\n' "$code"
+    [ "$code" = 200 ] || failed=1
+
+    code=$(http_status /api/public/status "$status_file") || code=000
+    printf 'GET /api/public/status: %s\n' "$code"
+    if [ "$code" != 200 ] || ! grep -Eq '"version"[[:space:]]*:[[:space:]]*"'"$new_sha"'[[:space:]]' "$status_file"; then
+        printf 'Public status does not report the deployed SHA\n' >&2
+        failed=1
+    fi
+
+    expected_migrations
+    expected="$migration_max|$migration_count"
+    actual=$(docker compose exec -T postgres psql -U pinchora -d pinchora -At -F '|' \
+        -c 'select coalesce(max(version), 0), count(*) from _sqlx_migrations') || actual=unavailable
+    printf 'Migrations: %s (expected %s)\n' "$actual" "$expected"
+    [ "$actual" = "$expected" ] || failed=1
+
+    if docker compose logs --since 2m gateway web > "$logs_file"; then
+        errors=$(grep -c ERROR "$logs_file") || true
+        printf 'Recent ERROR lines: %s\n' "$errors"
+        [ "$errors" -eq 0 ] || failed=1
+    else
+        printf 'Could not read recent gateway and web logs\n' >&2
+        failed=1
+    fi
+
+    for route in /me /commands /me/wallet /me/collection /me/house; do
+        code=$(http_status "$route" /dev/null) || code=000
+        printf 'GET %s: %s\n' "$route" "$code"
+        case "$code" in
+            2??|3??) ;;
+            *) failed=1 ;;
+        esac
+    done
+    [ "$failed" -eq 0 ] || fail 'post-deploy verification failed'
+}
+
+check_preconditions
+check_ci
+if [ "$check_only" = true ]; then
+    printf 'All deploy checks passed.\n'
+    exit 0
+fi
+
+backup_database
+old_sha=$(git rev-parse --short HEAD)
+docker image tag pinchora:dev "pinchora:$old_sha" || fail 'could not preserve the previous image'
+rollback_tag="pinchora:$old_sha"
+git merge -q --ff-only "$branch" || fail 'fast-forward merge failed'
+git push -q origin main || fail 'push of main failed'
+new_sha=$(git rev-parse --short HEAD)
+export GIT_SHA="$new_sha"
+docker compose build gateway || fail 'gateway image build failed'
+docker image tag pinchora:dev "pinchora:$new_sha" || fail 'could not tag the deployed image'
+docker compose up -d || fail 'could not bring up the stack'
+docker compose run --rm gateway register || fail 'command registration failed'
+docker compose restart gateway web || fail 'gateway/web restart failed'
+sleep 25
+verify_deployment
+printf 'Deployment verified: pinchora:%s\n' "$new_sha"

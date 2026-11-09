@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-db"
+description = "PostgreSQL access and migrations"
 version.workspace = true
 edition.workspace = true
 

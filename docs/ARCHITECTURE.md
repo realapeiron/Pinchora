@@ -13,7 +13,7 @@ from day one. Background research lives in [`research/`](research/).
 | Cache / coordination | Redis via `redis` 1.x (`ConnectionManager`) | Cooldowns, the cross-pod identify queue, saved gateway sessions. `fred` was rejected: no release since Feb 2025 and open leak bugs (see `research/rust-bots.md`). |
 | Images | resvg (SVG → PNG) + `image` | Cards are SVG templates filled with data, so layouts stay readable and diffable; a 960×540 card renders in ~20 ms. Fonts are embedded. |
 | Runtime | tokio, axum, tracing, metrics (Prometheus) | Standard, well-supported. |
-| Deploy | Docker (cargo-chef, distroless) + Kubernetes (kustomize) | See `deploy/k8s/README.md`. |
+| Deploy | Docker Compose on the owner's host (cargo-chef, distroless) | The production deploy is gated on a green CI commit; Kubernetes manifests are also available in `deploy/k8s/`. |
 
 ## Processes
 
@@ -118,14 +118,22 @@ pod never posts it twice.
 
 ## Crates
 
-| Crate | Role |
-|---|---|
-| `pinchora-core` | config, telemetry/ops server, level and economy math, cluster math |
-| `pinchora-db` | PostgreSQL access and migrations |
-| `pinchora-cache` | Redis: cooldowns, sessions, identify queue |
-| `pinchora-render` | pixel-art cards (SVG templates → PNG) |
-| `pinchora-commands` | `App` context, responder, slash commands, components, gateway event handlers |
-| `pinchora` | the binary: gateway, interactions server, migrate, register |
+<!-- crate-table:start -->
+
+| Crate | Description | Internal dependencies |
+|---|---|---|
+| `pinchora` | Application binary and process entry points | `pinchora-cache`, `pinchora-commands`, `pinchora-core`, `pinchora-db`, `pinchora-web` |
+| `pinchora-assets` | Tools for preparing Pinchora image assets | — |
+| `pinchora-cache` | Redis coordination, cooldowns, and gateway sessions | — |
+| `pinchora-commands` | Discord commands, interactions, and gateway handlers | `pinchora-cache`, `pinchora-core`, `pinchora-db`, `pinchora-game`, `pinchora-render` |
+| `pinchora-core` | Shared configuration, telemetry, and game rules | — |
+| `pinchora-db` | PostgreSQL access and migrations | `pinchora-core` |
+| `pinchora-game` | Shared game logic and presentation data | `pinchora-core`, `pinchora-render` |
+| `pinchora-render` | Pixel art cards and image rendering | `pinchora-core` |
+| `pinchora-web` | Web dashboard and public API | `pinchora-cache`, `pinchora-commands`, `pinchora-core`, `pinchora-db`, `pinchora-game`, `pinchora-render` |
+<!-- crate-table:end -->
+
+Architecture choices are recorded in the [decision records](adr/README.md).
 
 ## Observability
 

@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-web"
+description = "Web dashboard and public API"
 version.workspace = true
 edition.workspace = true
 

@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-game"
+description = "Shared game logic and presentation data"
 version.workspace = true
 edition.workspace = true
 

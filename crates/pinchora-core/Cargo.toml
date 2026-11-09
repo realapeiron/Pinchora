@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-core"
+description = "Shared configuration, telemetry, and game rules"
 version.workspace = true
 edition.workspace = true
 

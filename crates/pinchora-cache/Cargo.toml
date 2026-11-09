@@ -1,5 +1,6 @@
 [package]
 name = "pinchora-cache"
+description = "Redis coordination, cooldowns, and gateway sessions"
 version.workspace = true
 edition.workspace = true
 

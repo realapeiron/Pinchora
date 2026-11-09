@@ -1,0 +1,9 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+publish = false
+description = "Repository maintenance commands"
+
+[dependencies]
+serde_json.workspace = true
