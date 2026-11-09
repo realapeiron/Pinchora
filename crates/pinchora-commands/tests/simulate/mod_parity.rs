@@ -510,7 +510,9 @@ async fn mod_parity_rejoin_restart_and_unsafe_restore_keep_original_snapshot() {
         sim.app.cache.clone(),
         "sim".into(),
     );
+    reset_sweep_cooldown(&restarted).await;
     pinchora_commands::sweep_mod_parity(&restarted).await.unwrap();
+    assert_sweep_lock_released();
     assert_eq!(sim.mock.member_roles.lock().unwrap()[&target], vec![mute]);
     sim.leave(target, "member", false).await;
     sim.mock.member_roles.lock().unwrap().insert(target, vec![]);
@@ -1048,6 +1050,12 @@ async fn mod_parity_autopurge_scans_past_filtered_pages_and_deletes_old_messages
     let Some(sim) = Sim::new("mod_parity_autopurge_cursor").await else {
         return;
     };
+    // Leave three connections for the sweep lease, restriction ban lock and queries.
+    // Two would starve restriction recovery when another fixture has an active mute.
+    let _reserved = [
+        sim.app.db.pool().acquire().await.unwrap(),
+        sim.app.db.pool().acquire().await.unwrap(),
+    ];
     let channel = unique();
     PAGED_CHANNELS.lock().unwrap().push(channel);
     let oldest = (((sim.app.now() - chrono::Duration::days(30)).timestamp_millis() - 1_420_070_400_000) as u64) << 22;
@@ -1076,10 +1084,14 @@ async fn mod_parity_autopurge_scans_past_filtered_pages_and_deletes_old_messages
         .unwrap();
     // Use a distinct scheduler minute; other tests also exercise the fleet lease.
     sim.app.shift_clock(chrono::Duration::hours(4));
+    reset_sweep_cooldown(&sim.app).await;
     pinchora_commands::sweep_mod_parity(&sim.app).await.unwrap();
+    assert_sweep_lock_released();
     assert!(sim.mock.deleted_messages.lock().unwrap().is_empty());
     sim.app.shift_clock(chrono::Duration::minutes(1));
+    reset_sweep_cooldown(&sim.app).await;
     pinchora_commands::sweep_mod_parity(&sim.app).await.unwrap();
+    assert_sweep_lock_released();
     assert_eq!(
         sim.mock.deleted_messages.lock().unwrap().as_slice(),
         &[(channel, oldest)]
@@ -1095,6 +1107,77 @@ async fn mod_parity_autopurge_scans_past_filtered_pages_and_deletes_old_messages
     sim.app
         .db
         .save_mod_parity_config(sim.guild, &Default::default())
+        .await
+        .unwrap();
+}
+
+fn assert_sweep_lock_released() {
+    // A separate connection cannot flush the lease connection's pending rollback.
+    // Block this current-thread test runtime while probing so its pool-return task
+    // cannot hide a transaction that the sweep dropped without awaiting completion.
+    let acquired = std::thread::spawn(|| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let mut connection = <sqlx::PgConnection as sqlx::Connection>::connect(
+                    &std::env::var("PINCHORA_TEST_DATABASE_URL").unwrap(),
+                )
+                .await
+                .unwrap();
+                sqlx::query_scalar::<_, bool>("SELECT pg_try_advisory_xact_lock(74, 0)")
+                    .fetch_one(&mut connection)
+                    .await
+                    .unwrap()
+            })
+    })
+    .join()
+    .unwrap();
+    assert!(acquired, "a completed sweep must have released its advisory lock");
+}
+
+#[tokio::test]
+async fn sweep_releases_lease_on_cooldown_and_error() {
+    let _serial = SWEEPS.lock().await;
+    let Some(sim) = Sim::new("sweep_lease_exits").await else {
+        return;
+    };
+    sim.app.shift_clock(chrono::Duration::hours(8));
+    reset_sweep_cooldown(&sim.app).await;
+    pinchora_commands::sweep_mod_parity(&sim.app).await.unwrap();
+    assert_sweep_lock_released();
+    // The same minute returns early from the cooldown path.
+    pinchora_commands::sweep_mod_parity(&sim.app).await.unwrap();
+    assert_sweep_lock_released();
+    sim.app
+        .db
+        .save_mod_parity_config(sim.guild, &Default::default())
+        .await
+        .unwrap();
+    sqlx::query(r#"UPDATE mod_parity_settings SET config='{"autopurge":false}'::jsonb WHERE guild_id=$1"#)
+        .bind(sim.guild as i64)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    sim.app.shift_clock(chrono::Duration::minutes(1));
+    reset_sweep_cooldown(&sim.app).await;
+    let result = pinchora_commands::sweep_mod_parity(&sim.app).await;
+    assert_sweep_lock_released();
+    // Restore the malformed fixture even when the expected error is missing.
+    sim.app
+        .db
+        .save_mod_parity_config(sim.guild, &Default::default())
+        .await
+        .unwrap();
+    assert!(result.is_err(), "malformed stored settings must propagate an error");
+}
+
+async fn reset_sweep_cooldown(app: &App) {
+    // SWEEPS serializes these fixtures; clear only their minute so repeated runs
+    // against the same test Redis database exercise work instead of an old cooldown.
+    app.cache
+        .release_cooldown(&format!("modparity:autopurge:{}", app.now().timestamp() / 60))
         .await
         .unwrap();
 }

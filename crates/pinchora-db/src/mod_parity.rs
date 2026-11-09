@@ -3,13 +3,20 @@ use crate::Db;
 use pinchora_core::mod_parity::Config;
 use serde_json::Value;
 impl Db {
-    /// Non-expiring fleet exclusion; PostgreSQL releases it on commit, rollback or disconnect.
+    /// Non-expiring fleet exclusion; the caller must await commit or rollback before returning.
     pub async fn claim_mod_parity_sweep(&self) -> anyhow::Result<Option<sqlx::Transaction<'_, sqlx::Postgres>>> {
         let mut tx = self.pool().begin().await?;
-        let claimed: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(74, 0)")
+        let claimed = sqlx::query_scalar::<_, bool>("SELECT pg_try_advisory_xact_lock(74, 0)")
             .fetch_one(&mut *tx)
-            .await?;
-        Ok(if claimed { Some(tx) } else { None })
+            .await;
+        match claimed {
+            Ok(true) => Ok(Some(tx)),
+            result => {
+                tx.rollback().await?;
+                result?;
+                Ok(None)
+            }
+        }
     }
 
     /// Personal D11 export. Staff-only evidence and third-party identities stay private.

@@ -351,6 +351,7 @@ impl Db {
     /// Forgets members who left before `before`.
     pub async fn prune_sticky(&self, before: DateTime<Utc>) -> anyhow::Result<u64> {
         let mut tx = self.pool().begin().await?;
+        let result = async {
         let candidates: Vec<(i64,)> = sqlx::query_as(
             "SELECT DISTINCT user_id FROM sticky_roles WHERE left_at IS NOT NULL AND left_at < $1 ORDER BY user_id LIMIT 1000")
             .bind(before).fetch_all(&mut *tx).await?;
@@ -372,8 +373,18 @@ impl Db {
         .execute(&mut *tx)
         .await?
         .rows_affected();
-        tx.commit().await?;
-        Ok(deleted)
+            anyhow::Ok(deleted)
+        }.await;
+        match result {
+            Ok(deleted) => {
+                tx.commit().await?;
+                Ok(deleted)
+            }
+            Err(error) => {
+                tx.rollback().await?;
+                Err(error)
+            }
+        }
     }
 
     // /Roles on a timer

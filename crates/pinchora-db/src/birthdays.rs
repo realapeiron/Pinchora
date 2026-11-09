@@ -188,14 +188,21 @@ impl Db {
             .bind(sql_id(user)).fetch_all(self.pool()).await?)
     }
 
-    /// One dispatcher at a time across pods; dropping the transaction releases the lock after a crash.
+    /// One dispatcher at a time across pods; the caller must await commit or rollback before returning.
     pub async fn birthday_dispatch_lock(&self) -> anyhow::Result<Option<sqlx::Transaction<'static, sqlx::Postgres>>> {
         let mut tx = self.pool().begin().await?;
-        let taken: bool =
-            sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended('birthday-dispatch',0))")
+        let taken =
+            sqlx::query_scalar::<_, bool>("SELECT pg_try_advisory_xact_lock(hashtextextended('birthday-dispatch',0))")
                 .fetch_one(&mut *tx)
-                .await?;
-        Ok(taken.then_some(tx))
+                .await;
+        match taken {
+            Ok(true) => Ok(Some(tx)),
+            result => {
+                tx.rollback().await?;
+                result?;
+                Ok(None)
+            }
+        }
     }
 
     /// Undelivered claims survive process restarts. Re-read visibility and settings before delivery.

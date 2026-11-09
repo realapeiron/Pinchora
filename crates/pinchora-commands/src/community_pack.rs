@@ -247,57 +247,73 @@ pub(crate) async fn route_dm(app: &Arc<App>, guild: u64, user: u64, body: &str) 
     // Hold a cross-pod lock until Discord creation and persistence finish. A cooldown also
     // prevents repeated orphan threads after an ambiguous HTTP/DB failure or process restart.
     let mut lock = app.db.pool().begin().await?;
-    let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,0))")
-        .bind(format!("community:mail:{guild}:{user}"))
-        .fetch_one(&mut *lock)
-        .await?;
-    if !acquired {
-        return Ok(false);
-    }
-    let mut text = body.chars().take(1800).collect::<String>();
-    let existing: Option<pinchora_db::ModmailThread> =
-        sqlx::query_as("SELECT * FROM modmail_threads WHERE guild_id=$1 AND user_id=$2 AND status='open'")
-            .bind(guild as i64)
-            .bind(user as i64)
-            .fetch_optional(&mut *lock)
+    let result = async {
+        let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,0))")
+            .bind(format!("community:mail:{guild}:{user}"))
+            .fetch_one(&mut *lock)
             .await?;
-    let mut created = false;
-    if let Some(thread) = existing {
-        let mentions = AllowedMentions::default();
-        app.http
-            .create_message(Id::new(thread.thread_id as u64))
-            .content(&text)
-            .allowed_mentions(Some(&mentions))
-            .await?;
-    } else {
-        if app
-            .cache
-            .try_cooldown(&format!("community:mail-create:{user}"), Duration::from_secs(600))
-            .await?
-            .is_some()
-        {
-            return Ok(false);
+        if !acquired {
+            return Ok(None);
         }
-        let name = t!(guild_lang, "community-pack.modmail-thread-title", user = user);
-        text = format!("<@{user}>: {text}");
-        let mentions = AllowedMentions::default();
-        let response = app
-            .http
-            .create_forum_thread(Id::new(forum as u64), &name)
-            .message()
-            .content(&text)
-            .allowed_mentions(Some(&mentions))
-            .await?;
-        let thread = response.model().await?;
-        sqlx::query("INSERT INTO modmail_threads(guild_id,user_id,thread_id) VALUES($1,$2,$3)")
-            .bind(guild as i64)
-            .bind(user as i64)
-            .bind(thread.channel.id.get() as i64)
-            .execute(&mut *lock)
-            .await?;
-        created = true;
+        let mut text = body.chars().take(1800).collect::<String>();
+        let existing: Option<pinchora_db::ModmailThread> =
+            sqlx::query_as("SELECT * FROM modmail_threads WHERE guild_id=$1 AND user_id=$2 AND status='open'")
+                .bind(guild as i64)
+                .bind(user as i64)
+                .fetch_optional(&mut *lock)
+                .await?;
+        let mut created = false;
+        if let Some(thread) = existing {
+            let mentions = AllowedMentions::default();
+            app.http
+                .create_message(Id::new(thread.thread_id as u64))
+                .content(&text)
+                .allowed_mentions(Some(&mentions))
+                .await?;
+        } else {
+            if app
+                .cache
+                .try_cooldown(&format!("community:mail-create:{user}"), Duration::from_secs(600))
+                .await?
+                .is_some()
+            {
+                return Ok(None);
+            }
+            let name = t!(guild_lang, "community-pack.modmail-thread-title", user = user);
+            text = format!("<@{user}>: {text}");
+            let mentions = AllowedMentions::default();
+            let response = app
+                .http
+                .create_forum_thread(Id::new(forum as u64), &name)
+                .message()
+                .content(&text)
+                .allowed_mentions(Some(&mentions))
+                .await?;
+            let thread = response.model().await?;
+            sqlx::query("INSERT INTO modmail_threads(guild_id,user_id,thread_id) VALUES($1,$2,$3)")
+                .bind(guild as i64)
+                .bind(user as i64)
+                .bind(thread.channel.id.get() as i64)
+                .execute(&mut *lock)
+                .await?;
+            created = true;
+        }
+        anyhow::Ok(Some(created))
     }
-    lock.commit().await?;
+    .await;
+    let created = match result {
+        Ok(created) => {
+            lock.commit().await?;
+            created
+        }
+        Err(error) => {
+            lock.rollback().await?;
+            return Err(error);
+        }
+    };
+    let Some(created) = created else {
+        return Ok(false);
+    };
     if created {
         let dm = app.http.create_private_channel(Id::new(user)).await?.model().await?;
         let greeting = if settings.greeting.is_empty() {

@@ -347,9 +347,16 @@ pub fn spawn_ticker(app: Arc<App>) {
 }
 pub async fn sweep(app: &App) -> anyhow::Result<()> {
     // A transaction lock spans the entire run, including slow Discord rate-limit waits.
-    let Some(_guard) = app.db.claim_mod_parity_sweep().await? else {
+    let Some(guard) = app.db.claim_mod_parity_sweep().await? else {
         return Ok(());
     };
+    let result = sweep_locked(app).await;
+    // Dropping only queues rollback; finish it before another sweep can try the lease.
+    guard.rollback().await?;
+    result
+}
+
+async fn sweep_locked(app: &App) -> anyhow::Result<()> {
     let bucket = app.now().timestamp() / 60;
     if app
         .cache

@@ -143,8 +143,10 @@ async fn gateway(app: &Arc<App>, event: Event) -> anyhow::Result<()> {
                 .await?
                 .is_some_and(|b| b.restore_on_join)
             {
-                let _guard = app.db.lock_antinuke(g).await?;
-                recovery::restore_member(app, g, e.user.id.get(), None).await?;
+                let guard = app.db.lock_antinuke(g).await?;
+                let result = recovery::restore_member(app, g, e.user.id.get(), None).await;
+                guard.rollback().await?;
+                result?;
             }
             remember_member(app, g, e.user.id.get(), &e.roles).await?;
             if !e.user.bot {
@@ -393,7 +395,8 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
     if !(0..=30_000).contains(&age) {
         return Ok(());
     }
-    let _guard = app.db.lock_antinuke(guild).await?;
+    let mut guard = Some(app.db.lock_antinuke(guild).await?);
+    let result = async {
     let config = app.db.antinuke_config(guild).await?;
     if !config.enabled {
         return Ok(());
@@ -521,7 +524,7 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
             Err(e) => result.push_str(&format!(" · {e}")),
         }
     }
-    drop(_guard);
+    guard.take().unwrap().rollback().await?;
     if (config.auto_restore && matches!(kind, "channel_delete" | "role_delete" | "ban"))
         || (kind == "vip_ban" && config.revert_vip_bans)
     {
@@ -546,6 +549,11 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
     )
     .await?;
     safety::alert(app, &config, &event).await
+    }.await;
+    if let Some(guard) = guard {
+        guard.rollback().await?;
+    }
+    result
 }
 pub fn spawn_ticker(app: Arc<App>) {
     tokio::spawn(async move {
