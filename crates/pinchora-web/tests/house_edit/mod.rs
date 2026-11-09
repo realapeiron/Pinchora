@@ -1,5 +1,7 @@
 use crate::*;
 
+mod connections;
+
 impl Browser {
     async fn op(&mut self, path: &str, expected: &str, op: Value, csrf: bool) -> Response {
         let me = self.get("/api/me").await.json();
@@ -216,7 +218,9 @@ async fn surface_confirmation_upgrade_and_lock_use_existing_tables() {
         .unwrap();
     let mut browser = site.browser();
     browser.login(user).await;
-    let room = browser.get("/api/house/rooms/0").await.json();
+    let response = browser.get("/api/house/rooms/0").await;
+    assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+    let room = response.json();
     let expected = room["fingerprint"].as_str().unwrap();
     let surface = &Content::get().surfaces.wallpapers[1];
     let confirm = browser

@@ -20,6 +20,13 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
+function rustFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? rustFiles(path) : path.endsWith(".rs") ? [path] : [];
+  });
+}
+
 describe("SPA message catalogs", () => {
   it("keeps deferred workflow translations complete in both languages", async () => {
     expect(Object.keys(workflowTr).sort()).toEqual(Object.keys(workflowEn).sort());
@@ -56,7 +63,9 @@ describe("SPA message catalogs", () => {
       ) +
       readFileSync(join(process.cwd(), "../crates/pinchora-web/src/routes/house/house_edit.rs"), "utf8") +
       readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/house/house_edit.rs"), "utf8") +
-      readFileSync(join(process.cwd(), "../crates/pinchora-commands/src/commands/house/house.rs"), "utf8") +
+      rustFiles(join(process.cwd(), "../crates/pinchora-commands/src/commands/house"))
+        .map((file) => readFileSync(file, "utf8"))
+        .join("\n") +
       ["admin/modules", "admin/logging", "moderation/moderation", "admin/server_stats"]
         .map((name) => readFileSync(join(process.cwd(), `../crates/pinchora-core/src/${name}.rs`), "utf8"))
         .join("\n") +

@@ -186,181 +186,28 @@ pub(crate) async fn execute(
         }
         return Ok(vec![]);
     }
-    let member = app
-        .http
-        .guild_member(Id::new(guild), Id::new(target))
-        .await?
-        .model()
-        .await?;
-    if member.user.bot {
-        anyhow::bail!(t!(lang, "automod.protected"));
-    }
-    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
-    let bot = app
-        .http
-        .guild_member(Id::new(guild), app.application_id.cast())
-        .await?
-        .model()
-        .await?;
-    if actor.is_none() && powers(&roles, guild, &member.roles).intersects(STAFF) {
-        anyhow::bail!(t!(lang, "automod.protected"));
-    }
-    let bot_powers = powers(&roles, guild, &bot.roles);
-    let (needed, permission) = match action.kind.as_str() {
-        "delete" => (Permissions::MANAGE_MESSAGES, "manage_messages"),
-        "timeout" | "warn" => (Permissions::MODERATE_MEMBERS, "moderate_members"),
-        "kick" => (Permissions::KICK_MEMBERS, "kick_members"),
-        "ban" => (Permissions::BAN_MEMBERS, "ban_members"),
-        "add_role" => (Permissions::MANAGE_ROLES, "manage_roles"),
-        _ => (Permissions::empty(), "manage_guild"),
-    };
-    if !bot_powers.contains(Permissions::ADMINISTRATOR) && !bot_powers.contains(needed) {
-        anyhow::bail!(t!(
-            lang,
-            "automod.missing_permission",
-            permission = t!(lang, &format!("automod.perm.{permission}"))
-        ));
-    }
-    let reason = t!(
+    let execution = AutoAction {
+        app,
+        config,
+        rule,
+        hit,
+        action,
+        actor,
+        guild,
+        target,
         lang,
-        "automod.reason",
-        rule = crate::infra::util::strip_mentions(&rule.name)
-    );
-    if matches!(action.kind.as_str(), "timeout" | "kick" | "ban")
-        && let Some(why) = crate::moderation::anti_nuke::vip_refusal(app, guild, target).await?
-    {
-        anyhow::bail!(why);
-    }
-    let hierarchy = matches!(action.kind.as_str(), "warn" | "timeout" | "kick" | "ban" | "add_role");
-    if hierarchy {
-        let bot_rank = Rank {
-            id: app.application_id.get(),
-            top: top(&roles, &bot.roles),
-        };
-        let actor_rank = if let Some(actor) = actor {
-            let m = app
-                .http
-                .guild_member(Id::new(guild), Id::new(actor))
-                .await?
-                .model()
-                .await?;
-            Rank {
-                id: actor,
-                top: top(&roles, &m.roles),
-            }
-        } else {
-            bot_rank
-        };
-        if may_act(
-            owner,
-            actor_rank,
-            bot_rank,
-            Rank {
-                id: target,
-                top: top(&roles, &member.roles),
-            },
-        )
-        .is_err()
-            || (action.kind == "timeout" && powers(&roles, guild, &member.roles).contains(Permissions::ADMINISTRATOR))
-        {
-            anyhow::bail!(t!(lang, "automod.hierarchy"));
-        }
-    }
+        owner,
+    };
+    let checked = execution.check_target().await?;
     let _ban_guard = if action.kind == "ban" {
         Some(app.db.lock_ban(guild, target).await?)
     } else {
         None
     };
-    let kind = match action.kind.as_str() {
-        "delete" => {
-            if let Some(message) = hit.message_id {
-                match app
-                    .http
-                    .delete_message(Id::new(hit.channel_id as u64), Id::new(message as u64))
-                    .await
-                {
-                    Ok(_) => {}
-                    Err(e) if crate::roles::roles::error_code(&e) == Some(10008) => {}
-                    Err(e) => return Err(e.into()),
-                }
-            }
-            return Ok(vec![]);
-        }
-        "warn" => CaseKind::Warn,
-        "timeout" => {
-            let until = twilight_model::util::Timestamp::from_secs(
-                (app.now() + chrono::Duration::seconds(i64::from(action.secs))).timestamp(),
-            )?;
-            app.http
-                .update_guild_member(Id::new(guild), Id::new(target))
-                .communication_disabled_until(Some(until))
-                .await?;
-            CaseKind::Timeout
-        }
-        "kick" => {
-            app.http.remove_guild_member(Id::new(guild), Id::new(target)).await?;
-            CaseKind::Kick
-        }
-        "ban" => {
-            app.http.create_ban(Id::new(guild), Id::new(target)).await?;
-            CaseKind::Ban
-        }
-        "add_role" => {
-            let id = action
-                .role
-                .as_deref()
-                .and_then(|s| s.parse::<u64>().ok())
-                .ok_or_else(unavailable)?;
-            let role = roles.iter().find(|r| r.id.get() == id).ok_or_else(unavailable)?;
-            if let Some(why) = settings::run_time_refusal_in(lang, role.permissions.bits(), &role.name).or_else(|| {
-                settings::role_refusal_in(lang, facts(role, guild), Some(top(&roles, &bot.roles)), &role.name)
-            }) {
-                anyhow::bail!(why);
-            }
-            app.http
-                .add_guild_member_role(Id::new(guild), Id::new(target), role.id)
-                .await?;
-            CaseKind::RoleAdd
-        }
-        _ => anyhow::bail!(t!(lang, "automod.invalid")),
+    let Some(kind) = execution.apply(&checked).await? else {
+        return Ok(vec![]);
     };
-    let act = Act {
-        kind,
-        target,
-        target_name: member.user.name.clone(),
-        reason: Some(reason),
-        duration: (matches!(kind, CaseKind::Timeout | CaseKind::Ban) && action.secs > 0)
-            .then(|| chrono::Duration::seconds(i64::from(action.secs))),
-        details: Some(t!(lang, "automod.case_detail", hit = hit.id)),
-    };
-    let opened = moderation::record(
-        app,
-        guild,
-        (actor.unwrap_or(app.application_id.get()), BOT_NAME),
-        &act,
-        if config.dm_on_action { None } else { Some(false) },
-    )
-    .await?;
-    if kind == CaseKind::Warn {
-        let ladder = app.db.warn_thresholds(guild).await?;
-        if let Some(rung) = reached(&ladder, opened.active_warns) {
-            let kind = match rung.action {
-                Punishment::Timeout => "timeout",
-                Punishment::Kick => "kick",
-                Punishment::Ban => "ban",
-            };
-            let next = Action {
-                kind: kind.into(),
-                secs: rung
-                    .duration
-                    .map_or(if kind == "timeout" { 600 } else { 0 }, |d| d.num_seconds() as u32),
-                role: None,
-            };
-            Box::pin(execute(app, config, rule, hit, &next, None)).await?;
-            return Ok(vec![format!("ladder:{kind}")]);
-        }
-    }
-    Ok(vec![])
+    execution.record(kind, checked).await
 }
 
 fn display_actions(lang: pinchora_core::infra::i18n::Lang, value: &str) -> String {
@@ -448,4 +295,257 @@ pub(crate) async fn alert(app: &App, config: &Config, rule: &Rule, hit: &AutoMod
         .allowed_mentions(Some(&AllowedMentions::default()))
         .await?;
     Ok(())
+}
+
+struct AutoAction<'a> {
+    app: &'a App,
+    config: &'a Config,
+    rule: &'a Rule,
+    hit: &'a AutoModHit,
+    action: &'a Action,
+    actor: Option<u64>,
+    guild: u64,
+    target: u64,
+    lang: pinchora_core::infra::i18n::Lang,
+    owner: u64,
+}
+struct ActionTarget {
+    member: twilight_model::guild::Member,
+    roles: Vec<Role>,
+    bot: twilight_model::guild::Member,
+    reason: String,
+}
+
+impl AutoAction<'_> {
+    async fn check_target(&self) -> anyhow::Result<ActionTarget> {
+        let app = self.app;
+        let rule = self.rule;
+        let action = self.action;
+        let actor = self.actor;
+        let guild = self.guild;
+        let target = self.target;
+        let lang = self.lang;
+        let member = app
+            .http
+            .guild_member(Id::new(guild), Id::new(target))
+            .await?
+            .model()
+            .await?;
+        if member.user.bot {
+            anyhow::bail!(t!(lang, "automod.protected"));
+        }
+        let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+        let bot = app
+            .http
+            .guild_member(Id::new(guild), app.application_id.cast())
+            .await?
+            .model()
+            .await?;
+        if actor.is_none() && powers(&roles, guild, &member.roles).intersects(STAFF) {
+            anyhow::bail!(t!(lang, "automod.protected"));
+        }
+        let bot_powers = powers(&roles, guild, &bot.roles);
+        let (needed, permission) = match action.kind.as_str() {
+            "delete" => (Permissions::MANAGE_MESSAGES, "manage_messages"),
+            "timeout" | "warn" => (Permissions::MODERATE_MEMBERS, "moderate_members"),
+            "kick" => (Permissions::KICK_MEMBERS, "kick_members"),
+            "ban" => (Permissions::BAN_MEMBERS, "ban_members"),
+            "add_role" => (Permissions::MANAGE_ROLES, "manage_roles"),
+            _ => (Permissions::empty(), "manage_guild"),
+        };
+        if !bot_powers.contains(Permissions::ADMINISTRATOR) && !bot_powers.contains(needed) {
+            anyhow::bail!(t!(
+                lang,
+                "automod.missing_permission",
+                permission = t!(lang, &format!("automod.perm.{permission}"))
+            ));
+        }
+        let reason = t!(
+            lang,
+            "automod.reason",
+            rule = crate::infra::util::strip_mentions(&rule.name)
+        );
+        if matches!(action.kind.as_str(), "timeout" | "kick" | "ban")
+            && let Some(why) = crate::moderation::anti_nuke::vip_refusal(app, guild, target).await?
+        {
+            anyhow::bail!(why);
+        }
+        self.check_hierarchy(&member, &roles, &bot).await?;
+        Ok(ActionTarget {
+            member,
+            roles,
+            bot,
+            reason,
+        })
+    }
+
+    async fn check_hierarchy(
+        &self,
+        member: &twilight_model::guild::Member,
+        roles: &[Role],
+        bot: &twilight_model::guild::Member,
+    ) -> anyhow::Result<()> {
+        let app = self.app;
+        let action = self.action;
+        let actor = self.actor;
+        let guild = self.guild;
+        let target = self.target;
+        let lang = self.lang;
+        let owner = self.owner;
+        let hierarchy = matches!(action.kind.as_str(), "warn" | "timeout" | "kick" | "ban" | "add_role");
+        if hierarchy {
+            let bot_rank = Rank {
+                id: app.application_id.get(),
+                top: top(roles, &bot.roles),
+            };
+            let actor_rank = if let Some(actor) = actor {
+                let m = app
+                    .http
+                    .guild_member(Id::new(guild), Id::new(actor))
+                    .await?
+                    .model()
+                    .await?;
+                Rank {
+                    id: actor,
+                    top: top(roles, &m.roles),
+                }
+            } else {
+                bot_rank
+            };
+            if may_act(
+                owner,
+                actor_rank,
+                bot_rank,
+                Rank {
+                    id: target,
+                    top: top(roles, &member.roles),
+                },
+            )
+            .is_err()
+                || (action.kind == "timeout"
+                    && powers(roles, guild, &member.roles).contains(Permissions::ADMINISTRATOR))
+            {
+                anyhow::bail!(t!(lang, "automod.hierarchy"));
+            }
+        }
+        Ok(())
+    }
+
+    async fn apply(&self, checked: &ActionTarget) -> anyhow::Result<Option<CaseKind>> {
+        let app = self.app;
+        let hit = self.hit;
+        let action = self.action;
+        let guild = self.guild;
+        let target = self.target;
+        let lang = self.lang;
+        let roles = &checked.roles;
+        let bot = &checked.bot;
+        let unavailable = || anyhow::anyhow!(t!(lang, "automod.unavailable"));
+        Ok(Some(match action.kind.as_str() {
+            "delete" => {
+                if let Some(message) = hit.message_id {
+                    match app
+                        .http
+                        .delete_message(Id::new(hit.channel_id as u64), Id::new(message as u64))
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) if crate::roles::roles::error_code(&e) == Some(10008) => {}
+                        Err(e) => return Err(e.into()),
+                    }
+                }
+                return Ok(None);
+            }
+            "warn" => CaseKind::Warn,
+            "timeout" => {
+                let until = twilight_model::util::Timestamp::from_secs(
+                    (app.now() + chrono::Duration::seconds(i64::from(action.secs))).timestamp(),
+                )?;
+                app.http
+                    .update_guild_member(Id::new(guild), Id::new(target))
+                    .communication_disabled_until(Some(until))
+                    .await?;
+                CaseKind::Timeout
+            }
+            "kick" => {
+                app.http.remove_guild_member(Id::new(guild), Id::new(target)).await?;
+                CaseKind::Kick
+            }
+            "ban" => {
+                app.http.create_ban(Id::new(guild), Id::new(target)).await?;
+                CaseKind::Ban
+            }
+            "add_role" => {
+                let id = action
+                    .role
+                    .as_deref()
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .ok_or_else(unavailable)?;
+                let role = roles.iter().find(|r| r.id.get() == id).ok_or_else(unavailable)?;
+                if let Some(why) =
+                    settings::run_time_refusal_in(lang, role.permissions.bits(), &role.name).or_else(|| {
+                        settings::role_refusal_in(lang, facts(role, guild), Some(top(roles, &bot.roles)), &role.name)
+                    })
+                {
+                    anyhow::bail!(why);
+                }
+                app.http
+                    .add_guild_member_role(Id::new(guild), Id::new(target), role.id)
+                    .await?;
+                CaseKind::RoleAdd
+            }
+            _ => anyhow::bail!(t!(lang, "automod.invalid")),
+        }))
+    }
+
+    async fn record(&self, kind: CaseKind, checked: ActionTarget) -> anyhow::Result<Vec<String>> {
+        let app = self.app;
+        let config = self.config;
+        let rule = self.rule;
+        let hit = self.hit;
+        let action = self.action;
+        let actor = self.actor;
+        let guild = self.guild;
+        let target = self.target;
+        let lang = self.lang;
+        let member = checked.member;
+        let reason = checked.reason;
+        let act = Act {
+            kind,
+            target,
+            target_name: member.user.name.clone(),
+            reason: Some(reason),
+            duration: (matches!(kind, CaseKind::Timeout | CaseKind::Ban) && action.secs > 0)
+                .then(|| chrono::Duration::seconds(i64::from(action.secs))),
+            details: Some(t!(lang, "automod.case_detail", hit = hit.id)),
+        };
+        let opened = moderation::record(
+            app,
+            guild,
+            (actor.unwrap_or(app.application_id.get()), BOT_NAME),
+            &act,
+            if config.dm_on_action { None } else { Some(false) },
+        )
+        .await?;
+        if kind == CaseKind::Warn {
+            let ladder = app.db.warn_thresholds(guild).await?;
+            if let Some(rung) = reached(&ladder, opened.active_warns) {
+                let kind = match rung.action {
+                    Punishment::Timeout => "timeout",
+                    Punishment::Kick => "kick",
+                    Punishment::Ban => "ban",
+                };
+                let next = Action {
+                    kind: kind.into(),
+                    secs: rung
+                        .duration
+                        .map_or(if kind == "timeout" { 600 } else { 0 }, |d| d.num_seconds() as u32),
+                    role: None,
+                };
+                Box::pin(execute(app, config, rule, hit, &next, None)).await?;
+                return Ok(vec![format!("ladder:{kind}")]);
+            }
+        }
+        Ok(vec![])
+    }
 }

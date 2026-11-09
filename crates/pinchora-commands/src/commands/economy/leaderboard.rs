@@ -185,125 +185,13 @@ async fn page(
         }
         (b, _) => b,
     };
-    // Fetch one extra row to know whether a next page exists.
-    let mut points_name = String::new();
-    let mut last_week = Vec::new();
-    // The weekly catch board's rows, which carry a fish and a size the plain rows have no room for.
-    let mut catches: Vec<CatchBoardRow> = Vec::new();
-    let (mut rows, title) = match (board, guild) {
-        (Board::WeeklyCatch, Some(g)) => {
-            let week = week_start(app.now());
-            last_week = last_week_catches(app, g, week - chrono::Duration::weeks(1), lang).await?;
-            catches = app.db.weekly_catch_board(g, week, PAGE_SIZE + 1, offset).await?;
-            let rows = catches
-                .iter()
-                .map(|c| LeaderboardRow {
-                    user_id: c.user_id,
-                    value: (c.ratio * 1000.0).round() as i64,
-                })
-                .collect();
-            (rows, t!(lang, "leaderboard.catch"))
-        }
-        (Board::Weekly, Some(g)) => {
-            let week = week_start(app.now());
-            last_week = last_week_podium(app, g, week - chrono::Duration::weeks(1), lang).await?;
-            (
-                app.db.weekly_leaderboard(g, week, PAGE_SIZE + 1, offset).await?,
-                t!(lang, "leaderboard.weekly"),
-            )
-        }
-        (Board::Server, Some(g)) => (
-            app.db.guild_leaderboard(g, PAGE_SIZE + 1, offset).await?,
-            t!(lang, "leaderboard.server"),
-        ),
-        (Board::Voice, Some(g)) => (
-            app.db.voice_level_board(g, PAGE_SIZE + 1, offset).await?,
-            t!(lang, "leaderboard.voice"),
-        ),
-        (Board::ServerPoints, Some(g)) => {
-            points_name = app.guild_settings(g).await?.points_name.clone();
-            (
-                app.db.guild_points_leaderboard(g, PAGE_SIZE + 1, offset).await?,
-                t!(lang, "leaderboard.points", name = points_name),
-            )
-        }
-        (Board::GlobalShells, _) => (
-            app.db.global_credits_leaderboard(PAGE_SIZE + 1, offset).await?,
-            t!(lang, "leaderboard.shells"),
-        ),
-        _ => (
-            app.db.global_xp_leaderboard(PAGE_SIZE + 1, offset).await?,
-            t!(lang, "leaderboard.global"),
-        ),
-    };
+    let mut board_rows = load_board(app, board, guild, offset, lang).await?;
+    let rows = &mut board_rows.rows;
     let has_next = rows.len() as i64 > PAGE_SIZE && page < MAX_PAGES;
     rows.truncate(PAGE_SIZE as usize);
 
-    // Names and avatars for the whole page at once; most come from the caches.
-    let people: Vec<_> = rows
-        .iter()
-        .map(|row| {
-            let (app, id) = (app.clone(), row.user_id as u64);
-            tokio::spawn(async move {
-                let user = app.user(id).await;
-                let avatar = match &user {
-                    Some(user) => app.avatar(user, LeaderboardCard::AVATAR_SIZE, Some(16)).await,
-                    None => Arc::new(placeholder_avatar(id, LeaderboardCard::AVATAR_SIZE)),
-                };
-                (user, avatar)
-            })
-        })
-        .collect();
-    let mut entries = Vec::with_capacity(rows.len());
-    let curve = if matches!(board, Board::Server | Board::Voice) {
-        Some(app.db.leveling_policy(guild.expect("server board")).await?)
-    } else {
-        None
-    };
-    for (i, (row, person)) in rows.iter().zip(people).enumerate() {
-        let (user, avatar) = person.await?;
-        let (value, detail) = match board {
-            Board::GlobalShells => (thousands_in(lang, row.value), t!(lang, "leaderboard.shells-unit")),
-            Board::ServerPoints => (thousands_in(lang, row.value), lang.upper(&points_name)),
-            Board::Weekly => (thousands_in(lang, row.value), t!(lang, "leaderboard.weekly-unit")),
-            Board::WeeklyCatch => {
-                let catch = &catches[i];
-                let fish = lang.upper(&fish_name(&catch.fish_id, lang));
-                (
-                    t!(
-                        lang,
-                        "leaderboard.size",
-                        size = pinchora_core::admin::server_stats::decimal_in(lang, catch.size_cm, 1)
-                    ),
-                    t!(
-                        lang,
-                        "leaderboard.usual",
-                        fish = fish,
-                        percent = pinchora_core::admin::server_stats::decimal_in(lang, catch.ratio * 100.0, 0)
-                    ),
-                )
-            }
-            _ => (
-                t!(
-                    lang,
-                    "leaderboard.level",
-                    level = curve
-                        .as_ref()
-                        .map_or_else(|| leveling::level_of(row.value), |c| c.level_of(row.value))
-                ),
-                t!(lang, "leaderboard.xp", xp = thousands_in(lang, row.value)),
-            ),
-        };
-        entries.push(LeaderboardEntry {
-            rank: offset + i as i64 + 1,
-            avatar_png: avatar.to_vec(),
-            name: user
-                .as_deref()
-                .map_or_else(|| t!(lang, "leaderboard.unknown-user"), |u| display_name(u, None)),
-            value,
-            detail,
-        });
-    }
+    let entries = board_entries(app, board, guild, offset, lang, &board_rows).await?;
+    let BoardRows { title, last_week, .. } = board_rows;
     let png = app
         .render(move |r| {
             r.leaderboard_card(&LeaderboardCard {
@@ -357,4 +245,156 @@ async fn page(
         components: Some(vec![row]),
         ..Default::default()
     })
+}
+
+struct BoardRows {
+    rows: Vec<LeaderboardRow>,
+    title: String,
+    points_name: String,
+    last_week: Vec<LastWeekEntry>,
+    catches: Vec<CatchBoardRow>,
+}
+
+async fn load_board(
+    app: &Arc<App>,
+    board: Board,
+    guild: Option<u64>,
+    offset: i64,
+    lang: Lang,
+) -> anyhow::Result<BoardRows> {
+    // Fetch one extra row to know whether a next page exists.
+    let mut points_name = String::new();
+    let mut last_week = Vec::new();
+    // The weekly catch board's rows, which carry a fish and a size the plain rows have no room for.
+    let mut catches: Vec<CatchBoardRow> = Vec::new();
+    let (rows, title) = match (board, guild) {
+        (Board::WeeklyCatch, Some(g)) => {
+            let week = week_start(app.now());
+            last_week = last_week_catches(app, g, week - chrono::Duration::weeks(1), lang).await?;
+            catches = app.db.weekly_catch_board(g, week, PAGE_SIZE + 1, offset).await?;
+            let rows = catches
+                .iter()
+                .map(|c| LeaderboardRow {
+                    user_id: c.user_id,
+                    value: (c.ratio * 1000.0).round() as i64,
+                })
+                .collect();
+            (rows, t!(lang, "leaderboard.catch"))
+        }
+        (Board::Weekly, Some(g)) => {
+            let week = week_start(app.now());
+            last_week = last_week_podium(app, g, week - chrono::Duration::weeks(1), lang).await?;
+            (
+                app.db.weekly_leaderboard(g, week, PAGE_SIZE + 1, offset).await?,
+                t!(lang, "leaderboard.weekly"),
+            )
+        }
+        (Board::Server, Some(g)) => (
+            app.db.guild_leaderboard(g, PAGE_SIZE + 1, offset).await?,
+            t!(lang, "leaderboard.server"),
+        ),
+        (Board::Voice, Some(g)) => (
+            app.db.voice_level_board(g, PAGE_SIZE + 1, offset).await?,
+            t!(lang, "leaderboard.voice"),
+        ),
+        (Board::ServerPoints, Some(g)) => {
+            points_name = app.guild_settings(g).await?.points_name.clone();
+            (
+                app.db.guild_points_leaderboard(g, PAGE_SIZE + 1, offset).await?,
+                t!(lang, "leaderboard.points", name = points_name),
+            )
+        }
+        (Board::GlobalShells, _) => (
+            app.db.global_credits_leaderboard(PAGE_SIZE + 1, offset).await?,
+            t!(lang, "leaderboard.shells"),
+        ),
+        _ => (
+            app.db.global_xp_leaderboard(PAGE_SIZE + 1, offset).await?,
+            t!(lang, "leaderboard.global"),
+        ),
+    };
+    Ok(BoardRows {
+        rows,
+        title,
+        points_name,
+        last_week,
+        catches,
+    })
+}
+
+async fn board_entries(
+    app: &Arc<App>,
+    board: Board,
+    guild: Option<u64>,
+    offset: i64,
+    lang: Lang,
+    loaded: &BoardRows,
+) -> anyhow::Result<Vec<LeaderboardEntry>> {
+    let rows = &loaded.rows;
+    // Names and avatars for the whole page at once; most come from the caches.
+    let people: Vec<_> = rows
+        .iter()
+        .map(|row| {
+            let (app, id) = (app.clone(), row.user_id as u64);
+            tokio::spawn(async move {
+                let user = app.user(id).await;
+                let avatar = match &user {
+                    Some(user) => app.avatar(user, LeaderboardCard::AVATAR_SIZE, Some(16)).await,
+                    None => Arc::new(placeholder_avatar(id, LeaderboardCard::AVATAR_SIZE)),
+                };
+                (user, avatar)
+            })
+        })
+        .collect();
+    let mut entries = Vec::with_capacity(rows.len());
+    let curve = if matches!(board, Board::Server | Board::Voice) {
+        Some(app.db.leveling_policy(guild.expect("server board")).await?)
+    } else {
+        None
+    };
+    for (i, (row, person)) in rows.iter().zip(people).enumerate() {
+        let (user, avatar) = person.await?;
+        let (value, detail) = match board {
+            Board::GlobalShells => (thousands_in(lang, row.value), t!(lang, "leaderboard.shells-unit")),
+            Board::ServerPoints => (thousands_in(lang, row.value), lang.upper(&loaded.points_name)),
+            Board::Weekly => (thousands_in(lang, row.value), t!(lang, "leaderboard.weekly-unit")),
+            Board::WeeklyCatch => {
+                let catch = &loaded.catches[i];
+                let fish = lang.upper(&fish_name(&catch.fish_id, lang));
+                (
+                    t!(
+                        lang,
+                        "leaderboard.size",
+                        size = pinchora_core::admin::server_stats::decimal_in(lang, catch.size_cm, 1)
+                    ),
+                    t!(
+                        lang,
+                        "leaderboard.usual",
+                        fish = fish,
+                        percent = pinchora_core::admin::server_stats::decimal_in(lang, catch.ratio * 100.0, 0)
+                    ),
+                )
+            }
+            _ => (
+                t!(
+                    lang,
+                    "leaderboard.level",
+                    level = curve
+                        .as_ref()
+                        .map_or_else(|| leveling::level_of(row.value), |c| c.level_of(row.value))
+                ),
+                t!(lang, "leaderboard.xp", xp = thousands_in(lang, row.value)),
+            ),
+        };
+        entries.push(LeaderboardEntry {
+            rank: offset + i as i64 + 1,
+            avatar_png: avatar.to_vec(),
+            name: user
+                .as_deref()
+                .map_or_else(|| t!(lang, "leaderboard.unknown-user"), |u| display_name(u, None)),
+            value,
+            detail,
+        });
+    }
+    Ok(entries)
 }

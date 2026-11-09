@@ -87,10 +87,23 @@ impl Site {
             eprintln!("{name}: skipped, set PINCHORA_TEST_DATABASE_URL and PINCHORA_TEST_REDIS_URL");
             return None;
         };
+        Some(Self::connect(&database, &redis).await)
+    }
+
+    async fn connect(database: &str, redis: &str) -> Self {
         fixture_isolation::shared().await;
-        let db = Db::connect(&database, 5).await.expect("connect to the database");
+        let db = Db::connect(database, 5).await.expect("connect to the database");
         db.migrate().await.expect("migrate");
-        let cache = Cache::connect(&redis).await.expect("connect to redis");
+        // Room reads hold an editor session while queries return theirs asynchronously.
+        // Admit the existing pool budget up front so a request cannot race those
+        // returns by opening a new session on a saturated shared test server.
+        let pool = db.pool().clone();
+        let mut sessions = Vec::new();
+        for _ in 0..pool.options().get_max_connections() {
+            sessions.push(pool.acquire().await.expect("fixture database session"));
+        }
+        drop(sessions);
+        let cache = Cache::connect(redis).await.expect("connect to redis");
         // Plaza entry verifies membership freshly even when the OAuth guild list is cached.
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
@@ -117,11 +130,11 @@ impl Site {
         };
         let settings = WebSettings::resolve(&web, 1).expect("settings");
         let state = WebState::new(app.clone(), settings);
-        Some(Self {
+        Self {
             router: pinchora_web::router(state),
             app,
-            pool: PgPool::connect(&database).await.expect("a pool"),
-        })
+            pool,
+        }
     }
 
     fn browser(&self) -> Browser {

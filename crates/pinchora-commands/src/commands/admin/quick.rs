@@ -220,73 +220,7 @@ async fn view(app: &App, kind: Kind, game: &SoloGame) -> anyhow::Result<Interact
     let lang = s.lang;
     let over = game.over() || s.expires <= app.now().timestamp();
     let title = kind.game().name(lang);
-    let (cells, columns, prompt, status, distort) = match &s.payload {
-        Payload::Memory(m) => (
-            m.pairs
-                .iter()
-                .enumerate()
-                .map(|(i, p)| {
-                    if m.shown[i] || m.first == Some(i) || m.last.is_some_and(|(a, b)| a == i || b == i) || over {
-                        format!("{}", p + 1)
-                    } else {
-                        "?".to_owned()
-                    }
-                })
-                .collect(),
-            4,
-            String::new(),
-            t!(lang, "quick.memory-status", misses = m.misses),
-            false,
-        ),
-        Payload::Mines(m) => (
-            m.open
-                .iter()
-                .enumerate()
-                .map(|(i, open)| {
-                    if (over && m.mines[i]) || (*open && m.mines[i]) {
-                        "*".to_owned()
-                    } else if *open {
-                        let n = m.count(i);
-                        if n == 0 { "·".to_owned() } else { n.to_string() }
-                    } else if m.flags[i] {
-                        "F".to_owned()
-                    } else {
-                        "?".to_owned()
-                    }
-                })
-                .collect(),
-            m.size,
-            String::new(),
-            t!(
-                lang,
-                "quick.mines-status",
-                flags = m.flags.iter().filter(|&&v| v).count()
-            ),
-            false,
-        ),
-        Payload::HigherLower { card, streak } => (
-            vec![],
-            0,
-            card.to_string(),
-            t!(lang, "quick.higher-status", streak = streak),
-            false,
-        ),
-        Payload::Anagram { scrambled, tries, .. } => (
-            vec![],
-            0,
-            scrambled.clone(),
-            t!(lang, "quick.tries", tries = tries),
-            false,
-        ),
-        Payload::Typing { sentence } => (vec![], 0, sentence.clone(), t!(lang, "quick.type-status"), true),
-        Payload::GuessNumber { tries, last, .. } => (
-            vec![],
-            0,
-            last.map_or_else(|| "?".to_owned(), |n| n.to_string()),
-            t!(lang, "quick.tries", tries = tries),
-            false,
-        ),
-    };
+    let (cells, columns, prompt, status, distort) = card_content(&s, over);
     let subtitle = t!(lang, "quick.subtitle");
     let card_kind = match kind {
         Kind::Memory => QuickKind::Memory,
@@ -296,38 +230,7 @@ async fn view(app: &App, kind: Kind, game: &SoloGame) -> anyhow::Result<Interact
         Kind::Typing => QuickKind::Typing,
         Kind::GuessNumber => QuickKind::GuessNumber,
     };
-    let matched: Vec<usize> = match &s.payload {
-        Payload::Memory(m) => m
-            .shown
-            .iter()
-            .enumerate()
-            .filter_map(|(i, shown)| shown.then_some(i))
-            .collect(),
-        _ => Vec::new(),
-    };
-    let last = match &s.payload {
-        Payload::Memory(m) => m.first.or_else(|| m.last.map(|(_, b)| b)),
-        _ => s.display_last,
-    };
-    let heat = match &s.payload {
-        Payload::GuessNumber {
-            answer, last: Some(n), ..
-        } => Some(if answer == n {
-            QuickHeat::Found
-        } else {
-            match rules::temperature(*answer, *n) {
-                rules::Temperature::Cold => QuickHeat::Cold,
-                rules::Temperature::Warm => QuickHeat::Warm,
-                rules::Temperature::Hot => QuickHeat::Hot,
-            }
-        }),
-        _ => None,
-    };
-    let progress = match &s.payload {
-        Payload::HigherLower { streak, .. } => *streak,
-        _ => 0,
-    };
-    let wpm = s.display_wpm;
+    let (matched, last, heat, progress, wpm) = card_details(&s);
     let status = if over {
         t!(lang, "quick.finished", note = s.note)
     } else {
@@ -358,67 +261,7 @@ async fn view(app: &App, kind: Kind, game: &SoloGame) -> anyhow::Result<Interact
             })
         })
         .await?;
-    let mut buttons = Vec::new();
-    if !over {
-        match &s.payload {
-            Payload::Memory(m) => {
-                for y in 0..4 {
-                    buttons.push(row((0..4)
-                        .map(|x| {
-                            let n = y * 4 + x;
-                            button(
-                                id(kind, game, &s, &n.to_string()),
-                                &format!("{}{}", (b'A' + y as u8) as char, x + 1),
-                                ButtonStyle::Secondary,
-                                m.shown[n] || m.first == Some(n),
-                            )
-                        })
-                        .collect()));
-                }
-            }
-            Payload::Mines(m) => {
-                buttons.push(row(vec![
-                    small_button(
-                        kind,
-                        game,
-                        &s,
-                        "coord",
-                        &t!(lang, "quick.coordinate"),
-                        ButtonStyle::Primary,
-                    ),
-                    small_button(
-                        kind,
-                        game,
-                        &s,
-                        "mode",
-                        &t!(lang, if m.flag_mode { "quick.flag-on" } else { "quick.flag-off" }),
-                        ButtonStyle::Secondary,
-                    ),
-                ]));
-            }
-            Payload::HigherLower { .. } => buttons.push(row(vec![
-                small_button(kind, game, &s, "hi", &t!(lang, "quick.higher"), ButtonStyle::Primary),
-                small_button(kind, game, &s, "lo", &t!(lang, "quick.lower"), ButtonStyle::Secondary),
-            ])),
-            _ => buttons.push(row(vec![small_button(
-                kind,
-                game,
-                &s,
-                "answer",
-                &t!(lang, "quick.answer"),
-                ButtonStyle::Primary,
-            )])),
-        }
-    } else {
-        buttons.push(row(vec![small_button(
-            kind,
-            game,
-            &s,
-            "new",
-            &t!(lang, "quick.new"),
-            ButtonStyle::Primary,
-        )]));
-    }
+    let buttons = game_controls(kind, game, &s, over);
     let description = if over {
         t!(lang, "quick.finished", note = s.note)
     } else {
@@ -679,4 +522,177 @@ async fn step(cx: &Cx, kind: Kind, game: SoloGame, mut s: State, action: &str) -
         ..game
     };
     cx.update(view(&cx.app, kind, &updated).await?).await
+}
+
+fn card_content(s: &State, over: bool) -> (Vec<String>, usize, String, String, bool) {
+    let lang = s.lang;
+    match &s.payload {
+        Payload::Memory(m) => (
+            m.pairs
+                .iter()
+                .enumerate()
+                .map(|(i, p)| {
+                    if m.shown[i] || m.first == Some(i) || m.last.is_some_and(|(a, b)| a == i || b == i) || over {
+                        format!("{}", p + 1)
+                    } else {
+                        "?".to_owned()
+                    }
+                })
+                .collect(),
+            4,
+            String::new(),
+            t!(lang, "quick.memory-status", misses = m.misses),
+            false,
+        ),
+        Payload::Mines(m) => (
+            m.open
+                .iter()
+                .enumerate()
+                .map(|(i, open)| {
+                    if (over && m.mines[i]) || (*open && m.mines[i]) {
+                        "*".to_owned()
+                    } else if *open {
+                        let n = m.count(i);
+                        if n == 0 { "·".to_owned() } else { n.to_string() }
+                    } else if m.flags[i] {
+                        "F".to_owned()
+                    } else {
+                        "?".to_owned()
+                    }
+                })
+                .collect(),
+            m.size,
+            String::new(),
+            t!(
+                lang,
+                "quick.mines-status",
+                flags = m.flags.iter().filter(|&&v| v).count()
+            ),
+            false,
+        ),
+        Payload::HigherLower { card, streak } => (
+            vec![],
+            0,
+            card.to_string(),
+            t!(lang, "quick.higher-status", streak = streak),
+            false,
+        ),
+        Payload::Anagram { scrambled, tries, .. } => (
+            vec![],
+            0,
+            scrambled.clone(),
+            t!(lang, "quick.tries", tries = tries),
+            false,
+        ),
+        Payload::Typing { sentence } => (vec![], 0, sentence.clone(), t!(lang, "quick.type-status"), true),
+        Payload::GuessNumber { tries, last, .. } => (
+            vec![],
+            0,
+            last.map_or_else(|| "?".to_owned(), |n| n.to_string()),
+            t!(lang, "quick.tries", tries = tries),
+            false,
+        ),
+    }
+}
+
+fn card_details(s: &State) -> (Vec<usize>, Option<usize>, Option<QuickHeat>, u8, Option<u32>) {
+    let matched: Vec<usize> = match &s.payload {
+        Payload::Memory(m) => m
+            .shown
+            .iter()
+            .enumerate()
+            .filter_map(|(i, shown)| shown.then_some(i))
+            .collect(),
+        _ => Vec::new(),
+    };
+    let last = match &s.payload {
+        Payload::Memory(m) => m.first.or_else(|| m.last.map(|(_, b)| b)),
+        _ => s.display_last,
+    };
+    let heat = match &s.payload {
+        Payload::GuessNumber {
+            answer, last: Some(n), ..
+        } => Some(if answer == n {
+            QuickHeat::Found
+        } else {
+            match rules::temperature(*answer, *n) {
+                rules::Temperature::Cold => QuickHeat::Cold,
+                rules::Temperature::Warm => QuickHeat::Warm,
+                rules::Temperature::Hot => QuickHeat::Hot,
+            }
+        }),
+        _ => None,
+    };
+    let progress = match &s.payload {
+        Payload::HigherLower { streak, .. } => *streak,
+        _ => 0,
+    };
+    let wpm = s.display_wpm;
+    (matched, last, heat, progress, wpm)
+}
+
+fn game_controls(kind: Kind, game: &SoloGame, s: &State, over: bool) -> Vec<Component> {
+    let lang = s.lang;
+    let mut buttons = Vec::new();
+    if !over {
+        match &s.payload {
+            Payload::Memory(m) => {
+                for y in 0..4 {
+                    buttons.push(row((0..4)
+                        .map(|x| {
+                            let n = y * 4 + x;
+                            button(
+                                id(kind, game, s, &n.to_string()),
+                                &format!("{}{}", (b'A' + y as u8) as char, x + 1),
+                                ButtonStyle::Secondary,
+                                m.shown[n] || m.first == Some(n),
+                            )
+                        })
+                        .collect()));
+                }
+            }
+            Payload::Mines(m) => {
+                buttons.push(row(vec![
+                    small_button(
+                        kind,
+                        game,
+                        s,
+                        "coord",
+                        &t!(lang, "quick.coordinate"),
+                        ButtonStyle::Primary,
+                    ),
+                    small_button(
+                        kind,
+                        game,
+                        s,
+                        "mode",
+                        &t!(lang, if m.flag_mode { "quick.flag-on" } else { "quick.flag-off" }),
+                        ButtonStyle::Secondary,
+                    ),
+                ]));
+            }
+            Payload::HigherLower { .. } => buttons.push(row(vec![
+                small_button(kind, game, s, "hi", &t!(lang, "quick.higher"), ButtonStyle::Primary),
+                small_button(kind, game, s, "lo", &t!(lang, "quick.lower"), ButtonStyle::Secondary),
+            ])),
+            _ => buttons.push(row(vec![small_button(
+                kind,
+                game,
+                s,
+                "answer",
+                &t!(lang, "quick.answer"),
+                ButtonStyle::Primary,
+            )])),
+        }
+    } else {
+        buttons.push(row(vec![small_button(
+            kind,
+            game,
+            s,
+            "new",
+            &t!(lang, "quick.new"),
+            ButtonStyle::Primary,
+        )]));
+    }
+    buttons
 }

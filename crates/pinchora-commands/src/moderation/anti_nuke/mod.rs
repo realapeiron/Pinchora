@@ -402,159 +402,80 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
     let mut guard = Some(app.db.lock_antinuke(guild).await?);
     let mut released = Ok(());
     let result = async {
-    let config = app.db.antinuke_config(guild).await?;
-    if !config.enabled {
-        return Ok(());
-    }
-    let activated = app
-        .cache
-        .antinuke_activation(guild, app.now().timestamp_millis(), false)
-        .await?;
-    if snowflake::timestamp(entry.id.get()).timestamp_millis() <= activated {
-        return Ok(());
-    }
-    let owner = crate::moderation::anti_nuke::safety::owner(app, guild).await?;
-    if rules::exempt(&config, owner, app.application_id.get(), actor) {
-        return Ok(());
-    }
-    let Some(mut kind) = kind(app, guild, &entry).await? else {
-        return Ok(());
-    };
-    if crate::moderation::anti_nuke::safety::protected_actor(app, guild, actor, owner, &config).await? {
-        return Ok(());
-    }
-    let target = entry.target_id.map(|n| n.get());
-    let user_target = matches!(
-        entry.action_type,
-        A::MemberBanAdd | A::MemberKick | A::MemberRoleUpdate | A::MemberUpdate | A::BotAdd
-    )
-    .then_some(target)
-    .flatten();
-    let removed_vip = if entry.action_type == A::MemberRoleUpdate {
-        let changes = serde_json::to_value(&entry.changes)?;
-        changes
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter(|c| c["key"] == "$remove")
-            .flat_map(|c| c["new_value"].as_array().into_iter().flatten())
-            .any(|r| {
-                r["id"]
-                    .as_str()
-                    .is_some_and(|id| config.vip_roles.iter().any(|v| v == id))
-            })
-    } else {
-        false
-    };
-    let is_vip = removed_vip
-        || if let Some(user) = user_target {
-            crate::moderation::anti_nuke::safety::is_vip(app, guild, user, &config).await?
-        } else {
-            false
+        let config = app.db.antinuke_config(guild).await?;
+        if !config.enabled {
+            return Ok(());
+        }
+        let activated = app
+            .cache
+            .antinuke_activation(guild, app.now().timestamp_millis(), false)
+            .await?;
+        if snowflake::timestamp(entry.id.get()).timestamp_millis() <= activated {
+            return Ok(());
+        }
+        let owner = crate::moderation::anti_nuke::safety::owner(app, guild).await?;
+        if rules::exempt(&config, owner, app.application_id.get(), actor) {
+            return Ok(());
+        }
+        let Some(kind) = kind(app, guild, &entry).await? else {
+            return Ok(());
         };
-    if is_vip && kind == "ban" {
-        kind = "vip_ban";
-    }
-    if kind == "vip_action" && !is_vip {
-        return Ok(());
-    }
-    let event = AntiNukeEvent {
-        id: entry.id.get() as i64,
-        guild_id: guild as i64,
-        actor_id: actor as i64,
-        target_user_id: user_target.map(|n| n as i64),
-        target_id: if user_target.is_none() {
-            target.map(|n| n as i64)
-        } else {
-            None
-        },
-        kind: kind.into(),
-        count: 0,
-        action_taken: "observed".into(),
-        details: json!({"window_secs":config.limits[kind].window_secs,
-        "deleted_permissions": entry.changes.iter().find_map(|change| match change {
-            AuditLogChange::Permissions {old:Some(old), ..} if entry.action_type == A::RoleDelete => Some(old.bits().to_string()),
-            _ => None,
-        }),
-        "deleted_position": entry.changes.iter().find_map(|change| match change {
-            AuditLogChange::Position {old:Some(old), ..} if entry.action_type == A::RoleDelete => Some(*old),
-            _ => None,
-        })}),
-        created_at: snowflake::timestamp(entry.id.get()),
-        reverted: false,
-        recovery_state: "ready".into(),
-    };
-    if !app.db.open_antinuke_event(&event).await? {
-        return Ok(());
-    }
-    let limit = &config.limits[kind];
-    let count = app
-        .cache
-        .antinuke_window(
-            guild,
-            actor,
+        if crate::moderation::anti_nuke::safety::protected_actor(app, guild, actor, owner, &config).await? {
+            return Ok(());
+        }
+        let Some(incident) = incident_target(app, guild, &entry, &config, kind).await? else {
+            return Ok(());
+        };
+        let IncidentTarget {
             kind,
-            entry.id.get(),
-            app.now().timestamp_millis(),
-            snowflake::timestamp(entry.id.get()).timestamp_millis(),
-            activated,
-            limit.window_secs,
-            entry
-                .options
-                .as_ref()
-                .and_then(|o| o.members_removed.as_deref())
-                .and_then(|n| n.parse::<u32>().ok())
-                .unwrap_or(1)
-                .clamp(1, 1000),
-        )
-        .await?;
-    app.db.finish_antinuke_event(guild, event.id, count, "observed").await?;
-    // A configured limit is the maximum allowed; VIP violations trigger immediately.
-    if count <= limit.count && !is_vip {
-        return Ok(());
-    }
-    let lang = app.guild_lang(guild).await;
-    let action = match crate::moderation::anti_nuke::safety::punish(app, guild, actor, &config).await {
-        Ok(a) => a,
-        Err(e) => e.to_string(),
-    };
-    app.db.finish_antinuke_event(guild, event.id, count, &action).await?;
-    let mut result = action;
-    if config.remove_bots
-        && kind == "bot_add"
-        && let Some(bot) = user_target
-    {
-        match crate::moderation::anti_nuke::safety::remove_bot(app, guild, bot, &config).await {
-            Ok(()) => result.push_str(&t!(lang, "anti_nuke.bot_removed")),
-            Err(e) => result.push_str(&format!(" · {e}")),
+            user_target,
+            is_vip,
+            ..
+        } = incident;
+        let event = incident_event(guild, actor, &entry, &config, &incident);
+        if !app.db.open_antinuke_event(&event).await? {
+            return Ok(());
         }
-    }
-    released = guard.take().unwrap().rollback().await;
-    if (config.auto_restore && matches!(kind, "channel_delete" | "role_delete" | "ban"))
-        || (kind == "vip_ban" && config.revert_vip_bans)
-    {
-        match crate::moderation::anti_nuke::recovery::restore(app, guild, event.id, app.application_id.get(), true).await {
-            Ok(text) => result.push_str(&format!(" · {text}")),
-            Err(e) => result.push_str(&format!(" · {e}")),
+        let limit = &config.limits[kind];
+        let count = incident_count(app, &event, &entry, activated, limit.window_secs).await?;
+        app.db.finish_antinuke_event(guild, event.id, count, "observed").await?;
+        // A configured limit is the maximum allowed; VIP violations trigger immediately.
+        if count <= limit.count && !is_vip {
+            return Ok(());
         }
+        let lang = app.guild_lang(guild).await;
+        let action = match crate::moderation::anti_nuke::safety::punish(app, guild, actor, &config).await {
+            Ok(a) => a,
+            Err(e) => e.to_string(),
+        };
+        app.db.finish_antinuke_event(guild, event.id, count, &action).await?;
+        let mut result = action;
+        if config.remove_bots
+            && kind == "bot_add"
+            && let Some(bot) = user_target
+        {
+            match crate::moderation::anti_nuke::safety::remove_bot(app, guild, bot, &config).await {
+                Ok(()) => result.push_str(&t!(lang, "anti_nuke.bot_removed")),
+                Err(e) => result.push_str(&format!(" · {e}")),
+            }
+        }
+        released = guard.take().unwrap().rollback().await;
+        if (config.auto_restore && matches!(kind, "channel_delete" | "role_delete" | "ban"))
+            || (kind == "vip_ban" && config.revert_vip_bans)
+        {
+            match crate::moderation::anti_nuke::recovery::restore(app, guild, event.id, app.application_id.get(), true)
+                .await
+            {
+                Ok(text) => result.push_str(&format!(" · {text}")),
+                Err(e) => result.push_str(&format!(" · {e}")),
+            }
+        }
+        app.db.finish_antinuke_event(guild, event.id, count, &result).await?;
+        let event = app.db.antinuke_event(guild, event.id).await?.unwrap();
+        notify_detection(app, guild, actor, lang, kind, count).await?;
+        crate::moderation::anti_nuke::safety::alert(app, &config, &event).await
     }
-    app.db.finish_antinuke_event(guild, event.id, count, &result).await?;
-    let event = app.db.antinuke_event(guild, event.id).await?.unwrap();
-    crate::moderation::anti_nuke::safety::staff(
-        app,
-        guild,
-        actor,
-        "antinuke.detect",
-        &t!(
-            lang,
-            "anti_nuke.detected",
-            kind = t!(lang, &format!("anti_nuke.kind.{kind}")),
-            count = pinchora_core::admin::server_stats::grouped_in(lang, count as i64)
-        ),
-    )
-    .await?;
-    crate::moderation::anti_nuke::safety::alert(app, &config, &event).await
-    }.await;
+    .await;
     if let Some(guard) = guard {
         released = guard.rollback().await;
     }
@@ -587,4 +508,156 @@ async fn tick_once(app: &App) -> anyhow::Result<()> {
         }
     }
     app.db.sweep_antinuke().await
+}
+
+struct IncidentTarget {
+    kind: &'static str,
+    target: Option<u64>,
+    user_target: Option<u64>,
+    is_vip: bool,
+}
+
+async fn incident_target(
+    app: &App,
+    guild: u64,
+    entry: &AuditLogEntry,
+    config: &rules::Config,
+    mut kind: &'static str,
+) -> anyhow::Result<Option<IncidentTarget>> {
+    let target = entry.target_id.map(|n| n.get());
+    let user_target = matches!(
+        entry.action_type,
+        A::MemberBanAdd | A::MemberKick | A::MemberRoleUpdate | A::MemberUpdate | A::BotAdd
+    )
+    .then_some(target)
+    .flatten();
+    let removed_vip = if entry.action_type == A::MemberRoleUpdate {
+        let changes = serde_json::to_value(&entry.changes)?;
+        changes
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|c| c["key"] == "$remove")
+            .flat_map(|c| c["new_value"].as_array().into_iter().flatten())
+            .any(|r| {
+                r["id"]
+                    .as_str()
+                    .is_some_and(|id| config.vip_roles.iter().any(|v| v == id))
+            })
+    } else {
+        false
+    };
+    let is_vip = removed_vip
+        || if let Some(user) = user_target {
+            crate::moderation::anti_nuke::safety::is_vip(app, guild, user, config).await?
+        } else {
+            false
+        };
+    if is_vip && kind == "ban" {
+        kind = "vip_ban";
+    }
+    if kind == "vip_action" && !is_vip {
+        return Ok(None);
+    }
+    Ok(Some(IncidentTarget {
+        kind,
+        target,
+        user_target,
+        is_vip,
+    }))
+}
+
+fn incident_event(
+    guild: u64,
+    actor: u64,
+    entry: &AuditLogEntry,
+    config: &rules::Config,
+    incident: &IncidentTarget,
+) -> AntiNukeEvent {
+    let IncidentTarget {
+        kind,
+        target,
+        user_target,
+        ..
+    } = *incident;
+    AntiNukeEvent {
+        id: entry.id.get() as i64,
+        guild_id: guild as i64,
+        actor_id: actor as i64,
+        target_user_id: user_target.map(|n| n as i64),
+        target_id: if user_target.is_none() {
+            target.map(|n| n as i64)
+        } else {
+            None
+        },
+        kind: kind.into(),
+        count: 0,
+        action_taken: "observed".into(),
+        details: json!({"window_secs":config.limits[kind].window_secs,
+        "deleted_permissions": entry.changes.iter().find_map(|change| match change {
+            AuditLogChange::Permissions {old:Some(old), ..} if entry.action_type == A::RoleDelete => Some(old.bits().to_string()),
+            _ => None,
+        }),
+        "deleted_position": entry.changes.iter().find_map(|change| match change {
+            AuditLogChange::Position {old:Some(old), ..} if entry.action_type == A::RoleDelete => Some(*old),
+            _ => None,
+        })}),
+        created_at: snowflake::timestamp(entry.id.get()),
+        reverted: false,
+        recovery_state: "ready".into(),
+    }
+}
+
+async fn incident_count(
+    app: &App,
+    event: &AntiNukeEvent,
+    entry: &AuditLogEntry,
+    activated: i64,
+    window_secs: u32,
+) -> anyhow::Result<u32> {
+    let guild = event.guild_id as u64;
+    let actor = event.actor_id as u64;
+    let kind = event.kind.as_str();
+    app.cache
+        .antinuke_window(
+            guild,
+            actor,
+            kind,
+            entry.id.get(),
+            app.now().timestamp_millis(),
+            snowflake::timestamp(entry.id.get()).timestamp_millis(),
+            activated,
+            window_secs,
+            entry
+                .options
+                .as_ref()
+                .and_then(|o| o.members_removed.as_deref())
+                .and_then(|n| n.parse::<u32>().ok())
+                .unwrap_or(1)
+                .clamp(1, 1000),
+        )
+        .await
+}
+
+async fn notify_detection(
+    app: &App,
+    guild: u64,
+    actor: u64,
+    lang: pinchora_core::infra::i18n::Lang,
+    kind: &str,
+    count: u32,
+) -> anyhow::Result<()> {
+    crate::moderation::anti_nuke::safety::staff(
+        app,
+        guild,
+        actor,
+        "antinuke.detect",
+        &t!(
+            lang,
+            "anti_nuke.detected",
+            kind = t!(lang, &format!("anti_nuke.kind.{kind}")),
+            count = pinchora_core::admin::server_stats::grouped_in(lang, count as i64)
+        ),
+    )
+    .await
 }
