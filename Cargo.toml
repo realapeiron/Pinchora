@@ -66,6 +66,11 @@ ed25519-dalek = "3"
 feed-rs = "3"
 url = "2.5"
 
+# Tests spend most of their time inside image and font dependencies, which are about
+# ten times slower unoptimised. Workspace crates stay unoptimised for fast edits.
+[profile.dev.package."*"]
+opt-level = 1
+
 [profile.release]
 lto = "thin"
 codegen-units = 16
