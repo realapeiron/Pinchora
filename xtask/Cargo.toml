@@ -7,3 +7,8 @@ description = "Repository maintenance commands"
 
 [dependencies]
 serde_json.workspace = true
+# Parse Rust functions/routes and retain physical source locations; already in Cargo.lock.
+syn = { version = "2", features = ["full", "visit"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+quote = "1"
+regex.workspace = true

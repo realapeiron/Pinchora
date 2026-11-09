@@ -10,16 +10,34 @@ use serde_json::Value;
 const START: &str = "<!-- crate-table:start -->";
 const END: &str = "<!-- crate-table:end -->";
 
-fn main() -> Result<(), Box<dyn Error>> {
+mod contracts;
+mod dependency;
+mod names;
+mod size;
+mod source;
+type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
+
+fn main() -> Result {
     let args: Vec<String> = env::args().skip(1).collect();
-    let check = match args.as_slice() {
-        [command] if command == "architecture" => false,
-        [command, flag] if command == "architecture" && flag == "--check" => true,
-        _ => {
-            eprintln!("Usage: cargo xtask architecture [--check]");
-            std::process::exit(2);
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let update = args.get(1).is_some_and(|s| s == "--update");
+    match args.first().map(String::as_str) {
+        Some("architecture") => architecture(args.get(1).is_some_and(|s| s == "--check")),
+        Some("contracts") => contracts::run(root, update, args.get(1).is_some_and(|s| s == "--prepare")),
+        Some("depcheck") => dependency::run(root),
+        Some("names") => names::run(root),
+        Some("size") => size::run(root, update),
+        Some("check") => {
+            let results = [dependency::run(root), names::run(root), size::run(root, false), contracts::run(root, false, false)];
+            let failures: Vec<_> = results.into_iter().filter_map(std::result::Result::err).collect();
+            for failure in &failures { eprintln!("{failure}"); }
+            if failures.is_empty() { Ok(()) } else { Err(format!("{} quality gates failed", failures.len()).into()) }
         }
-    };
+        _ => Err("Usage: cargo xtask {check|contracts [--check|--update|--prepare]|depcheck|names|size [--update]|architecture [--check]}".into()),
+    }
+}
+
+fn architecture(check: bool) -> Result {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .ok_or("xtask has no workspace parent")?;
@@ -40,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn crate_table(root: &Path) -> Result<String, Box<dyn Error>> {
+fn crate_table(root: &Path) -> std::result::Result<String, Box<dyn Error>> {
     let output = Command::new("cargo")
         .args(["metadata", "--no-deps", "--locked", "--format-version", "1"])
         .current_dir(root)
@@ -90,7 +108,7 @@ fn is_crate(package: &Value) -> bool {
         .is_some_and(|name| name == "crates")
 }
 
-fn internal_dependencies(package: &Value, names: &BTreeSet<&str>) -> Result<Vec<String>, Box<dyn Error>> {
+fn internal_dependencies(package: &Value, names: &BTreeSet<&str>) -> std::result::Result<Vec<String>, Box<dyn Error>> {
     let dependencies = package["dependencies"]
         .as_array()
         .ok_or("package dependencies are missing")?;
@@ -112,7 +130,7 @@ fn escape_cell(value: &str) -> String {
     value.replace('|', "\\|").replace('\n', " ")
 }
 
-fn replace_table(document: &str, table: &str) -> Result<String, Box<dyn Error>> {
+fn replace_table(document: &str, table: &str) -> std::result::Result<String, Box<dyn Error>> {
     let start = document.find(START).ok_or("crate table start marker is missing")?;
     let body = start + START.len();
     let end = document[body..].find(END).ok_or("crate table end marker is missing")? + body;

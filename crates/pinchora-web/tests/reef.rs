@@ -1,4 +1,9 @@
 //! Real HTTP upgrades and multiple WebSocket clients against the assigned Postgres/Redis.
+#[path = "support/contracts.rs"]
+mod contracts;
+#[path = "support/observe.rs"]
+mod observe;
+
 use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use pinchora_cache::{Cache, Invalidation};
@@ -94,7 +99,9 @@ impl Site {
         let server = tokio::spawn(async move {
             axum::serve(
                 listener,
-                pinchora_web::router(server_state).into_make_service_with_connect_info::<SocketAddr>(),
+                pinchora_web::router(server_state)
+                    .layer(axum::middleware::from_fn(observe::observe))
+                    .into_make_service_with_connect_info::<SocketAddr>(),
             )
             .await
             .unwrap();

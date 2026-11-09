@@ -1,0 +1,1526 @@
+{
+  "defer_rules": "{ if interaction . kind == InteractionType :: ApplicationCommandAutocomplete { return Self :: Never ; } match & interaction . data { Some (InteractionData :: ApplicationCommand (command)) if command . name == \"tag\" && command . options . iter () . any (| o | o . name == \"name\" && matches ! (& o . value , twilight_model :: application :: interaction :: application_command :: CommandOptionValue :: String (s) if s . starts_with (\"wf:\"))) => Self :: Private , Some (InteractionData :: MessageComponent (component)) if component . custom_id . starts_with (\"wf:\") => Self :: Private , Some (InteractionData :: ApplicationCommand (command)) => Self :: for_path (& command_path (command)) , Some (InteractionData :: MessageComponent (component)) if covers (OPENS_MODAL , & component . custom_id , ':') => { Self :: Never } _ => Self :: Public , } }",
+  "module_rules": "{ if refuses (cx , if custom_id . starts_with (\"sl:eco:\") { Some (Module :: Economy) } else { custom_id . split (':') . next () . and_then (Module :: of_component_prefix) } ,) . await ? { return Ok (true) ; } match crate :: admin :: command_control :: component_owner (cx , custom_id) . await ? { Some (path) => crate :: admin :: command_control :: refuses (cx , path , true) . await , None => Ok (false) , } }",
+  "owner_overrides": "{ if custom_id . starts_with (\"sl:eco:\") { return Ok (Some (if custom_id . starts_with (\"sl:eco:step:\") { \"economyv2 jobs\" } else { \"economyv2 trade-review\" })) ; } let mut parts = custom_id . split (':') ; let prefix = parts . next () . unwrap_or_default () ; let action = parts . next () . unwrap_or_default () ; let path = match (prefix , action) { (\"rx\" , \"check\") => Some (\"roblox verify\") , (\"ev\" , \"c\") => Some (\"event create\") , (\"ev\" , \"p\") => Some (\"event attendees\") , (\"fm\" , \"a\" | \"d\") => Some (\"form post\") , (\"fx\" , \"p\") => Some (\"fish shop\") , (\"fz\" , \"b\") => Some (\"fish book\") , (\"sc\" , \"s\") => Some (\"stats server\") , (\"sc\" , \"m\") => Some (\"stats me\") , (\"sc\" , \"c\") => Some (\"stats channel\") , (\"ax\" , \"r\") => Some (\"automod exempt role\") , (\"ax\" , \"c\") => Some (\"automod exempt channel\") , (\"vc\" , \"lk\") => Some (\"voice lock\") , (\"vc\" , \"ul\") => Some (\"voice unlock\") , (\"vc\" , \"lm\") => Some (\"voice limit\") , (\"vc\" , \"rn\") => Some (\"voice rename\") , (\"vc\" , \"kk\") | (\"vo\" , \"k\") => Some (\"voice kick\") , (\"vc\" , \"tr\") | (\"vo\" , \"t\") => Some (\"voice transfer\") , (\"vc\" , \"hd\") => Some (\"voice hide\") , (\"vc\" , \"cl\") => Some (\"voice claim\") , (\"cm\" , \"c\") => Some (\"customcommand create\") , (\"cm\" , \"e\") => Some (\"customcommand edit\") , (\"hg\" , \"pat\") => Some (\"pat\") , (\"hg\" , \"wave\") => Some (\"wave\") , (\"hg\" , \"highfive\") => Some (\"highfive\") , (\"pt\" , \"leave\" | \"stay\") => Some (\"partner leave\") , (\"tp\" , \"cl\" | \"cy\") => Some (\"ticket close\") , (\"tp\" , \"cm\") => Some (\"ticket claim\") , (\"tp\" , \"tr\") => Some (\"ticket transcript\") , (\"tp\" , \"ro\") => Some (\"ticket reopen\") , (\"xi\" , \"confirm\") => { let nonce = parts . next () . unwrap_or_default () ; let payload = cx . app . cache . get (& format ! (\"xp:confirm:{}:{}:{nonce}\" , cx . guild_id () . unwrap_or_default () , cx . author () ?. id)) . await ? ; match payload . as_deref () . and_then (| p | p . split (':') . nth (1)) { Some (\"reset\") => Some (\"xp reset\") , Some (\"all\") => Some (\"xp reset-all\") , Some (\"go\") => Some (\"xp import mee6\") , _ => owner (prefix) , } } _ => owner (prefix) , } ; Ok (path) }",
+  "owner_rules": [
+    {
+      "guard": null,
+      "prefixes": [
+        "rx",
+        "check"
+      ],
+      "result": "Some (\"roblox verify\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "ev",
+        "c"
+      ],
+      "result": "Some (\"event create\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "ev",
+        "p"
+      ],
+      "result": "Some (\"event attendees\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "fm",
+        "a",
+        "d"
+      ],
+      "result": "Some (\"form post\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "fx",
+        "p"
+      ],
+      "result": "Some (\"fish shop\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "fz",
+        "b"
+      ],
+      "result": "Some (\"fish book\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "sc",
+        "s"
+      ],
+      "result": "Some (\"stats server\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "sc",
+        "m"
+      ],
+      "result": "Some (\"stats me\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "sc",
+        "c"
+      ],
+      "result": "Some (\"stats channel\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "ax",
+        "r"
+      ],
+      "result": "Some (\"automod exempt role\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "ax",
+        "c"
+      ],
+      "result": "Some (\"automod exempt channel\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "lk"
+      ],
+      "result": "Some (\"voice lock\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "ul"
+      ],
+      "result": "Some (\"voice unlock\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "lm"
+      ],
+      "result": "Some (\"voice limit\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "rn"
+      ],
+      "result": "Some (\"voice rename\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "kk",
+        "vo",
+        "k"
+      ],
+      "result": "Some (\"voice kick\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "tr",
+        "vo",
+        "t"
+      ],
+      "result": "Some (\"voice transfer\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "hd"
+      ],
+      "result": "Some (\"voice hide\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "vc",
+        "cl"
+      ],
+      "result": "Some (\"voice claim\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "cm",
+        "c"
+      ],
+      "result": "Some (\"customcommand create\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "cm",
+        "e"
+      ],
+      "result": "Some (\"customcommand edit\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "hg",
+        "pat"
+      ],
+      "result": "Some (\"pat\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "hg",
+        "wave"
+      ],
+      "result": "Some (\"wave\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "hg",
+        "highfive"
+      ],
+      "result": "Some (\"highfive\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "pt",
+        "leave",
+        "stay"
+      ],
+      "result": "Some (\"partner leave\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "tp",
+        "cl",
+        "cy"
+      ],
+      "result": "Some (\"ticket close\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "tp",
+        "cm"
+      ],
+      "result": "Some (\"ticket claim\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "tp",
+        "tr"
+      ],
+      "result": "Some (\"ticket transcript\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "tp",
+        "ro"
+      ],
+      "result": "Some (\"ticket reopen\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "xi",
+        "confirm"
+      ],
+      "result": "{ let nonce = parts . next () . unwrap_or_default () ; let payload = cx . app . cache . get (& format ! (\"xp:confirm:{}:{}:{nonce}\" , cx . guild_id () . unwrap_or_default () , cx . author () ?. id)) . await ? ; match payload . as_deref () . and_then (| p | p . split (':') . nth (1)) { Some (\"reset\") => Some (\"xp reset\") , Some (\"all\") => Some (\"xp reset-all\") , Some (\"go\") => Some (\"xp import mee6\") , _ => owner (prefix) , } }"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "reset"
+      ],
+      "result": "Some (\"xp reset\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "all"
+      ],
+      "result": "Some (\"xp reset-all\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [
+        "go"
+      ],
+      "result": "Some (\"xp import mee6\")"
+    },
+    {
+      "guard": null,
+      "prefixes": [],
+      "result": "owner (prefix)"
+    },
+    {
+      "guard": null,
+      "prefixes": [],
+      "result": "owner (prefix)"
+    }
+  ],
+  "prefixes": {
+    "dispatch:ac": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [
+        "ac:w"
+      ],
+      "owner": "\"party acronym\""
+    },
+    "dispatch:ag": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_button (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [
+        "ag:answer"
+      ],
+      "owner": "\"play anagram\""
+    },
+    "dispatch:ah": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: progression :: achievements :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Achievements",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"achievements\""
+    },
+    "dispatch:am": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: moderation :: automod :: on_component (cx , \"am\" , parts , values) . await",
+      "module_gate": "Self :: AutoMod",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"automod\""
+    },
+    "dispatch:an": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: moderation :: anti_nuke :: on_component (cx , \"an\" , parts) . await",
+      "module_gate": "Self :: AntiNuke",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"antinuke\""
+    },
+    "dispatch:ax": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: moderation :: automod :: on_component (cx , \"ax\" , parts , values) . await",
+      "module_gate": "Self :: AutoMod",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"automod\""
+    },
+    "dispatch:bc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "collection :: dex :: on_component (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Collection",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"dex\""
+    },
+    "dispatch:bd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: birthdays :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Birthdays",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"birthday set\""
+    },
+    "dispatch:bs": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: fleet :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel seafleet\""
+    },
+    "dispatch:c4": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "connect4 :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Duels",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel connect4\""
+    },
+    "dispatch:ca": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "character :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [
+        "ca:hex",
+        "ca:name"
+      ],
+      "owner": "\"character\""
+    },
+    "dispatch:cb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "shop :: on_catalog_buy (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"shop catalog\""
+    },
+    "dispatch:cc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: chess :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel chess\""
+    },
+    "dispatch:cd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "collection :: drops :: on_grab (cx , parts) . await",
+      "module_gate": "Self :: Collection",
+      "never_defer_custom_id_prefixes": [
+        "cd:w"
+      ],
+      "owner": "\"critterdrop\""
+    },
+    "dispatch:cf": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: admin :: command_control :: on_component (cx , parts) . await",
+      "module_gate": null,
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"backup\""
+    },
+    "dispatch:ch": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "character :: on_old (cx) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"character\""
+    },
+    "dispatch:ck": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: checkers :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel checkers\""
+    },
+    "dispatch:cn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [
+        "cn:w"
+      ],
+      "owner": "\"party postcard\""
+    },
+    "dispatch:cp": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "shop :: on_catalog_page (cx , parts) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"shop catalog\""
+    },
+    "dispatch:cq": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: moderation :: verification :: on_component (cx , \"cq\" , parts) . await",
+      "module_gate": "Self :: Verification",
+      "never_defer_custom_id_prefixes": [
+        "cq:a"
+      ],
+      "owner": "\"verify\""
+    },
+    "dispatch:cr": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "automation :: on_color_component (cx , parts , values) . await",
+      "module_gate": "Self :: ColorRoles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"color pick\""
+    },
+    "dispatch:cs": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customize :: on_style (cx , parts , values) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [
+        "cs:h"
+      ],
+      "owner": "\"customize\""
+    },
+    "dispatch:cv": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: tools :: on_confession_button (cx , parts) . await",
+      "module_gate": "Self :: Modmail",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"confess\""
+    },
+    "dispatch:cz": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customize :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customize\""
+    },
+    "dispatch:d9c": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: games :: reef_party :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [
+        "d9c:answer"
+      ],
+      "owner": null
+    },
+    "dispatch:d9p": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: games :: reef_party :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [
+        "d9p:answer"
+      ],
+      "owner": null
+    },
+    "dispatch:d9s": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: games :: reef_party :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [
+        "d9s:answer"
+      ],
+      "owner": null
+    },
+    "dispatch:df": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ decorate :: on_component (cx , kind , parts , values . first () . map (String :: as_str)) . await }",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house decorate\""
+    },
+    "dispatch:dn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ decorate :: on_component (cx , kind , parts , values . first () . map (String :: as_str)) . await }",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house decorate\""
+    },
+    "dispatch:dw": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ decorate :: on_component (cx , kind , parts , values . first () . map (String :: as_str)) . await }",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house decorate\""
+    },
+    "dispatch:dy": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "derby :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Party",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play derby\""
+    },
+    "dispatch:ev": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: events :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Events",
+      "never_defer_custom_id_prefixes": [
+        "ev:c"
+      ],
+      "owner": "\"event\""
+    },
+    "dispatch:fd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "friends :: on_component (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Social",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"friends list\""
+    },
+    "dispatch:fm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: engagement :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Forms",
+      "never_defer_custom_id_prefixes": [
+        "fm:o"
+      ],
+      "owner": "\"form open\""
+    },
+    "dispatch:fr": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "fish :: on_reel (cx , parts) . await",
+      "module_gate": "Self :: Fishing",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"fish cast\""
+    },
+    "dispatch:fx": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "fish :: on_gear (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Fishing",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"fish gear\""
+    },
+    "dispatch:fz": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "fish :: on_bucket (cx , parts) . await",
+      "module_gate": "Self :: Fishing",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"fish sell\""
+    },
+    "dispatch:gb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "guestbook :: on_component (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [
+        "gb:s"
+      ],
+      "owner": "\"house guestbook\""
+    },
+    "dispatch:gf": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "gift :: on_gift (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"gift\""
+    },
+    "dispatch:gn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_button (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [
+        "gn:answer"
+      ],
+      "owner": "\"play guessnumber\""
+    },
+    "dispatch:gt": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: trackers :: on_component (cx , parts) . await",
+      "module_gate": "Self :: GameTrackers",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"game lol profile\""
+    },
+    "dispatch:gw": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "giveaway :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Giveaways",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"giveaway\""
+    },
+    "dispatch:he": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "house :: on_edit (cx , \"he\" , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house edit\""
+    },
+    "dispatch:hg": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "interact :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Social",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"hug\""
+    },
+    "dispatch:hl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [
+        "hl:w"
+      ],
+      "owner": "\"party hotpearl\""
+    },
+    "dispatch:hm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "hangman :: on_pick (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play hangman\""
+    },
+    "dispatch:hp": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "help :: on_component (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": null,
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"help\""
+    },
+    "dispatch:hs": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "heist :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Party",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play heist\""
+    },
+    "dispatch:hu": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "house :: on_upgrade (cx , parts) . await",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house upgrade\""
+    },
+    "dispatch:hv": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "house :: on_view_nav (cx , parts) . await",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house view\""
+    },
+    "dispatch:in": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: invites :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Invites",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"invites top\""
+    },
+    "dispatch:iv": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "shop :: on_inventory_page (cx , parts) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"inventory\""
+    },
+    "dispatch:kc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: admin :: command_control :: on_control_component (cx) . await",
+      "module_gate": null,
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"commandcontrol\""
+    },
+    "dispatch:kp": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "collection :: crabpot :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Collection",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"crabpot\""
+    },
+    "dispatch:lb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "leaderboard :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"leaderboard\""
+    },
+    "dispatch:mb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "collection :: drops :: on_open (cx , parts) . await",
+      "module_gate": "Self :: Collection",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"critterdrop\""
+    },
+    "dispatch:mi": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_button (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [
+        "mi:coord"
+      ],
+      "owner": "\"play minesweeper\""
+    },
+    "dispatch:mk": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "shop :: on_market_buy (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"shop market\""
+    },
+    "dispatch:mm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_button (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play memory\""
+    },
+    "dispatch:mml": {
+      "default_defer": "Public",
+      "guard": "parts . next () == Some (\"g\")",
+      "handler": "{ crate :: commands :: community :: engagement :: on_mail_select (cx , values) . await }",
+      "module_gate": "Self :: Modmail",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"modmail close\""
+    },
+    "dispatch:ms": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: social :: message_studio :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: CustomCommands",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customcommand\""
+    },
+    "dispatch:nf": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: admin :: info :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Info",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"info user\""
+    },
+    "dispatch:ni": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party nhie\""
+    },
+    "dispatch:of": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: othello :: on_component (cx , parts) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [
+        "of:m"
+      ],
+      "owner": "\"duel othello\""
+    },
+    "dispatch:pa": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "pet :: on_adopt (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Pets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"pet adopt\""
+    },
+    "dispatch:pc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "pet :: on_care (cx , parts) . await",
+      "module_gate": "Self :: Pets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"pet view\""
+    },
+    "dispatch:pd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "plaza :: on_donate (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Plaza",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"plaza donate\""
+    },
+    "dispatch:pe": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "house :: on_edit (cx , \"pe\" , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Plaza",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"plaza edit\""
+    },
+    "dispatch:pl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "poll :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Polls",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"poll\""
+    },
+    "dispatch:pn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "pet :: on_nursery (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Pets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"pet list\""
+    },
+    "dispatch:pr": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "privacy :: on_component (cx , parts) . await",
+      "module_gate": null,
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"privacy\""
+    },
+    "dispatch:ps": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "pet :: on_switch (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Pets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"pet list\""
+    },
+    "dispatch:pt": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "partner :: on_component (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Social",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"partner\""
+    },
+    "dispatch:py": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "pet :: on_trip (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Pets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"pet trip\""
+    },
+    "dispatch:pz": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: picross :: on_component (cx , parts , values) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [
+        "pz:m"
+      ],
+      "owner": "\"play picross\""
+    },
+    "dispatch:qc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "quests :: on_claim (cx , parts) . await",
+      "module_gate": "Self :: Quests",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"quests\""
+    },
+    "dispatch:qd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: engagement :: on_qotd_decision (cx , parts) . await",
+      "module_gate": "Self :: Qotd",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"qotd queue\""
+    },
+    "dispatch:rb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "role_panels :: on_toggle (cx , parts) . await",
+      "module_gate": "Self :: RolePanels",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"roles post\""
+    },
+    "dispatch:rc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "contest :: on_component (cx , parts) . await",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house contest\""
+    },
+    "dispatch:rd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: moderation :: verification :: on_component (cx , \"rd\" , parts) . await",
+      "module_gate": "Self :: AntiRaid",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"raid\""
+    },
+    "dispatch:rm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "remind :: on_component (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": null,
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"remind\""
+    },
+    "dispatch:rp": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "rps :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Duels",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel rps\""
+    },
+    "dispatch:rr": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "role_panels :: on_toggle (cx , parts) . await",
+      "module_gate": "Self :: RolePanels",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"roles post\""
+    },
+    "dispatch:rs": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "role_panels :: on_select (cx , parts , values) . await",
+      "module_gate": "Self :: RolePanels",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"roles post\""
+    },
+    "dispatch:rx": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: integrations :: roblox :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Roblox",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"roblox verify\""
+    },
+    "dispatch:sb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "stall :: on_buy (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"stall view\""
+    },
+    "dispatch:sc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: admin :: stats :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Stats",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"stats\""
+    },
+    "dispatch:sg": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "suggest :: on_vote (cx , parts) . await",
+      "module_gate": "Self :: Suggestions",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"suggest\""
+    },
+    "dispatch:sh": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "share :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Party",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel share\""
+    },
+    "dispatch:sk": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: admin :: afk_sticky_schedule :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: Utility",
+      "never_defer_custom_id_prefixes": [
+        "sk:e"
+      ],
+      "owner": "\"sticky set\""
+    },
+    "dispatch:sl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "stall :: on_list (cx , parts , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"stall sell\""
+    },
+    "dispatch:sm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: admin :: afk_sticky_schedule :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: Utility",
+      "never_defer_custom_id_prefixes": [
+        "sm:c"
+      ],
+      "owner": "\"schedule add\""
+    },
+    "dispatch:sn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: feeds :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Feeds",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"feeds list\""
+    },
+    "dispatch:sr": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: starboard :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Starboard",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"starboard top\""
+    },
+    "dispatch:ss": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "surge :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Party",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"surge\""
+    },
+    "dispatch:st": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "store :: on_buy (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Store",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"store\""
+    },
+    "dispatch:su": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "stall :: on_unlist (cx , values . first () . map (String :: as_str)) . await",
+      "module_gate": "Self :: Shop",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"stall manage\""
+    },
+    "dispatch:sw": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customize :: on_showcase (cx , parts , values) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customize\""
+    },
+    "dispatch:sz": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "shells :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Party",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play shells\""
+    },
+    "dispatch:td": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party truthordare\""
+    },
+    "dispatch:tg": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customcommand :: on_page (cx , parts) . await",
+      "module_gate": "Self :: CustomCommands",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customcommand list\""
+    },
+    "dispatch:ti": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customize :: on_title (cx , parts , values) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customize\""
+    },
+    "dispatch:tk": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: community :: tickets :: on_open (cx , parts , values) . await",
+      "module_gate": "Self :: Tickets",
+      "never_defer_custom_id_prefixes": [
+        "tk:o",
+        "tk:s",
+        "tk:c",
+        "tk:f"
+      ],
+      "owner": "\"ticket\""
+    },
+    "dispatch:tl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: invites :: on_temp_component (cx , parts) . await",
+      "module_gate": "Self :: Invites",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"invites temp\""
+    },
+    "dispatch:tp": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: community :: tickets :: on_control (cx , parts) . await",
+      "module_gate": "Self :: Tickets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"ticket\""
+    },
+    "dispatch:tr": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: community :: tickets :: on_rating (cx , parts) . await",
+      "module_gate": "Self :: Tickets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"ticket\""
+    },
+    "dispatch:tt": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "duel :: on_move (cx , parts) . await",
+      "module_gate": "Self :: Duels",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel tictactoe\""
+    },
+    "dispatch:tv": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "trivia :: on_answer (cx , parts) . await",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play trivia\""
+    },
+    "dispatch:tz": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: tide2048 :: on_button (cx , parts) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play 2048\""
+    },
+    "dispatch:vc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "tempvoice :: on_button (cx , parts) . await",
+      "module_gate": "Self :: TempVoice",
+      "never_defer_custom_id_prefixes": [
+        "vc:lm",
+        "vc:rn"
+      ],
+      "owner": "\"voice\""
+    },
+    "dispatch:vf": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: moderation :: verification :: on_component (cx , \"vf\" , parts) . await",
+      "module_gate": "Self :: Verification",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"verify\""
+    },
+    "dispatch:vo": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "tempvoice :: on_select (cx , parts , values) . await",
+      "module_gate": "Self :: TempVoice",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"voice\""
+    },
+    "dispatch:vp": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: moderation :: anti_nuke :: on_component (cx , \"vp\" , parts) . await",
+      "module_gate": "Self :: AntiNuke",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"antinuke\""
+    },
+    "dispatch:wf": {
+      "default_defer": "Private",
+      "guard": null,
+      "handler": "crate :: admin :: workflows :: triggers :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Workflows",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"tag\""
+    },
+    "dispatch:wo": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "wordle :: on_button (cx , parts) . await",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [
+        "wo:g"
+      ],
+      "owner": "\"play wordle\""
+    },
+    "dispatch:wx": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [
+        "wx:g"
+      ],
+      "owner": "\"party wordrace\""
+    },
+    "dispatch:wy": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ party_games :: on_component (cx , prefix , parts) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party wouldyourrather\""
+    },
+    "dispatch:xi": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: progression :: xp_admin :: on_component (cx , parts) . await",
+      "module_gate": "Self :: Leveling",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"xp\""
+    },
+    "dispatch:yl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_button (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play higherlower\""
+    },
+    "dispatch:yt": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_button (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [
+        "yt:answer"
+      ],
+      "owner": "\"play typing\""
+    },
+    "dispatch_modal:ac": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "party_games :: on_modal (cx , prefix , parts , fields) . await",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party acronym\""
+    },
+    "dispatch_modal:ag": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_modal (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts , fields ,) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play anagram\""
+    },
+    "dispatch_modal:ca": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "character :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"character\""
+    },
+    "dispatch_modal:cd": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "collection :: drops :: on_word (cx , parts , fields) . await",
+      "module_gate": "Self :: Collection",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"critterdrop\""
+    },
+    "dispatch_modal:cm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customcommand :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: CustomCommands",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customcommand\""
+    },
+    "dispatch_modal:cn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "party_games :: on_modal (cx , prefix , parts , fields) . await",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party postcard\""
+    },
+    "dispatch_modal:cq": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: moderation :: verification :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: Verification",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"verify\""
+    },
+    "dispatch_modal:cs": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "customize :: on_style_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: Profile",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"customize\""
+    },
+    "dispatch_modal:d9c": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: games :: reef_party :: on_modal (cx , prefix , parts , fields) . await }",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": null
+    },
+    "dispatch_modal:d9p": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: games :: reef_party :: on_modal (cx , prefix , parts , fields) . await }",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": null
+    },
+    "dispatch_modal:d9s": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: games :: reef_party :: on_modal (cx , prefix , parts , fields) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": null
+    },
+    "dispatch_modal:ev": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: events :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: Events",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"event\""
+    },
+    "dispatch_modal:fm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: commands :: community :: engagement :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: Forms",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"form open\""
+    },
+    "dispatch_modal:gb": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "guestbook :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: House",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"house guestbook\""
+    },
+    "dispatch_modal:gn": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_modal (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts , fields ,) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play guessnumber\""
+    },
+    "dispatch_modal:hl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "party_games :: on_modal (cx , prefix , parts , fields) . await",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party hotpearl\""
+    },
+    "dispatch_modal:mi": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_modal (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts , fields ,) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play minesweeper\""
+    },
+    "dispatch_modal:mm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_modal (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts , fields ,) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play memory\""
+    },
+    "dispatch_modal:of": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "board :: othello :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"duel othello\""
+    },
+    "dispatch_modal:pz": {
+      "default_defer": "Public",
+      "guard": "parts . next () == Some (\"m\")",
+      "handler": "board :: picross :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: BoardGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play picross\""
+    },
+    "dispatch_modal:sk": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: admin :: afk_sticky_schedule :: on_modal (cx , prefix , parts , fields) . await }",
+      "module_gate": "Self :: Utility",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"sticky set\""
+    },
+    "dispatch_modal:sm": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ crate :: commands :: admin :: afk_sticky_schedule :: on_modal (cx , prefix , parts , fields) . await }",
+      "module_gate": "Self :: Utility",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"schedule add\""
+    },
+    "dispatch_modal:tf": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "crate :: community :: tickets :: on_form (cx , parts , fields) . await",
+      "module_gate": "Self :: Tickets",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"ticket\""
+    },
+    "dispatch_modal:vc": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "tempvoice :: on_modal (cx , parts , fields) . await",
+      "module_gate": "Self :: TempVoice",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"voice\""
+    },
+    "dispatch_modal:wo": {
+      "default_defer": "Public",
+      "guard": "parts . next () == Some (\"m\")",
+      "handler": "{ let text = fields . iter () . find (| (id , _) | id == wordle :: GUESS_FIELD) . map_or (\"\" , | (_ , value) | value . as_str ()) ; wordle :: on_guess (cx , parts , text) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play wordle\""
+    },
+    "dispatch_modal:wx": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "party_games :: on_modal (cx , prefix , parts , fields) . await",
+      "module_gate": "Self :: PartyGames",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"party wordrace\""
+    },
+    "dispatch_modal:yl": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_modal (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts , fields ,) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play higherlower\""
+    },
+    "dispatch_modal:yt": {
+      "default_defer": "Public",
+      "guard": null,
+      "handler": "{ quick :: on_modal (cx , quick :: Kind :: from_prefix (prefix) . expect (\"quick prefix\") , parts , fields ,) . await }",
+      "module_gate": "Self :: Puzzles",
+      "never_defer_custom_id_prefixes": [],
+      "owner": "\"play typing\""
+    }
+  }
+}

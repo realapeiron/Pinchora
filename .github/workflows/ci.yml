@@ -81,7 +81,22 @@ jobs:
           tool: cargo-nextest@0.9.151
 
       - name: Test
-        run: cargo nextest run --workspace --locked --profile ci
+        run: |
+          cargo xtask contracts --prepare
+          cargo nextest run --workspace --locked --profile ci
+
+      - name: Contracts and architecture gates
+        env:
+          PINCHORA_RATCHET_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          base="$PINCHORA_RATCHET_BASE"
+          case "$base" in
+            ""|0000000000000000000000000000000000000000) base=refs/heads/main ;;
+          esac
+          git fetch --no-tags --depth=1 origin "$base"
+          PINCHORA_RATCHET_BASE="$(git rev-parse FETCH_HEAD)"
+          export PINCHORA_RATCHET_BASE
+          cargo xtask check
 
       - name: Doctests
         if: ${{ !cancelled() }}

@@ -4,6 +4,9 @@
 //! Needs `PINCHORA_TEST_DATABASE_URL` and `PINCHORA_TEST_REDIS_URL`; skipped when either is unset.
 //! `seed_demo_house` (ignored) leaves a furnished house for the Playwright screenshots to look at.
 
+#[path = "support/contracts.rs"]
+mod contracts;
+
 use pinchora_testkit::isolation as fixture_isolation;
 
 use std::{
@@ -249,6 +252,8 @@ impl Browser {
                 .insert(header::COOKIE, jar.parse().expect("cookie header"));
         }
         request.extensions_mut().insert(ConnectInfo(self.address));
+        let contract_method = request.method().to_string();
+        let contract_path = request.uri().path().to_owned();
         let response = self.router.clone().oneshot(request).await.expect("router");
         for set in response.headers().get_all(header::SET_COOKIE) {
             let set = set.to_str().expect("cookie");
@@ -265,6 +270,7 @@ impl Browser {
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
             .await
             .expect("body");
+        contracts::record(&contract_method, &contract_path, status.as_u16(), &body);
         Response { status, headers, body }
     }
 

@@ -1,0 +1,7 @@
+[
+  "pinchora-commands -> pinchora-cache (normal, all)",
+  "pinchora-commands -> pinchora-db (normal, all)",
+  "pinchora-web -> pinchora-cache (normal, all)",
+  "pinchora-web -> pinchora-commands (normal, all)",
+  "pinchora-web -> pinchora-db (normal, all)"
+]

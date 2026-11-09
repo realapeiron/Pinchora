@@ -587,6 +587,7 @@ async fn slow_csv_consumers_stop_at_the_total_export_deadline() {
     let body = axum::body::to_bytes(response.into_body(), 8 * 1024 * 1024)
         .await
         .unwrap();
+    contracts::record("GET", &format!("/api/guilds/{guild}/audit-tools/export"), 200, &body);
     assert!(String::from_utf8_lossy(&body).contains("EXPORT_LIMIT"));
     assert_eq!(
         browser.get(&format!("/api/guilds/{guild}/audit-tools")).await.status,

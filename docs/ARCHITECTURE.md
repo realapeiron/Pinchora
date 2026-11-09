@@ -160,3 +160,11 @@ Every serving pod exposes `:9000/metrics` (Prometheus), `/healthz` and `/readyz`
   CPU per pod.
 - Postgres: leaderboards read indexed ranges; per-user rank uses a count over the index, which
   should move to Redis sorted sets once a single guild passes a few hundred thousand members.
+
+### Contract and structure gates
+
+`cargo xtask check` verifies dependency direction, source names, the file/function size ratchet,
+and outward-facing contracts. API shapes are observed during the integration suite: run
+`cargo xtask contracts --prepare` before a full run, then check afterward. See
+[`contracts/README.md`](../contracts/README.md) for update commands, normalization, coverage and
+transitional exceptions. All check modes leave checked-in files untouched.
