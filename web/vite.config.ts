@@ -63,6 +63,14 @@ export default defineConfig({
     manifest: true,
     outDir: "dist",
     assetsDir: "assets",
+    rollupOptions: {
+      output: {
+        onlyExplicitManualChunks: true,
+        manualChunks(id) {
+          if (id.endsWith("/src/i18n/dashboard.ts")) return "dashboard";
+        },
+      },
+    },
     // Fonts come from the Rust server at runtime (the same files the cards use).
     assetsInlineLimit: 0,
   },

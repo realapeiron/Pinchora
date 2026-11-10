@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { t } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import { compact, thousands, type DayRow } from "../api/stats";
 import { chartModel } from "./overviewModel";
 

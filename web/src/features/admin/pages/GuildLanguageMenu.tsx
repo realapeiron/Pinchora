@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Me } from "../../../lib/api";
 import { Icon } from "../../../components/icons/Icon";
-import { setLocale, t, useLocale, type Locale } from "../../../i18n";
+import { setLocale, useLocale, type Locale } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import { trapTab } from "./overlayFocus";
 
 const choices = [

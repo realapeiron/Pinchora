@@ -4,7 +4,7 @@ import { Icon } from "../../../components/icons/Icon";
 import { badge } from "../api/modules";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { Toast } from "../../../components/Toast";
-import { translate as t } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { ModuleEntry } from "../../../lib/api";
 import { moduleIcons } from "./moduleIcons";
 import { modulePage } from "./navModules";
@@ -63,7 +63,7 @@ export function OverviewCatalog({ guild, modules }: { guild: string; modules: Mo
       <div className="overview-modules">
         {shown.map((module) => {
           const page = modulePage(module.key);
-          const href = `/g/${guild}/${page ?? "modules"}`;
+          const href = page === "" ? `/g/${guild}/#text-prefix` : `/g/${guild}/${page ?? "modules"}`;
           return (
             <article key={module.key} className={`overview-module ${module.enabled ? "" : "is-off"}`}>
               <span className="overview-module-icon">
@@ -86,7 +86,7 @@ export function OverviewCatalog({ guild, modules }: { guild: string; modules: Mo
                   </span>
                 )}
                 <span className="overview-module-go">
-                  {page ? t("Open settings") : t("Manage modules")}
+                  {page !== undefined ? t("Open settings") : t("Manage modules")}
                   <Icon name="chevron-right" />
                 </span>
               </Link>

@@ -4,7 +4,7 @@ import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
-import { translate as t } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { Overview, Settings } from "../../../lib/api";
 import { changedFields, patchOf } from "../../../lib/draft";
 import { useNames, useSaveSettings } from "../../../lib/queries";

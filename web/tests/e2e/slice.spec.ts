@@ -95,6 +95,10 @@ test("the overview fits a phone", async ({ page }) => {
   const toggle = page.getByRole("switch", { name: "Leveling" });
   await toggle.click();
   await expect(page.getByText("1 unsaved change")).toBeVisible();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await page.goto(`/g/${cafe}`);
+  await expect(page.getByRole("heading", { name: "Coral Cafe" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   await page.evaluate(() => document.fonts.ready);

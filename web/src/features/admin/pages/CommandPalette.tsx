@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { t, translate } from "../../../i18n";
+import { translate } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { ModuleEntry } from "../../../lib/api";
 import { visibleNav, type NavGroup } from "../../../lib/nav";
 import { canOpenPage, type AccessOverview } from "../../moderation";

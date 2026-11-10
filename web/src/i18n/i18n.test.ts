@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import ts from "typescript";
 
 import { date, number, plural, serverText, setLocale, translate } from ".";
+import { t as dashboardText, dashboardEn, dashboardTr } from "./dashboard";
 import { en } from "./en";
 import { tr } from "./tr";
 import { t as workflowText, workflowEn, workflowTr } from "./workflows";
@@ -28,6 +29,25 @@ function rustFiles(directory: string): string[] {
 }
 
 describe("SPA message catalogs", () => {
+  it("keeps deferred dashboard translations complete and switches languages", async () => {
+    expect(Object.keys(dashboardTr).sort()).toEqual(Object.keys(dashboardEn).sort());
+    for (const key of Object.keys(dashboardEn) as (keyof typeof dashboardEn)[]) {
+      expect(key in en).toBe(false);
+      expect(key in tr).toBe(false);
+      expect(dashboardTr[key].trim().length, key).toBeGreaterThan(0);
+      const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(([value]) => value).sort();
+      expect(placeholders(dashboardTr[key]), key).toEqual(placeholders(dashboardEn[key]));
+      await setLocale("tr");
+      expect(dashboardText(key)).toBe(dashboardTr[key]);
+      await setLocale("en");
+      expect(dashboardText(key)).toBe(dashboardEn[key]);
+    }
+    await setLocale("tr");
+    expect(dashboardText("{count} modules switched on", { count: 1234 })).toBe("1.234 modül açık");
+    expect(dashboardText("Overview")).toBe(tr.Overview);
+    await setLocale("en");
+  });
+
   it("keeps deferred workflow translations complete in both languages", async () => {
     expect(Object.keys(workflowTr).sort()).toEqual(Object.keys(workflowEn).sort());
     for (const key of Object.keys(workflowEn) as (keyof typeof workflowEn)[]) {
@@ -77,7 +97,7 @@ describe("SPA message catalogs", () => {
     const runtimeKeys = new Set(["appealed", "Messages must contain 1–200 characters."]);
     // TOML and TypeScript sources can spell multiline messages with escaped newlines.
     expect(
-      Object.keys({ ...en, ...workflowEn }).filter(
+      Object.keys({ ...en, ...workflowEn, ...dashboardEn }).filter(
         (key) =>
           !source.includes(key) &&
           !source.includes(JSON.stringify(key).slice(1, -1)) &&
@@ -86,14 +106,18 @@ describe("SPA message catalogs", () => {
     ).toEqual([]);
     const missing: string[] = [];
     for (const file of sourceFiles(join(process.cwd(), "src"))) {
-      const tree = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+      const code = readFileSync(file, "utf8");
+      const dashboardCall = code.includes('from "../../../i18n/dashboard"');
+      const tree = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
       const visit = (node: ts.Node): void => {
+        const callee = ts.isCallExpression(node) ? node.expression.getText(tree) : "";
         if (
           ts.isCallExpression(node) &&
-          ["translate", "spaTranslate"].includes(node.expression.getText(tree)) &&
+          (["translate", "spaTranslate"].includes(callee) || (dashboardCall && callee === "t")) &&
           node.arguments[0] &&
           ts.isStringLiteral(node.arguments[0]) &&
-          !(node.arguments[0].text in en)
+          !(node.arguments[0].text in en) &&
+          !(dashboardCall && callee === "t" && node.arguments[0].text in dashboardEn)
         ) {
           missing.push(`${file}: ${node.arguments[0].text}`);
         }

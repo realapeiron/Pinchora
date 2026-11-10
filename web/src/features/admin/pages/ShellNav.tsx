@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
-import { translate, t } from "../../../i18n";
+import { translate } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { GuildEntry, Me, ModuleEntry } from "../../../lib/api";
 import type { NavGroup } from "../../../lib/nav";
 import { Icon } from "../../../components/icons/Icon";

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { t } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { ModuleEntry } from "../../../lib/api";
 import { useSaveModules } from "../../../lib/queries";
 

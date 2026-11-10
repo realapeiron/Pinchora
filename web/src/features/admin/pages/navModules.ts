@@ -41,5 +41,10 @@ export function navModule(path: string) {
 }
 
 export function modulePage(key: string) {
+  if (key === "goodbye") return "welcome";
+  if (key === "store") return "points";
+  if (key === "role_panels" || key === "autoroles" || key === "color_roles") return "roles";
+  if (key === "verification" || key === "anti_raid") return "safety";
+  if (key === "text_commands") return "";
   return [...switchPages].find((path) => navModule(path) === key);
 }

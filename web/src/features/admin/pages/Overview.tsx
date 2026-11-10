@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import { Icon } from "../../../components/icons/Icon";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
-import { translate as t } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { Overview as OverviewData } from "../../../lib/api";
 import { useLevelRoles } from "../../../lib/queries";
 import { compact, type Days, useGuildStats } from "../api/stats";
@@ -47,6 +47,9 @@ export function Overview() {
   const stats = useGuildStats(guild, days);
   const roles = useLevelRoles(guild);
   const cards = statCards(stats.data);
+  const shownDays = stats.data?.days ?? days;
+  const statsOff = stats.data?.module_on === false;
+  const hasMessages = stats.data?.daily.some((row) => row.messages > 0) ?? false;
   const signals = attention(
     data.settings,
     data.modules,
@@ -88,7 +91,7 @@ export function Overview() {
       ) : cards ? (
         <section
           className="overview-stats"
-          aria-label={t("Activity for the last {count} days", { count: days })}
+          aria-label={t("Activity for the last {count} days", { count: shownDays })}
         >
           {cards.map((card) => (
             <article className="overview-stat" key={card.key}>
@@ -107,7 +110,7 @@ export function Overview() {
               </strong>
               <small>
                 {card.change === null
-                  ? t("Last {count} days", { count: days })
+                  ? t("Last {count} days", { count: shownDays })
                   : t("{change}% vs previous period", {
                       change: `${card.change > 0 ? "+" : ""}${card.change}`,
                     })}
@@ -120,15 +123,19 @@ export function Overview() {
           <p>
             {stats.isError
               ? t("Activity unavailable.")
-              : t("No activity has been counted yet. Check Stats to start tracking.")}
+              : statsOff
+                ? t("Stats is switched off")
+                : t("No activity has been counted yet. Check Stats to start tracking.")}
           </p>
-          <Link to={`/g/${guild}/stats`}>{t("Open Stats")}</Link>
+          <Link to={`/g/${guild}/${statsOff ? "modules" : "stats"}`}>
+            {t(statsOff ? "Manage modules" : "Open Stats")}
+          </Link>
         </section>
       )}
 
       <div className="overview-split">
         <section
-          className={`overview-chart-panel ${cards ? "" : "is-empty"}`}
+          className={`overview-chart-panel ${hasMessages ? "" : "is-empty"}`}
           aria-label={t("Messages chart")}
         >
           <div className="overview-section-head">
@@ -146,13 +153,23 @@ export function Overview() {
               ))}
             </div>
           </div>
-          {cards ? (
+          {hasMessages ? (
             <OverviewChart rows={stats.data!.daily} />
           ) : (
             <div className="overview-chart-empty">
               <img src="/mascot.png" alt="" />
-              <p>{t("No messages counted yet.")}</p>
-              <Link to={`/g/${guild}/stats`}>{t("Stats")}</Link>
+              <p>
+                {stats.isPending
+                  ? t("Loading server activity…")
+                  : stats.isError
+                    ? t("Activity unavailable.")
+                    : statsOff
+                      ? t("Stats is switched off")
+                      : t("No messages counted yet.")}
+              </p>
+              <Link to={`/g/${guild}/${statsOff ? "modules" : "stats"}`}>
+                {t(statsOff ? "Manage modules" : "Stats")}
+              </Link>
             </div>
           )}
         </section>

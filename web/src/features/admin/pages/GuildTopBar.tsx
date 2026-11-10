@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { Me } from "../../../lib/api";
-import { t, translate } from "../../../i18n";
+import { translate } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import { useLogout } from "../../../lib/queries";
 import { Icon } from "../../../components/icons/Icon";
 

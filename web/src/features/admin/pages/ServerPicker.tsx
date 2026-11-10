@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
 import { Icon } from "../../../components/icons/Icon";
 import { ServerIcon } from "../../../components/ServerIcon";
-import { t } from "../../../i18n";
+import { t } from "../../../i18n/dashboard";
 import type { GuildEntry } from "../../../lib/api";
 import { trapTab } from "./overlayFocus";
 

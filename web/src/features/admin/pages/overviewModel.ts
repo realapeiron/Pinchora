@@ -10,7 +10,7 @@ export interface StatCard {
 
 export function statCards(stats: GuildStats | undefined): StatCard[] | null {
   if (
-    !stats?.module_on ||
+    !stats ||
     (!stats.daily.some((row) => row.messages || row.joins || row.leaves || row.commands) &&
       !stats.totals.active_members)
   )
@@ -21,13 +21,13 @@ export function statCards(stats: GuildStats | undefined): StatCard[] | null {
     {
       key: "members",
       value: `${totals.joins} / ${totals.leaves}`,
-      change: change(totals.joins - totals.leaves, previous ? previous.joins - previous.leaves : null),
+      change: null,
     },
     { key: "commands", value: String(totals.commands), change: change(totals.commands, previous?.commands) },
     {
       key: "active",
       value: totals.active_members === null ? "—" : String(totals.active_members),
-      change: change(totals.active_members ?? 0, previous?.active_members),
+      change: null,
     },
   ];
 }
@@ -51,7 +51,7 @@ export function attention(
     statsOn === false ||
     (statsOn === undefined && modules.find((module) => module.key === "stats")?.enabled === false)
   )
-    signals.push({ key: "stats", page: "stats" });
+    signals.push({ key: "stats", page: "modules" });
   if (on("leveling") && settings.leveling_enabled && roles === 0)
     signals.push({ key: "roles", page: "leveling" });
   return signals;
@@ -69,7 +69,7 @@ export function setupSteps(settings: Settings, modules: ModuleEntry[]): SetupSte
     { key: "goodbye", page: "welcome", done: on("goodbye") && !!settings.goodbye_channel_id },
     { key: "log", page: "log", done: on("log") && !!settings.log_channel_id },
     { key: "leveling", page: "leveling", done: on("leveling") && settings.leveling_enabled },
-    { key: "stats", page: "stats", done: on("stats") },
+    { key: "stats", page: "modules", done: on("stats") },
   ];
 }
 

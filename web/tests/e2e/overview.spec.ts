@@ -10,7 +10,7 @@ const stats = (days: number, on = true) => ({
   public: false,
   voice_counted: false,
   totals: { messages: 120, joins: 9, leaves: 2, commands: 5, active_members: 21, voice_minutes: 0 },
-  previous: { messages: 100, joins: 4, leaves: 1, commands: 10, active_members: 20, voice_minutes: 0 },
+  previous: { messages: 100, joins: 4, leaves: 1, commands: 10, active_members: null, voice_minutes: 0 },
   daily: Array.from({ length: days }, (_, i) => ({
     day: `2026-11-${String(i + 1).padStart(2, "0")}`,
     messages: i === days - 1 ? 120 : 20 + i,
@@ -88,9 +88,39 @@ for (const width of [1440, 390]) {
   test(`overview shows one stats empty state at ${width}px`, async ({ page }) => {
     const guild = await open(page, width, true);
     await expect(page.locator(".overview-stat")).toHaveCount(0);
-    await expect(
-      page.getByText("No activity has been counted yet. Check Stats to start tracking."),
-    ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open Stats" })).toHaveAttribute("href", `/g/${guild}/stats`);
+    await expect(page.locator(".overview-stats-empty").getByText("Stats is switched off")).toBeVisible();
+    await expect(page.locator(".overview-chart-empty").getByText("Stats is switched off")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Manage modules" })).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Manage modules" }).first()).toHaveAttribute(
+      "href",
+      `/g/${guild}/modules`,
+    );
   });
 }
+
+test("overview keeps past activity visible when stats are off", async ({ page }) => {
+  const guild = await open(page, 1440);
+  await page.route(`**/api/guilds/${guild}/stats?days=*`, async (route) => {
+    await route.fulfill({ json: stats(7, false) });
+  });
+  await page.reload();
+  await expect(page.locator(".overview-stat")).toHaveCount(4);
+  await expect(page.getByRole("table", { name: "Daily messages" }).getByRole("row")).toHaveCount(8);
+  await expect(page.getByText("Stats is switched off")).toBeVisible();
+});
+
+test("overview labels held activity with its response period", async ({ page }) => {
+  const guild = await open(page, 1440);
+  let release: (() => void) | undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/guilds/${guild}/stats?days=30`, async (route) => {
+    await held;
+    await route.fulfill({ json: stats(30) });
+  });
+  await page.getByRole("button", { name: "30 days" }).click();
+  await expect(page.getByRole("region", { name: "Activity for the last 7 days" })).toBeVisible();
+  release?.();
+  await expect(page.getByRole("region", { name: "Activity for the last 30 days" })).toBeVisible();
+});

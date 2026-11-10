@@ -17,9 +17,10 @@ const settings = {
   leveling_enabled: true,
 } as Settings;
 const stats = {
+  days: 7,
   module_on: true,
   totals: { messages: 120, joins: 9, leaves: 2, commands: 5, active_members: 21, voice_minutes: 0 },
-  previous: { messages: 100, joins: 4, leaves: 1, commands: 10, active_members: 20, voice_minutes: 0 },
+  previous: { messages: 100, joins: 4, leaves: 1, commands: 10, active_members: null, voice_minutes: 0 },
   daily: [{ day: "2026-11-10", messages: 120, joins: 9, leaves: 2, commands: 5, voice_minutes: 0 }],
 } as GuildStats;
 
@@ -27,21 +28,30 @@ describe("overview data model", () => {
   it("makes four real stats cards with previous-period changes", () => {
     expect(statCards(stats)).toEqual([
       { key: "messages", value: "120", change: 20 },
-      { key: "members", value: "9 / 2", change: 133 },
+      { key: "members", value: "9 / 2", change: null },
       { key: "commands", value: "5", change: -50 },
-      { key: "active", value: "21", change: 5 },
+      { key: "active", value: "21", change: null },
     ]);
     expect(statCards({ ...stats, previous: null })?.every((card) => card.change === null)).toBe(true);
   });
-  it("shows one empty state when stats are off or uncounted", () => {
-    expect(statCards({ ...stats, module_on: false })).toBeNull();
+  it("keeps past activity when stats are off, and leaves uncounted periods empty", () => {
+    expect(statCards({ ...stats, module_on: false })).toEqual(statCards(stats));
     expect(
       statCards({
         ...stats,
-        totals: { ...stats.totals, active_members: null },
+        module_on: false,
+        totals: {
+          ...stats.totals,
+          messages: 0,
+          joins: 0,
+          leaves: 0,
+          commands: 0,
+          active_members: null,
+        },
         daily: stats.daily.map((day) => ({ ...day, messages: 0, joins: 0, leaves: 0, commands: 0 })),
       }),
     ).toBeNull();
+    expect(statCards(undefined)).toBeNull();
   });
   it("only reports computable attention signals", () => {
     expect(attention(settings, modules, null).map((signal) => signal.key)).toEqual([
@@ -55,6 +65,7 @@ describe("overview data model", () => {
       "stats",
       "roles",
     ]);
+    expect(attention(settings, modules, 0).find((signal) => signal.key === "stats")?.page).toBe("modules");
     expect(
       attention(
         { ...settings, goodbye_channel_id: "43", log_channel_id: "44" },
@@ -73,6 +84,7 @@ describe("overview data model", () => {
       ["stats", false],
     ]);
     expect(steps.filter((step) => step.done)).toHaveLength(2);
+    expect(steps.find((step) => step.key === "stats")?.page).toBe("modules");
   });
   it("filters the catalog by category, switched-on state and label or blurb", () => {
     expect(catalogFilter(modules, "server", "count", false).map((module) => module.key)).toEqual(["stats"]);

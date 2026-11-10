@@ -37,14 +37,14 @@ for (const key of [
   "src/reef/games/Picross.tsx",
   "src/reef/games/Trivia.tsx",
   "src/features/admin/pages/Workflows.tsx",
+  "src/i18n/dashboard.ts",
 ]) {
   // Rollup can name a shared dynamic facade by its chunk name instead of its source path.
   const name = key
     .split("/")
     .at(-1)
-    .replace(/\.tsx$/, "");
-  const chunk =
-    build[key] ?? Object.values(build).find((entry) => entry.isDynamicEntry && entry.name === name);
+    .replace(/\.tsx?$/, "");
+  const chunk = build[key] ?? Object.values(build).find((entry) => entry.name === name);
   if (!chunk || used.has(chunk.file))
     throw new Error(`Optional editor/social code entered the cold path: ${key}`);
 }
