@@ -42,6 +42,8 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const closeButton = useRef<HTMLButtonElement>(null);
   const drawerReturn = useRef<HTMLElement | null>(null);
+  const paletteReturn = useRef<HTMLElement | null>(null);
+  const tabSearch = useRef<HTMLButtonElement>(null);
   const { pathname } = useLocation();
   const openPage = pathname.split(`/g/${guildId}/`)[1]?.split("/")[0] ?? "";
   const groups = NAV.map((group) => ({
@@ -66,6 +68,14 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
     setServerOpenRequested(false);
     drawerReturn.current?.focus();
   };
+  const openPalette = (fromDrawer = false) => {
+    paletteReturn.current = fromDrawer ? tabSearch.current : (document.activeElement as HTMLElement);
+    if (fromDrawer) {
+      setDrawerOpen(false);
+      setServerOpenRequested(false);
+    }
+    setPaletteOpen(true);
+  };
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
@@ -78,13 +88,14 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
         (event.key === "/" && !typing)
       ) {
         event.preventDefault();
-        setPaletteOpen((open) => !open);
+        if (paletteOpen) setPaletteOpen(false);
+        else openPalette(drawerOpen);
       }
-      if (event.key === "Escape" && drawerOpen) closeDrawer();
+      if (event.key === "Escape" && drawerOpen && !event.defaultPrevented) closeDrawer();
     };
     document.addEventListener("keydown", keydown);
     return () => document.removeEventListener("keydown", keydown);
-  }, [drawerOpen]);
+  }, [drawerOpen, paletteOpen]);
   const navProps = {
     me,
     guildId,
@@ -95,11 +106,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
     guilds: guilds.data ?? [],
     openPage,
     closeDrawer,
-    openSearch: () => {
-      setDrawerOpen(false);
-      setServerOpenRequested(false);
-      setPaletteOpen(true);
-    },
+    openSearch: () => openPalette(drawerOpen),
     drawerOpen,
     serverOpenRequested,
     closeButton,
@@ -141,15 +148,19 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
           <Icon name="layout-dashboard" />
           {t("Overview")}
         </NavLink>
-        <NavLink to={`/g/${guildId}/modules`}>
-          <Icon name="blocks" />
-          {t("Modules")}
-        </NavLink>
-        <NavLink to={`/g/${guildId}/cases`}>
-          <Icon name="folder-open" />
-          {t("Cases")}
-        </NavLink>
-        <button type="button" onClick={() => setPaletteOpen(true)}>
+        {canOpenPage(overview.data, "modules") && (
+          <NavLink to={`/g/${guildId}/modules`}>
+            <Icon name="blocks" />
+            {t("Modules")}
+          </NavLink>
+        )}
+        {canOpenPage(overview.data, "cases") && (
+          <NavLink to={`/g/${guildId}/cases`}>
+            <Icon name="folder-open" />
+            {t("Cases")}
+          </NavLink>
+        )}
+        <button ref={tabSearch} type="button" onClick={() => openPalette()}>
           <Icon name="search" />
           {t("Search")}
         </button>
@@ -162,8 +173,10 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
         guildId={guildId}
         groups={groups}
         modules={overview.data?.modules ?? []}
+        overview={overview.data}
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
+        returnTo={paletteReturn.current}
       />
     </div>
   );

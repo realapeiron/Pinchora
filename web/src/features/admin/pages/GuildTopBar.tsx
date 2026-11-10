@@ -6,6 +6,7 @@ import { useLogout } from "../../../lib/queries";
 import { Icon } from "../../../components/icons/Icon";
 
 import { GuildLanguageMenu } from "./GuildLanguageMenu";
+import { trapTab } from "./overlayFocus";
 
 export function GuildTopBar({
   me,
@@ -17,14 +18,26 @@ export function GuildTopBar({
   const logout = useLogout();
   const [accountOpen, setAccountOpen] = useState(false);
   const account = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const name = me.user.global_name ?? me.user.username;
   useEffect(() => {
     if (!accountOpen) return;
+    menu.current?.querySelector<HTMLElement>("a, button")?.focus();
     const outside = (e: PointerEvent) => {
-      if (!account.current?.contains(e.target as Node)) setAccountOpen(false);
+      if (!account.current?.contains(e.target as Node)) {
+        if (menu.current?.contains(document.activeElement)) trigger.current?.focus();
+        setAccountOpen(false);
+      }
     };
     const escape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAccountOpen(false);
+      if (
+        e.key === "Escape" &&
+        (menu.current?.contains(document.activeElement) || trigger.current === document.activeElement)
+      ) {
+        setAccountOpen(false);
+        trigger.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", outside);
     document.addEventListener("keydown", escape);
@@ -59,6 +72,7 @@ export function GuildTopBar({
         <GuildLanguageMenu me={me} />
         <div ref={account} className="shell-account">
           <button
+            ref={trigger}
             type="button"
             className="shell-account-trigger"
             aria-label={name}
@@ -71,8 +85,21 @@ export function GuildTopBar({
             <Icon name="chevron-down" />
           </button>
           {accountOpen && (
-            <div role="menu" className="shell-account-menu shell-pop">
-              <Link role="menuitem" to="/me" onClick={() => setAccountOpen(false)}>
+            <div
+              ref={menu}
+              role="menu"
+              tabIndex={-1}
+              className="shell-account-menu shell-pop"
+              onKeyDown={(event) => trapTab(event, event.currentTarget)}
+            >
+              <Link
+                role="menuitem"
+                to="/me"
+                onClick={() => {
+                  setAccountOpen(false);
+                  trigger.current?.focus();
+                }}
+              >
                 {t("My world")}
               </Link>
               <button

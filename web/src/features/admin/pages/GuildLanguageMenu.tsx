@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type Me } from "../../../lib/api";
 import { Icon } from "../../../components/icons/Icon";
 import { setLocale, t, useLocale, type Locale } from "../../../i18n";
+import { trapTab } from "./overlayFocus";
 
 const choices = [
   { code: "tr", name: "Türkçe", description: "Panel and bot replies in Turkish" },
@@ -22,16 +23,24 @@ export function GuildLanguageMenu({
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
+    menu.current?.querySelector<HTMLElement>("button")?.focus();
     const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (
+        event.key === "Escape" &&
+        (menu.current?.contains(document.activeElement) || trigger.current === document.activeElement)
+      ) {
         setOpen(false);
         trigger.current?.focus();
       }
     };
     const outside = (event: PointerEvent) => {
-      if (!wrap.current?.contains(event.target as Node)) setOpen(false);
+      if (!wrap.current?.contains(event.target as Node)) {
+        if (menu.current?.contains(document.activeElement)) trigger.current?.focus();
+        setOpen(false);
+      }
     };
     document.addEventListener("keydown", close);
     document.addEventListener("pointerdown", outside);
@@ -43,6 +52,7 @@ export function GuildLanguageMenu({
   const switchTo = (choice: Locale) => {
     setError(false);
     setOpen(false);
+    trigger.current?.focus();
     void setLocale(
       choice,
       me ? (language) => api("/api/me/language", "POST", { language }) : undefined,
@@ -93,7 +103,14 @@ export function GuildLanguageMenu({
             <Icon name="chevron-down" />
           </button>
           {open && (
-            <div className="language-pop shell-pop" role="menu" aria-label={t("Language")}>
+            <div
+              ref={menu}
+              className="language-pop shell-pop"
+              role="menu"
+              tabIndex={-1}
+              aria-label={t("Language")}
+              onKeyDown={(event) => trapTab(event, event.currentTarget)}
+            >
               <div className="language-pop-head">
                 <strong>{t("Panel language")}</strong>
                 <small>{t("Only for you. Change the server bot language on Branding.")}</small>

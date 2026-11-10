@@ -3,9 +3,12 @@ import { useNavigate } from "react-router";
 import { t, translate } from "../../../i18n";
 import type { ModuleEntry } from "../../../lib/api";
 import { visibleNav, type NavGroup } from "../../../lib/nav";
+import { canOpenPage, type AccessOverview } from "../../moderation";
 import { useSaveModules } from "../../../lib/queries";
 import { Icon } from "../../../components/icons/Icon";
 import { Toast } from "../../../components/Toast";
+import { navModule } from "./navModules";
+import { trapTab } from "./overlayFocus";
 
 interface Item {
   label: string;
@@ -16,14 +19,18 @@ export function CommandPalette({
   guildId,
   groups,
   modules,
+  overview,
   open,
   onClose,
+  returnTo,
 }: {
   guildId: string;
   groups: NavGroup[];
   modules: ModuleEntry[];
+  overview: AccessOverview | undefined;
   open: boolean;
   onClose: () => void;
+  returnTo: HTMLElement | null;
 }) {
   const navigate = useNavigate();
   const save = useSaveModules(guildId);
@@ -32,13 +39,15 @@ export function CommandPalette({
   const [notice, setNotice] = useState<string | null>(null);
   const [undo, setUndo] = useState<(() => void) | undefined>();
   const input = useRef<HTMLInputElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
+  const mutationId = useRef(0);
   useEffect(() => {
     if (!open) return;
-    returnFocus.current = document.activeElement as HTMLElement;
+    returnFocus.current = returnTo ?? (document.activeElement as HTMLElement);
     input.current?.focus();
     return () => returnFocus.current?.focus();
-  }, [open]);
+  }, [open, returnTo]);
   const close = () => {
     onClose();
     setQuery("");
@@ -46,22 +55,35 @@ export function CommandPalette({
   };
   const toggle = (module: ModuleEntry) => {
     const next = !module.enabled;
+    const current = ++mutationId.current;
+    setUndo(undefined);
     save.mutate([{ key: module.key, patch: { enabled: next } }], {
       onSuccess: () => {
+        if (current !== mutationId.current) return;
         setNotice(t(next ? "Module enabled" : "Module disabled"));
         setUndo(() => () => save.mutate([{ key: module.key, patch: { enabled: module.enabled } }]));
       },
-      onError: () => setNotice(t("Could not change the module. Try again.")),
+      onError: () => {
+        if (current !== mutationId.current) return;
+        setUndo(undefined);
+        setNotice(t("Could not change the module. Try again."));
+      },
     });
   };
   const pages: Item[] = visibleNav(groups, query).flatMap((g) =>
-    g.pages.map((p) => ({
-      label: p.label,
-      hint: translate(g.group),
-      run: () => navigate(p.to ? `/g/${guildId}/${p.to}` : `/g/${guildId}`),
-    })),
+    g.pages
+      .filter((p) => canOpenPage(overview, p.to))
+      .map((p) => ({
+        label: p.label,
+        hint: translate(g.group),
+        run: () => navigate(p.to ? `/g/${guildId}/${p.to}` : `/g/${guildId}`),
+      })),
+  );
+  const allowedModules = new Set(
+    groups.flatMap((g) => g.pages.filter((p) => canOpenPage(overview, p.to)).map((p) => navModule(p.to))),
   );
   const actions: Item[] = modules
+    .filter((m) => canOpenPage(overview, "modules") && (overview?.access?.full || allowedModules.has(m.key)))
     .filter((m) =>
       `${m.label} ${m.blurb} ${m.key} ${m.enabled ? "disable" : "enable"}`
         .toLocaleLowerCase()
@@ -92,7 +114,13 @@ export function CommandPalette({
       {open && (
         <div className="command-backdrop">
           <button type="button" className="command-underlay" aria-label={t("Close menu")} onClick={close} />
-          <div className="command-box" role="dialog" aria-modal="true" aria-label={t("Search pages")}>
+          <div
+            ref={dialog}
+            className="command-box"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("Search pages")}
+          >
             <div className="command-input">
               <Icon name="search" />
               <input
@@ -109,6 +137,7 @@ export function CommandPalette({
                   setSelected(0);
                 }}
                 onKeyDown={(e) => {
+                  if (dialog.current) trapTab(e, dialog.current);
                   if (e.key === "Escape") {
                     e.preventDefault();
                     close();
@@ -126,6 +155,18 @@ export function CommandPalette({
                   }
                 }}
               />
+              <button
+                type="button"
+                className="command-close"
+                aria-label={t("Close menu")}
+                onClick={close}
+                onKeyDown={(event) => {
+                  if (dialog.current) trapTab(event, dialog.current);
+                  if (event.key === "Escape") close();
+                }}
+              >
+                <Icon name="x" />
+              </button>
             </div>
             <div id="command-list" className="command-list" role="listbox" aria-label={t("Search results")}>
               {items.map((item, index) => (

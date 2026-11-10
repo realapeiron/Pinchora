@@ -1,10 +1,10 @@
-.page-head .pixel-heading {
+:where(.shell-page) .page-head .pixel-heading {
   font: 400 clamp(24px, 3vw, 32px)/1.15 var(--font-pixel);
   letter-spacing: 0.01em;
   text-shadow: none;
   overflow-wrap: anywhere;
 }
-.page-head-icon {
+:where(.shell-page) .page-head-icon {
   display: grid;
   place-items: center;
   flex: none;
@@ -16,18 +16,18 @@
     inset 0 0 0 2px var(--line-hi),
     0 4px 0 var(--shade);
 }
-.page-head-icon .pixel-icon {
+:where(.shell-page) .page-head-icon .pixel-icon {
   width: 24px;
   height: 24px;
 }
-.page-head-copy {
+:where(.shell-page) .page-head-copy {
   flex: 1 1 320px;
   min-width: 0;
 }
-.shell-content .page-head {
+:where(.shell-page) .shell-content .page-head {
   align-items: flex-start;
 }
-.page-eyebrow {
+:where(.shell-page) .page-eyebrow {
   display: block;
   margin-bottom: 8px;
   color: var(--faint);
@@ -36,7 +36,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.panel {
+:where(.shell-page) .panel {
   clip-path: none;
   padding: 0;
   background: var(--panel);
@@ -47,7 +47,7 @@
     var(--dash-edge) 0 0 var(--line),
     0 6px 0 var(--shade);
 }
-.panel-accent {
+:where(.shell-page) .panel-accent {
   box-shadow:
     0 calc(-1 * var(--dash-edge)) 0 var(--accent),
     0 var(--dash-edge) 0 var(--accent),
@@ -55,7 +55,7 @@
     var(--dash-edge) 0 0 var(--accent),
     0 6px 0 var(--shade);
 }
-.panel-gold {
+:where(.shell-page) .panel-gold {
   box-shadow:
     0 calc(-1 * var(--dash-edge)) 0 var(--gold),
     0 var(--dash-edge) 0 var(--gold),
@@ -63,34 +63,34 @@
     var(--dash-edge) 0 0 var(--gold),
     0 6px 0 var(--shade);
 }
-.panel-body {
+:where(.shell-page) .panel-body {
   clip-path: none;
   min-width: 0;
 }
-.shell-content .panel:has(table) > .panel-body {
+:where(.shell-page) .shell-content .panel:has(table) > .panel-body {
   overflow-x: auto;
 }
-.shell-content .panel-head a,
-.shell-content .panel-body > a {
+:where(.shell-page) .shell-content .panel-head a,
+:where(.shell-page) .shell-content .panel-body > a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
 }
-.pixel-title {
+:where(.shell-page) .pixel-title {
   font: 400 16px/1.2 var(--font-pixel);
   letter-spacing: 0.04em;
 }
-.shell-page .pixel-label,
-.shell-page .badge,
-.shell-page .field-label,
-.shell-page .counter,
-.shell-page .tag-name,
-.shell-page .input-prefix-text,
-.shell-page .diff thead th {
+:where(.shell-page) .pixel-label,
+:where(.shell-page) .badge,
+:where(.shell-page) .field-label,
+:where(.shell-page) .counter,
+:where(.shell-page) .tag-name,
+:where(.shell-page) .input-prefix-text,
+:where(.shell-page) .diff thead th {
   font-family: var(--font-body);
   letter-spacing: 0;
 }
-.pixel-button {
+:where(.shell-page) .pixel-button {
   --button-edge: var(--coral-edge);
   min-height: 44px;
   padding: 8px 16px;
@@ -107,39 +107,39 @@
     calc(-1 * var(--dash-edge)) 0 0 var(--button-edge),
     var(--dash-edge) 0 0 var(--button-edge);
 }
-.pixel-button-secondary,
-.pixel-button-ghost {
+:where(.shell-page) .pixel-button-secondary,
+:where(.shell-page) .pixel-button-ghost {
   --button-edge: var(--line-hi);
   color: var(--ink);
   background: var(--raised);
 }
-.pixel-button-quiet {
+:where(.shell-page) .pixel-button-quiet {
   box-shadow: none;
   background: transparent;
   color: var(--text-2);
 }
-.pixel-button-danger {
+:where(.shell-page) .pixel-button-danger {
   --button-edge: #a3263f;
   color: #2b0610;
   background: var(--heart);
 }
-.pixel-button:active {
+:where(.shell-page) .pixel-button:active {
   transform: translateY(2px);
   padding: 8px 16px;
 }
-.pixel-button-small {
+:where(.shell-page) .pixel-button-small {
   min-height: 34px;
   padding: 6px 12px;
   font-size: 13.5px;
 }
-.pixel-toggle {
+:where(.shell-page) .pixel-toggle {
   width: 46px;
   height: 44px;
   clip-path: none;
   background: transparent;
   box-shadow: none;
 }
-.pixel-toggle::before {
+:where(.shell-page) .pixel-toggle::before {
   content: "";
   position: absolute;
   top: 9px;
@@ -149,13 +149,13 @@
   background: var(--bg);
   box-shadow: inset 0 0 0 2px var(--line-hi);
 }
-.pixel-toggle.is-on::before {
+:where(.shell-page) .pixel-toggle.is-on::before {
   background: var(--mint);
   box-shadow:
     inset 0 0 0 2px var(--mint-edge),
     inset 0 calc(-1 * var(--dash-edge)) 0 var(--mint-edge);
 }
-.pixel-toggle-knob {
+:where(.shell-page) .pixel-toggle-knob {
   top: 14px;
   left: 5px;
   width: 16px;
@@ -163,25 +163,25 @@
   background: var(--muted);
   box-shadow: none;
 }
-.pixel-toggle.is-on .pixel-toggle-knob {
+:where(.shell-page) .pixel-toggle.is-on .pixel-toggle-knob {
   left: 25px;
   background: var(--ink);
 }
-.pixel-toggle-text {
+:where(.shell-page) .pixel-toggle-text {
   right: auto;
   left: auto;
   top: auto;
   transform: none;
 }
-.pixel-toggle.is-on .pixel-toggle-text {
+:where(.shell-page) .pixel-toggle.is-on .pixel-toggle-text {
   right: auto;
   left: auto;
 }
-.shell-page .save-bar {
+:where(.shell-page) .save-bar {
   left: 268px;
   padding-bottom: 16px;
 }
-.save-bar-inner {
+:where(.shell-page) .save-bar-inner {
   max-width: 720px;
   background: var(--raised);
   box-shadow:
@@ -191,13 +191,13 @@
     var(--dash-edge) 0 0 var(--gold),
     0 6px 0 var(--shade);
 }
-.save-bar-count {
+:where(.shell-page) .save-bar-count {
   font: 600 14px var(--font-body);
   color: var(--ink);
   letter-spacing: 0;
   text-transform: none;
 }
-.toast {
+:where(.shell-page) .toast {
   left: 50%;
   right: auto;
   bottom: 92px;
@@ -215,7 +215,7 @@
     var(--dash-edge) 0 0 var(--cream-edge),
     0 6px 0 var(--shade);
 }
-.toast-action {
+:where(.shell-page) .toast-action {
   min-height: 36px;
   padding: 4px 10px;
   margin-left: 6px;
@@ -223,73 +223,75 @@
   color: var(--ink);
   cursor: pointer;
 }
-.pixel-input,
-.pixel-select,
-textarea,
-select,
-.shell-content input:not([type="checkbox"]):not([type="radio"]),
-.shell-content textarea {
+:where(.shell-page) .pixel-input,
+:where(.shell-page) .pixel-select,
+:where(.shell-page) textarea,
+:where(.shell-page) select,
+:where(.shell-page) .shell-content input:not([type="checkbox"]):not([type="radio"]),
+:where(.shell-page) .shell-content textarea {
   border-radius: 0;
   min-width: 0;
 }
-.shell-content input:not([type="checkbox"]):not([type="radio"]),
-.shell-content select,
-.shell-content textarea {
+:where(.shell-page) .shell-content input:not([type="checkbox"]):not([type="radio"]),
+:where(.shell-page) .shell-content select,
+:where(.shell-page) .shell-content textarea {
   min-height: 44px;
 }
-.shell-content .settings-page {
+:where(.shell-page) .shell-content .settings-page {
   overflow-wrap: anywhere;
 }
-.shell-content .form-grid-2,
-.shell-content .module-grid {
+:where(.shell-page) .shell-content .form-grid-2,
+:where(.shell-page) .shell-content .module-grid {
   min-width: 0;
 }
-:focus-visible {
+:where(.shell-page) :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 @media (max-width: 960px) {
-  .shell-content label:has(input[type="checkbox"], input[type="radio"]) {
+  :where(.shell-page) .shell-content label:has(input[type="checkbox"], input[type="radio"]) {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     min-height: 44px;
   }
-  .shell-content button,
-  .shell-content [role="tab"],
-  .shell-content [role="button"],
-  .shell-content [role="switch"],
-  .shell-content a[href]:not(p a),
-  .pixel-button-small,
-  .shell-group-head,
-  .shell-more,
-  .shell-nav-item,
-  .shell-side-foot a {
+  :where(.shell-page) .shell-content button,
+  :where(.shell-page) .shell-content [role="tab"],
+  :where(.shell-page) .shell-content [role="button"],
+  :where(.shell-page) .shell-content [role="switch"],
+  :where(.shell-page) .shell-content a[href]:not(p a),
+  :where(.shell-page) .pixel-button-small,
+  :where(.shell-page) .shell-group-head,
+  :where(.shell-page) .shell-more,
+  :where(.shell-page) .shell-nav-item,
+  :where(.shell-page) .shell-side-foot a {
     min-height: 44px;
   }
-  .shell-guild {
+  :where(.shell-page) .shell-guild {
     display: block;
   }
-  .shell-sidebar {
+  :where(.shell-page) .shell-sidebar {
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 70;
     width: min(330px, 88vw);
     height: 100dvh;
     transform: translateX(-105%);
+    visibility: hidden;
     transition: transform 0.22s ease;
     padding-left: env(safe-area-inset-left);
   }
-  .shell-sidebar.is-open {
+  :where(.shell-page) .shell-sidebar.is-open {
     transform: none;
+    visibility: visible;
   }
-  .shell-close {
+  :where(.shell-page) .shell-close {
     display: grid;
     place-items: center;
     width: 44px;
     height: 44px;
   }
-  .shell-scrim {
+  :where(.shell-page) .shell-scrim {
     display: block;
     position: fixed;
     inset: 0;
@@ -298,53 +300,53 @@ select,
     height: 100%;
     background: var(--scrim);
   }
-  .shell-side-top {
+  :where(.shell-page) .shell-side-top {
     padding-top: calc(16px + env(safe-area-inset-top));
   }
-  .shell-nav {
+  :where(.shell-page) .shell-nav {
     display: block;
     overflow-y: auto;
     padding: 4px 10px 16px;
   }
-  .shell-group {
+  :where(.shell-page) .shell-group {
     display: grid;
   }
-  .shell-group-head {
+  :where(.shell-page) .shell-group-head {
     display: flex;
   }
-  .shell-nav-item {
+  :where(.shell-page) .shell-nav-item {
     display: flex;
     white-space: normal;
     background: none;
     border: 0;
   }
-  .shell-nav-item.active {
+  :where(.shell-page) .shell-nav-item.active {
     border: 0;
   }
-  .language-drawer {
+  :where(.shell-page) .language-drawer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
     padding: 10px 14px 0;
     border-top: 2px solid var(--line-2);
   }
-  .language-drawer button {
+  :where(.shell-page) .language-drawer button {
     min-height: 44px;
     padding: 8px;
     box-shadow: inset 0 0 0 2px var(--line);
     color: var(--text-2);
   }
-  .language-drawer button.is-active {
+  :where(.shell-page) .language-drawer button.is-active {
     background: var(--ink);
     color: var(--bg);
     box-shadow: inset 0 0 0 2px var(--ink);
   }
-  .shell-top {
+  :where(.shell-page) .shell-top {
     flex-wrap: nowrap;
     height: 60px;
     padding: 0 max(16px, env(safe-area-inset-right));
   }
-  .shell-top-server {
+  :where(.shell-page) .shell-top-server {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -353,46 +355,47 @@ select,
     color: var(--ink);
     font-weight: 600;
   }
-  .shell-top-server span {
+  :where(.shell-page) .shell-top-server span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .shell-top-server .pixel-icon {
+  :where(.shell-page) .shell-top-server .pixel-icon {
     width: 16px;
   }
-  .shell-top .shell-crumbs,
-  .shell-top .top-bar-links,
-  .shell-top .language-menu {
+  :where(.shell-page) .shell-top .shell-crumbs,
+  :where(.shell-page) .shell-top .top-bar-links,
+  :where(.shell-page) .shell-top .language-menu {
     display: none;
   }
-  .shell-top .top-bar-user {
+  :where(.shell-page) .shell-top .top-bar-user {
     margin-left: auto;
     flex-wrap: nowrap;
   }
-  .shell-top .top-bar-name,
-  .shell-account-trigger > .pixel-icon {
+  :where(.shell-page) .shell-top .top-bar-name,
+  :where(.shell-page) .shell-account-trigger > .pixel-icon {
     display: none;
   }
-  .shell-content {
-    padding: 20px max(20px, env(safe-area-inset-right)) calc(170px + env(safe-area-inset-bottom))
+  :where(.shell-page) .shell-content {
+    padding: 20px max(20px, env(safe-area-inset-right)) calc(230px + env(safe-area-inset-bottom))
       max(20px, env(safe-area-inset-left));
   }
-  .shell-tabs {
+  :where(.shell-page) .shell-tabs {
     position: fixed;
     z-index: 60;
     left: 0;
     right: 0;
     bottom: 0;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: flex;
     padding: 4px max(6px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom))
       max(6px, env(safe-area-inset-left));
     background: var(--side);
     box-shadow: 0 calc(-1 * var(--dash-edge)) 0 var(--line);
   }
-  .shell-tabs a,
-  .shell-tabs button {
+  :where(.shell-page) .shell-tabs a,
+  :where(.shell-page) .shell-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -404,47 +407,47 @@ select,
     font-size: 11.5px;
     font-weight: 600;
   }
-  .shell-tabs a.active {
+  :where(.shell-page) .shell-tabs a.active {
     color: var(--accent);
   }
-  .shell-page .save-bar {
+  :where(.shell-page) .save-bar {
     left: 0;
     bottom: calc(76px + env(safe-area-inset-bottom));
   }
-  .toast {
+  :where(.shell-page) .toast {
     bottom: calc(84px + env(safe-area-inset-bottom));
   }
-  body:has(.save-bar.is-open) .toast {
+  :where(.shell-page):has(.save-bar.is-open) .toast {
     bottom: calc(150px + env(safe-area-inset-bottom));
   }
 }
 @media (max-width: 640px) {
-  .shell-content {
+  :where(.shell-page) .shell-content {
     padding-left: max(20px, env(safe-area-inset-left));
     padding-right: max(20px, env(safe-area-inset-right));
   }
-  .shell-content .panel-body {
+  :where(.shell-page) .shell-content .panel-body {
     padding: 16px;
   }
-  .shell-content .page-head {
+  :where(.shell-page) .shell-content .page-head {
     align-items: flex-start;
   }
-  .shell-content .page-head .pixel-heading {
+  :where(.shell-page) .shell-content .page-head .pixel-heading {
     font-size: 24px;
   }
-  .save-bar-inner {
+  :where(.shell-page) .save-bar-inner {
     flex-direction: row;
     flex-wrap: wrap;
   }
-  .save-bar-actions {
+  :where(.shell-page) .save-bar-actions {
     width: 100%;
   }
-  .save-bar-actions > * {
+  :where(.shell-page) .save-bar-actions > * {
     flex: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .shell-sidebar {
+  :where(.shell-page) .shell-sidebar {
     transition: none;
   }
 }

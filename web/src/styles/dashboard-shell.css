@@ -1,49 +1,49 @@
-.icon-sprite {
+:where(.shell-page) .icon-sprite {
   position: absolute;
   width: 0;
   height: 0;
   overflow: hidden;
 }
-.pixel-icon {
+:where(.shell-page) .pixel-icon {
   width: 20px;
   height: 20px;
   flex: none;
   fill: currentColor;
   shape-rendering: crispEdges;
 }
-.display-amp {
+:where(.shell-page) .display-amp {
   font-family: var(--font-body);
   font-weight: 700;
 }
-.shell-page {
+:where(.shell-page) {
   background: var(--bg);
   color: var(--ink);
   font-size: 14.5px;
   line-height: 1.5;
 }
-.shell-guild {
+:where(.shell-page) .shell-guild {
   display: grid;
   grid-template-columns: 268px minmax(0, 1fr);
   min-height: 100dvh;
 }
-.shell-main {
+:where(.shell-page) .shell-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.shell-content {
+:where(.shell-page) .shell-content {
   width: 100%;
   max-width: none;
   min-width: 0;
   margin: 0;
   padding: 28px clamp(20px, 4vw, 48px) 150px;
 }
-.shell-content > *,
-.shell-content .settings-page,
-.shell-content .panel {
+:where(.shell-page) .shell-content > *,
+:where(.shell-page) .shell-content .settings-page,
+:where(.shell-page) .shell-content .panel {
   min-width: 0;
 }
-.shell-sidebar {
+:where(.shell-page) .shell-sidebar {
   position: sticky;
   top: 0;
   z-index: 50;
@@ -58,12 +58,12 @@
   border-right: 1px solid var(--line-2);
   box-shadow: none;
 }
-.shell-side-top {
+:where(.shell-page) .shell-side-top {
   display: grid;
   gap: 12px;
   padding: 18px 14px 12px;
 }
-.shell-brand {
+:where(.shell-page) .shell-brand {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -72,20 +72,20 @@
   font: 400 18px var(--font-pixel);
   color: var(--accent);
 }
-.shell-brand img {
+:where(.shell-page) .shell-brand img {
   width: 34px;
   height: 34px;
   object-fit: contain;
 }
-.shell-close {
+:where(.shell-page) .shell-close {
   display: none;
   margin-left: auto;
   color: var(--text-2);
 }
-.shell-server-wrap {
+:where(.shell-page) .shell-server-wrap {
   position: relative;
 }
-.shell-server {
+:where(.shell-page) .shell-server {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -103,8 +103,8 @@
     0 6px 0 var(--shade);
   cursor: pointer;
 }
-.shell-server:hover,
-.shell-server[aria-expanded="true"] {
+:where(.shell-page) .shell-server:hover,
+:where(.shell-page) .shell-server[aria-expanded="true"] {
   box-shadow:
     0 calc(-1 * var(--dash-edge)) 0 var(--line-hi),
     0 var(--dash-edge) 0 var(--line-hi),
@@ -112,7 +112,7 @@
     var(--dash-edge) 0 0 var(--line-hi),
     0 6px 0 var(--shade);
 }
-.shell-server .server-icon {
+:where(.shell-page) .shell-server .server-icon {
   width: 36px;
   height: 36px;
   border-radius: 0;
@@ -132,26 +132,26 @@
     0 calc(100% - var(--dash-edge))
   );
 }
-.shell-server span:not(.server-icon) {
+:where(.shell-page) .shell-server span:not(.server-icon) {
   display: grid;
   min-width: 0;
   flex: 1;
 }
-.shell-server strong,
-.shell-server small {
+:where(.shell-page) .shell-server strong,
+:where(.shell-page) .shell-server small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.shell-server small {
+:where(.shell-page) .shell-server small {
   font-size: 12px;
   color: var(--muted);
 }
-.shell-server > .pixel-icon {
+:where(.shell-page) .shell-server > .pixel-icon {
   width: 16px;
   color: var(--muted);
 }
-.shell-pop {
+:where(.shell-page) .shell-pop {
   position: absolute;
   z-index: 65;
   top: calc(100% + 10px);
@@ -165,15 +165,15 @@
     0 6px 0 var(--shade);
   padding: 6px;
 }
-.shell-servers {
+:where(.shell-page) .shell-servers {
   left: 0;
   right: 0;
   max-height: 55dvh;
   overflow-y: auto;
 }
-.shell-servers a,
-.shell-account-menu a,
-.shell-account-menu button {
+:where(.shell-page) .shell-servers a,
+:where(.shell-page) .shell-account-menu a,
+:where(.shell-page) .shell-account-menu button {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -184,23 +184,23 @@
   text-align: left;
   text-decoration: none;
 }
-.shell-servers a:hover,
-.shell-account-menu a:hover,
-.shell-account-menu button:hover {
+:where(.shell-page) .shell-servers a:hover,
+:where(.shell-page) .shell-account-menu a:hover,
+:where(.shell-page) .shell-account-menu button:hover {
   background: var(--panel);
 }
-.shell-servers a span:not(.server-icon) {
+:where(.shell-page) .shell-servers a span:not(.server-icon) {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.shell-servers .pixel-icon:last-child {
+:where(.shell-page) .shell-servers .pixel-icon:last-child {
   width: 16px;
   color: var(--mint);
 }
-.shell-search {
+:where(.shell-page) .shell-search {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -212,24 +212,24 @@
   background: var(--bg);
   cursor: pointer;
 }
-.shell-search:hover {
+:where(.shell-page) .shell-search:hover {
   border-color: var(--line-hi);
   color: var(--text-2);
 }
-.shell-search .pixel-icon {
+:where(.shell-page) .shell-search .pixel-icon {
   width: 17px;
 }
-.shell-search span {
+:where(.shell-page) .shell-search span {
   flex: 1;
   text-align: left;
 }
-.shell-search kbd {
+:where(.shell-page) .shell-search kbd {
   border: 1px solid var(--line);
   padding: 1px 5px;
   color: var(--muted);
   font-size: 11px;
 }
-.shell-nav {
+:where(.shell-page) .shell-nav {
   flex: 1;
   display: block;
   overflow-y: auto;
@@ -238,12 +238,12 @@
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
-.shell-group {
+:where(.shell-page) .shell-group {
   display: grid;
   gap: 1px;
   padding-top: 10px;
 }
-.shell-group-head {
+:where(.shell-page) .shell-group-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -258,21 +258,21 @@
   text-align: left;
   cursor: pointer;
 }
-.shell-group-head:hover {
+:where(.shell-page) .shell-group-head:hover {
   color: var(--muted);
 }
-.shell-group-head .pixel-icon {
+:where(.shell-page) .shell-group-head .pixel-icon {
   width: 14px;
   height: 14px;
 }
-.shell-group-head[aria-expanded="false"] .pixel-icon {
+:where(.shell-page) .shell-group-head[aria-expanded="false"] .pixel-icon {
   transform: rotate(-90deg);
 }
-.shell-group-body {
+:where(.shell-page) .shell-group-body {
   display: grid;
   gap: 1px;
 }
-.shell-nav-item {
+:where(.shell-page) .shell-nav-item {
   position: relative;
   display: flex;
   align-items: center;
@@ -284,23 +284,23 @@
   font-size: 14px;
   font-weight: 400;
 }
-.shell-nav-item .pixel-icon {
+:where(.shell-page) .shell-nav-item .pixel-icon {
   color: var(--muted);
 }
-.shell-nav-item:hover {
+:where(.shell-page) .shell-nav-item:hover {
   background: var(--panel);
   color: var(--ink);
 }
-.shell-nav-item.active {
+:where(.shell-page) .shell-nav-item.active {
   color: var(--ink);
   font-weight: 600;
   background: rgb(255 107 74 / 15%);
   border: 0;
 }
-.shell-nav-item.active .pixel-icon {
+:where(.shell-page) .shell-nav-item.active .pixel-icon {
   color: var(--accent);
 }
-.shell-nav-item.active::before {
+:where(.shell-page) .shell-nav-item.active::before {
   content: "";
   position: absolute;
   left: -8px;
@@ -323,26 +323,26 @@
     0 12px
   );
 }
-.shell-nav-label {
+:where(.shell-page) .shell-nav-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.shell-dot {
+:where(.shell-page) .shell-dot {
   width: 8px;
   height: 8px;
   flex: none;
 }
-.shell-dot.on {
+:where(.shell-page) .shell-dot.on {
   background: var(--mint);
   box-shadow: 0 0 0 2px rgb(6 214 160 / 14%);
 }
-.shell-dot.off {
+:where(.shell-page) .shell-dot.off {
   border: 2px solid var(--faint);
 }
-.shell-more {
+:where(.shell-page) .shell-more {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -351,19 +351,19 @@
   color: var(--muted);
   cursor: pointer;
 }
-.shell-more:hover {
+:where(.shell-page) .shell-more:hover {
   color: var(--ink);
 }
-.shell-more .pixel-icon {
+:where(.shell-page) .shell-more .pixel-icon {
   width: 16px;
 }
-.shell-side-foot {
+:where(.shell-page) .shell-side-foot {
   display: flex;
   gap: 4px;
   padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line-2);
 }
-.shell-side-foot a {
+:where(.shell-page) .shell-side-foot a {
   display: grid;
   place-items: center;
   flex: 1;
@@ -372,11 +372,11 @@
   text-decoration: none;
   font-size: 13px;
 }
-.shell-side-foot a:hover {
+:where(.shell-page) .shell-side-foot a:hover {
   background: var(--panel);
   color: var(--ink);
 }
-.shell-top {
+:where(.shell-page) .shell-top {
   position: sticky;
   top: env(safe-area-inset-top);
   z-index: 30;
@@ -389,10 +389,10 @@
   border-bottom: 1px solid var(--line-2);
   box-shadow: none;
 }
-.shell-top-server {
+:where(.shell-page) .shell-top-server {
   display: none;
 }
-.shell-crumbs {
+:where(.shell-page) .shell-crumbs {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -400,29 +400,29 @@
   color: var(--muted);
   font-size: 13.5px;
 }
-.shell-crumbs .pixel-icon {
+:where(.shell-page) .shell-crumbs .pixel-icon {
   width: 14px;
 }
-.shell-crumbs strong {
+:where(.shell-page) .shell-crumbs strong {
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.shell-top .top-bar-links {
+:where(.shell-page) .shell-top .top-bar-links {
   margin-left: auto;
 }
-.shell-top .top-bar-link {
+:where(.shell-page) .shell-top .top-bar-link {
   color: var(--text-2);
   text-decoration: none;
 }
-.shell-top .top-bar-user {
+:where(.shell-page) .shell-top .top-bar-user {
   gap: 8px;
 }
-.shell-account {
+:where(.shell-page) .shell-account {
   position: relative;
 }
-.shell-account-trigger {
+:where(.shell-page) .shell-account-trigger {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -430,11 +430,11 @@
   min-height: 44px;
   cursor: pointer;
 }
-.shell-account-trigger .pixel-icon {
+:where(.shell-page) .shell-account-trigger .pixel-icon {
   width: 14px;
   color: var(--muted);
 }
-.shell-account-trigger .avatar {
+:where(.shell-page) .shell-account-trigger .avatar {
   border-radius: 0;
   clip-path: polygon(
     0 var(--dash-edge),
@@ -451,24 +451,24 @@
     0 calc(100% - var(--dash-edge))
   );
 }
-.shell-account-menu {
+:where(.shell-page) .shell-account-menu {
   right: 0;
   width: 180px;
 }
-.shell-account-menu .pixel-icon {
+:where(.shell-page) .shell-account-menu .pixel-icon {
   width: 16px;
 }
-.language-switcher {
+:where(.shell-page) .language-switcher {
   border: 0;
   padding: 0;
   border-radius: 0;
   color: var(--text-2);
 }
-.language-menu {
+:where(.shell-page) .language-menu {
   position: relative;
   display: block;
 }
-.language-trigger {
+:where(.shell-page) .language-trigger {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -477,27 +477,27 @@
   color: var(--text-2);
   cursor: pointer;
 }
-.language-trigger:hover {
+:where(.shell-page) .language-trigger:hover {
   background: var(--panel);
 }
-.language-trigger .pixel-icon {
+:where(.shell-page) .language-trigger .pixel-icon {
   width: 16px;
 }
-.language-pop {
+:where(.shell-page) .language-pop {
   right: 0;
   width: min(340px, calc(100vw - 32px));
   padding: 8px;
 }
-.language-pop-head {
+:where(.shell-page) .language-pop-head {
   display: grid;
   gap: 2px;
   padding: 6px 8px 10px;
 }
-.language-pop-head small {
+:where(.shell-page) .language-pop-head small {
   color: var(--muted);
   font-size: 12.5px;
 }
-.language-pop button {
+:where(.shell-page) .language-pop button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -508,14 +508,14 @@
   text-align: left;
   color: var(--ink);
 }
-.language-pop button:hover {
+:where(.shell-page) .language-pop button:hover {
   background: var(--panel);
 }
-.language-pop button.is-active {
+:where(.shell-page) .language-pop button.is-active {
   background: rgb(255 107 74 / 15%);
   color: var(--ink);
 }
-.language-code {
+:where(.shell-page) .language-code {
   display: grid;
   place-items: center;
   width: 40px;
@@ -524,36 +524,36 @@
   color: var(--ink);
   font: 400 16px var(--font-pixel);
 }
-.language-pop .is-active .language-code {
+:where(.shell-page) .language-pop .is-active .language-code {
   background: var(--accent);
   color: #2b0e06;
 }
-.language-text {
+:where(.shell-page) .language-text {
   display: grid;
   min-width: 0;
 }
-.language-text strong {
+:where(.shell-page) .language-text strong {
   font-size: 14.5px;
 }
-.language-text small {
+:where(.shell-page) .language-text small {
   color: var(--muted);
   font-size: 12.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.language-pop button > .pixel-icon {
+:where(.shell-page) .language-pop button > .pixel-icon {
   width: 16px;
   color: var(--mint);
 }
-.language-drawer {
+:where(.shell-page) .language-drawer {
   display: none;
 }
-.shell-tabs,
-.shell-scrim {
+:where(.shell-page) .shell-tabs,
+:where(.shell-page) .shell-scrim {
   display: none;
 }
-.command-backdrop {
+:where(.shell-page) .command-backdrop {
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -563,14 +563,14 @@
   padding: 12vh max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left));
   background: var(--scrim);
 }
-.command-underlay {
+:where(.shell-page) .command-underlay {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   cursor: default;
 }
-.command-box {
+:where(.shell-page) .command-box {
   position: relative;
   width: 100%;
   max-width: 620px;
@@ -585,7 +585,7 @@
     var(--dash-edge) 0 0 var(--line-hi),
     0 6px 0 var(--shade);
 }
-.command-input {
+:where(.shell-page) .command-input {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -594,7 +594,7 @@
   border-bottom: 2px solid var(--line);
   color: var(--muted);
 }
-.command-input input {
+:where(.shell-page) .command-input input {
   flex: 1;
   min-width: 0;
   background: none;
@@ -603,14 +603,22 @@
   color: var(--ink);
   font-size: 16px;
 }
-.command-input:focus-within {
+:where(.shell-page) .command-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  color: var(--text-2);
+}
+:where(.shell-page) .command-input:focus-within {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
-.command-list {
+:where(.shell-page) .command-list {
   overflow-y: auto;
   padding: 6px;
 }
-.command-list button {
+:where(.shell-page) .command-list button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -620,21 +628,21 @@
   text-align: left;
   color: var(--text-2);
 }
-.command-list button span {
+:where(.shell-page) .command-list button span {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.command-list button small {
+:where(.shell-page) .command-list button small {
   color: var(--faint);
 }
-.command-list button:hover,
-.command-list button[aria-selected="true"] {
+:where(.shell-page) .command-list button:hover,
+:where(.shell-page) .command-list button[aria-selected="true"] {
   background: rgb(255 107 74 / 15%);
   color: var(--ink);
 }
-.command-empty {
+:where(.shell-page) .command-empty {
   padding: 20px;
   color: var(--muted);
 }
