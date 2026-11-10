@@ -31,6 +31,8 @@ palette without dithering. Existing emoji sprites retain their original colors.
 
 ## Type and language
 
+The dashboard vendors a pixelarticons 2.4.2 SVG subset in `web/src/components/icons/sprite.svg` under MIT; its license is next to the sprite.
+
 Use **Silkscreen Regular / Bold**, from `assets/fonts/Silkscreen-{Regular,Bold}.ttf`,
 for brand headings and short captions. Its license is `assets/fonts/OFL-Silkscreen.txt`.
 The supplied wordmark has custom AI-generated pixel lettering; it is artwork,

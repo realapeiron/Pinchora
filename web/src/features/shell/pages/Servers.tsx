@@ -1,4 +1,5 @@
 import { Panel } from "../../../components/Panel";
+import { PageHead } from "../../../components/PageHead";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
 import { ServerIcon } from "../../../components/ServerIcon";
 import { TopBar } from "../../../components/TopBar";
@@ -16,15 +17,15 @@ export function Servers({ me }: { me: Me }) {
     <div className="page">
       <TopBar me={me} />
       <main className="content content-narrow">
-        <div className="page-head">
-          <div>
-            <h1 className="pixel-heading">{t("YOUR SERVERS")}</h1>
-            <p className="muted">{t("Servers where you have Manage Server. Pick one to set it up.")}</p>
-          </div>
-          <PixelButton variant="secondary" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-            {refresh.isPending ? t("Refreshing…") : t("Refresh list")}
-          </PixelButton>
-        </div>
+        <PageHead
+          title={t("YOUR SERVERS")}
+          lead={t("Servers where you have Manage Server. Pick one to set it up.")}
+          action={
+            <PixelButton variant="secondary" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
+              {refresh.isPending ? t("Refreshing…") : t("Refresh list")}
+            </PixelButton>
+          }
+        />
         {channels.data && (
           <Panel title={t("MY CHANNELS")}>
             <p>

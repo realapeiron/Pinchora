@@ -6,99 +6,25 @@ import { NavLink, useLocation, useParams } from "react-router";
 
 import { PixelLink } from "../../../components/PixelButton";
 import { Panel } from "../../../components/Panel";
-import { ServerIcon } from "../../../components/ServerIcon";
-import { TopBar } from "../../../components/TopBar";
+import { GuildTopBar } from "./GuildTopBar";
 import { ApiError, type Me } from "../../../lib/api";
 import { configureGuild, t, translate } from "../../../i18n";
 import { isDiscordId } from "../../../lib/ids";
-import { type NavGroup, visibleNav } from "../../../lib/nav";
-import { useOverview } from "../../../lib/queries";
+import { useGuilds, useOverview } from "../../../lib/queries";
+import { Icon } from "../../../components/icons/Icon";
+import { iconNames } from "../../../components/icons/map";
+import { GuildPageContext } from "../../../components/GuildPageContext";
+import { IconSprite } from "../../../components/icons/IconSprite";
+import { ShellNav } from "./ShellNav";
+import { NAV } from "./guildNav";
+import { navIcons } from "./navIcons";
+import { CommandPalette } from "./CommandPalette";
+import "../../../styles/dashboard-shell.css";
+import "../../../styles/dashboard-components.css";
 import { NotFound } from "../../../components/NotFound";
 import { Loading, Problem } from "../../../components/States";
 
-/**
- * The admin pages of a server, by sidebar group. Paths are relative to `/g/:guildId`. A feature adds its
- * page as one line in its own group; a group with no page yet is not shown.
- */
-export const NAV: NavGroup[] = [
-  {
-    group: "SERVER",
-    pages: [
-      { to: "", label: "Overview" },
-      { to: "modules", label: "Modules" },
-      { to: "branding", label: "Branding" },
-      { to: "command-control", label: "Commands" },
-      { to: "backup", label: "Backup" },
-      { to: "audit", label: "Audit log" },
-      { to: "access", label: "Access" },
-      { to: "stats", label: "Stats" },
-      { to: "invites", label: "Invites" },
-      { to: "utility", label: "Messages" },
-      { to: "message-studio", label: "Message studio" },
-    ],
-  },
-  {
-    group: "MEMBERS",
-    pages: [
-      { to: "welcome", label: "Welcome & goodbye" },
-      { to: "welcome-image", label: "Welcome image" },
-      { to: "leveling", label: "Leveling" },
-      { to: "points", label: "Points & store" },
-      { to: "economy", label: "Economy settings" },
-    ],
-  },
-  {
-    group: "TOOLS",
-    pages: [
-      { to: "commands", label: "Custom commands" },
-      { to: "workflows", label: "Workflows" },
-      { to: "responders", label: "Auto-responders" },
-      { to: "community", label: "Community" },
-    ],
-  },
-  { group: "ROLES", pages: [{ to: "roles", label: "Roles" }] },
-  {
-    group: "SAFETY",
-    pages: [
-      { to: "moderation-desk", label: "Moderation desk" },
-      { to: "moderation", label: "Moderation" },
-      { to: "safety", label: "Safety" },
-      { to: "automod", label: "AutoMod" },
-      { to: "anti-nuke", label: "Anti-nuke" },
-      { to: "cases", label: "Cases" },
-      { to: "log", label: "Server log" },
-      { to: "staff-log", label: "Staff log" },
-    ],
-  },
-  {
-    group: "COMMUNITY",
-    pages: [
-      { to: "tickets", label: "Tickets" },
-      { to: "events", label: "Events" },
-      { to: "temp-voice", label: "Temp voice" },
-      { to: "starboard", label: "Starboard" },
-      { to: "birthdays", label: "Birthdays" },
-      { to: "community-engagement", label: "Community pack" },
-      { to: "giveaways", label: "Giveaways" },
-      { to: "polls", label: "Polls" },
-      { to: "suggestions", label: "Suggestions" },
-      { to: "reminders", label: "Reminders" },
-      { to: "highlights", label: "Highlights" },
-      { to: "auto-channels", label: "Auto channels" },
-      { to: "anniversaries", label: "Anniversaries" },
-      { to: "confessions", label: "Confessions" },
-    ],
-  },
-  {
-    group: "FEEDS",
-    pages: [
-      { to: "feeds", label: "Social feeds" },
-      { to: "roblox", label: "Roblox" },
-      { to: "trackers", label: "Game trackers" },
-    ],
-  },
-  { group: "PLAYERS", pages: [{ to: "achievements", label: "Achievements" }] },
-];
+export { NAV } from "./guildNav";
 
 /** The admin side of one server: sidebar with the server and its pages, the page on the right. */
 export function GuildLayout({ me }: { me: Me }) {
@@ -109,86 +35,136 @@ export function GuildLayout({ me }: { me: Me }) {
 
 function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const overview = useOverview(guildId);
+  const guilds = useGuilds();
   useEffect(() => configureGuild(overview.data?.language ?? null), [overview.data?.language]);
-  const nav = useRef<HTMLElement>(null);
-  const [filter, setFilter] = useState("");
-  const shown = visibleNav(
-    NAV.map((group) => ({
-      ...group,
-      pages: group.pages
-        .filter((page) => canOpenPage(overview.data, page.to))
-        .map((page) => ({
-          ...page,
-          label: translate(overview.data?.navigation?.[page.to] ?? page.label),
-        })),
-    })),
-    filter,
-  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [serverOpenRequested, setServerOpenRequested] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const drawerReturn = useRef<HTMLElement | null>(null);
   const { pathname } = useLocation();
-  // On a phone the links are one sideways strip: keep the open page's tab in sight.
+  const openPage = pathname.split(`/g/${guildId}/`)[1]?.split("/")[0] ?? "";
+  const groups = NAV.map((group) => ({
+    ...group,
+    pages: group.pages
+      .filter((page) => canOpenPage(overview.data, page.to))
+      .map((page) => ({
+        ...page,
+        label: translate(overview.data?.navigation?.[page.to] ?? page.label),
+      })),
+  })).filter((group) => group.pages.length);
+  const currentGroup = groups.find((group) => group.pages.some((page) => page.to === openPage));
+  const currentPage = currentGroup?.pages.find((page) => page.to === openPage);
+  const openDrawer = (servers = false) => {
+    drawerReturn.current = document.activeElement as HTMLElement;
+    setServerOpenRequested(servers);
+    setDrawerOpen(true);
+    window.setTimeout(() => closeButton.current?.focus(), 0);
+  };
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setServerOpenRequested(false);
+    drawerReturn.current?.focus();
+  };
   useEffect(() => {
-    const strip = nav.current;
-    const active = strip?.querySelector(".sidebar-link.active");
-    if (strip && active && strip.scrollWidth > strip.clientWidth) {
-      strip.scrollLeft += active.getBoundingClientRect().left - strip.getBoundingClientRect().left - 16;
-    }
+    setDrawerOpen(false);
   }, [pathname]);
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const typing = target.matches("input, textarea, select, [contenteditable='true']");
+      if (
+        ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") ||
+        (event.key === "/" && !typing)
+      ) {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+      if (event.key === "Escape" && drawerOpen) closeDrawer();
+    };
+    document.addEventListener("keydown", keydown);
+    return () => document.removeEventListener("keydown", keydown);
+  }, [drawerOpen]);
+  const navProps = {
+    me,
+    guildId,
+    guildName: overview.data?.guild.name ?? "…",
+    guildIcon: overview.data?.guild.icon_url ?? null,
+    groups,
+    modules: overview.data?.modules ?? [],
+    guilds: guilds.data ?? [],
+    openPage,
+    closeDrawer,
+    openSearch: () => {
+      setDrawerOpen(false);
+      setServerOpenRequested(false);
+      setPaletteOpen(true);
+    },
+    drawerOpen,
+    serverOpenRequested,
+    closeButton,
+  };
   return (
-    <div className="page">
-      <TopBar me={me} />
-      <div className="guild">
-        <aside className="sidebar">
-          <div className="sidebar-server">
-            {overview.data ? (
-              <ServerIcon
-                id={guildId}
-                name={overview.data.guild.name}
-                url={overview.data.guild.icon_url}
-                size={40}
-              />
-            ) : (
-              <span className="server-icon server-icon-initials tile-edge" aria-hidden="true" />
-            )}
-            <div className="sidebar-server-text">
-              <strong className="sidebar-server-name">{overview.data?.guild.name ?? "…"}</strong>
-              <NavLink to="/servers" className="sidebar-switch">
-                {t("Switch server")}
-              </NavLink>
-            </div>
-          </div>
-          <input
-            type="search"
-            className="pixel-input sidebar-filter"
-            aria-label={t("Filter pages")}
-            placeholder={t("Filter pages")}
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+    <div className="page shell-page">
+      <IconSprite />
+      <div className="guild shell-guild">
+        <ShellNav {...navProps} />
+        {drawerOpen && (
+          <button type="button" className="shell-scrim" aria-label={t("Close menu")} onClick={closeDrawer} />
+        )}
+        <div className="shell-main">
+          <GuildTopBar
+            me={me}
+            guild={{
+              name: overview.data?.guild.name ?? "…",
+              group: currentGroup?.group ?? "SERVER",
+              page: currentPage?.label ?? "",
+              openDrawer: () => openDrawer(true),
+            }}
           />
-          <nav ref={nav} aria-label={t("Server settings")} className="sidebar-nav">
-            {shown.length === 0 && <p className="muted sidebar-empty">{t("No page matches.")}</p>}
-            {shown.map(({ group, pages }) => (
-              <div key={group} className="sidebar-section">
-                <p className="sidebar-group pixel-label">{translate(group)}</p>
-                {pages.map((page) => (
-                  <NavLink
-                    key={page.to}
-                    end={page.to === ""}
-                    to={page.to ? `/g/${guildId}/${page.to}` : `/g/${guildId}`}
-                    className="sidebar-link"
-                  >
-                    {page.label}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </nav>
-        </aside>
-        <main className="content">
-          {overview.isPending && <Loading label={t("Opening the server")} />}
-          {overview.isError && <GuildProblem error={overview.error} />}
-          {overview.isSuccess && <ServerToolsOutlet data={overview.data} nav={NAV} />}
-        </main>
+          <main className="content shell-content">
+            <GuildPageContext
+              value={{
+                group: currentGroup?.group ?? "SERVER",
+                icon: iconNames[navIcons[openPage] ?? "blocks"],
+              }}
+            >
+              {overview.isPending && <Loading label={t("Opening the server")} />}
+              {overview.isError && <GuildProblem error={overview.error} />}
+              {overview.isSuccess && <ServerToolsOutlet data={overview.data} nav={NAV} />}
+            </GuildPageContext>
+          </main>
+        </div>
       </div>
+      <nav className="shell-tabs" aria-label={t("Server settings")}>
+        <NavLink end to={`/g/${guildId}`}>
+          <Icon name="layout-dashboard" />
+          {t("Overview")}
+        </NavLink>
+        <NavLink to={`/g/${guildId}/modules`}>
+          <Icon name="blocks" />
+          {t("Modules")}
+        </NavLink>
+        <NavLink to={`/g/${guildId}/cases`}>
+          <Icon name="folder-open" />
+          {t("Cases")}
+        </NavLink>
+        <button type="button" onClick={() => setPaletteOpen(true)}>
+          <Icon name="search" />
+          {t("Search")}
+        </button>
+        <button type="button" onClick={() => openDrawer()}>
+          <Icon name="menu" />
+          {t("Menu")}
+        </button>
+      </nav>
+      <CommandPalette
+        guildId={guildId}
+        groups={groups}
+        modules={overview.data?.modules ?? []}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </div>
   );
 }

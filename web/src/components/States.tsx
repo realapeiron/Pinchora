@@ -18,9 +18,19 @@ export function Problem({ error, full }: { error: unknown; full?: boolean }) {
     error instanceof ApiError ? error.message : t("Something went wrong on our side. Please try again.");
   return (
     <div className={full ? "state state-full" : "state"}>
+      <Crab scale={3} />
       <Panel title={t("Hmm")} tone="accent">
         <p>{translate(message)}</p>
       </Panel>
+    </div>
+  );
+}
+
+export function Empty({ message, full }: { message: string; full?: boolean }) {
+  return (
+    <div className={full ? "state state-full" : "state"} role="status">
+      <Crab scale={3} />
+      <p>{translate(message)}</p>
     </div>
   );
 }

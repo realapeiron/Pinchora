@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, overflow, shot, switchPanelLanguage } from "./helpers";
 
 const run = Date.now();
 test.beforeAll(() => {
@@ -91,13 +91,13 @@ test("profile draft survives language changes and edits made while saving", asyn
       body: JSON.stringify({ error: { code: "fixture", message: "Fixture catalog unavailable" } }),
     }),
   );
-  await page.getByRole("button", { name: "TR", exact: true }).click();
+  await switchPanelLanguage(page, "TR");
   await expect(page.getByRole("alert")).toContainText("Fixture catalog unavailable", { timeout: 15000 });
   await expect(page.getByRole("textbox", { name: "Biyografi", exact: true })).toHaveValue(
     "A draft worth keeping",
   );
   await page.unroute("**/api/me/profile?lang=tr");
-  await page.getByRole("button", { name: "EN", exact: true }).click();
+  await switchPanelLanguage(page, "EN");
   await expect(bio).toHaveValue("A draft worth keeping");
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
@@ -122,7 +122,7 @@ test("player pages have one title and fit at 390px in EN and TR", async ({ page 
   for (const language of ["EN", "TR"]) {
     for (const path of ["/me", "/me/profile", "/me/character", "/me/wallet"]) {
       await page.goto(path);
-      await page.getByRole("button", { name: language, exact: true }).click();
+      await switchPanelLanguage(page, language as "EN" | "TR");
       await expect(page.locator("h1:visible")).toHaveCount(1);
       await expect(
         page.locator(".player-card, .player-wallet, .player-character-stage img").first(),

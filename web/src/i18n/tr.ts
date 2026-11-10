@@ -1,5 +1,22 @@
 import type { en } from "./en";
 export const tr: { [K in keyof typeof en]: string } = {
+  "Panel and bot replies in Turkish": "Panel ve bot yanıtların Türkçe",
+  "Panel and bot replies in English": "Panel ve bot yanıtların İngilizce",
+  "Add a server": "Sunucu ekle",
+  "Search pages": "Sayfalarda ara",
+  "Search pages and actions": "Sayfa ve eylem ara",
+  "Search results": "Arama sonuçları",
+  "{count} more pages": "{count} sayfa daha",
+  "Panel language": "Panel dili",
+  "Only for you. Change the server bot language on Branding.":
+    "Yalnız senin için. Sunucunun bot dilini Marka sayfasından değiştirebilirsin.",
+  "Module enabled": "Modül açıldı",
+  "Module disabled": "Modül kapatıldı",
+  "Could not change the module. Try again.": "Modül değiştirilemedi. Yeniden dene.",
+  "Turn on": "Aç",
+  "Turn off": "Kapat",
+  Module: "Modül",
+  On: "Açık",
   "Room activities": "Oda etkinlikleri",
   Workflows: "İş akışları",
   "Cooldown (seconds)": "Bekleme süresi (saniye)",

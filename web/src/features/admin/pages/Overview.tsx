@@ -4,6 +4,7 @@ import { Link, useOutletContext } from "react-router";
 
 import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
+import { PageHead } from "../../../components/PageHead";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { SaveBar } from "../../../components/SaveBar";
@@ -110,12 +111,7 @@ export function Overview() {
 
   return (
     <div className="overview">
-      <div className="page-head">
-        <div>
-          <h1 className="pixel-heading">{spaTranslate("OVERVIEW")}</h1>
-          <p className="muted">{data.guild.name}</p>
-        </div>
-      </div>
+      <PageHead title={spaTranslate("OVERVIEW")} lead={data.guild.name} />
 
       <Panel
         title={spaTranslate("LEVELING")}

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, overflow, shot, switchPanelLanguage } from "./helpers";
 
 test("branding previews nickname, bio, colour and fits a phone", async ({ page }) => {
   const guild = `${Date.now()}77`;
@@ -63,7 +63,7 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
   const languageSaved = page.waitForResponse(
     (response) => response.url().endsWith("/api/me/language") && response.request().method() === "POST",
   );
-  await page.getByRole("group", { name: "Language" }).getByRole("button", { name: "TR" }).click();
+  await switchPanelLanguage(page, "TR");
   expect((await languageSaved).ok()).toBeTruthy();
   expect((await (await page.request.get("/api/me")).json()).language).toBe("tr");
   await expect(

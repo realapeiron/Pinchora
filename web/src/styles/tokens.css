@@ -26,10 +26,24 @@
 }
 
 :root {
+  --bg: #0f1631;
+  --side: #121a3b;
+  --raised: #1e2a57;
+  --line: #29376c;
+  --line-2: #202b58;
+  --line-hi: #3d4f93;
+  --text-2: #c9d1f0;
+  --faint: #8293cc;
+  --coral-edge: #b8402a;
+  --mint-edge: #03986f;
+  --cream-edge: #cdbfb2;
+  --shade: rgb(3 6 18 / 60%);
+  --scrim: rgb(5 8 22 / 62%);
+  --dash-edge: 3px;
   --bg-top: #1d2b53;
   --bg-bottom: #0f1631;
-  --panel: #141b3d;
-  --panel-edge: #2e3d75;
+  --panel: #172148;
+  --panel-edge: #29376c;
   --ink: #fff1e8;
   --muted: #8fa0d8;
   --accent: #ff6b4a;

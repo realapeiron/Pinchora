@@ -57,3 +57,21 @@ export async function shot(page: Page, name: string, fullPage = false) {
 export function overflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
+
+export async function switchPanelLanguage(page: Page, language: "EN" | "TR") {
+  const name = language === "TR" ? "Türkçe" : "English";
+  const playerButton = page.getByRole("button", { name: language, exact: true });
+  await expect(page.locator(".shell-page").or(playerButton).first()).toBeVisible();
+  if (await page.locator(".shell-page").count()) {
+    if ((page.viewportSize()?.width ?? 1280) > 960) {
+      await page.locator(".language-trigger").click();
+      await page.getByRole("menuitemradio", { name: new RegExp(name) }).click();
+    } else {
+      await page.locator(".shell-top-server").click();
+      await page.locator(".language-drawer").getByRole("button", { name }).click();
+      await page.locator(".shell-close").click();
+    }
+  } else {
+    await playerButton.click();
+  }
+}

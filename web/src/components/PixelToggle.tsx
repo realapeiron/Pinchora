@@ -21,7 +21,7 @@ export function PixelToggle({
       onClick={() => onChange(!checked)}
     >
       <span className="pixel-toggle-knob" />
-      <span className="pixel-toggle-text" aria-hidden="true">
+      <span className="pixel-toggle-text visually-hidden" aria-hidden="true">
         {checked ? "ON" : "OFF"}
       </span>
     </button>

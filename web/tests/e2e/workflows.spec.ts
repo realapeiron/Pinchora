@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, overflow, shot, switchPanelLanguage } from "./helpers";
 
 test("workflow editor: build, reorder, dry run, variables and persisted history", async ({ page }) => {
   const guild = `${Date.now()}51`;
@@ -114,7 +114,7 @@ test("Turkish workflow editor has localized controls and intent notice", async (
   const user = `${Date.now()}62`;
   await devLogin(page, user, [{ id: guild, name: "İş Akışı Resifi", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/workflows`);
-  await page.getByRole("button", { name: "TR", exact: true }).click();
+  await switchPanelLanguage(page, "TR");
   await expect(page.getByRole("heading", { name: "İş akışları", exact: true })).toBeVisible();
   await expect(page.getByText(/Mesaj İçeriği kapalı/)).toBeVisible();
   await page.getByRole("button", { name: "Yeni iş akışı", exact: true }).click();

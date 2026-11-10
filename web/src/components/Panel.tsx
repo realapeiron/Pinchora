@@ -1,6 +1,7 @@
 import { useContext, useId, type ReactNode } from "react";
 import { locale, translate } from "../i18n";
 import { PageTitleContext } from "./PageTitleContext";
+import { DisplayText } from "./PageHead";
 
 /** The cards' notched panel: a coloured outline around a dark fill, corners cut by one step. */
 export function Panel({
@@ -26,7 +27,7 @@ export function Panel({
           <header className="panel-head">
             {showHeading && (
               <h2 id={headingId} className="pixel-title">
-                {heading}
+                <DisplayText>{heading}</DisplayText>
               </h2>
             )}
             {aside}
