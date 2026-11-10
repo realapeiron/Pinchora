@@ -1,3 +1,21 @@
+/* Dashboard buttons draw their own face; pages outside the guild shell keep the browser's. */
+:where(.shell-page) button {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+}
+
+/* Placeholders show exactly what members type, so no pixel capitals. */
+:where(.shell-page) .chip {
+  font: 600 12.5px/1.2 var(--font-code);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 :where(.shell-page) .page-head .pixel-heading {
   font: 400 clamp(24px, 3vw, 32px)/1.15 var(--font-pixel);
   letter-spacing: 0.01em;
