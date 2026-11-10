@@ -4,11 +4,11 @@ import { t, translate } from "../../../i18n";
 import type { ModuleEntry } from "../../../lib/api";
 import { visibleNav, type NavGroup } from "../../../lib/nav";
 import { canOpenPage, type AccessOverview } from "../../moderation";
-import { useSaveModules } from "../../../lib/queries";
 import { Icon } from "../../../components/icons/Icon";
 import { Toast } from "../../../components/Toast";
 import { navModule } from "./navModules";
 import { trapTab } from "./overlayFocus";
+import { useModuleToggle } from "./useModuleToggle";
 
 interface Item {
   label: string;
@@ -33,15 +33,12 @@ export function CommandPalette({
   returnTo: HTMLElement | null;
 }) {
   const navigate = useNavigate();
-  const save = useSaveModules(guildId);
+  const moduleToggle = useModuleToggle(guildId);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [undo, setUndo] = useState<(() => void) | undefined>();
   const input = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
-  const mutationId = useRef(0);
   useEffect(() => {
     if (!open) return;
     returnFocus.current = returnTo ?? (document.activeElement as HTMLElement);
@@ -52,23 +49,6 @@ export function CommandPalette({
     onClose();
     setQuery("");
     setSelected(0);
-  };
-  const toggle = (module: ModuleEntry) => {
-    const next = !module.enabled;
-    const current = ++mutationId.current;
-    setUndo(undefined);
-    save.mutate([{ key: module.key, patch: { enabled: next } }], {
-      onSuccess: () => {
-        if (current !== mutationId.current) return;
-        setNotice(t(next ? "Module enabled" : "Module disabled"));
-        setUndo(() => () => save.mutate([{ key: module.key, patch: { enabled: module.enabled } }]));
-      },
-      onError: () => {
-        if (current !== mutationId.current) return;
-        setUndo(undefined);
-        setNotice(t("Could not change the module. Try again."));
-      },
-    });
   };
   const pages: Item[] = visibleNav(groups, query).flatMap((g) =>
     g.pages
@@ -92,7 +72,7 @@ export function CommandPalette({
     .map((m) => ({
       label: `${m.label}: ${t(m.enabled ? "Turn off" : "Turn on")}`,
       hint: t("Module"),
-      run: () => toggle(m),
+      run: () => moduleToggle.toggle(m),
     }));
   const items = [...(query ? pages : pages.slice(0, 5)), ...(query ? actions : actions.slice(0, 3))];
   const activate = (index: number) => {
@@ -104,12 +84,9 @@ export function CommandPalette({
   return (
     <>
       <Toast
-        message={notice}
-        onDone={() => {
-          setNotice(null);
-          setUndo(undefined);
-        }}
-        action={undo ? { label: t("Undo"), onClick: undo } : undefined}
+        message={moduleToggle.notice}
+        onDone={moduleToggle.clear}
+        action={moduleToggle.undo ? { label: t("Undo"), onClick: moduleToggle.undo } : undefined}
       />
       {open && (
         <div className="command-backdrop">

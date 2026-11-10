@@ -75,4 +75,5 @@ export const iconNames = {
   "user-plus": "user-plus",
 } as const;
 
-export type IconName = keyof typeof iconNames;
+export type IconName =
+  keyof typeof iconNames | "fish" | "home" | "heart" | "map" | "sword" | "chess" | "flag";

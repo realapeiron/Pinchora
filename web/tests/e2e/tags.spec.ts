@@ -259,20 +259,26 @@ test("the responder pages fit a phone", async ({ page }) => {
 test("the overview, the modules page and the community page tell one story", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}`);
-  // Goodbye has a channel but its module is off: the glance must say off, like the grid.
+  // Goodbye has a channel but its module is off: the catalog and Modules agree.
   await write(page, "PATCH", `/api/guilds/${guild}/settings`, { goodbye_channel_id: "7010" });
   await write(page, "PUT", `/api/guilds/${guild}/modules/goodbye`, { enabled: false });
   await page.reload();
-  const glance = page.locator(".glance-tile", { hasText: "Goodbye" });
-  await expect(glance).toContainText("OFF");
-  await expect(glance).toContainText("switched off");
-  await expect(
-    page.getByRole("list", { name: "Modules" }).locator("li", { hasText: "Goodbye" }),
-  ).toContainText("OFF");
+  const catalog = page.getByRole("region", { name: "Module catalog" });
+  await catalog.getByRole("searchbox", { name: "Search modules" }).fill("Goodbye");
+  const goodbyeCard = catalog.locator(".overview-module", { hasText: "Goodbye messages" });
+  await expect(goodbyeCard).toHaveClass(/is-off/);
+  await expect(catalog.getByRole("switch", { name: "Goodbye messages module" })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
   await shot(page, "overview-consistent", true);
 
   // One ON per row on the modules page: the switch says it, there is no second badge.
   await page.goto(`/g/${guild}/modules`);
+  await expect(page.locator('[data-module="goodbye"]').getByRole("switch")).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
   await expect(page.locator('[data-module="pets"] .badge')).toHaveCount(0);
   await expect(page.locator('[data-module="pets"]').getByRole("switch")).toContainText("ON");
   await shot(page, "modules-one-on", true);

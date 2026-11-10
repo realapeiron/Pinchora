@@ -33,7 +33,7 @@ async function previewPixels(page: Page): Promise<string> {
 }
 
 const PAGES = [
-  { path: "", name: "overview", heading: "OVERVIEW" },
+  { path: "", name: "overview", heading: "Pinchora Reef" },
   { path: "/modules", name: "modules", heading: "MODULES" },
   { path: "/welcome", name: "welcome", heading: "WELCOME" },
   { path: "/welcome-image", name: "welcome-image", heading: "WELCOME IMAGE" },

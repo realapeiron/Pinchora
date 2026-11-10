@@ -1,262 +1,231 @@
-import { translate as spaTranslate } from "../../../i18n";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Link, useOutletContext } from "react-router";
-
-import { Field } from "../../../components/Field";
-import { Panel } from "../../../components/Panel";
-import { PageHead } from "../../../components/PageHead";
+import { Icon } from "../../../components/icons/Icon";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
-import { SaveBar } from "../../../components/SaveBar";
-import { Toast } from "../../../components/Toast";
-import type { ModuleEntry, Overview as OverviewData, Settings } from "../../../lib/api";
-import { changedFields, patchOf } from "../../../lib/draft";
-import { badge } from "../api/modules";
-import { useNames, useSaveSettings } from "../../../lib/queries";
-import { DEFAULTS, LIMITS, checkPrefix } from "../../../lib/rules";
-import { describeChange, timeAgo } from "../../../lib/text";
+import { translate as t } from "../../../i18n";
+import type { Overview as OverviewData } from "../../../lib/api";
+import { useLevelRoles } from "../../../lib/queries";
+import { compact, type Days, useGuildStats } from "../api/stats";
+import { useOverviewActions } from "./OverviewActions";
+import { OverviewCatalog } from "./OverviewCatalog";
+import { OverviewChart } from "./OverviewChart";
+import { OverviewExtras } from "./OverviewExtras";
+import { attention, setupSteps, statCards, type CardKey } from "./overviewModel";
+import "../../../styles/overview.css";
 
-const MODE_WORDS: Record<string, string> = {
-  channel: "level-ups in their channel",
-  current: "level-ups where they chat",
-  dm: "level-ups by DM",
-  off: "no level-up messages",
+const cardWords: Record<CardKey, string> = {
+  messages: "Messages",
+  members: "Joined / left",
+  commands: "Commands",
+  active: "Active members",
 };
-
-/**
- * One tile per settings page: is it on, and the gist of how it is set. "On" is the module's own switch (the
- * grid below shows the same), and a page that also needs a channel is on only once it has one.
- */
-function glance(s: Settings, modules: ModuleEntry[]) {
-  const switched = (key: string) => modules.find((m) => m.key === key)?.enabled ?? true;
-  const off = spaTranslate("switched off");
-  return [
-    {
-      to: "welcome",
-      name: spaTranslate("Welcome cards"),
-      on: switched("welcome") && s.welcome_channel_id !== null,
-      detail: !switched("welcome")
-        ? off
-        : (s.welcome_channel_id
-            ? spaTranslate("{theme} theme", { theme: s.welcome_theme ?? "reef" })
-            : spaTranslate("no channel yet")) + (s.join_role_id ? spaTranslate(", join role") : ""),
-    },
-    {
-      to: "leveling",
-      name: spaTranslate("Leveling"),
-      on: switched("leveling"),
-      detail: `${spaTranslate(MODE_WORDS[s.levelup_mode] ?? s.levelup_mode)}${s.voice_xp_enabled ? spaTranslate(", voice XP") : ""}`,
-    },
-    {
-      to: "points",
-      name: spaTranslate("Server points"),
-      on: switched("points"),
-      detail: spaTranslate("{emoji} {min}–{max} {name} per message", {
-        emoji: s.points_emoji,
-        min: s.points_min,
-        max: s.points_max,
-        name: s.points_name,
-      }),
-    },
-    {
-      to: "welcome",
-      name: spaTranslate("Goodbye"),
-      on: switched("goodbye") && s.goodbye_channel_id !== null,
-      detail: !switched("goodbye")
-        ? off
-        : s.goodbye_channel_id
-          ? spaTranslate("when someone leaves")
-          : spaTranslate("no channel yet"),
-    },
-    {
-      to: "log",
-      name: spaTranslate("Server log"),
-      on: switched("log") && s.log_channel_id !== null,
-      detail: !switched("log")
-        ? off
-        : s.log_channel_id === null
-          ? spaTranslate("no channel yet")
-          : [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
-              .filter(Boolean)
-              .map((word) => spaTranslate(String(word)))
-              .join(", ") || spaTranslate("nothing picked"),
-    },
-  ];
-}
+const cardIcons: Record<CardKey, "message-square" | "users" | "square-terminal" | "trending-up"> = {
+  messages: "message-square",
+  members: "users",
+  commands: "square-terminal",
+  active: "trending-up",
+};
+const stepWords: Record<string, string> = {
+  welcome: "Choose a welcome channel",
+  goodbye: "Choose a goodbye channel",
+  log: "Choose a server log channel",
+  leveling: "Turn on leveling",
+  stats: "Turn on stats",
+};
+const attentionWords: Record<string, string> = {
+  welcome: "Welcome is on, but has no channel",
+  goodbye: "Goodbye is on, but has no channel",
+  log: "Server log is on, but has no channel",
+  stats: "Stats is switched off",
+  roles: "Level roles are empty",
+};
 
 export function Overview() {
   const data = useOutletContext<OverviewData>();
   const guild = data.guild.id;
-  const [draft, setDraft] = useState<Partial<Settings>>({});
-  const [toast, setToast] = useState<string | null>(null);
-  const save = useSaveSettings(guild);
-  const names = useNames(guild);
-  const saved = data.settings;
-  const changes = changedFields(saved, draft).length;
-  const leveling = (draft.leveling_enabled ?? saved.leveling_enabled) as boolean;
-  const prefix = draft.prefix ?? saved.prefix;
-  const prefixCheck = checkPrefix(prefix);
-  const prefixError = draft.prefix !== undefined && !prefixCheck.ok ? prefixCheck.message : null;
-  const clearToast = useCallback(() => setToast(null), []);
-
-  const onSave = () => {
-    if (prefixError) return;
-    save.mutate(patchOf(saved, draft), {
-      onSuccess: () => {
-        setDraft({});
-        setToast(spaTranslate("Saved. The bot uses it from the next message."));
-      },
-    });
-  };
-
+  const [days, setDays] = useState<Days>(7);
+  const stats = useGuildStats(guild, days);
+  const roles = useLevelRoles(guild);
+  const cards = statCards(stats.data);
+  const signals = attention(
+    data.settings,
+    data.modules,
+    roles.query.data?.items.length ?? null,
+    stats.data?.module_on,
+  );
+  const steps = setupSteps(data.settings, data.modules);
+  const done = steps.filter((step) => step.done);
+  const left = steps.filter((step) => !step.done);
+  const openPalette = useOverviewActions().openPalette;
+  const onCount = data.modules.filter((module) => module.enabled).length;
   return (
-    <div className="overview">
-      <PageHead title={spaTranslate("OVERVIEW")} lead={data.guild.name} />
-
-      <Panel
-        title={spaTranslate("LEVELING")}
-        aside={
-          <span
-            className={`badge ${saved.leveling_enabled ? "badge-mint" : "badge-dim"}`}
-            title={spaTranslate("What the bot uses right now")}
-          >
-            {saved.leveling_enabled ? "LIVE" : "PAUSED"}
-          </span>
-        }
-      >
-        <div className="setting-row">
-          <div className="setting-text">
-            <h3 className="setting-name" id="chat-xp">
-              {" "}
-              {spaTranslate("Chat XP")}{" "}
-            </h3>
-            <p className="muted">
-              {" "}
-              {spaTranslate(
-                "Members earn XP for chatting, climb levels and get a level-up card. Turn it off to pause XP in this server; levels already earned stay.",
-              )}{" "}
-            </p>
-          </div>
-          <PixelToggle
-            label={spaTranslate("Chat XP")}
-            checked={leveling}
-            onChange={(next) => setDraft((d) => ({ ...d, leveling_enabled: next }))}
-            disabled={save.isPending}
-          />
-        </div>
-      </Panel>
-
-      <Panel title={spaTranslate("TEXT COMMANDS")}>
-        <Field
-          label={spaTranslate("Prefix")}
-          htmlFor="text-prefix"
-          error={prefixError}
-          hint={spaTranslate("Every command also works as text: {arg1}profile, or @Pinchora profile.", {
-            arg1: prefix.trim() || DEFAULTS.prefix,
-          })}
-          aside={
-            prefix !== DEFAULTS.prefix && (
-              <PixelButton
-                variant="ghost"
-                className="button-small"
-                onClick={() => setDraft((d) => ({ ...d, prefix: DEFAULTS.prefix }))}
-                disabled={save.isPending}
-              >
-                {" "}
-                {spaTranslate("Default")}{" "}
-              </PixelButton>
-            )
-          }
-        >
-          <input
-            id="text-prefix"
-            className="pixel-input input-short"
-            value={prefix}
-            maxLength={LIMITS.prefix_max + 8}
-            onChange={(event) => setDraft((d) => ({ ...d, prefix: event.target.value }))}
-            aria-invalid={prefixError ? true : undefined}
-            disabled={save.isPending}
-          />
-        </Field>
-      </Panel>
-
-      <Panel title={spaTranslate("AT A GLANCE")}>
-        <ul className="glance">
-          {glance(saved, data.modules).map((tile) => (
-            <li key={tile.name}>
-              <Link to={`/g/${guild}/${tile.to}`} className="glance-tile">
-                <span className="glance-name">{spaTranslate(tile.name)}</span>
-                <span className={`badge ${tile.on ? "badge-mint" : "badge-dim"}`}>
-                  {tile.on ? "ON" : "OFF"}
-                </span>
-                <span className="glance-detail muted">{spaTranslate(tile.detail)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-
-      <Panel
-        title={spaTranslate("MODULES")}
-        aside={
-          <PixelLink variant="ghost" className="button-small" href={`/g/${guild}/modules`}>
-            {" "}
-            {spaTranslate("Manage")}{" "}
-          </PixelLink>
-        }
-      >
-        <ul className="module-grid" aria-label={spaTranslate("Modules")}>
-          {data.modules.map((m) => {
-            const state = badge(m.enabled, m.channel_mode, m.channels.length);
-            return (
-              <li key={m.key}>
-                <Link to={`/g/${guild}/modules`} className="module-tile" title={spaTranslate(m.blurb)}>
-                  <span className="module-tile-name">{spaTranslate(m.label)}</span>
-                  <span className={`badge badge-${state.tone}`}>{state.text}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </Panel>
-
-      <Panel title={spaTranslate("RECENT CHANGES")}>
-        {data.audit.length === 0 ? (
-          <p className="muted">
-            {" "}
-            {spaTranslate(
-              "No changes from the dashboard yet. What you save here shows up in this list.",
-            )}{" "}
+    <div className="overview overview-redesign">
+      <section className="overview-hero" aria-label={t("Server overview")}>
+        <div className="overview-hero-art" role="img" aria-label={t("Pinchora Reef pixel town")} />
+        <div className="overview-hero-copy">
+          <h1>{data.guild.name}</h1>
+          <p>
+            <span className="overview-live-dot" aria-hidden="true" />
+            {t("{count} modules switched on", { count: onCount })}
           </p>
-        ) : (
-          <ol className="audit-list">
-            {data.audit.map((entry) => (
-              <li key={entry.id} className="audit-row">
-                <span className="audit-dot" aria-hidden="true" />
-                <span className="audit-text">
-                  <strong>{entry.actor_name}</strong> {describeChange(entry, names)}
-                  {entry.source === "discord" && <span className="muted"> {spaTranslate("in Discord")}</span>}
-                </span>
-                <time className="audit-time muted" dateTime={entry.created_at}>
-                  {timeAgo(entry.created_at)}
-                </time>
-              </li>
-            ))}
-          </ol>
-        )}
-      </Panel>
+          <div className="overview-hero-actions">
+            <PixelLink href="/me">
+              <Icon name="sailboat" />
+              {t("Open my world")}
+            </PixelLink>
+            <PixelButton variant="secondary" onClick={openPalette}>
+              <Icon name="search" />
+              {t("Search settings")}
+            </PixelButton>
+          </div>
+        </div>
+      </section>
 
-      <SaveBar
-        count={changes}
-        saving={save.isPending}
-        error={save.isError ? save.error.message : null}
-        onSave={onSave}
-        onReset={() => {
-          setDraft({});
-          save.reset();
-        }}
-      />
-      <Toast message={toast} onDone={clearToast} />
+      {stats.isPending ? (
+        <section className="overview-stats-empty" role="status">
+          {t("Loading server activity…")}
+        </section>
+      ) : cards ? (
+        <section
+          className="overview-stats"
+          aria-label={t("Activity for the last {count} days", { count: days })}
+        >
+          {cards.map((card) => (
+            <article className="overview-stat" key={card.key}>
+              <div className="overview-stat-label">
+                <span className={`overview-stat-icon ${card.key}`}>
+                  <Icon name={cardIcons[card.key]} />
+                </span>
+                {t(cardWords[card.key])}
+              </div>
+              <strong>
+                {card.key === "members"
+                  ? card.value
+                  : card.value === "—"
+                    ? card.value
+                    : compact(Number(card.value))}
+              </strong>
+              <small>
+                {card.change === null
+                  ? t("Last {count} days", { count: days })
+                  : t("{change}% vs previous period", {
+                      change: `${card.change > 0 ? "+" : ""}${card.change}`,
+                    })}
+              </small>
+            </article>
+          ))}
+        </section>
+      ) : (
+        <section className="overview-stats-empty" aria-label={t("Server activity")}>
+          <p>
+            {stats.isError
+              ? t("Activity unavailable.")
+              : t("No activity has been counted yet. Check Stats to start tracking.")}
+          </p>
+          <Link to={`/g/${guild}/stats`}>{t("Open Stats")}</Link>
+        </section>
+      )}
+
+      <div className="overview-split">
+        <section
+          className={`overview-chart-panel ${cards ? "" : "is-empty"}`}
+          aria-label={t("Messages chart")}
+        >
+          <div className="overview-section-head">
+            <h2>{t("MESSAGES")}</h2>
+            <div className="overview-range" role="group" aria-label={t("Period")}>
+              {([7, 30] as const).map((period) => (
+                <button
+                  key={period}
+                  type="button"
+                  aria-pressed={days === period}
+                  onClick={() => setDays(period)}
+                >
+                  {period} {t("days")}
+                </button>
+              ))}
+            </div>
+          </div>
+          {cards ? (
+            <OverviewChart rows={stats.data!.daily} />
+          ) : (
+            <div className="overview-chart-empty">
+              <img src="/mascot.png" alt="" />
+              <p>{t("No messages counted yet.")}</p>
+              <Link to={`/g/${guild}/stats`}>{t("Stats")}</Link>
+            </div>
+          )}
+        </section>
+        <div className="overview-side">
+          <section className="overview-panel overview-attention" aria-label={t("Attention")}>
+            <div className="overview-section-head">
+              <h2>{t("ATTENTION")}</h2>
+              {signals.length > 0 && <span className="overview-count">{signals.length}</span>}
+            </div>
+            {signals.length ? (
+              signals.map((signal) => (
+                <div className="overview-attention-row" key={signal.key}>
+                  <span className="overview-alert-icon">
+                    <Icon
+                      name={
+                        signal.key === "roles"
+                          ? "trending-up"
+                          : signal.key === "stats"
+                            ? "chart-line"
+                            : "circle-alert"
+                      }
+                    />
+                  </span>
+                  <span>{t(attentionWords[signal.key]!)}</span>
+                  <Link to={`/g/${guild}/${signal.page}`}>{t("Open settings")}</Link>
+                </div>
+              ))
+            ) : (
+              <p className="overview-all-clear">{t("All clear. Nothing needs attention.")}</p>
+            )}
+          </section>
+          <section className="overview-panel overview-setup" aria-label={t("Setup")}>
+            <div className="overview-section-head">
+              <h2>{t("SETUP")}</h2>
+              <span>
+                {done.length} / {steps.length}
+              </span>
+            </div>
+            <div
+              className="overview-progress"
+              role="img"
+              aria-label={t("{done} of {total} setup steps complete", {
+                done: done.length,
+                total: steps.length,
+              })}
+            >
+              {Array.from({ length: 10 }, (_, i) => (
+                <span key={i} className={i < Math.round((done.length / steps.length) * 10) ? "on" : ""} />
+              ))}
+            </div>
+            <p className="overview-done">
+              <Icon name="check" />
+              {done.length
+                ? t("Done: {steps}", { steps: done.map((step) => t(stepWords[step.key]!)).join(", ") })
+                : t("No setup steps complete yet.")}
+            </p>
+            {left.map((step, i) => (
+              <Link
+                className={`overview-task ${i === 0 ? "next" : ""}`}
+                key={step.key}
+                to={`/g/${guild}/${step.page}`}
+              >
+                <span className="overview-task-box" aria-hidden="true" />
+                <span>{t(stepWords[step.key]!)}</span>
+                {i === 0 ? <b>{t("Next")}</b> : <Icon name="chevron-right" />}
+              </Link>
+            ))}
+            {!left.length && <p className="overview-all-clear">{t("Setup is complete.")}</p>}
+          </section>
+        </div>
+      </div>
+      <OverviewCatalog guild={guild} modules={data.modules} />
+      <OverviewExtras data={data} />
     </div>
   );
 }

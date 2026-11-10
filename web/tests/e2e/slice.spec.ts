@@ -45,10 +45,12 @@ test("login, pick a server, turn leveling off", async ({ page }) => {
 
   await page.getByRole("link", { name: "Open Pinchora Reef" }).click();
   await expect(page).toHaveURL(new RegExp(`/g/${reef}$`));
-  const toggle = page.getByRole("switch", { name: "Chat XP" });
-  await expect(toggle).toHaveAttribute("aria-checked", "true");
   await expect(page.getByText("No changes from the dashboard yet.")).toBeVisible();
   await shot(page, "overview-before");
+
+  await page.goto(`/g/${reef}/leveling`);
+  const toggle = page.getByRole("switch", { name: "Leveling" });
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
@@ -60,10 +62,11 @@ test("login, pick a server, turn leveling off", async ({ page }) => {
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await shot(page, "overview-leave-dialog");
   await page.getByRole("button", { name: "Stay" }).click();
-  await expect(page).toHaveURL(new RegExp(`/g/${reef}$`));
+  await expect(page).toHaveURL(new RegExp(`/g/${reef}/leveling$`));
 
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await page.goto(`/g/${reef}`);
   await expect(page.getByText("turned leveling off")).toBeVisible();
   await expect(page.locator(".save-bar")).not.toHaveClass(/is-open/);
   await shot(page, "overview-saved");
@@ -88,7 +91,8 @@ test("the overview fits a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await devLogin(page);
   await page.goto(`/g/${cafe}`);
-  const toggle = page.getByRole("switch", { name: "Chat XP" });
+  await page.goto(`/g/${cafe}/leveling`);
+  const toggle = page.getByRole("switch", { name: "Leveling" });
   await toggle.click();
   await expect(page.getByText("1 unsaved change")).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

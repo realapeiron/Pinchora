@@ -19,6 +19,7 @@ import { ShellNav } from "./ShellNav";
 import { NAV } from "./guildNav";
 import { navIcons } from "./navIcons";
 import { CommandPalette } from "./CommandPalette";
+import { OverviewActions } from "./OverviewActions";
 import "../../../styles/dashboard-shell.css";
 import "../../../styles/dashboard-components.css";
 import { NotFound } from "../../../components/NotFound";
@@ -133,12 +134,16 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
             <GuildPageContext
               value={{
                 group: currentGroup?.group ?? "SERVER",
-                icon: iconNames[navIcons[openPage] ?? "blocks"],
+                icon: iconNames[(navIcons[openPage] ?? "blocks") as keyof typeof iconNames],
               }}
             >
               {overview.isPending && <Loading label={t("Opening the server")} />}
               {overview.isError && <GuildProblem error={overview.error} />}
-              {overview.isSuccess && <ServerToolsOutlet data={overview.data} nav={NAV} />}
+              {overview.isSuccess && (
+                <OverviewActions.Provider value={{ openPalette: () => openPalette() }}>
+                  <ServerToolsOutlet data={overview.data} nav={NAV} />
+                </OverviewActions.Provider>
+              )}
             </GuildPageContext>
           </main>
         </div>

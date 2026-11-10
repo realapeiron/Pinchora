@@ -39,3 +39,7 @@ const aliases: Record<string, string> = {
 export function navModule(path: string) {
   return switchPages.has(path) ? (aliases[path] ?? path) : undefined;
 }
+
+export function modulePage(key: string) {
+  return [...switchPages].find((path) => navModule(path) === key);
+}

@@ -60,11 +60,19 @@ test("switch a part off, keep another to one channel, and see it on the overview
   expect(by("fishing").channel_mode).toBe("only");
   expect(by("fishing").channels).toEqual(["7001"]);
 
-  // The overview shows the grid with the badges.
+  // The overview catalog reflects module state; channel scope stays on Modules.
   await page.goto(`/g/${guild}`);
-  const tiles = page.getByRole("list", { name: "Modules" });
-  await expect(tiles.locator("li", { hasText: "Pets" })).toContainText("OFF");
-  await expect(tiles.locator("li", { hasText: "Fishing" })).toContainText("ONLY IN 1 CHANNEL");
+  const catalog = page.getByRole("region", { name: "Module catalog" });
+  await catalog.getByRole("searchbox", { name: "Search modules" }).fill("Pets");
+  await expect(catalog.getByRole("switch", { name: "Pets module" })).toHaveAttribute("aria-checked", "false");
+  await catalog.getByRole("searchbox", { name: "Search modules" }).fill("Fishing");
+  await expect(catalog.getByRole("switch", { name: "Fishing module" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(catalog.locator(".overview-module", { hasText: "Fishing" })).toContainText(
+    "ONLY IN 1 CHANNEL",
+  );
   // A regular expression is case-sensitive: the name is the module's label, not its key.
   await expect(page.getByText(/turned Pets off/)).toBeVisible();
   await shot(page, "overview-modules", true);
