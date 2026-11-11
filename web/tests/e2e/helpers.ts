@@ -1,6 +1,8 @@
 // Shared steps for the Playwright runs: a dev login with a few servers, and screenshots for people
 // (and agents) to look at in test-results/screens/.
 
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { type Cookie, type Locator, type Page, expect } from "@playwright/test";
 
 /** A pixel avatar for every Discord CDN image, so screenshots do not depend on the network. */
@@ -88,4 +90,14 @@ export async function switchPanelLanguage(page: Page, language: "EN" | "TR") {
   } else {
     await playerButton.click();
   }
+}
+
+const HOMEBREW_PSQL = "/opt/homebrew/opt/postgresql@16/bin/psql";
+
+/** Runs SQL on the e2e database; refuses any database not named pinchora_test*. */
+export function testSql(statement: string) {
+  const database = process.env.PINCHORA_TEST_DATABASE_URL ?? "";
+  if (!/\/pinchora_test\w*$/.test(database)) throw new Error("e2e SQL runs only on a pinchora_test database");
+  const psql = process.env.PSQL ?? (existsSync(HOMEBREW_PSQL) ? HOMEBREW_PSQL : "psql");
+  execFileSync(psql, [database, "-v", "ON_ERROR_STOP=1", "-c", statement], { stdio: "ignore" });
 }

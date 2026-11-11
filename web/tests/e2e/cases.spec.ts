@@ -1,23 +1,17 @@
-import { execFileSync } from "node:child_process";
 import { type Page, expect, test } from "@playwright/test";
-import { devLogin, overflow } from "./helpers";
+import { devLogin, overflow, testSql } from "./helpers";
 
 const run = Date.now();
-const psql = process.env.PSQL ?? "/opt/homebrew/opt/postgresql@16/bin/psql";
-const database = process.env.PINCHORA_TEST_DATABASE_URL;
 
 function seed(guild: string) {
-  if (!database || !database.endsWith("/pinchora_test_db"))
-    throw new Error("Cases e2e requires the test database");
-  const statement = `INSERT INTO mod_cases
+  testSql(`INSERT INTO mod_cases
     (guild_id, number, kind, target_id, target_name, moderator_id, moderator_name, reason, duration_secs, details, active)
     VALUES
     (${guild}, 1, 'warn', 81001, 'Mia', 91001, 'Captain', 'spam links', null, 'Repeated links', true),
     (${guild}, 2, 'warn', 81001, 'Mia', 91001, 'Captain', 'rude message', null, null, true),
     (${guild}, 3, 'kick', 81002, 'Zed', 91002, 'Morgan', 'raid', null, null, false),
     (${guild}, 4, 'ban', 81001, 'Mia', 91001, 'Captain', 'repeat spam', 3600, null, true);
-    INSERT INTO mod_warn_thresholds (guild_id, warns, action, duration_secs) VALUES (${guild}, 3, 'timeout', 3600)`;
-  execFileSync(psql, [database, "-v", "ON_ERROR_STOP=1", "-c", statement], { stdio: "ignore" });
+    INSERT INTO mod_warn_thresholds (guild_id, warns, action, duration_secs) VALUES (${guild}, 3, 'timeout', 3600)`);
 }
 
 async function login(page: Page, guild: string, user: string) {

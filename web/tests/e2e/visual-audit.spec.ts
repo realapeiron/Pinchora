@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
-import { openRow, devLogin } from "./helpers";
+import { openRow, devLogin, testSql } from "./helpers";
 
 const guild = `${Date.now()}1`;
 const user = `${Date.now()}2`;
@@ -14,21 +13,9 @@ const login = (page: Page, as = user) =>
   devLogin(page, as, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "8" }]);
 
 function seedCase() {
-  const database = process.env.PINCHORA_TEST_DATABASE_URL;
-  if (!database?.endsWith("/pinchora_test_db")) throw new Error("Visual audit needs the test database");
-  execFileSync(
-    process.env.PSQL ?? "/opt/homebrew/opt/postgresql@16/bin/psql",
-    [
-      database,
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-c",
-      `INSERT INTO mod_cases (guild_id, number, kind, target_id, target_name, moderator_id, moderator_name, reason, active)
+  testSql(`INSERT INTO mod_cases (guild_id, number, kind, target_id, target_name, moderator_id, moderator_name, reason, active)
      VALUES (${guild}, 1, 'warn', 81001, 'Mia', 91001, 'Captain', 'spam links', true)
-     ON CONFLICT (guild_id, number) DO NOTHING`,
-    ],
-    { stdio: "ignore" },
-  );
+     ON CONFLICT (guild_id, number) DO NOTHING`);
 }
 
 async function defects(page: Page, phone: boolean) {
