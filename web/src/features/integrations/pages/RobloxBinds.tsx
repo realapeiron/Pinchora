@@ -59,6 +59,7 @@ export function RobloxBinds({
   };
   return (
     <SettingsRow
+      rowId="roblox-binds-role-binds"
       title={t("Role binds")}
       description={dt("Assign roles from Roblox conditions.")}
       summary={robloxSummary(data.settings, data.binds, discord).binds}

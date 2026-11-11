@@ -29,7 +29,8 @@ export function VoteEditor({
   return (
     <div className="settings-detail-list starboard-editor">
       <SettingsRow
-        title={spaTranslate("VOTE CHANNEL")}
+        rowId="vote-editor-vote-channel"
+        title={dt("Vote channel", {}, "VOTE CHANNEL")}
         description={dt("Set reactions and voting behavior for a channel.")}
         summary={voteSummary(vote, info)}
         initialOpen
@@ -72,6 +73,7 @@ export function VoteEditor({
         </div>
       </SettingsRow>
       <SettingsRow
+        rowId="vote-editor-media-posts-only"
         title={spaTranslate("Media posts only")}
         description={dt("Limit voting to posts with media.")}
         summary={dt(vote.only_media ? "On" : "Off")}
@@ -82,6 +84,7 @@ export function VoteEditor({
         <p className="muted">{dt("Limit voting to posts with media.")}</p>
       </SettingsRow>
       <SettingsRow
+        rowId="vote-editor-create-a-discussion-thread"
         title={spaTranslate("Create a discussion thread")}
         description={dt("Open a thread under each post.")}
         summary={dt(vote.create_thread ? "On" : "Off")}
@@ -91,6 +94,7 @@ export function VoteEditor({
         <p className="muted">{dt("Open a thread under each post.")}</p>
       </SettingsRow>
       <SettingsRow
+        rowId="vote-editor-enabled"
         title={spaTranslate("Enabled")}
         description={dt("Add voting reactions in this channel.")}
         summary={dt(vote.enabled ? "On" : "Off")}

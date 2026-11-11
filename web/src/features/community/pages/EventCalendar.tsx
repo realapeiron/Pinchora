@@ -52,7 +52,8 @@ export function EventCalendar({
   return (
     <>
       <SettingsRow
-        title={t("UPCOMING · {count}", { count: upcoming.length })}
+        rowId="event-calendar-upcoming"
+        title={dt("Upcoming · {count}", { count: upcoming.length }, "UPCOMING · {count}")}
         description={dt("Review upcoming events and guest lists.")}
         summary={summary.upcoming}
       >
@@ -142,7 +143,8 @@ export function EventCalendar({
       </SettingsRow>
       {past.length > 0 && (
         <SettingsRow
-          title={t("PAST AND CANCELLED")}
+          rowId="event-calendar-past-and-cancelled"
+          title={dt("Past and cancelled", {}, "PAST AND CANCELLED")}
           description={dt("Review past and cancelled events.")}
           summary={summary.history}
         >

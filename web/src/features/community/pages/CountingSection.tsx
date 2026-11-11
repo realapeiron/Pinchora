@@ -9,7 +9,8 @@ export function CountingSection() {
   const { data, info, counting, setCounting, busy, write, summary } = useEngagementContext();
   return (
     <SettingsRow
-      title={t("COUNTING")}
+      rowId="counting-section-counting"
+      title={dt("row.Counting", {}, "COUNTING")}
       description={dt("Choose the counting channel and its rules.")}
       summary={summary.counting ?? dt("Off")}
     >

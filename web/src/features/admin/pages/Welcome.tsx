@@ -57,6 +57,7 @@ export function Welcome() {
     >
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="welcome-welcome-message"
           title={t("Welcome message")}
           description={t("Post a welcome message when someone joins.")}
           summary={summary.welcome}
@@ -129,6 +130,7 @@ export function Welcome() {
         </SettingsRow>
 
         <SettingsRow
+          rowId="welcome-join-role"
           title={t("Join role")}
           description={t("Give a role to each new member.")}
           summary={summary.role}
@@ -159,6 +161,7 @@ export function Welcome() {
         </SettingsRow>
 
         <SettingsRow
+          rowId="welcome-goodbye-message"
           title={t("Goodbye message")}
           description={t("Say goodbye in a channel when a member leaves.")}
           summary={summary.goodbye}

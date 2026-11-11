@@ -7,7 +7,7 @@ import http from "node:http";
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const feedPort = Number(process.env.E2E_FEED_PORT ?? 18193);
 const run = Date.now();
@@ -108,10 +108,7 @@ async function tallShot(page: Page, name: string) {
 
 const row = (page: Page, name: string) => page.locator(`[data-feed="${name}"]`);
 async function expandFeed(page: Page, name: string) {
-  const header = row(page, name).locator(".settings-detail-expand");
-  await expect(header).toHaveAttribute("aria-expanded", "false");
-  await header.click();
-  await expect(header).toHaveAttribute("aria-expanded", "true");
+  await openRow(row(page, name).locator(".settings-detail-expand"));
 }
 
 test("follow a YouTube channel by its handle, with the bot's own preview, then watch it on the list", async ({
@@ -122,7 +119,7 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
   await page.goto(`/g/${guild}/feeds`);
   await expect(page.getByRole("heading", { name: "SOCIAL FEEDS", exact: true })).toBeVisible();
   await expect(page.getByText("Nothing followed yet")).toBeVisible();
-  await expect(page.getByText("0/10 used")).toBeVisible();
+  await expect(page.getByText("0 of 10 feeds used")).toBeVisible();
   await expect(page.getByRole("link", { name: "Social feeds" })).toBeVisible();
   await shot(page, "feeds-empty");
 
@@ -200,7 +197,7 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
     )
     .toBe(true);
   await expect(row(page, "r/" + subreddit)).toContainText("HTTP 503");
-  await expect(page.getByText("3/10 used")).toBeVisible();
+  await expect(page.getByText("3 of 10 feeds used")).toBeVisible();
   await shot(page, "feeds-list");
 
   // A test post from the list, then the editor of an existing feed.
@@ -271,5 +268,5 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
     .click();
   await page.getByRole("button", { name: "Stop following" }).click();
   await expect(page.locator(".toast")).toContainText(`Stopped following r/${subreddit}`);
-  await expect(page.getByText("2/10 used")).toBeVisible();
+  await expect(page.getByText("2 of 10 feeds used")).toBeVisible();
 });

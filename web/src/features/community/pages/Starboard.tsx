@@ -57,10 +57,15 @@ export function Starboard() {
             </p>
           )}
           <SettingsRow
-            title={spaTranslate("BOARDS · {arg1}/{arg2} used", {
-              arg1: query.data.boards.length,
-              arg2: maxBoards,
-            })}
+            rowId="starboard-boards"
+            title={dt(
+              "Boards · {arg1}/{arg2} used",
+              {
+                arg1: query.data.boards.length,
+                arg2: maxBoards,
+              },
+              "BOARDS · {arg1}/{arg2} used",
+            )}
             description={dt("Manage the boards that collect standout posts.")}
             summary={starboardSummary(query.data).boards}
             initialOpen
@@ -117,7 +122,12 @@ export function Starboard() {
             />
           )}
           <SettingsRow
-            title={spaTranslate("VOTE CHANNELS · {arg1} used", { arg1: query.data.votes.length })}
+            rowId="starboard-vote-channels"
+            title={dt(
+              "Vote channels · {arg1} used",
+              { arg1: query.data.votes.length },
+              "VOTE CHANNELS · {arg1} used",
+            )}
             description={dt("Choose where every post receives voting reactions.")}
             summary={starboardSummary(query.data).votes}
           >

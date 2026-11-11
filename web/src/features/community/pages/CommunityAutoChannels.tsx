@@ -28,7 +28,8 @@ export function CommunityAutoChannels() {
       {query.data && (
         <div className="settings-detail-list">
           <SettingsRow
-            title={t("CHANNEL RULES")}
+            rowId="community-auto-channels-channel-rules"
+            title={dt("Channel rules", {}, "CHANNEL RULES")}
             description={dt("Review channels with automatic actions.")}
             summary={communitySummary(query.data).channels}
             initialOpen
@@ -54,7 +55,8 @@ export function CommunityAutoChannels() {
             )}
           </SettingsRow>
           <SettingsRow
-            title={t("ADD CHANNEL")}
+            rowId="community-auto-channels-add-channel"
+            title={dt("Add channel", {}, "ADD CHANNEL")}
             description={dt("Choose a channel and its automatic actions.")}
             summary={channel ? t("Channel selected") : t("No channel")}
           >

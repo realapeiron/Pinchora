@@ -26,12 +26,18 @@ export function RepRoles({ guild, info }: { guild: string; info: GuildInfo | und
   const items = query.data?.items ?? [];
   return (
     <SettingsRow
-      title={spaTranslate("REPUTATION ROLES")}
+      rowId="reputation-roles-reputation-roles"
+      title={t("row.Reputation roles", {}, "REPUTATION ROLES")}
       description={t("Give roles for reputation milestones.")}
       summary={levelingSummary({}, { repRoles: items.length }).repRoles}
     >
       <div className="settings-detail-fields">
-        <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_rep_roles}`}</span>
+        <span className="pixel-label muted">
+          {t("{count} of {max} reputation roles used", {
+            count: items.length,
+            max: query.data?.max ?? LIMITS.max_rep_roles,
+          })}
+        </span>
         <p className="muted panel-lead">
           {" "}
           {spaTranslate(

@@ -39,6 +39,7 @@ function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
     <SettingsPage className="settings-page command-control-page" title={w("ui.title")} lead={w("ui.lead")}>
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="config-backup-export"
           title={w("ui.export")}
           description={dashboardT("Download this server's settings.")}
           summary={summary.export}
@@ -49,6 +50,7 @@ function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
           </a>
         </SettingsRow>
         <SettingsRow
+          rowId="config-backup-import"
           title={w("ui.import")}
           description={dashboardT("Preview and import a backup file.")}
           summary={summary.import}
@@ -183,6 +185,7 @@ function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
           )}
         </SettingsRow>
         <SettingsRow
+          rowId="config-backup-restore-points"
           title={w("ui.restore_points")}
           description={dashboardT("Review saved restore points.")}
           summary={summary.points}

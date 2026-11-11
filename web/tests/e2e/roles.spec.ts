@@ -3,7 +3,7 @@
 
 import { type Locator, type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}3`;
@@ -49,7 +49,7 @@ test("auto roles: a delay, an expiry, pausing and sticky roles", async ({ page }
   await expect(page.getByText("No auto roles yet.")).toBeVisible();
   const auto = page
     .locator(".settings-detail-row")
-    .filter({ has: page.getByRole("button", { name: /AUTO ROLES/ }) })
+    .filter({ has: page.getByRole("button", { name: /Auto roles/ }) })
     .first();
 
   // A role the bot cannot give is greyed out in the picker, with the reason.
@@ -171,11 +171,11 @@ test("the panel editor previews the message, saves it and has the bot post it", 
   );
   await page.setViewportSize(phone);
   await page.reload();
-  await page
+  const savedPanelRow = page
     .locator("[data-panel]")
     .filter({ hasText: "Pick your games" })
-    .locator(".settings-detail-expand")
-    .click();
+    .locator(".settings-detail-expand");
+  await openRow(savedPanelRow);
   await page.getByRole("button", { name: "Edit Pick your games" }).click();
   await expect(page.getByRole("heading", { name: "EDIT PANEL" })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -204,8 +204,8 @@ test("colour roles: the palette, the mode, who may pick and the anchor", async (
   await page.goto(`/g/${guild}/roles`);
   const colours = page.locator(".color-role-settings");
   await expect(colours).toBeVisible();
-  await colours.locator(".settings-detail-expand").first().click();
-  await colours.locator(".settings-detail-expand").nth(1).click();
+  await openRow(colours.locator(".settings-detail-expand").first());
+  await openRow(colours.locator(".settings-detail-expand").nth(1));
   await expect(colours.getByRole("list", { name: "Palette" }).getByRole("listitem")).not.toHaveCount(0);
 
   await colours.getByRole("switch", { name: "Colour roles" }).click();

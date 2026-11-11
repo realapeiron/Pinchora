@@ -1,6 +1,6 @@
 // Birthday setup in a real browser at desktop and phone widths.
 import { type Page, expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}6`;
@@ -19,12 +19,12 @@ test("birthdays settings, preview and phone layout", async ({ page }) => {
   await shot(page, "birthdays-desktop", true);
   await page.getByRole("switch", { name: "Announce birthdays" }).click();
   await page.getByLabel("Announcement channel").selectOption("7001");
-  await page.getByRole("button", { name: /^Server time zone/ }).click();
+  await openRow(page, /^Server time zone/);
   await page.getByLabel("Server time zone").fill("Europe/Istanbul");
-  await page.getByRole("button", { name: /^Shell gift/ }).click();
+  await openRow(page, /^Shell gift/);
   await page.getByLabel("Shell gift").fill("100");
   await page.getByRole("switch", { name: "Cake Day badge" }).click();
-  await page.getByRole("button", { name: /^THE MESSAGE/ }).click();
+  await openRow(page, /^The message/);
   await page.getByRole("button", { name: "Preview card" }).click();
   await expect(page.getByRole("img", { name: "Birthday card preview" })).toContainText("CAKE DAY");
   await shot(page, "birthdays-preview", true);
@@ -33,8 +33,8 @@ test("birthdays settings, preview and phone layout", async ({ page }) => {
   const data = await (await page.request.get(`/api/guilds/${guild}/birthdays`)).json();
   expect(data.settings).toMatchObject({ enabled: true, channel_id: "7001", shells_gift: 100, badge: true });
   await page.goto(`/g/${guild}/community`);
-  await expect(page.getByRole("button", { name: /BIRTHDAYS/ })).toBeVisible();
-  await page.getByRole("button", { name: /BIRTHDAYS/ }).click();
+  await expect(page.getByRole("button", { name: /Birthdays/ })).toBeVisible();
+  await openRow(page, /Birthdays/);
   await expect(page.getByText("Announcements on")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/g/${guild}/birthdays`);

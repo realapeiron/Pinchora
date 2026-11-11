@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 test("leveling parity saves only changes, previews imports and fits a phone", async ({ page }) => {
   const guild = `${Date.now()}77`;
@@ -62,7 +62,7 @@ test("leveling parity saves only changes, previews imports and fits a phone", as
   await save.click();
   expect(writes).toHaveLength(1);
   expect((writes[0] as typeof config).message_min).toBe(20);
-  await page.getByRole("button", { name: /IMPORT LEVELS FROM ANOTHER BOT/ }).click();
+  await openRow(page, /Import levels from another bot/);
   await page.getByLabel("Export file").setInputFiles({
     name: "arcane.csv",
     mimeType: "text/csv",

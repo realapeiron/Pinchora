@@ -26,6 +26,7 @@ export function AutoModSettings({
 }) {
   return (
     <SettingsRow
+      rowId="auto-mod-settings-alerts"
       title={t("ui.settings")}
       description={dashboardText("Set alerts and escalation.")}
       summary={summary}

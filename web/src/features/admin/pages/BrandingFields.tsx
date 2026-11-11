@@ -29,6 +29,7 @@ export function BrandingFields({
   return (
     <div className="settings-detail-list branding-rows" aria-label={translate("Branding settings")}>
       <SettingsRow
+        rowId="branding-fields-server-nickname"
         title={translate("Server nickname")}
         description={t("Set the bot name shown in this server.")}
         summary={summary.nickname}
@@ -54,7 +55,12 @@ export function BrandingFields({
           </div>
         </div>
       </SettingsRow>
-      <SettingsRow title={translate("Bio")} description={t("Edit the bot biography.")} summary={summary.bio}>
+      <SettingsRow
+        rowId="branding-fields-bio"
+        title={translate("Bio")}
+        description={t("Edit the bot biography.")}
+        summary={summary.bio}
+      >
         <div className="settings-detail-fields branding-editor">
           <label>
             {translate("Bio")}
@@ -74,6 +80,7 @@ export function BrandingFields({
         </div>
       </SettingsRow>
       <SettingsRow
+        rowId="branding-fields-avatar-and-banner"
         title={t("Avatar and banner")}
         description={t("Choose the bot's profile images.")}
         summary={summary.images}
@@ -124,6 +131,7 @@ export function BrandingFields({
         </div>
       </SettingsRow>
       <SettingsRow
+        rowId="branding-fields-embed-colour"
         title={translate("Embed colour")}
         description={t("Set the colour used on server messages.")}
         summary={summary.colour}

@@ -9,7 +9,8 @@ export function QuestionSection() {
   const { data, info, qotd, setQotd, busy, write, summary } = useEngagementContext();
   return (
     <SettingsRow
-      title={t("QUESTION OF THE DAY")}
+      rowId="question-section-question-of-the-day"
+      title={dt("Question of the day", {}, "QUESTION OF THE DAY")}
       description={dt("Post a daily question and manage its queue.")}
       summary={summary.qotd ?? dt("Off")}
       initialOpen

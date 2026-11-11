@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const stamp = Date.now();
 const guild = `${stamp}7`;
@@ -10,7 +10,7 @@ test("boards and vote channels save and fit desktop and phone", async ({ page })
   await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/starboard`);
   await expect(page.getByRole("heading", { name: "STARBOARD" })).toBeVisible();
-  await expect(page.getByText("BOARDS · 0/3 used")).toBeVisible();
+  await expect(page.getByText("Boards · 0/3 used")).toBeVisible();
   await page.getByRole("button", { name: /New board/ }).click();
   await page.getByLabel("Name").fill("Best of Reef");
   await page.getByLabel("Board channel").selectOption({ label: "#general" });
@@ -21,7 +21,7 @@ test("boards and vote channels save and fit desktop and phone", async ({ page })
   await shot(page, "starboard-desktop", true);
   const saved = await (await page.request.get(`/api/guilds/${guild}/starboard`)).json();
   expect(saved.boards[0]).toMatchObject({ name: "Best of Reef", channel_id: "7001", threshold: 2 });
-  await page.getByRole("button", { name: /^VOTE CHANNELS/ }).click();
+  await openRow(page, /^Vote channels/);
   await page.getByRole("button", { name: "Add vote channel" }).click();
   await page.getByRole("combobox", { name: "Channel", exact: true }).selectOption({ label: "#general" });
   await page.getByRole("button", { name: "Save vote channel" }).click();

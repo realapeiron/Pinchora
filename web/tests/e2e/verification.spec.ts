@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow } from "./helpers";
+import { devLogin, openRow, overflow } from "./helpers";
 test("Safety settings, captcha preview, and desktop/phone layouts", async ({ page }) => {
   const stamp = Date.now();
   const guild = `${stamp}7`;
@@ -15,7 +15,7 @@ test("Safety settings, captcha preview, and desktop/phone layouts", async ({ pag
   const messageRow = page
     .locator(".safety-page .settings-detail-row")
     .filter({ has: page.locator(".safety-preview") });
-  await messageRow.locator(".settings-detail-expand").click();
+  await openRow(messageRow.locator(".settings-detail-expand"));
   await expect(messageRow.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: "Preview captcha", exact: true }).click();
   await expect(page.getByRole("img", { name: "Sample pixel captcha card" })).toBeVisible();

@@ -64,6 +64,7 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
           <SummaryPanel summary={query.data.summary} />
           <div className="settings-detail-list">
             <SettingsRow
+              rowId="tickets-ticket-panels"
               title={t("Ticket panels")}
               description={t("Create and post ticket entry panels.")}
               summary={ticketsSummary(query.data).panels}
@@ -87,6 +88,7 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
           />
           <div className="settings-detail-list">
             <SettingsRow
+              rowId="tickets-support-operations"
               title={t("Support operations")}
               description={t("Manage support hours, saved replies and panel behavior.")}
               summary={
@@ -96,6 +98,7 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
               <TicketAdministration guild={guild} panels={query.data.panels} info={discord.data} />
             </SettingsRow>
             <SettingsRow
+              rowId="tickets-ticket-queue"
               title={t("Ticket queue")}
               description={t("Search and manage member tickets.")}
               summary={ticketsSummary(query.data).queue}

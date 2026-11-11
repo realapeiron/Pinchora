@@ -14,7 +14,8 @@ export function BirthdayUpcoming({
 }) {
   return (
     <SettingsRow
-      title={t("UPCOMING 30 DAYS")}
+      rowId="birthday-upcoming-upcoming-30-days"
+      title={dt("Upcoming 30 days", {}, "UPCOMING 30 DAYS")}
       description={dt("See members who shared their birthday.")}
       summary={summary}
     >

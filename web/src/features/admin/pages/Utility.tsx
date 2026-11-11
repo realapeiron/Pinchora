@@ -94,7 +94,8 @@ export function Utility() {
             </div>
             <div className="settings-detail-list">
               <SettingsRow
-                title={t("SERVER TIME")}
+                rowId="utility-server-time"
+                title={dashboardT("Server time", {}, "SERVER TIME")}
                 description={dashboardT("Set the server time zone for scheduled messages.")}
                 summary={utilitySummary(query.data).timezone}
               >

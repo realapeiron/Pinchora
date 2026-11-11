@@ -73,6 +73,7 @@ function RobloxEditor({
     <>
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="roblox-verification-settings"
           title={t("Verification settings")}
           description={dt("Link members to their Roblox profiles.")}
           summary={robloxSummary(draft, data.binds, discord).verification}
@@ -105,6 +106,7 @@ function RobloxEditor({
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="roblox-hold-unverified-newcomers"
           title={t("Hold unverified newcomers")}
           description={dt("Choose how newcomers are held.")}
           summary={robloxSummary(draft, data.binds, discord).newcomers}
@@ -127,6 +129,7 @@ function RobloxEditor({
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="roblox-nickname-template"
           title={t("Nickname template")}
           description={dt("Set member display names.")}
           summary={robloxSummary(draft, data.binds, discord).nickname}

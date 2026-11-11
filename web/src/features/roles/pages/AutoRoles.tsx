@@ -70,13 +70,16 @@ export function AutoRoles({
   return (
     <div className="settings-detail-list">
       <SettingsRow
-        title={spaTranslate("AUTO ROLES")}
+        rowId="auto-roles-auto-roles"
+        title={t("row.Auto roles", {}, "AUTO ROLES")}
         description={t("Give roles to members and bots when they join.")}
         summary={autoRolesSummary(items)}
         initialOpen
       >
         <div className="settings-detail-fields">
-          <span className="pixel-label muted">{`${items.length}/${max}`}</span>
+          <span className="pixel-label muted">
+            {t("{count} of {max} auto roles used", { count: items.length, max })}
+          </span>
           <p className="muted panel-lead">
             {" "}
             {spaTranslate(

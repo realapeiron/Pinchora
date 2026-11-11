@@ -1,6 +1,6 @@
 // Roblox settings and role binds at desktop and phone widths.
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const guild = `${Date.now()}6`;
 const user = `${Date.now()}7`;
@@ -11,7 +11,7 @@ test("Roblox configuration saves and fits phone", async ({ page }) => {
   // The setting "Enable Roblox verification" is a separate, legitimate subsection heading.
   await expect(page.getByRole("heading", { name: "Roblox verification", exact: true })).toBeVisible();
   await page.getByRole("switch", { name: "Enable Roblox verification" }).click();
-  await page.getByRole("button", { name: /Nickname template/ }).click();
+  await openRow(page, /Nickname template/);
   await page.getByLabel("Nickname template").fill("{discord-name} ({roblox-name})");
   await expect(page.getByText("DiscordMember (RobloxPlayer)")).toBeVisible();
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -22,7 +22,7 @@ test("Roblox configuration saves and fits phone", async ({ page }) => {
     nickname_template: "{discord-name} ({roblox-name})",
   });
   await shot(page, "roblox-desktop", true);
-  await page.getByRole("button", { name: /Role binds/ }).click();
+  await openRow(page, /Role binds/);
   await page.getByLabel("Condition").selectOption("verified");
   await page.getByLabel("Role to grant").selectOption({ label: "@Fan" });
   await page.getByRole("button", { name: "Add bind" }).click();

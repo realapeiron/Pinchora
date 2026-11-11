@@ -81,6 +81,7 @@ export function SettingsForm({
     <>
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="ticket-settings-ticket-categories-and-names"
           title={t("Ticket categories and names")}
           description={t("Choose categories, ticket location and channel names.")}
           summary={summary.placement}
@@ -148,6 +149,7 @@ export function SettingsForm({
           </Field>
         </SettingsRow>
         <SettingsRow
+          rowId="ticket-settings-transcripts"
           title={t("Transcripts")}
           description={t("Choose where ticket records go.")}
           summary={summary.transcripts}
@@ -177,6 +179,7 @@ export function SettingsForm({
           </p>
         </SettingsRow>
         <SettingsRow
+          rowId="ticket-settings-ticket-limits-and-auto-close"
           title={t("Ticket limits and auto-close")}
           description={t("Limit open tickets and close idle ones.")}
           summary={summary.limits}
@@ -225,6 +228,7 @@ export function SettingsForm({
           </FieldGrid>
         </SettingsRow>
         <SettingsRow
+          rowId="ticket-settings-ratings"
           title={spaTranslate("Ratings")}
           description={t("Ask members to rate closed tickets.")}
           summary={summary.ratings}

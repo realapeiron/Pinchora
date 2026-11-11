@@ -100,6 +100,7 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
   return (
     <div className="settings-detail-list">
       <SettingsRow
+        rowId="stats-public-stats-page"
         title={spaTranslate("Public stats page")}
         description={dashboardT("Share a read-only stats page by link.")}
         summary={statsSummary(undefined, isPublic).publicPage}
@@ -135,6 +136,7 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
         </div>
       </SettingsRow>
       <SettingsRow
+        rowId="stats-preview-the-stats-card"
         title={spaTranslate("Preview the /stats card")}
         description={dashboardT("Preview the server stats card.")}
         summary={statsSummary(undefined, isPublic, card).card}

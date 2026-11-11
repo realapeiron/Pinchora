@@ -21,7 +21,8 @@ export function ApplicationSection() {
     useEngagementContext();
   return (
     <SettingsRow
-      title={t("APPLICATION FORMS")}
+      rowId="application-section-application-forms"
+      title={dt("Application forms", {}, "APPLICATION FORMS")}
       description={dt("Build forms and review submissions.")}
       summary={summary.forms ?? dt("No application forms yet")}
     >

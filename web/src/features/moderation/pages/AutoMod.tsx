@@ -56,15 +56,18 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
           </p>
         )}
         <SettingsRow
+          rowId="auto-mod-rules"
           title={t("ui.rules")}
           description={dashboardText("Review and edit message rules.")}
           summary={summary.rules}
         >
           <div className="settings-detail-fields">
             <div className="automod-section-head">
-              <h2 className="pixel-title">{t("ui.rules")}</h2>
               <span className="muted">
-                {t("ui.used", { count: config.rules.length, max: saved.max_rules })}
+                {dashboardText("{count} of {max} message rules used", {
+                  count: config.rules.length,
+                  max: saved.max_rules,
+                })}
               </span>
             </div>
             {config.rules.length === 0 && <p className="empty-row muted">{t("ui.no_rules")}</p>}
@@ -130,6 +133,7 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
           summary={summary.settings}
         />
         <SettingsRow
+          rowId="auto-mod-dm-on-action"
           title={t("ui.dm_on_action")}
           description={dashboardText("Send members a DM after an action.")}
           summary={summary.dm}

@@ -3,7 +3,7 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { closeRow, devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}7`;
@@ -31,7 +31,7 @@ test("switch a part off, keep another to one channel, and see it on the overview
     "false",
   );
   await expect(row(page, "welcome")).toContainText("Whole server");
-  await row(page, "welcome").locator(".settings-detail-expand").click();
+  await openRow(row(page, "welcome").locator(".settings-detail-expand"));
   await expect(row(page, "welcome").locator(".settings-detail-expand")).toHaveAttribute(
     "aria-expanded",
     "true",
@@ -46,14 +46,14 @@ test("switch a part off, keep another to one channel, and see it on the overview
 
   // A list needs a channel before it can be saved.
   const fishing = row(page, "fishing");
-  await fishing.locator(".settings-detail-expand").click();
+  await openRow(fishing.locator(".settings-detail-expand"));
   await fishing.getByRole("radio", { name: /Only in these/ }).check({ force: true });
   await expect(fishing.getByRole("alert")).toContainText("Pick at least one channel");
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await fishing.getByLabel("Add a channel").selectOption({ label: "#general" });
   await fishing.getByRole("button", { name: "Add", exact: true }).click();
   await expect(fishing.locator(".channel-chip")).toContainText("#general");
-  await fishing.locator(".settings-detail-expand").click();
+  await closeRow(fishing.locator(".settings-detail-expand"));
   await expect(fishing.locator(".settings-detail-summary")).toContainText("Only in: #general");
   await expect(page.getByText("2 unsaved changes")).toBeVisible();
   await shot(page, "modules-edited", true);
@@ -93,7 +93,11 @@ test("switch a part off, keep another to one channel, and see it on the overview
 
   // Back to all channels: the badge and the row go back to normal.
   await page.goto(`/g/${guild}/modules`);
-  await row(page, "fishing").locator(".settings-detail-expand").click();
+  await expect(row(page, "fishing").locator(".settings-detail-expand")).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await openRow(row(page, "fishing").locator(".settings-detail-expand"));
   await row(page, "fishing")
     .getByRole("radio", { name: /All channels/ })
     .check({ force: true });
@@ -113,7 +117,7 @@ test("the modules page fits a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/g/${guild}/modules`);
   await expect(page.getByRole("heading", { name: "MODULES", exact: true })).toBeVisible();
-  await row(page, "house").locator(".settings-detail-expand").click();
+  await openRow(row(page, "house").locator(".settings-detail-expand"));
   await row(page, "house")
     .getByRole("radio", { name: /Everywhere but these/ })
     .check({ force: true });
@@ -127,9 +131,9 @@ test("the modules page fits a phone", async ({ page }) => {
 test("timed storm surges are set on the community page", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/community`);
-  await expect(page.getByRole("button", { name: /STORM SURGES/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Storm surges/ })).toBeVisible();
   await page.getByRole("switch", { name: "Timed storms" }).click();
-  await page.getByRole("button", { name: /STORM SURGES/ }).click();
+  await openRow(page, /Storm surges/);
   await page.getByLabel("Storm channel").selectOption({ label: "#announcements" });
   await page.getByLabel("How often").selectOption({ label: "Every 12 hours" });
   await expect(page.getByText("3 unsaved changes")).toBeVisible();
@@ -139,7 +143,7 @@ test("timed storm surges are set on the community page", async ({ page }) => {
   expect(now.surge).toMatchObject({ enabled: true, channel_id: "7011", every_hours: 12 });
   expect(now.surge.next_at).toBeTruthy();
   await page.reload();
-  await page.getByRole("button", { name: /STORM SURGES/ }).click();
+  await openRow(page, /Storm surges/);
   await expect(page.getByText(/The next one comes/)).toBeVisible();
   await shot(page, "community-surge", true);
 });

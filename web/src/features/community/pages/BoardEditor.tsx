@@ -31,7 +31,8 @@ export function BoardEditor({
   return (
     <div className="settings-detail-list starboard-editor">
       <SettingsRow
-        title={board.id ? spaTranslate("EDIT BOARD") : spaTranslate("NEW BOARD")}
+        rowId={`board-editor-${draft.id ?? "new"}`}
+        title={board.id ? dt("row.Edit board", {}, "EDIT BOARD") : dt("row.New board", {}, "NEW BOARD")}
         description={dt("Set the board channel, emoji and threshold.")}
         summary={boardSummary(board, info).details}
         initialOpen

@@ -43,6 +43,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
       {!saved.can_edit && <p className="notice">{t("ui.readonly")}</p>}
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="anti-nuke-protection"
           title={t("ui.protection")}
           description={dashboardText("Choose the response to destructive actions.")}
           summary={summary.protection}
@@ -96,6 +97,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
           </div>
         </SettingsRow>
         <AntiNukeFlagRow
+          rowId="antinuke-flag-auto-restore"
           title={t("ui.auto_restore")}
           description={dashboardText("Restore damaged settings automatically.")}
           summary={summary.autoRestore}
@@ -104,6 +106,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
           onToggle={(v) => set("auto_restore", v)}
         />
         <AntiNukeFlagRow
+          rowId="antinuke-flag-revert-vip"
           title={t("ui.revert_vip")}
           description={dashboardText("Reverse bans on protected members.")}
           summary={summary.revertVip}
@@ -112,6 +115,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
           onToggle={(v) => set("revert_vip_bans", v)}
         />
         <AntiNukeFlagRow
+          rowId="antinuke-flag-remove-bots"
           title={t("ui.remove_bots")}
           description={dashboardText("Remove bots involved in destructive actions.")}
           summary={summary.removeBots}
@@ -139,6 +143,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
           onList={(key, value) => set(key, value)}
         />
         <AntiNukeFlagRow
+          rowId="antinuke-flag-owner-only"
           title={t("ui.owner_only")}
           description={dashboardText("Allow only the owner to edit trusted members.")}
           summary={summary.ownerOnly}

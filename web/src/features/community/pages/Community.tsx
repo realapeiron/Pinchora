@@ -137,7 +137,8 @@ function CommunityForm({
     <>
       <div className="settings-detail-list">
         <SettingsRow
-          title={spaTranslate("SUGGESTIONS")}
+          rowId="community-suggestions"
+          title={dt("row.Suggestions", {}, "SUGGESTIONS")}
           description={dt("Choose where member ideas are posted.")}
           summary={summary.suggestions}
           initialOpen
@@ -162,7 +163,8 @@ function CommunityForm({
         </SettingsRow>
 
         <SettingsRow
-          title={spaTranslate("CRITTER DROPS")}
+          rowId="community-critter-drops"
+          title={dt("Critter drops", {}, "CRITTER DROPS")}
           description={dt("Choose where critters appear during chat.")}
           summary={summary.critters}
           enabled={enabled}
@@ -192,7 +194,8 @@ function CommunityForm({
         </SettingsRow>
 
         <SettingsRow
-          title={spaTranslate("STORM SURGES")}
+          rowId="community-storm-surges"
+          title={dt("Storm surges", {}, "STORM SURGES")}
           description={dt("Schedule storms in a channel.")}
           summary={summary.surge}
           enabled={surgeOn}

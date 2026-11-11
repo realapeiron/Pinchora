@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const stamp = Date.now();
 const guild = `${stamp}81`;
@@ -13,9 +13,9 @@ test("member XP editor and MEE6 review fit desktop and phone", async ({ page }) 
     await route.fulfill({ json: { items: [{ id: member, name: "Moon Crab", xp: 0 }] } });
   });
   await page.goto(`/g/${guild}/leveling`);
-  const memberRow = page.getByRole("button", { name: /MEMBER XP/ });
+  const memberRow = page.getByRole("button", { name: /Member XP/ });
   await expect(memberRow).toBeVisible();
-  await memberRow.click();
+  await openRow(memberRow);
   await expect(memberRow).toHaveAttribute("aria-expanded", "true");
   await page.getByLabel("Find member").fill("Moon");
   await expect(page.getByRole("list", { name: "Member search results" })).toContainText("Moon Crab");
@@ -23,7 +23,7 @@ test("member XP editor and MEE6 review fit desktop and phone", async ({ page }) 
   await page.getByLabel("Amount").fill("220");
   await page.getByRole("button", { name: "Save XP", exact: true }).click();
   await expect(page.getByText("Member XP saved.")).toBeVisible();
-  await page.getByRole("button", { name: /IMPORT FROM MEE6/ }).click();
+  await openRow(page, /Import from MEE6/);
   await page.getByRole("button", { name: "Review import", exact: true }).click();
   await expect(page.getByText("Existing XP stays if it is higher than MEE6 XP.")).toBeVisible();
   await shot(page, "info-xp-desktop", true);

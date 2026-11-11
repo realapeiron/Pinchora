@@ -39,7 +39,8 @@ export function Points() {
     >
       <div className="settings-detail-list">
         <SettingsRow
-          title={spaTranslate("SERVER POINTS")}
+          rowId="points-server-points"
+          title={t("row.Server points", {}, "SERVER POINTS")}
           description={t("Set the name, emoji and points per message.")}
           summary={summary.earning}
           initialOpen

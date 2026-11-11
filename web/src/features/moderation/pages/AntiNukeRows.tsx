@@ -29,6 +29,7 @@ export function AntiNukeLimits({
 }) {
   return (
     <SettingsRow
+      rowId="anti-nuke-rows-limits"
       title={t("ui.limits")}
       description={dashboardText("Set action counts and time windows.")}
       summary={summary}
@@ -112,7 +113,12 @@ export function AntiNukePreview({
   setCount: (value: number) => void;
 }) {
   return (
-    <SettingsRow title={t("ui.preview")} description={t("ui.preview_hint")} summary={summary}>
+    <SettingsRow
+      rowId="anti-nuke-rows-preview"
+      title={t("ui.preview")}
+      description={t("ui.preview_hint")}
+      summary={summary}
+    >
       <div className="settings-detail-fields">
         <p className="muted">{t("ui.preview_hint")}</p>
         <div className="antinuke-preview">

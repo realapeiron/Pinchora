@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { devLogin } from "./helpers";
+import { openRow, devLogin } from "./helpers";
 
 const guild = `${Date.now()}1`;
 const user = `${Date.now()}2`;
@@ -74,6 +74,19 @@ async function defects(page: Page, phone: boolean) {
       )
         out.push(`clipped text ${name(el)}`);
     }
+    for (const row of document.querySelectorAll<HTMLElement>(".settings-detail-row.is-open")) {
+      const title = row
+        .querySelector<HTMLElement>(":scope > .settings-detail-head .settings-detail-copy strong")
+        ?.textContent?.trim()
+        .toLocaleLowerCase();
+      if (!title) continue;
+      for (const heading of row.querySelectorAll<HTMLElement>(
+        ":scope > .settings-detail-body h1, :scope > .settings-detail-body h2, :scope > .settings-detail-body h3, :scope > .settings-detail-body h4, :scope > .settings-detail-body h5, :scope > .settings-detail-body h6",
+      )) {
+        if (visible(heading) && heading.textContent?.trim().toLocaleLowerCase() === title)
+          out.push(`repeated row heading ${title}`);
+      }
+    }
     if (phone) {
       const main = document.querySelector<HTMLElement>("main.shell-content")!;
       const cs = getComputedStyle(main),
@@ -138,6 +151,18 @@ for (const [width, height] of [
         animations: "disabled",
       });
       for (const defect of await defects(page, width === 390)) failures.push(`${label}: ${defect}`);
+      const closedRows = page.locator('.settings-detail-expand[aria-expanded="false"]:visible');
+      while (await closedRows.count()) {
+        // The attribute filter stops matching once a row opens, so follow the row by the body it controls.
+        const body = await closedRows.first().getAttribute("aria-controls");
+        await openRow(page.locator(`.settings-detail-expand[aria-controls="${body}"]`));
+      }
+      for (const defect of await defects(page, width === 390)) failures.push(`${label} expanded: ${defect}`);
+      await page.screenshot({
+        path: `test-results/visual/${width}/${label}-expanded.png`,
+        fullPage: true,
+        animations: "disabled",
+      });
     }
     console.log(`${width}px visited: ${visited.join(", ")}`);
     expect(failures, failures.join("\n")).toEqual([]);
@@ -224,7 +249,7 @@ test("open save bar leaves the last control reachable at 390px", async ({ page }
   await toggle.click();
   const save = page.locator(".save-bar.is-open");
   await expect(save).toBeVisible();
-  await page.getByRole("button", { name: /WARN LADDER/ }).click();
+  await openRow(page, /Warn ladder/);
   const lastControl = page.locator(".mod-page .add-actions button").last();
   await lastControl.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow } from "./helpers";
+import { devLogin, openRow, overflow } from "./helpers";
 const run = Date.now();
 const guild = `${run}1`;
 const user = "1";
@@ -13,7 +13,7 @@ test("anti-nuke draft, limits, safe preview, incident confirmation and responsiv
   const previewRow = page
     .locator(".antinuke-page .settings-detail-row")
     .filter({ has: page.locator(".antinuke-preview") });
-  await previewRow.locator(".settings-detail-expand").click();
+  await openRow(previewRow.locator(".settings-detail-expand"));
   await expect(previewRow.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: "Run preview" }).click();
   // Slider <output> elements also have the status role; select the preview announcement.

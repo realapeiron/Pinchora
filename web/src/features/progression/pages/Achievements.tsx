@@ -121,6 +121,7 @@ export function Achievements() {
       <div className="ach-list settings-detail-list" aria-label={text("Achievements")}>
         {data.items.length === 0 && (
           <SettingsRow
+            rowId="achievements-achievements"
             title={text("Achievements")}
             description={dt("Manage milestones and rewards.")}
             summary={achievementsSummary(data.items)}
@@ -131,6 +132,7 @@ export function Achievements() {
         )}
         {data.items.map((item) => (
           <SettingsRow
+            rowId={`achievement-${item.id}`}
             key={item.id}
             title={item.name}
             description={dt("Review this achievement.")}

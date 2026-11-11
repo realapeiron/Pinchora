@@ -175,6 +175,7 @@ function Editor({
   return (
     <>
       <SettingsRow
+        rowId="leveling-policy-chat-xp-rules"
         title={t("Chat XP rules")}
         description={t("Set curves, earning sources and leaderboard options.")}
         summary={levelingSummary({}, {}, draft).policy}

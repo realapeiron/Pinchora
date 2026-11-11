@@ -17,7 +17,8 @@ export function CommunityGiveaways() {
       <State query={query} />
       {query.data && (
         <SettingsRow
-          title={t("RECENT GIVEAWAYS")}
+          rowId="community-lists-recent-giveaways"
+          title={dt("Recent giveaways", {}, "RECENT GIVEAWAYS")}
           description={dt("See recent draws and their entry totals.")}
           summary={communitySummary(query.data).giveaways}
           initialOpen
@@ -55,7 +56,8 @@ export function CommunityPolls() {
       <State query={query} />
       {query.data && (
         <SettingsRow
-          title={t("RECENT POLLS")}
+          rowId="community-lists-recent-polls"
+          title={dt("Recent polls", {}, "RECENT POLLS")}
           description={dt("See saved polls and their choices.")}
           summary={communitySummary(query.data).polls}
         >
@@ -99,7 +101,8 @@ export function CommunitySuggestions() {
       <State query={query} />
       {query.data && (
         <SettingsRow
-          title={t("RECENT SUGGESTIONS")}
+          rowId="community-lists-recent-suggestions"
+          title={dt("Recent suggestions", {}, "RECENT SUGGESTIONS")}
           description={dt("Review member ideas and staff notes.")}
           summary={communitySummary(query.data).suggestions}
         >

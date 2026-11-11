@@ -4,7 +4,7 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}3`;
@@ -103,7 +103,7 @@ test("write a command with the bot's own preview, save it, switch it off, move i
     "aria-expanded",
     "false",
   );
-  await row(page, "rules").locator(".settings-detail-expand").click();
+  await openRow(row(page, "rules").locator(".settings-detail-expand"));
   await expect(row(page, "rules").locator(".settings-detail-expand")).toHaveAttribute(
     "aria-expanded",
     "true",
@@ -144,7 +144,7 @@ test("write a command with the bot's own preview, save it, switch it off, move i
   await expect(result).toContainText("1 added, 1 skipped (already there), 1 refused");
   await expect(result).toContainText("BAD NAME");
   await expect(row(page, "faq")).toBeVisible();
-  await row(page, "faq").locator(".settings-detail-expand").click();
+  await openRow(row(page, "faq").locator(".settings-detail-expand"));
   await shot(page, "commands-imported", true);
 
   // Delete asks first.
@@ -306,7 +306,7 @@ test("the overview, the modules page and the community page tell one story", asy
   await expect(
     page.getByRole("note").filter({ hasText: "Suggestions is switched off in Modules" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /STORM SURGES/ }).click();
+  await openRow(page, /Storm surges/);
   await expect(
     page.getByText(/The next one comes \w{3} \d+, \d{4}, \d{1,2}:\d{2}(\s?[AP]M)?\./),
   ).toBeVisible();

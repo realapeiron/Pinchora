@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow, shot, switchPanelLanguage } from "./helpers";
+import { devLogin, openRow, overflow, shot, switchPanelLanguage } from "./helpers";
 
 test("branding previews nickname, bio, colour and fits a phone", async ({ page }) => {
   const guild = `${Date.now()}77`;
@@ -42,9 +42,9 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
   await page.getByLabel("Server nickname").fill("");
   await expect(save).toBeDisabled();
   await page.getByLabel("Server nickname").fill("Coral Helper");
-  await page.locator(".branding-rows .settings-detail-expand").nth(1).click();
+  await openRow(page.locator(".branding-rows .settings-detail-expand").nth(1));
   await page.getByLabel("Bio").fill("Your reef guide");
-  await page.locator(".branding-rows .settings-detail-expand").nth(3).click();
+  await openRow(page.locator(".branding-rows .settings-detail-expand").nth(3));
   await page.getByLabel("Hex colour").fill("#31b8d4");
   await expect(page.locator(".branding-rows .settings-detail-preview").first()).toContainText("Coral Helper");
   await expect(page.locator(".branding-rows .settings-detail-preview").nth(1)).toContainText(
@@ -78,9 +78,8 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   // Long unbroken profile text must wrap inside the narrow preview.
   await page.locator('.branding-editor input[maxlength="32"]').fill("C".repeat(32));
-  // The language switch re-renders the rows; open the bio row again if it closed.
   const bioRow = page.locator(".branding-rows .settings-detail-expand").nth(1);
-  if ((await bioRow.getAttribute("aria-expanded")) !== "true") await bioRow.click();
+  await expect(bioRow).toHaveAttribute("aria-expanded", "true");
   await page.locator(".branding-editor textarea").fill("B".repeat(190));
   await expect(page.locator(".branding-rows .settings-detail-preview").nth(1)).toContainText("B".repeat(190));
   expect(await overflow(page)).toBeLessThanOrEqual(0);

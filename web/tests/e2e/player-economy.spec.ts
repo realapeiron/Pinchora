@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow } from "./helpers";
+import { devLogin, openRow, overflow } from "./helpers";
 const run = Date.now();
 test("wallet job tasks and review pages fit desktop and phone", async ({ page }) => {
   await devLogin(page, `${run}71`, []);
@@ -38,7 +38,7 @@ test("economy settings save only changed writable fields", async ({ page }) => {
   });
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.screenshot({ path: "test-results/economy-settings-desktop.png", fullPage: true });
-  await page.getByRole("button", { name: /Server-point reset & inflation/ }).click();
+  await openRow(page, /Server-point reset & inflation/);
   await page.getByRole("button", { name: "Preview affected balances" }).click();
   await expect(page.getByRole("button", { name: "Apply point reduction" })).toBeDisabled();
   await page.setViewportSize({ width: 390, height: 844 });

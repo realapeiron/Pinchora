@@ -5,7 +5,7 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const busy = `${run}21`;
@@ -176,7 +176,7 @@ test("an empty server, a counter channel and the public page", async ({ page }) 
   expect(countersSaved.counters).toEqual(
     expect.arrayContaining([expect.objectContaining({ template: "Crabs: {count}" })]),
   );
-  await expect(page.getByText("1/10 USED")).toBeVisible();
+  await expect(page.getByText("1 of 10 counter channels used")).toBeVisible();
   await page.getByLabel("Name").fill("Crabs");
   await expect(page.getByText("Put {count} where the number goes.")).toBeVisible();
   await shot(page, "stats-empty", true);
@@ -188,11 +188,11 @@ test("an empty server, a counter channel and the public page", async ({ page }) 
     "aria-checked",
     "true",
   );
-  await page.locator(".settings-detail-expand").filter({ hasText: "Public stats page" }).click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: "Public stats page" }));
   await expect(page.getByRole("link", { name: "Open the public page" })).toBeVisible();
   expect((await page.request.get(`/api/public/stats/${quiet}`)).status()).toBe(200);
 
-  await page.locator(".settings-detail-expand").filter({ hasText: "Preview the /stats card" }).click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: "Preview the /stats card" }));
   await page.getByRole("button", { name: "Preview the /stats card", exact: true }).click();
   const card = page.locator(".card-preview img");
   await expect(card).toBeVisible();

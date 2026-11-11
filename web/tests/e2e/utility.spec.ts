@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const stamp = Date.now();
 const guild = `${stamp}5`;
@@ -10,8 +10,8 @@ test("Messages editor saves a schedule and fits desktop and phone", async ({ pag
   await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/utility`);
   await expect(page.getByRole("heading", { name: "MESSAGES", exact: true })).toBeVisible();
-  await expect(page.getByText("SCHEDULED MESSAGES · 0/20 USED")).toBeVisible();
-  await page.locator(".settings-detail-expand").filter({ hasText: "SCHEDULED MESSAGES" }).click();
+  await expect(page.getByText("Scheduled messages · 0/20 used")).toBeVisible();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: "Scheduled messages" }));
   await page.getByRole("button", { name: "Schedule a message" }).click();
   await page.getByLabel("Channel").selectOption({ label: "#general" });
   await page.getByLabel("Message", { exact: true }).fill("Reef cleanup starts soon.");
@@ -23,7 +23,7 @@ test("Messages editor saves a schedule and fits desktop and phone", async ({ pag
   await page.getByRole("button", { name: "Schedule", exact: true }).click();
   await expect(page.getByText("Reef cleanup starts soon.").first()).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Scheduled message saved." })).toBeVisible();
-  await expect(page.getByText("SCHEDULED MESSAGES · 1/20 USED")).toBeVisible();
+  await expect(page.getByText("Scheduled messages · 1/20 used")).toBeVisible();
   const scheduledSaved = await (await page.request.get(`/api/guilds/${guild}/utility`)).json();
   expect(scheduledSaved.scheduled).toEqual(
     expect.arrayContaining([expect.objectContaining({ content: "Reef cleanup starts soon." })]),

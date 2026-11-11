@@ -66,7 +66,8 @@ export function UtilityLists({
   return (
     <div className="settings-detail-list">
       <SettingsRow
-        title={t("STICKY MESSAGES")}
+        rowId="utility-lists-sticky-messages"
+        title={dashboardT("Sticky messages", {}, "STICKY MESSAGES")}
         description={dashboardT("Manage notes that stay visible in channels.")}
         summary={summary.sticky}
       >
@@ -131,10 +132,15 @@ export function UtilityLists({
         )}
       </SettingsRow>
       <SettingsRow
-        title={t("SCHEDULED MESSAGES · {count}/{max} USED", {
-          count: data.scheduled.length,
-          max: data.max_scheduled,
-        })}
+        rowId="utility-lists-scheduled-messages"
+        title={dashboardT(
+          "Scheduled messages · {count}/{max} used",
+          {
+            count: data.scheduled.length,
+            max: data.max_scheduled,
+          },
+          "SCHEDULED MESSAGES · {count}/{max} USED",
+        )}
         description={dashboardT("Manage messages sent at chosen times.")}
         summary={summary.scheduled}
       >

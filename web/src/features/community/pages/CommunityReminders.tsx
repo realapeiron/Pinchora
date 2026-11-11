@@ -51,7 +51,8 @@ export function CommunityReminders() {
       {personal.data && (
         <div className="settings-detail-list">
           <SettingsRow
-            title={t("RECURRING REMINDERS")}
+            rowId="community-reminders-recurring-reminders"
+            title={dt("Recurring reminders", {}, "RECURRING REMINDERS")}
             description={dt("Schedule and remove private recurring reminders.")}
             summary={personalSummary(personal.data).reminders}
             initialOpen
@@ -115,7 +116,8 @@ export function CommunityReminders() {
             </div>
           </SettingsRow>
           <SettingsRow
-            title={t("CHECKLIST")}
+            rowId="community-reminders-checklist"
+            title={dt("Checklist", {}, "CHECKLIST")}
             description={dt("Track your private tasks.")}
             summary={personalSummary(personal.data).checklist}
           >

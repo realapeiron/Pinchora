@@ -1,7 +1,7 @@
 // Invite settings, reward roles and member accounting at desktop and phone widths.
 import { expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const guild = `${Date.now()}6`;
 const user = `${Date.now()}7`;
@@ -20,7 +20,7 @@ test("invites settings and leaderboard fit desktop and phone", async ({ page }) 
   await expect(page.getByRole("status").filter({ hasText: "saved" })).toBeVisible();
   const saved = await (await page.request.get(`/api/guilds/${guild}/invites`)).json();
   expect(saved.settings.fake_days).toBe(14);
-  await page.locator(".settings-detail-expand").filter({ hasText: "REWARD ROLES" }).click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: "Reward roles" }));
   await page.getByLabel("Invites needed").fill("5");
   await page.getByLabel("Role", { exact: true }).selectOption({ label: "@Fan" });
   await page.getByRole("button", { name: "Add reward" }).click();

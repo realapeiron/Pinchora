@@ -144,6 +144,7 @@ function ModuleRow({
   return (
     <div className={`module-settings-row ${edited ? "is-edited" : ""}`} data-module={saved.key}>
       <SettingsRow
+        rowId={`module-${saved.key}`}
         title={spaTranslate(saved.label)}
         description={spaTranslate(saved.blurb)}
         summary={moduleSummary(saved, draft, info)}

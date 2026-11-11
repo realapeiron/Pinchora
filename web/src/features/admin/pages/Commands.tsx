@@ -78,6 +78,7 @@ export function Commands() {
               {list.data.items.map((command) => (
                 <div key={command.id} data-command={command.name}>
                   <SettingsRow
+                    rowId={`command-${command.id}`}
                     title={`/tag ${command.name}`}
                     description={t("Edit the command reply and actions.")}
                     summary={commandItemSummary(command)}

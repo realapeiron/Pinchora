@@ -34,12 +34,18 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
 
   return (
     <SettingsRow
-      title={spaTranslate("XP MULTIPLIERS")}
+      rowId="leveling-multipliers-xp-multipliers"
+      title={t("row.XP multipliers", {}, "XP MULTIPLIERS")}
       description={t("Scale XP for channels and roles.")}
       summary={levelingSummary({}, { multipliers: items.length }).multipliers}
     >
       <div className="settings-detail-fields">
-        <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_xp_rules}`}</span>
+        <span className="pixel-label muted">
+          {t("{count} of {max} XP multipliers used", {
+            count: items.length,
+            max: query.data?.max ?? LIMITS.max_xp_rules,
+          })}
+        </span>
         <p className="muted panel-lead">
           {" "}
           {spaTranslate(

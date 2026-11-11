@@ -68,6 +68,7 @@ export function SafetyChecks({
   return (
     <div className="safety-main">
       <SettingsRow
+        rowId="safety-checks-verification-gate"
         title={t("gate")}
         description={t("gate_hint")}
         summary={summary.gate}
@@ -114,6 +115,7 @@ export function SafetyChecks({
         </div>
       </SettingsRow>
       <SafetyFlagRow
+        rowId="safety-flag-avatar"
         title={t("avatar")}
         description={dashboardText("Block members with default avatars.")}
         summary={summary.avatar}
@@ -121,6 +123,7 @@ export function SafetyChecks({
         onToggle={(next) => onChange("verification", "block_default_avatar", next)}
       />
       <SafetyFlagRow
+        rowId="safety-flag-names"
         title={t("names")}
         description={dashboardText("Block names that match suspicious patterns.")}
         summary={summary.names}
@@ -128,6 +131,7 @@ export function SafetyChecks({
         onToggle={(next) => onChange("verification", "block_name_patterns", next)}
       />
       <SafetyFlagRow
+        rowId="safety-flag-dm"
         title={t("dm")}
         description={dashboardText("Message blocked members.")}
         summary={summary.dm}
@@ -135,6 +139,7 @@ export function SafetyChecks({
         onToggle={(next) => onChange("verification", "dm_on_block", next)}
       />
       <SettingsRow
+        rowId="safety-checks-raid"
         title={t("raid")}
         description={t("raid_hint")}
         summary={summary.raid}
@@ -185,6 +190,7 @@ export function SafetyChecks({
         </div>
       </SettingsRow>
       <SafetyFlagRow
+        rowId="safety-flag-similar-names"
         title={t("similar_names")}
         description={dashboardText("Detect similar names in a join spike.")}
         summary={summary.similarNames}
@@ -192,6 +198,7 @@ export function SafetyChecks({
         onToggle={(next) => onChange("raid", "similar_names", next)}
       />
       <SafetyFlagRow
+        rowId="safety-flag-similar-avatars"
         title={t("similar_avatars")}
         description={dashboardText("Detect similar avatars in a join spike.")}
         summary={summary.similarAvatars}
@@ -199,6 +206,7 @@ export function SafetyChecks({
         onToggle={(next) => onChange("raid", "similar_avatars", next)}
       />
       <SafetyFlagRow
+        rowId="safety-flag-lock"
         title={t("lock")}
         description={dashboardText("Lock selected channels during a raid.")}
         summary={summary.lock}
@@ -206,6 +214,7 @@ export function SafetyChecks({
         onToggle={(next) => onChange("raid", "lock_channels", next)}
       />
       <SafetyFlagRow
+        rowId="safety-flag-invites"
         title={t("invites")}
         description={dashboardText("Pause invites during a raid.")}
         summary={summary.invites}

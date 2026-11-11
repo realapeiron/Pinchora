@@ -68,6 +68,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
         className="settings-detail-list"
       >
         <SettingsRow
+          rowId="economy-settings-community-pool"
           title={t("Community pool")}
           description={dt("Track donations toward the community goal.")}
           summary={summary.pool}
@@ -104,6 +105,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="economy-settings-store-conditions"
           title={t("Store conditions")}
           description={dt("Set who can use the store.")}
           summary={summary.store}
@@ -150,6 +152,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
         {save.isError && <Problem error={save.error} />}
       </form>
       <SettingsRow
+        rowId="economy-settings-server-point-reset-inflation"
         title={t("Server-point reset & inflation")}
         description={dt("Preview and reduce server balances.")}
         summary={summary.balances}

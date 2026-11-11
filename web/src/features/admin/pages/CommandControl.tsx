@@ -67,6 +67,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
         {commands.length === 0 && <p className="empty-row muted">{w("ui.empty")}</p>}
         {Array.from(families, ([family, familyCommands]) => (
           <SettingsRow
+            rowId={`command-family-${family}`}
             key={family}
             title={`/${family}`}
             description={dashboardT("Edit the rules for this command family.")}
@@ -116,6 +117,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
           </SettingsRow>
         ))}
         <SettingsRow
+          rowId="command-control-aliases"
           title={w("ui.aliases")}
           description={dashboardT("Manage command aliases.")}
           summary={extras.aliases}
@@ -186,6 +188,7 @@ function CommandEditor({ guild, data }: { guild: string; data: ControlData }) {
           ))}
         </SettingsRow>
         <SettingsRow
+          rowId="command-control-permissions"
           title={w("ui.permissions")}
           description={dashboardT("Review Discord command permissions.")}
           summary={extras.permissions}

@@ -24,6 +24,7 @@ export function FeedRow({ feed, guild, list, info, save, testing, runTest, setAs
   return (
     <li className="tag-row feed-row" data-feed={feed.account}>
       <SettingsRow
+        rowId={`feed-${feed.id}`}
         title={feed.account}
         description={dt("Review this subscription and its delivery.")}
         summary={feedSummary(feed, list, info)}

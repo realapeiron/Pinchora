@@ -44,7 +44,8 @@ export function InviteSettingsForm({
     <>
       <div className="settings-detail-list">
         <SettingsRow
-          title={t("TRACKING")}
+          rowId="invite-settings-form-tracking"
+          title={dashboardT("Tracking", {}, "TRACKING")}
           description={dashboardT("Count joins and choose the log channel.")}
           summary={summary.tracking}
           enabled={draft.enabled}
@@ -92,7 +93,8 @@ export function InviteSettingsForm({
           </div>
         </SettingsRow>
         <SettingsRow
-          title={t("FRIEND LINKS")}
+          rowId="invite-settings-form-friend-links"
+          title={dashboardT("Friend links", {}, "FRIEND LINKS")}
           description={dashboardT("Let members create temporary invite links.")}
           summary={summary.links}
           enabled={draft.temp_enabled}

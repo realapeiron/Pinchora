@@ -1,7 +1,31 @@
 import { useId, useState, type ReactNode } from "react";
 import { PixelToggle } from "./PixelToggle";
 
+const openRows = new Map<string, boolean>();
+
+function savedOpen(key: string, initialOpen: boolean): boolean {
+  const remembered = openRows.get(key);
+  if (remembered !== undefined) return remembered;
+  try {
+    const saved = window.sessionStorage.getItem(key);
+    if (saved !== null) return saved === "true";
+  } catch {
+    // Storage can be unavailable in private browsing or blocked contexts.
+  }
+  return initialOpen;
+}
+
+function rememberOpen(key: string, open: boolean): void {
+  openRows.set(key, open);
+  try {
+    window.sessionStorage.setItem(key, String(open));
+  } catch {
+    // The in-memory value still survives component remounts.
+  }
+}
+
 export function SettingsRow({
+  rowId,
   title,
   description,
   summary,
@@ -12,6 +36,7 @@ export function SettingsRow({
   children,
   initialOpen = false,
 }: {
+  rowId: string;
   title: string;
   description: string;
   summary: string;
@@ -22,7 +47,15 @@ export function SettingsRow({
   children: ReactNode;
   initialOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(initialOpen);
+  const storageKey = `settings-row:${typeof window === "undefined" ? "" : window.location.pathname}:${rowId}`;
+  const [open, setOpen] = useState(() =>
+    typeof window === "undefined" ? initialOpen : savedOpen(storageKey, initialOpen),
+  );
+  const toggleOpen = () => {
+    const next = !open;
+    rememberOpen(storageKey, next);
+    setOpen(next);
+  };
   const bodyId = useId();
   return (
     <section className={`settings-detail-row ${open ? "is-open" : ""}`}>
@@ -32,14 +65,17 @@ export function SettingsRow({
           className="settings-detail-expand"
           aria-expanded={open}
           aria-controls={bodyId}
-          onClick={() => setOpen(!open)}
+          onClick={toggleOpen}
         >
           <span className="settings-detail-chevron" aria-hidden="true">
             ›
           </span>
           <span className="settings-detail-copy">
             <strong>{title}</strong>
-            <span className={open ? "settings-detail-description" : "settings-detail-summary"}>
+            <span
+              className={open ? "settings-detail-description" : "settings-detail-summary"}
+              title={open ? description : summary}
+            >
               {open ? description : summary}
             </span>
           </span>

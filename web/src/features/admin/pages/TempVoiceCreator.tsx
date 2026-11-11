@@ -59,6 +59,7 @@ export function CreatorRow({
   return (
     <li className={`creator ${open ? "is-open" : ""} ${creator.enabled ? "" : "is-off"}`}>
       <SettingsRow
+        rowId={`creator-${creator.channel_id}`}
         title={`🔊 ${name}`}
         description={dt("Set this creator’s room defaults.")}
         summary={creatorSummary(creator)}

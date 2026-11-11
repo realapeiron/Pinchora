@@ -114,7 +114,8 @@ export function Events() {
       {events.query.isSuccess && (
         <div className="settings-detail-list">
           <SettingsRow
-            title={t("SERVER CLOCK")}
+            rowId="events-server-clock"
+            title={dt("Server clock", {}, "SERVER CLOCK")}
             description={dt("Set the time zone used by event forms.")}
             summary={summary.clock}
             initialOpen

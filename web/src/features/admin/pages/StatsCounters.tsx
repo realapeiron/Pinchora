@@ -67,14 +67,15 @@ export function CounterChannels({ guild }: { guild: string }) {
   return (
     <div className="settings-detail-list">
       <SettingsRow
-        title={spaTranslate("COUNTER CHANNELS")}
+        rowId="stats-counters-counter-channels"
+        title={dashboardT("row.Counter channels", {}, "COUNTER CHANNELS")}
         description={dashboardT("Manage channels whose names show live counts.")}
         summary={statsSummary(list, false).counters}
         initialOpen
       >
         <div className="settings-detail-fields">
           <span className="pixel-label muted">
-            {spaTranslate("{count}/{max} USED", { count: counters.length, max })}
+            {dashboardT("{count} of {max} counter channels used", { count: counters.length, max })}
           </span>
           <p className="muted panel-lead">
             {" "}

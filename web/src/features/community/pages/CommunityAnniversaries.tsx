@@ -60,7 +60,8 @@ function AnniversaryForm({
         </p>
       )}
       <SettingsRow
-        title={t("ANNOUNCEMENTS")}
+        rowId="community-anniversaries-announcements"
+        title={dt("Announcements", {}, "ANNOUNCEMENTS")}
         description={dt("Choose where yearly member milestones are posted.")}
         summary={anniversarySummary(channel, enabled)}
         initialOpen

@@ -74,6 +74,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
       <div className="settings-detail-list">
         {games.map((game) => (
           <SettingsRow
+            rowId={`tracker-${game}`}
             key={game}
             title={text(game === "lol" ? "League of Legends" : game === "mc" ? "Minecraft" : "Valorant")}
             description={dt("Follow official updates for this game.")}
@@ -98,7 +99,8 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
           </SettingsRow>
         ))}
         <SettingsRow
-          title={text("MINECRAFT WATCH LIST")}
+          rowId="trackers-minecraft-watch-list"
+          title={dt("Minecraft watch list", {}, "MINECRAFT WATCH LIST")}
           description={dt("Watch Minecraft server status.")}
           summary={summary.watch}
         >
@@ -109,8 +111,9 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
             {draft.mc_watch.map((watch) => (
               <li key={watch.host}>
                 <SettingsRow
+                  rowId={`watch-${watch.host}`}
                   title={watch.host}
-                  description={dt("Watch Minecraft server status.")}
+                  description={dt("Review this server and its update channel.")}
                   summary={watchSummary(watch.channel_id, discord.data)}
                 >
                   <PixelButton
@@ -162,7 +165,8 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
           </PixelButton>
         </SettingsRow>
         <SettingsRow
-          title={text("MINECRAFT NEWS")}
+          rowId="trackers-minecraft-news"
+          title={dt("Minecraft news", {}, "MINECRAFT NEWS")}
           description={dt("Post Minecraft release news.")}
           summary={summary.news}
         >

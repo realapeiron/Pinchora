@@ -125,6 +125,7 @@ export function MyChannels({ list }: { list?: FeedList }) {
   );
   return list ? (
     <SettingsRow
+      rowId="my-feed-channels-linked"
       title={text("my-channels")}
       description={dt("Manage your linked streaming channels.")}
       summary={linkedChannelsSummary(channels.data?.items.length ?? 0)}

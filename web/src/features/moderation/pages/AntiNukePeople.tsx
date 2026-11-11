@@ -33,7 +33,12 @@ export function AntiNukePeople({
   const roleName = (id: string) => info?.roles.find((r) => r.id === id)?.name ?? id;
   return (
     <div className="antinuke-people-grid">
-      <SettingsRow title={t("ui.trust")} description={t("ui.trust_hint")} summary={summaryTrusted}>
+      <SettingsRow
+        rowId="anti-nuke-people-trust"
+        title={t("ui.trust")}
+        description={t("ui.trust_hint")}
+        summary={summaryTrusted}
+      >
         <div className="settings-detail-fields">
           <p className="muted">{t("ui.trust_hint")}</p>
           <div className="antinuke-add">
@@ -87,7 +92,12 @@ export function AntiNukePeople({
           </ul>
         </div>
       </SettingsRow>
-      <SettingsRow title={t("ui.vip")} description={t("ui.vip_hint")} summary={summaryVip}>
+      <SettingsRow
+        rowId="anti-nuke-people-vip"
+        title={t("ui.vip")}
+        description={t("ui.vip_hint")}
+        summary={summaryVip}
+      >
         <div className="settings-detail-fields">
           <p className="muted">{t("ui.vip_hint")}</p>
           <div className="antinuke-add">

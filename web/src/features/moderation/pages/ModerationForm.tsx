@@ -64,7 +64,8 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
     <>
       <div className="settings-detail-list">
         <SettingsRow
-          title={spaTranslate("MOD-LOG")}
+          rowId="moderation-form-mod-log"
+          title={t("Mod log", {}, "MOD-LOG")}
           description={t("Choose where moderation cases are posted.")}
           summary={summary.log}
           initialOpen
@@ -89,6 +90,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="moderation-form-tell-members"
           title={spaTranslate("Tell members")}
           description={t("Send members a message about their cases.")}
           summary={summary.dm}
@@ -103,7 +105,8 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
         </SettingsRow>
 
         <SettingsRow
-          title={spaTranslate("WARN LADDER")}
+          rowId="moderation-form-warn-ladder"
+          title={t("row.Warn ladder", {}, "WARN LADDER")}
           description={t("Act when a member reaches a warn count.")}
           summary={summary.ladder}
         >

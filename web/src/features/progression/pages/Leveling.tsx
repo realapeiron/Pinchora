@@ -64,6 +64,7 @@ export function Leveling() {
     >
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="leveling-level-up-message"
           title={spaTranslate("Level-up message")}
           description={t("Choose message XP and level-up delivery.")}
           summary={summary.chat}
@@ -115,7 +116,8 @@ export function Leveling() {
         </SettingsRow>
 
         <SettingsRow
-          title={spaTranslate("VOICE XP")}
+          rowId="leveling-voice-xp"
+          title={t("row.Voice XP", {}, "VOICE XP")}
           description={t("Earn XP in voice channels.")}
           summary={summary.voice}
           enabled={value.voice_xp_enabled}

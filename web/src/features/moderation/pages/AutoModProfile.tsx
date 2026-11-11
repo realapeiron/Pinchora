@@ -21,6 +21,7 @@ export function AutoModProfile({
 }) {
   return (
     <SettingsRow
+      rowId="auto-mod-profile-profiles"
       title={t("ui.profiles")}
       description={dashboardText("Choose a protection profile.")}
       summary={summary}

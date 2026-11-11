@@ -119,6 +119,7 @@ export function Responders() {
                 return (
                   <div key={responder.id} data-responder={responder.name}>
                     <SettingsRow
+                      rowId={`responder-${responder.id}`}
                       title={responder.name}
                       description={t("Edit the trigger, reply and actions.")}
                       summary={responderItemSummary(responder)}

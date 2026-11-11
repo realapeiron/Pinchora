@@ -74,7 +74,8 @@ export function TempVoiceBody({ guild, data }: { guild: string; data: TempVoiceD
       )}
 
       <SettingsRow
-        title={text("CREATORS")}
+        rowId="temp-voice-body-creators"
+        title={dt("Creators", {}, "CREATORS")}
         description={dt("Create rooms from voice channels.")}
         summary={tempVoiceSummary(data).creators}
         initialOpen
@@ -146,16 +147,16 @@ export function TempVoiceBody({ guild, data }: { guild: string; data: TempVoiceD
       </SettingsRow>
 
       <SettingsRow
-        title={text("LIVE ROOMS")}
+        rowId="temp-voice-body-live-rooms"
+        title={dt("row.Live rooms", {}, "LIVE ROOMS")}
         description={dt("See rooms currently open.")}
         summary={tempVoiceSummary(data).rooms}
       >
         <span className="live-count" role="status">
           <span className="live-dot" aria-hidden="true" />
-          <span
-            className="pixel-label muted"
-            aria-hidden="true"
-          >{`${data.rooms.length}/${data.limits.max_rooms}`}</span>
+          <span className="pixel-label muted" aria-hidden="true">
+            {dt("{count} of {max} live rooms open", { count: data.rooms.length, max: data.limits.max_rooms })}
+          </span>
           <span className="visually-hidden">
             {tf(spaTranslate("{open} of {max} rooms open"), {
               open: data.rooms.length,
@@ -182,7 +183,8 @@ export function TempVoiceBody({ guild, data }: { guild: string; data: TempVoiceD
       </SettingsRow>
 
       <SettingsRow
-        title={text("WHAT MEMBERS CAN DO")}
+        rowId="temp-voice-body-what-members-can-do"
+        title={dt("What members can do", {}, "WHAT MEMBERS CAN DO")}
         description={dt("Review owner controls.")}
         summary={tempVoiceSummary(data).controls}
       >

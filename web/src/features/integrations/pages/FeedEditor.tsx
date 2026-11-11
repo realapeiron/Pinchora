@@ -69,6 +69,7 @@ function FeedEditor({
   return (
     <>
       <SettingsRow
+        rowId="feed-editor-form"
         title={feed?.account ?? text("add-a-feed")}
         description={dt("Configure the post and preview it.")}
         summary={feed ? feedSummary(feed, list, info) : text("source")}

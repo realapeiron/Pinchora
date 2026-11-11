@@ -31,6 +31,7 @@ export function AutoModTest({
 }) {
   return (
     <SettingsRow
+      rowId="auto-mod-activity-test"
       title={t("ui.test")}
       description={dashboardText("Test rules without creating hits.")}
       summary={summary}
@@ -111,6 +112,7 @@ export function AutoModHits({
 }) {
   return (
     <SettingsRow
+      rowId="auto-mod-activity-hits"
       title={t("ui.hits")}
       description={dashboardText("Review recent rule hits.")}
       summary={summary}

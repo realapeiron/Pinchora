@@ -38,12 +38,18 @@ export function LevelRoles({
 
   return (
     <SettingsRow
-      title={spaTranslate("LEVEL ROLES")}
+      rowId="leveling-roles-level-roles"
+      title={t("row.Level roles", {}, "LEVEL ROLES")}
       description={t("Give roles when members reach a level.")}
       summary={levelingSummary({}, { levelRoles: items.length }).levelRoles}
     >
       <div className="settings-detail-fields">
-        <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_level_roles}`}</span>
+        <span className="pixel-label muted">
+          {t("{count} of {max} level roles used", {
+            count: items.length,
+            max: query.data?.max ?? LIMITS.max_level_roles,
+          })}
+        </span>
         <Field label={spaTranslate("When a member earns a new one")}>
           <Choice
             name="Level role mode"

@@ -109,7 +109,8 @@ function InvitesPage() {
           />
           <div className="settings-detail-list">
             <SettingsRow
-              title={t("REWARD ROLES")}
+              rowId="invites-reward-roles"
+              title={dashboardT("Reward roles", {}, "REWARD ROLES")}
               description={dashboardT("Set role rewards for eligible invites.")}
               summary={invitesSummary(invites.query.data.settings, invites.query.data.rewards).rewards}
             >

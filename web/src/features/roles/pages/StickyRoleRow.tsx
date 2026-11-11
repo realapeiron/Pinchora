@@ -14,6 +14,7 @@ export function StickyRoleRow({
 }) {
   return (
     <SettingsRow
+      rowId="sticky-role-row-sticky-roles"
       title={spaTranslate("Sticky roles")}
       description={t("Restore eligible roles when a member returns.")}
       summary={stickyRolesSummary(sticky)}

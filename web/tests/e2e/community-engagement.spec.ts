@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { countingChannelId } from "../discord-fixtures";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const stamp = Date.now();
 const guild = `${stamp}4`;
@@ -31,8 +31,8 @@ test("community pack settings and forms work on desktop and phone", async ({ pag
   await refreshStarted;
   try {
     await expect(page.getByText("Question queue")).toBeVisible();
-    await page.getByRole("button", { name: /COUNTING/ }).click();
-    await expect(page.getByRole("button", { name: /COUNTING/ })).toHaveAttribute("aria-expanded", "true");
+    await openRow(page, /Counting/);
+    await expect(page.getByRole("button", { name: /Counting/ })).toHaveAttribute("aria-expanded", "true");
     await page.getByLabel("Counting channel").selectOption({ label: "#counting" });
   } finally {
     releaseRefresh();
@@ -48,7 +48,7 @@ test("community pack settings and forms work on desktop and phone", async ({ pag
   const saved = await (await page.request.get(packPath)).json();
   expect(saved.counting.channel_id).toBe(countingChannelId(guild));
   expect(saved.qotd.channel_id).toBe("7001");
-  await page.getByRole("button", { name: /APPLICATION FORMS/ }).click();
+  await openRow(page, /Application forms/);
   await page.getByRole("button", { name: "New form" }).click();
   await page.getByLabel("Form name").fill("Helper");
   await page.getByLabel("Question 1").fill("Why would you like to help?");

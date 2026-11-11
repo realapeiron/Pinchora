@@ -33,7 +33,8 @@ export function XpAdmin({ guild }: { guild: string }) {
   return (
     <>
       <SettingsRow
-        title={t("MEMBER XP")}
+        rowId="xp-admin-member-xp"
+        title={dt("Member XP", {}, "MEMBER XP")}
         description={dt("Adjust a member's server XP.")}
         summary={memberXpSummary(picked?.name)}
       >
@@ -133,7 +134,8 @@ export function XpAdmin({ guild }: { guild: string }) {
       </SettingsRow>
 
       <SettingsRow
-        title={t("IMPORT FROM MEE6")}
+        rowId="xp-admin-import-from-mee6"
+        title={dt("Import from MEE6", {}, "IMPORT FROM MEE6")}
         description={dt("Import levels from another bot.")}
         summary={job.data?.status ?? levelingSummary({}).import}
       >

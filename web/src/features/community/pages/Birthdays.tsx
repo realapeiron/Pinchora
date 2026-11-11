@@ -95,6 +95,7 @@ function BirthdayBody({
       )}
       <div className="settings-detail-list">
         <SettingsRow
+          rowId="birthdays-announce-birthdays"
           title={t("Announce birthdays")}
           description={t("Post a pixel cake card once on each member’s local birthday.")}
           summary={summary.announcement}
@@ -125,6 +126,7 @@ function BirthdayBody({
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="birthdays-birthday-role"
           title={t("Birthday role")}
           description={t("Given for 24 hours, then removed by the timed roles ticker.")}
           summary={summary.role}
@@ -148,6 +150,7 @@ function BirthdayBody({
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="birthdays-server-time-zone"
           title={t("Server time zone")}
           description={t("Default for members who do not pick their own IANA time zone.")}
           summary={summary.zone}
@@ -178,6 +181,7 @@ function BirthdayBody({
           </div>
         </SettingsRow>
         <SettingsRow
+          rowId="birthdays-shell-gift"
           title={t("Shell gift")}
           description={t("0–500 shells. System paid once a year per player across servers.")}
           summary={summary.gift}
@@ -209,6 +213,7 @@ function BirthdayBody({
           summary={summary.message}
         />
         <SettingsRow
+          rowId="birthdays-allow-ages"
           title={t("Allow ages")}
           description={t("Ages appear only for members who also choose to show theirs.")}
           summary={summary.age}
@@ -218,6 +223,7 @@ function BirthdayBody({
           <p className="muted">{t("Ages appear only for members who also choose to show theirs.")}</p>
         </SettingsRow>
         <SettingsRow
+          rowId="birthdays-cake-day-badge"
           title={t("Cake Day badge")}
           description={t("Put a Cake Day ribbon on the birthday card.")}
           summary={summary.badge}

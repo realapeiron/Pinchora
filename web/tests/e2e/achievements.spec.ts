@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const guild = `${Date.now()}8`;
 const user = `${Date.now()}9`;
@@ -24,7 +24,7 @@ test("achievement editor, icon picker, preview and holder list fit desktop and p
   expect(response.ok()).toBeTruthy();
   const data = await response.json();
   expect(data.items[0].icon).toBe("shell");
-  await page.getByRole("button", { name: /^First Pearl/ }).click();
+  await openRow(page, /^First Pearl/);
   await page.getByRole("button", { name: "Who earned it" }).click();
   await expect(page.getByText("No one yet.")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });

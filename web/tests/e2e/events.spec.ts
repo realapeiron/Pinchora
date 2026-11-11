@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}8`;
@@ -9,8 +9,8 @@ test("create, preview, edit and duplicate an event at desktop and phone widths",
   await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/events`);
   await expect(page.getByRole("heading", { name: "EVENTS", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /UPCOMING · 0/ }).click();
-  await expect(page.getByRole("button", { name: /UPCOMING · 0/ })).toHaveAttribute("aria-expanded", "true");
+  await openRow(page, /Upcoming · 0/);
+  await expect(page.getByRole("button", { name: /Upcoming · 0/ })).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByText("No events on the calendar yet.")).toBeVisible();
   await shot(page, "events-empty-desktop", true);
   await page.getByRole("button", { name: "Create event" }).click();

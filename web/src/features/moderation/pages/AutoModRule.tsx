@@ -31,6 +31,7 @@ export function RuleCard({
   const scoped = ["honeypot", "media_only", "youtube_only"].includes(r.kind);
   return (
     <SettingsRow
+      rowId={`automod-rule-${r.id}`}
       title={`${t(`kind.${r.kind}`)}: ${r.name}`}
       description={r.discord_rule_id ? t("ui.native") : t("ui.local")}
       summary={automodRuleSummary(r, t)}

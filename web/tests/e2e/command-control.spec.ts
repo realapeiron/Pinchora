@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow } from "./helpers";
+import { devLogin, openRow, overflow } from "./helpers";
 test("command controls and backup preview work on desktop and phone", async ({ page }) => {
   const guild = `${Date.now()}64`;
   const user = `${Date.now()}65`;
@@ -7,17 +7,14 @@ test("command controls and backup preview work on desktop and phone", async ({ p
   await page.goto(`/g/${guild}/command-control`);
   await expect(page.getByRole("heading", { name: "Commands", exact: true })).toBeVisible();
   await page.getByLabel("Search commands", { exact: true }).fill("wordle");
-  await page.locator(".settings-detail-expand").filter({ hasText: "/play" }).click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: "/play" }));
   await page.getByRole("button", { name: "Edit command: /play wordle", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByLabel("Additional cooldown (seconds)").fill("60");
   await page.screenshot({ path: "../output/playwright/command-control-desktop.png", fullPage: true });
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page
-    .locator(".settings-detail-expand")
-    .filter({ hasText: /aliases/i })
-    .click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: /aliases/i }));
   await page.getByLabel("Alias", { exact: true }).fill("w");
   await page.getByLabel("Command", { exact: true }).selectOption("play wordle");
   await page.getByRole("button", { name: "Add alias", exact: true }).click();
@@ -46,10 +43,7 @@ test("command controls and backup preview work on desktop and phone", async ({ p
   expect(await overflow(page)).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Import these changes", exact: true }).click();
   await expect(page.getByText("Configuration imported. A restore point was saved first.")).toBeVisible();
-  await page
-    .locator(".settings-detail-expand")
-    .filter({ hasText: /restore points/i })
-    .click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: /restore points/i }));
   await expect(page.getByRole("button", { name: "Preview restore", exact: true })).toHaveCount(1);
   const pointsSaved = await (await page.request.get(`/api/guilds/${guild}/backup`)).json();
   expect(pointsSaved.points).toHaveLength(1);
@@ -86,21 +80,13 @@ test("switching cached guilds clears backup previews and command drafts", async 
   await expect(page.getByText("first-guild-only.json", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Import these changes", exact: true })).toHaveCount(0);
   await navigate(`/g/${second}/command-control`);
-  await page
-    .locator(".settings-detail-expand")
-    .filter({ hasText: /aliases/i })
-    .click();
+  const secondAliases = page.locator(".settings-detail-expand").filter({ hasText: /aliases/i });
+  await openRow(secondAliases);
   await expect(page.getByLabel("Alias", { exact: true })).toBeVisible();
   await navigate(`/g/${first}/command-control`);
-  await page
-    .locator(".settings-detail-expand")
-    .filter({ hasText: /aliases/i })
-    .click();
+  await openRow(page.locator(".settings-detail-expand").filter({ hasText: /aliases/i }));
   await page.getByLabel("Alias", { exact: true }).fill("firstguild");
   await navigate(`/g/${second}/command-control`);
-  await page
-    .locator(".settings-detail-expand")
-    .filter({ hasText: /aliases/i })
-    .click();
+  await openRow(secondAliases);
   await expect(page.getByLabel("Alias", { exact: true })).toHaveValue("");
 });

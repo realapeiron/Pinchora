@@ -1,12 +1,14 @@
 import { SettingsRow } from "../../../components/SettingsRow";
 
 export function SafetyFlagRow({
+  rowId,
   title,
   description,
   summary,
   enabled,
   onToggle,
 }: {
+  rowId: string;
   title: string;
   description: string;
   summary: string;
@@ -15,6 +17,7 @@ export function SafetyFlagRow({
 }) {
   return (
     <SettingsRow
+      rowId={rowId}
       title={title}
       description={description}
       summary={summary}

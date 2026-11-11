@@ -3,7 +3,7 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}5`;
@@ -22,7 +22,7 @@ test("set the mod-log and the ladder, shape the server log, and find both in the
   await expect(page.locator(".settings-detail-row")).toHaveCount(3);
   await page.getByLabel("Mod-log channel").selectOption({ label: "#mod-log" });
   await page.getByRole("switch", { name: "Tell members" }).click();
-  await page.getByRole("button", { name: /WARN LADDER/ }).click();
+  await openRow(page, /Warn ladder/);
   await page.getByRole("button", { name: "Add rung" }).click();
   await page.getByLabel("Warns", { exact: true }).fill("5");
   await page.getByLabel("Brings", { exact: true }).selectOption("kick");

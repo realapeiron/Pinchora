@@ -25,7 +25,8 @@ export function BirthdayMessage({
   const sample = draft.message.replaceAll("{user}", "@Mira").replaceAll("{age}", draft.allow_age ? "24" : "");
   return (
     <SettingsRow
-      title={t("THE MESSAGE")}
+      rowId="birthday-message-the-message"
+      title={dt("The message", {}, "THE MESSAGE")}
       description={dt("Write the birthday card message.")}
       summary={summary}
     >

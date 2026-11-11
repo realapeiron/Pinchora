@@ -127,8 +127,9 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
   return (
     <>
       <SettingsRow
+        rowId="feeds-following"
         title={text("following")}
-        description={dt("Review this subscription and its delivery.")}
+        description={dt("Manage the feeds this server follows and where posts go.")}
         summary={feedsSummary(list.items)}
         initialOpen
       >
@@ -136,7 +137,7 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
           className="muted counter"
           aria-label={text("count-of-max-feeds-used", { count: list.items.length, max: list.max })}
         >
-          {list.items.length}/{list.max} {text("used")}
+          {dt("row.{count} of {max} feeds used", { count: list.items.length, max: list.max })}
         </span>
         {(failure || save.isError) && (
           <p className="field-error" role="alert">

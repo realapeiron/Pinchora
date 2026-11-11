@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { devLogin, overflow } from "./helpers";
+import { devLogin, openRow, overflow } from "./helpers";
 const run = Date.now();
 const guild = `${run}1`;
 const user = `${run}2`;
@@ -11,13 +11,13 @@ test("AutoMod profiles, rule editing, safe preview, and responsive layouts", asy
   await expect(page.getByText(/Observation ends/)).toBeVisible();
   const rules = page.locator(".automod-page > .settings-detail-list > .settings-detail-row").nth(1);
   const rulesHead = rules.locator(":scope > .settings-detail-head > .settings-detail-expand");
-  await rulesHead.click();
+  await openRow(rulesHead);
   await expect(rulesHead).toHaveAttribute("aria-expanded", "true");
   await expect(rules.locator(".automod-rules > .settings-detail-row")).toHaveCount(16);
   const caps = rules
     .locator(".automod-rules > .settings-detail-row")
     .filter({ hasText: "Excessive capitals" });
-  await caps.locator(".settings-detail-expand").click();
+  await openRow(caps.locator(".settings-detail-expand"));
   await expect(caps.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await caps.getByText("Configure rule").click();
   await caps.getByLabel("Threshold", { exact: true }).fill("90");
@@ -39,7 +39,7 @@ test("AutoMod profiles, rule editing, safe preview, and responsive layouts", asy
   const testRow = page
     .locator(".automod-page .settings-detail-row")
     .filter({ has: page.locator("#am-test") });
-  await testRow.locator(".settings-detail-expand").click();
+  await openRow(testRow.locator(".settings-detail-expand"));
   await expect(testRow.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await page.getByLabel("Message text", { exact: true }).fill("THIS MESSAGE IS TOO LOUD");
   await page.getByRole("button", { name: "Run test", exact: true }).click();

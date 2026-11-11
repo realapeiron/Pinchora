@@ -28,10 +28,6 @@ export function ColorPalette({
   return (
     <>
       <div className="settings-detail-fields">
-        <h3 className="setting-name" style={{ marginTop: 24 }}>
-          {" "}
-          {spaTranslate("The palette")}{" "}
-        </h3>
         <p className="muted fine">
           {" "}
           {spaTranslate(
@@ -126,10 +122,6 @@ export function ColorMadeRoles({
     <div className="settings-detail-fields">
       {colors.roles.length > 0 && (
         <>
-          <h3 className="setting-name" style={{ marginTop: 24 }}>
-            {" "}
-            {spaTranslate("Colour roles made")}{" "}
-          </h3>
           <ul className="list" aria-label={spaTranslate("Colour roles")}>
             {colors.roles.map((r) => (
               <li key={r.role_id} className="list-row">

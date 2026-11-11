@@ -36,6 +36,7 @@ export function SafetyMessage({
 }) {
   return (
     <SettingsRow
+      rowId="safety-rows-message"
       title={t("message")}
       description={dashboardText("Edit the verification message and captcha preview.")}
       summary={summary}
@@ -99,7 +100,12 @@ export function SafetyExemptions({
   onChange: Change;
 }) {
   return (
-    <SettingsRow title={t("exempt_roles")} description={t("roles_hint")} summary={summary}>
+    <SettingsRow
+      rowId="safety-rows-exempt-roles"
+      title={t("exempt_roles")}
+      description={t("roles_hint")}
+      summary={summary}
+    >
       <div className="settings-detail-fields">
         <p className="muted">{t("roles_hint")}</p>
         <Field
@@ -168,6 +174,7 @@ export function SafetyExemptions({
 export function SafetyJoins({ saved, t, summary }: { saved: SafetyData; t: Text; summary: string }) {
   return (
     <SettingsRow
+      rowId="safety-rows-joins"
       title={t("joins")}
       description={dashboardText("Review recent verification joins.")}
       summary={summary}
@@ -202,6 +209,7 @@ export function SafetyJoins({ saved, t, summary }: { saved: SafetyData; t: Text;
 export function SafetyEvents({ saved, t, summary }: { saved: SafetyData; t: Text; summary: string }) {
   return (
     <SettingsRow
+      rowId="safety-rows-events"
       title={t("events")}
       description={dashboardText("Review recent raid events.")}
       summary={summary}

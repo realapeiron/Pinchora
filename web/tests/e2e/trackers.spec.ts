@@ -1,5 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}8`;
@@ -15,10 +15,10 @@ test("tracker channels and Minecraft watch list work on desktop and phone", asyn
   await expect(page.getByRole("heading", { name: "Game trackers", exact: true })).toHaveCount(1);
   const save = page.getByRole("button", { name: "Save changes", exact: true });
   await expect(save).toBeDisabled();
-  await page.getByRole("button", { name: /^League of Legends/ }).click();
-  await page.getByRole("button", { name: /^Valorant/ }).click();
-  await page.getByRole("button", { name: /^MINECRAFT WATCH LIST/ }).click();
-  await page.getByRole("button", { name: /^MINECRAFT NEWS/ }).click();
+  await openRow(page, /^League of Legends/);
+  await openRow(page, /^Valorant/);
+  await openRow(page, /^Minecraft watch list/);
+  await openRow(page, /^Minecraft news/);
   await page.locator("#patch-lol").selectOption("7001");
   await expect(save).toBeEnabled();
   await page.locator("#patch-lol").selectOption("");

@@ -25,7 +25,12 @@ export function RoomRow({
   const full = room.user_limit > 0 ? `${room.members}/${room.user_limit}` : String(room.members);
   return (
     <li>
-      <SettingsRow title={`🔊 ${name}`} description={dt("Review room activity.")} summary={roomSummary(room)}>
+      <SettingsRow
+        rowId={`room-${room.channel_id}`}
+        title={`🔊 ${name}`}
+        description={dt("Review room activity.")}
+        summary={roomSummary(room)}
+      >
         <div className="room">
           <span className="room-owner">
             <span className="pixel-label muted">{t("OWNER")}</span> {owner}

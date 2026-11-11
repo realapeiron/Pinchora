@@ -102,6 +102,7 @@ export function RolePanels({
             {panels.map((panel) => (
               <div key={panel.id} data-panel={panel.id}>
                 <SettingsRow
+                  rowId={`role-panel-${panel.id}`}
                   key={`${panel.id}-${editing === panel.id}`}
                   title={panel.title}
                   description={t("Edit the roles, message and posting channel.")}
@@ -199,8 +200,9 @@ export function RolePanels({
       {editing === "new" && (
         <div className="role-panel-settings">
           <SettingsRow
+            rowId="role-panels-new-panel"
             key="new-panel"
-            title={spaTranslate("NEW PANEL")}
+            title={t("row.New panel", {}, "NEW PANEL")}
             description={t("Create a role panel and preview its message.")}
             summary={t("Draft")}
             initialOpen

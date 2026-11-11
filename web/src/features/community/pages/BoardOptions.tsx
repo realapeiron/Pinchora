@@ -21,6 +21,7 @@ export function BoardOptions({
   return (
     <>
       <SettingsRow
+        rowId={`board-${board.id}-channels`}
         title={dt("Only from channels")}
         description={dt("Limit which channels can send posts to this board.")}
         summary={summary.exclusions}
@@ -86,6 +87,7 @@ export function BoardOptions({
         ] as const
       ).map(([key, title, description]) => (
         <SettingsRow
+          rowId={`board-${board.id}-${key}`}
           key={key}
           title={title}
           description={description}
@@ -98,6 +100,7 @@ export function BoardOptions({
         </SettingsRow>
       ))}
       <SettingsRow
+        rowId={`board-${board.id}-weights`}
         title={dt("Role weights")}
         description={dt("Give selected roles more voting weight.")}
         summary={summary.weights}

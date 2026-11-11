@@ -61,7 +61,8 @@ export function ColorRoles({
   return (
     <div className="settings-detail-list color-role-settings">
       <SettingsRow
-        title={spaTranslate("COLOUR ROLES")}
+        rowId="color-roles-colour-roles"
+        title={t("row.Colour roles", {}, "COLOUR ROLES")}
         description={spaTranslate("Let members pick a colour")}
         summary={colorRolesSummary(colors)}
         enabled={colors.enabled}
@@ -70,7 +71,9 @@ export function ColorRoles({
         toggleDisabled={write.isPending}
       >
         <div className="settings-detail-fields">
-          <span className="pixel-label muted">{`${colors.roles.length}/${colors.max} roles made`}</span>
+          <span className="pixel-label muted">
+            {t("{count} of {max} colour roles made", { count: colors.roles.length, max: colors.max })}
+          </span>
           <p className="muted panel-lead">
             {" "}
             {spaTranslate("Members colour their name with")} <code>/color pick</code>
@@ -166,6 +169,7 @@ export function ColorRoles({
         </div>
       </SettingsRow>
       <SettingsRow
+        rowId="color-roles-the-palette"
         title={spaTranslate("The palette")}
         description={t("Preview colours and create the missing roles.")}
         summary={t("{count} colours · {missing} not made", { count: colors.palette.length, missing })}
@@ -183,6 +187,7 @@ export function ColorRoles({
 
       {colors.roles.length > 0 && (
         <SettingsRow
+          rowId="color-roles-colour-roles-made"
           title={spaTranslate("Colour roles made")}
           description={t("Review or remove created colour roles.")}
           summary={t("{count} roles made", { count: colors.roles.length })}

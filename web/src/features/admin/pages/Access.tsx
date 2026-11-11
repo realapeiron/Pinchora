@@ -75,14 +75,15 @@ function AccessEditor({
       </p>
       <div className="settings-detail-list">
         <SettingsRow
-          title={t("MANAGER ROLES")}
+          rowId="access-manager-roles"
+          title={dashboardT("Manager roles", {}, "MANAGER ROLES")}
           description={dashboardT("Manage roles that can open dashboard areas.")}
           summary={accessSummary(draft)}
           initialOpen
         >
           <div className="settings-detail-fields">
             <span className="pixel-label muted">
-              {draft.length}/{initial.max}
+              {dashboardT("{count} of {max} manager roles used", { count: draft.length, max: initial.max })}
             </span>
             <p className="muted panel-lead">
               {t(

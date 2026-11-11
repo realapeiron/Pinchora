@@ -56,6 +56,7 @@ export function AchievementEditor({
   const setEditing = onCancel;
   return (
     <SettingsRow
+      rowId="achievement-editor-form"
       title={editing === "new" ? text("Add achievement") : draft.name}
       description={dt("Manage milestones and rewards.")}
       summary={achievementSummary(draft)}

@@ -45,12 +45,18 @@ export function StoreItems({
 
   return (
     <SettingsRow
-      title={spaTranslate("STORE")}
+      rowId="store-items-store"
+      title={t("row.Store", {}, "STORE")}
       description={t("Manage roles members can buy.")}
       summary={pointsSummary(settings, items.length).store}
     >
       <div className="settings-detail-fields">
-        <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_store_items}`}</span>
+        <span className="pixel-label muted">
+          {t("{count} of {max} store items used", {
+            count: items.length,
+            max: query.data?.max ?? LIMITS.max_store_items,
+          })}
+        </span>
         <p className="muted panel-lead">
           {" "}
           {spaTranslate("Roles members can buy with")} {name} {spaTranslate("in")} <code>/store</code>

@@ -25,7 +25,12 @@ export function AntiNukeEvents({
   setNotice: (value: string | null) => void;
 }) {
   return (
-    <SettingsRow title={t("ui.events")} description={t("ui.events_hint")} summary={summary}>
+    <SettingsRow
+      rowId="anti-nuke-events-events"
+      title={t("ui.events")}
+      description={t("ui.events_hint")}
+      summary={summary}
+    >
       <div className="settings-detail-fields">
         <p className="muted">{t("ui.events_hint")}</p>
         {saved.events.length === 0 ? (

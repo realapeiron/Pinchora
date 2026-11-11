@@ -1,7 +1,7 @@
 // Shared steps for the Playwright runs: a dev login with a few servers, and screenshots for people
 // (and agents) to look at in test-results/screens/.
 
-import { type Cookie, type Page, expect } from "@playwright/test";
+import { type Cookie, type Locator, type Page, expect } from "@playwright/test";
 
 /** A pixel avatar for every Discord CDN image, so screenshots do not depend on the network. */
 const AVATAR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges">
@@ -56,6 +56,20 @@ export async function shot(page: Page, name: string, fullPage = false) {
 /** How far the page scrolls sideways; a phone layout must not. */
 export function overflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+}
+
+/** Open a settings row without toggling one already open in this session. */
+export async function openRow(root: Page | Locator, name?: string | RegExp) {
+  const header = name === undefined ? (root as Locator) : root.getByRole("button", { name });
+  if ((await header.getAttribute("aria-expanded")) === "false") await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+}
+
+/** Close a settings row without toggling one already closed in this session. */
+export async function closeRow(root: Page | Locator, name?: string | RegExp) {
+  const header = name === undefined ? (root as Locator) : root.getByRole("button", { name });
+  if ((await header.getAttribute("aria-expanded")) === "true") await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "false");
 }
 
 export async function switchPanelLanguage(page: Page, language: "EN" | "TR") {

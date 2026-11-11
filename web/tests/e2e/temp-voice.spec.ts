@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}7`;
@@ -127,13 +127,13 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
     );
   if (seeded) {
     await page.reload();
-    await page.getByRole("button", { name: /^LIVE ROOMS/ }).click();
+    await openRow(page, /^Live rooms/);
     const rooms = page.getByRole("list", { name: "Live rooms" });
     await expect(rooms.locator("li")).toHaveCount(2);
     await expect(rooms.locator("li", { hasText: "Gaming" })).toContainText("LOCKED");
     await expect(rooms.locator("li", { hasText: "Study hall" })).toContainText("HIDDEN");
     await expect(rooms.locator("li").first()).toContainText("OWNER");
-    await expect(page.getByRole("status").filter({ hasText: "2/60" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "2 of 60 live rooms open" })).toBeVisible();
     await expect(row).toContainText("2 open now");
   }
   await shot(page, "temp-voice-desktop", true);
@@ -144,7 +144,8 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "TEMP VOICE", exact: true })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "temp-voice-phone", true);
-  await page.getByRole("button", { name: /^🔊 Lounge/ }).click();
+  const creatorRow = page.getByRole("button", { name: /^🔊 Lounge/ });
+  await openRow(creatorRow);
   await page.getByRole("button", { name: "Edit Lounge" }).click();
   await expect(form(page, "Lounge")).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -160,11 +161,12 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
   await page.getByRole("button", { name: "Really remove Lounge" }).click();
   await expect(page.getByText(/^No creator channels yet\./)).toBeVisible();
   if (seeded) {
-    // Removing the creator re-renders the page; open the rooms row again if it closed.
-    const roomsRow = page.getByRole("button", { name: /^LIVE ROOMS/ });
-    await expect(roomsRow).toContainText("2 live rooms");
-    if ((await roomsRow.getAttribute("aria-expanded")) !== "true") await roomsRow.click();
-    await expect(page.getByRole("list", { name: "Live rooms" }).locator("li")).toHaveCount(2);
+    const roomsRow = page.getByRole("button", { name: /^Live rooms/ });
+    await expect(roomsRow).toHaveAttribute("aria-expanded", "true");
+    const rooms = page.getByRole("list", { name: "Live rooms" });
+    await expect(rooms.locator("li")).toHaveCount(2);
+    await expect(rooms.locator("li", { hasText: "Gaming" })).toContainText("LOCKED");
+    await expect(rooms.locator("li", { hasText: "Study hall" })).toContainText("HIDDEN");
   }
   await shot(page, "temp-voice-removed", true);
 });

@@ -1,6 +1,7 @@
 import { SettingsRow } from "../../../components/SettingsRow";
 
 export function AntiNukeFlagRow({
+  rowId,
   title,
   description,
   summary,
@@ -8,6 +9,7 @@ export function AntiNukeFlagRow({
   disabled,
   onToggle,
 }: {
+  rowId: string;
   title: string;
   description: string;
   summary: string;
@@ -17,6 +19,7 @@ export function AntiNukeFlagRow({
 }) {
   return (
     <SettingsRow
+      rowId={rowId}
       title={title}
       description={description}
       summary={summary}

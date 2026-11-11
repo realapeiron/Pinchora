@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { type Page, expect, test } from "@playwright/test";
 
-import { devLogin, overflow, shot } from "./helpers";
+import { devLogin, openRow, overflow, shot } from "./helpers";
 
 const run = Date.now();
 const guild = `${run}3`;
@@ -95,11 +95,11 @@ test("a panel is made, previewed and posted; the settings save", async ({ page }
   expect(api.panels[0].message_id).toBeTruthy();
 
   // Settings: a category, a log channel, auto-close; the channel name shows what it makes.
-  await page.getByRole("button", { name: /Ticket categories and names/ }).click();
+  await openRow(page, /Ticket categories and names/);
   await page.getByLabel("Ticket category", { exact: true }).selectOption({ label: "▸ Staff" });
-  await page.getByRole("button", { name: /Transcripts/ }).click();
+  await openRow(page, /Transcripts/);
   await page.getByLabel("Log channel", { exact: true }).selectOption({ label: "#mod-log" });
-  await page.getByRole("button", { name: /Ticket limits and auto-close/ }).click();
+  await openRow(page, /Ticket limits and auto-close/);
   await page.getByLabel("Auto-close after (hours)", { exact: true }).fill("48");
   await page.getByLabel("Channel name", { exact: true }).fill("{topic}-{number}");
   await expect(page.getByText("#billing-0042")).toBeVisible();
@@ -123,7 +123,7 @@ test("tickets opened on the panel show in the table and one shows its transcript
   seedTickets();
   await login(page);
   await page.goto(`/g/${guild}/tickets`);
-  await page.getByRole("button", { name: /Ticket queue/ }).click();
+  await openRow(page, /Ticket queue/);
   await expect(page.getByRole("button", { name: /Ticket queue/ })).toHaveAttribute("aria-expanded", "true");
   const table = page.getByRole("table");
   await expect(table.getByRole("row")).toHaveCount(4);
@@ -160,7 +160,7 @@ test("tickets opened on the panel show in the table and one shows its transcript
   await shot(page, "tickets-transcript", true);
 
   await page.getByRole("link", { name: "All tickets" }).click();
-  await page.getByRole("button", { name: /Ticket queue/ }).click();
+  await openRow(page, /Ticket queue/);
   const support = table.locator('[data-ticket="3"]');
   await support.getByRole("button", { name: "Close" }).click();
   await expect(support).toContainText("CLOSED");
@@ -174,7 +174,7 @@ test("ticket operation settings and panel FAQ save on desktop and phone", async 
   await login(page);
   await page.goto(`/g/${guild}/tickets`);
   await expect(page.locator("h1")).toHaveCount(1);
-  await page.getByRole("button", { name: /Support operations/ }).click();
+  await openRow(page, /Support operations/);
   const operations = page.getByRole("region", { name: "SUPPORT HOURS & SAVED REPLIES" });
   await operations.getByLabel("Support timezone").fill("Europe/Istanbul");
   await operations.getByRole("button", { name: "Add window" }).click();
@@ -207,7 +207,7 @@ test("the tickets pages fit a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/g/${guild}/tickets`);
   await expect(page.getByRole("heading", { name: "TICKETS", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /Ticket queue/ }).click();
+  await openRow(page, /Ticket queue/);
   await expect(page.locator(".tk-table")).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "tickets-phone", true);

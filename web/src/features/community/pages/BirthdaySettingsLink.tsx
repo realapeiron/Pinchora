@@ -11,7 +11,8 @@ export function BirthdaySummary({ guild }: { guild: string }) {
   const t = birthdayWords(data?.strings, data?.language);
   return (
     <SettingsRow
-      title={t("BIRTHDAYS")}
+      rowId="birthday-settings-link-birthdays"
+      title={dt("row.Birthdays", {}, "BIRTHDAYS")}
       description={dt("Open birthday celebration settings.")}
       summary={birthdaySettingsSummary(!!data?.settings.enabled)}
     >

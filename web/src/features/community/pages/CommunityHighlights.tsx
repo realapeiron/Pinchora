@@ -48,7 +48,8 @@ export function CommunityHighlights() {
       <div className="settings-detail-list">
         {query.data && (
           <SettingsRow
-            title={t("AVAILABILITY")}
+            rowId="community-highlights-availability"
+            title={dt("row.Availability", {}, "AVAILABILITY")}
             description={dt("Check whether keyword alerts can run.")}
             summary={communitySummary(query.data).availability}
             initialOpen
@@ -69,7 +70,8 @@ export function CommunityHighlights() {
         {personal.isError && <Problem error={personal.error} />}
         {personal.data && (
           <SettingsRow
-            title={t("WORDS YOU FOLLOW")}
+            rowId="community-highlights-words-you-follow"
+            title={dt("Words you follow", {}, "WORDS YOU FOLLOW")}
             description={dt("Manage your private keyword alerts.")}
             summary={personalSummary(personal.data).highlights}
           >

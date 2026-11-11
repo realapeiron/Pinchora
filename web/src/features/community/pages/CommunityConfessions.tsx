@@ -65,7 +65,8 @@ function ConfessionForm({
       )}
       <div className="settings-detail-list">
         <SettingsRow
-          title={t("REVIEW SETTINGS")}
+          rowId="community-confessions-review-settings"
+          title={dt("Review settings", {}, "REVIEW SETTINGS")}
           description={dt("Choose staff and public channels for confessions.")}
           summary={confessionSettingsSummary(enabled)}
           initialOpen
@@ -98,7 +99,8 @@ function ConfessionForm({
           </div>
         </SettingsRow>
         <SettingsRow
-          title={t("REVIEW QUEUE")}
+          rowId="community-confessions-review-queue"
+          title={dt("Review queue", {}, "REVIEW QUEUE")}
           description={dt("Approve or deny pending confessions.")}
           summary={communitySummary(data).queue}
         >
@@ -136,7 +138,8 @@ function ConfessionForm({
           )}
         </SettingsRow>
         <SettingsRow
-          title={t("REPORTED CONFESSIONS")}
+          rowId="community-confessions-reported-confessions"
+          title={dt("Reported confessions", {}, "REPORTED CONFESSIONS")}
           description={dt("Review reports and block authors.")}
           summary={communitySummary(data).reports}
         >

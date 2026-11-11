@@ -7,7 +7,8 @@ export function ModmailSection() {
   const { data, info, guild, mail, setMail, busy, write, summary } = useEngagementContext();
   return (
     <SettingsRow
-      title={t("MODMAIL")}
+      rowId="modmail-section-modmail"
+      title={dt("Modmail", {}, "MODMAIL")}
       description={dt("Route member messages to staff threads.")}
       summary={summary.modmail ?? dt("Off")}
       enabled={mail.enabled}

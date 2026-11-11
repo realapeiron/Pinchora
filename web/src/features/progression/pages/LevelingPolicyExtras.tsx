@@ -48,7 +48,8 @@ export function LevelingPolicyExtras({
   return (
     <>
       <SettingsRow
-        title={tr("VOICE LEVEL ROLES")}
+        rowId="leveling-policy-extras-voice-level-roles"
+        title={t("Voice level roles", {}, "VOICE LEVEL ROLES")}
         description={t("Give roles for voice levels.")}
         summary={levelingSummary({}, { voiceRoles: data.voiceRoles.data?.items.length }).voiceRoles}
       >
@@ -124,7 +125,8 @@ export function LevelingPolicyExtras({
         </div>
       </SettingsRow>
       <SettingsRow
-        title={tr("TOP GAINERS THIS WEEK")}
+        rowId="leveling-policy-extras-top-gainers-this-week"
+        title={t("Top gainers this week", {}, "TOP GAINERS THIS WEEK")}
         description={t("See who earned the most XP this week.")}
         summary={
           data.highlights.data?.items.length
@@ -150,7 +152,8 @@ export function LevelingPolicyExtras({
         </div>
       </SettingsRow>
       <SettingsRow
-        title={tr("IMPORT LEVELS FROM ANOTHER BOT")}
+        rowId="leveling-policy-extras-import-levels-from-another-bot"
+        title={t("Import levels from another bot", {}, "IMPORT LEVELS FROM ANOTHER BOT")}
         description={t("Import levels from another bot.")}
         summary={
           previewId
