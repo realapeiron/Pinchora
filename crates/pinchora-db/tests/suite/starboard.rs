@@ -112,6 +112,28 @@ async fn multiple_boards_and_vote_channels_are_independent() {
 }
 
 #[tokio::test]
+async fn saving_vote_for_current_guild_updates_its_list() {
+    let _isolation = crate::support::shared().await;
+    let Some(db) = db(5).await else { return };
+    let [previous_guild, current_guild, channel, ..] = ids();
+    let mut vote = VoteChannel {
+        channel_id: channel as i64,
+        guild_id: previous_guild as i64,
+        up_emoji: "▲".into(),
+        down_emoji: "▼".into(),
+        only_media: false,
+        create_thread: false,
+        enabled: true,
+    };
+    db.save_vote(&vote).await.unwrap();
+    vote.guild_id = current_guild as i64;
+    db.save_vote(&vote).await.unwrap();
+    assert!(db.votes(previous_guild).await.unwrap().is_empty());
+    assert_eq!(db.votes(current_guild).await.unwrap()[0].channel_id, channel as i64);
+    assert!(db.delete_vote(current_guild, channel).await.unwrap());
+}
+
+#[tokio::test]
 async fn fourth_board_is_refused_even_from_parallel_writers() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db(5).await else { return };

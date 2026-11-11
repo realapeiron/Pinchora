@@ -264,7 +264,7 @@ impl Db {
     }
 
     pub async fn save_vote(&self, vote: &VoteChannel) -> anyhow::Result<()> {
-        sqlx::query("INSERT INTO vote_channels (channel_id,guild_id,up_emoji,down_emoji,only_media,create_thread,enabled) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (channel_id) DO UPDATE SET up_emoji=EXCLUDED.up_emoji,down_emoji=EXCLUDED.down_emoji,only_media=EXCLUDED.only_media,create_thread=EXCLUDED.create_thread,enabled=EXCLUDED.enabled")
+        sqlx::query("INSERT INTO vote_channels (channel_id,guild_id,up_emoji,down_emoji,only_media,create_thread,enabled) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (channel_id) DO UPDATE SET guild_id=EXCLUDED.guild_id,up_emoji=EXCLUDED.up_emoji,down_emoji=EXCLUDED.down_emoji,only_media=EXCLUDED.only_media,create_thread=EXCLUDED.create_thread,enabled=EXCLUDED.enabled")
             .bind(vote.channel_id).bind(vote.guild_id).bind(&vote.up_emoji).bind(&vote.down_emoji)
             .bind(vote.only_media).bind(vote.create_thread).bind(vote.enabled).execute(self.pool()).await?;
         Ok(())

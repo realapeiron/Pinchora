@@ -1,9 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { devLogin, overflow } from "./helpers";
 
 const stamp = Date.now();
 const guild = `${stamp}1`;
 const user = `${stamp}2`;
+
+async function openRow(page: Page, title: string) {
+  const row = page
+    .locator(".settings-detail-row")
+    .filter({ has: page.locator(".settings-detail-copy strong", { hasText: title }) });
+  const button = row.locator(".settings-detail-expand");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+}
 
 test("community tools pages and personal lists work at desktop and phone widths", async ({ page }) => {
   await devLogin(page, user, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "0" }]);
@@ -22,6 +31,7 @@ test("community tools pages and personal lists work at desktop and phone widths"
     await page.goto(`/g/${guild}/${path}`);
     await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.locator(".settings-detail-row").first()).toBeVisible();
   }
 
   await page.goto(`/g/${guild}/reminders`);
@@ -29,6 +39,7 @@ test("community tools pages and personal lists work at desktop and phone widths"
   await expect(page.getByRole("button", { name: "Add reminder" })).toBeEnabled();
   await page.getByRole("button", { name: "Add reminder" }).click();
   await expect(page.getByText("Check the reef")).toBeVisible();
+  await openRow(page, "CHECKLIST");
   await page.getByLabel("New task").fill("Welcome newcomers");
   await page.getByRole("button", { name: "Add task" }).click();
   await expect(page.getByText("Welcome newcomers")).toBeVisible();
@@ -82,6 +93,7 @@ test("community forms preserve failed drafts, surface review errors and send onl
   });
   await page.goto(`/g/${guild}/confessions`);
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await openRow(page, "REVIEW QUEUE");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(page.getByRole("status")).toBeVisible();
   await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();

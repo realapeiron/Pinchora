@@ -177,3 +177,27 @@
   max-width: 440px;
   margin: var(--space-16) 0;
 }
+:where(.shell-page) .starboard-page .settings-detail-row .star-grid,
+:where(.shell-page) .starboard-page .settings-detail-row .star-options,
+:where(.shell-page) .starboard-page .settings-detail-row .star-form-grid {
+  min-width: 0;
+}
+:where(.shell-page) .starboard-page .starboard-editor .settings-detail-preview {
+  align-content: start;
+}
+:where(.shell-page) .starboard-page .starboard-editor .star-form-actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  :where(.shell-page) .starboard-page .settings-detail-row .star-options,
+  :where(.shell-page) .starboard-page .settings-detail-row .star-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .starboard-page .star-weight-inputs select {
+    min-width: 0;
+    width: 100%;
+  }
+}
+:where(.shell-page) .starboard-page .settings-detail-row .panel-lead {
+  margin: 0;
+}

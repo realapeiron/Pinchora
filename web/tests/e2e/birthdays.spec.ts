@@ -13,13 +13,18 @@ test("birthdays settings, preview and phone layout", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/birthdays`);
   await expect(page.getByRole("heading", { name: "BIRTHDAYS", exact: true })).toBeVisible();
-  await expect(page.getByText("No shared birthdays in the next 30 days.")).toBeVisible();
+  await expect(
+    page.locator(".settings-detail-summary", { hasText: "No shared birthdays in the next 30 days." }),
+  ).toBeVisible();
   await shot(page, "birthdays-desktop", true);
   await page.getByRole("switch", { name: "Announce birthdays" }).click();
   await page.getByLabel("Announcement channel").selectOption("7001");
+  await page.getByRole("button", { name: /^Server time zone/ }).click();
   await page.getByLabel("Server time zone").fill("Europe/Istanbul");
+  await page.getByRole("button", { name: /^Shell gift/ }).click();
   await page.getByLabel("Shell gift").fill("100");
   await page.getByRole("switch", { name: "Cake Day badge" }).click();
+  await page.getByRole("button", { name: /^THE MESSAGE/ }).click();
   await page.getByRole("button", { name: "Preview card" }).click();
   await expect(page.getByRole("img", { name: "Birthday card preview" })).toContainText("CAKE DAY");
   await shot(page, "birthdays-preview", true);

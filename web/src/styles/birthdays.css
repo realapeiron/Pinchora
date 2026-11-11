@@ -99,3 +99,19 @@
     display: none;
   }
 }
+:where(.shell-page) .birthdays-page .settings-detail-preview .birthday-preview {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+}
+:where(.shell-page) .birthdays-page .settings-detail-preview .birthday-cake {
+  max-width: 100%;
+}
+:where(.shell-page) .birthdays-page .settings-detail-row .birthday-chips {
+  margin: 0;
+  flex-wrap: wrap;
+}
+:where(.shell-page) .birthdays-page .settings-detail-row .panel-lead {
+  margin: 0;
+}
