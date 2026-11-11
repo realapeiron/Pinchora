@@ -1,13 +1,17 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { translate as tr } from "../../../i18n";
 import { Field, SwitchRow } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
+import { SettingsRow } from "../../../components/SettingsRow";
+import { t } from "../../../i18n/dashboard";
+import { levelingSummary } from "./levelingSummary";
+import { LevelingPolicyExtras } from "./LevelingPolicyExtras";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
-import { ChannelPicker, RolePicker, RoleTag } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/Pickers";
 import type { GuildInfo } from "../../../lib/api";
 import { useMe } from "../../../lib/queries";
-import { type Curve, type LevelingPolicy, readLevelImport, useLevelingPolicy } from "../api/levelingPolicy";
+import { type Curve, type LevelingPolicy, useLevelingPolicy } from "../api/levelingPolicy";
 
 const apiErrors: Record<string, () => string> = {
   "Leave grace must be at most 604800 seconds.": () => tr("Leave grace must be at most 604800 seconds."),
@@ -110,15 +114,6 @@ function Editor({
 }) {
   const [draft, setDraft] = useState(saved);
   const [lastSlug, setLastSlug] = useState(saved.vanity_slug ?? "");
-  const [file, setFile] = useState("");
-  const fileVersion = useRef(0);
-  const previewVersion = useRef(0);
-  const [format, setFormat] = useState<"json" | "csv">("json");
-  const [mode, setMode] = useState<"merge" | "replace">("merge");
-  const [previewId, setPreviewId] = useState<string | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [voiceRole, setVoiceRole] = useState<string | null>(null);
-  const [voiceRoleLevel, setVoiceRoleLevel] = useState(5);
   const set = <K extends keyof LevelingPolicy>(key: K, value: LevelingPolicy[K]) =>
     setDraft((old) => ({ ...old, [key]: value }));
   const number = (
@@ -160,23 +155,6 @@ function Editor({
       <PixelToggle label={tr(label)} checked={draft[key]} onChange={(on) => set(key, on)} />
     </label>
   );
-  const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const version = ++fileVersion.current;
-    ++previewVersion.current;
-    const picked = event.target.files?.[0];
-    setPreviewId(null);
-    setFile("");
-    setFileError(null);
-    if (!picked) return;
-    try {
-      const loaded = await readLevelImport(picked);
-      if (version !== fileVersion.current) return;
-      setFile(loaded.data);
-      setFormat(loaded.format);
-    } catch {
-      if (version === fileVersion.current) setFileError(tr("File must be readable and at most 2 MB."));
-    }
-  };
   const kind = curveKind(draft.curve);
   const coeff =
     kind === "linear"
@@ -196,348 +174,179 @@ function Editor({
     (draft.vanity_slug !== null && !/^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/.test(draft.vanity_slug));
   return (
     <>
-      <Panel title={tr("XP OPTIONS")}>
-        <p className="muted panel-lead">
-          {tr(
-            "Choose how members earn levels. Changes to the curve recalculate displayed levels from existing XP.",
-          )}
-        </p>
-        <Field label={tr("Level curve")} htmlFor="parity-curve">
-          <select
-            id="parity-curve"
-            className="pixel-input pixel-select"
-            value={kind}
-            onChange={(e) => set("curve", chooseCurve(e.target.value))}
-          >
-            <option value="classic">{tr("Classic")}</option>
-            <option value="mee6">{tr("MEE6 style")}</option>
-            <option value="linear">{tr("Linear")}</option>
-            <option value="custom">{tr("Custom polynomial")}</option>
-          </select>
-        </Field>
-        {coeff && (
-          <div className="form-grid">
-            <Field label={tr("Base XP")} htmlFor="parity-base">
-              <input
-                id="parity-base"
-                className="pixel-input input-short"
-                type="number"
-                min={10}
-                max={100000}
-                value={coeff.base}
-                onChange={(e) =>
-                  set(
-                    "curve",
-                    kind === "linear"
-                      ? ({ linear: { ...coeff, base: Number(e.target.value) } } as Curve)
-                      : ({ polynomial: { ...coeff, base: Number(e.target.value) } } as Curve),
-                  )
-                }
-              />
-            </Field>
-            <Field label={tr("Linear coefficient")} htmlFor="parity-linear">
-              <input
-                id="parity-linear"
-                className="pixel-input input-short"
-                type="number"
-                min={0}
-                max={10000}
-                value={"per_level" in coeff ? coeff.per_level : coeff.linear}
-                onChange={(e) =>
-                  set(
-                    "curve",
-                    kind === "linear"
-                      ? ({ linear: { ...coeff, per_level: Number(e.target.value) } } as Curve)
-                      : ({ polynomial: { ...coeff, linear: Number(e.target.value) } } as Curve),
-                  )
-                }
-              />
-            </Field>
-            {kind === "custom" && (
-              <Field label={tr("Quadratic coefficient")} htmlFor="parity-quadratic">
+      <SettingsRow
+        title={t("Chat XP rules")}
+        description={t("Set curves, earning sources and leaderboard options.")}
+        summary={levelingSummary({}, {}, draft).policy}
+        initialOpen
+      >
+        <div className="settings-detail-fields">
+          <p className="muted panel-lead">
+            {tr(
+              "Choose how members earn levels. Changes to the curve recalculate displayed levels from existing XP.",
+            )}
+          </p>
+          <Field label={tr("Level curve")} htmlFor="parity-curve">
+            <select
+              id="parity-curve"
+              className="pixel-input pixel-select"
+              value={kind}
+              onChange={(e) => set("curve", chooseCurve(e.target.value))}
+            >
+              <option value="classic">{tr("Classic")}</option>
+              <option value="mee6">{tr("MEE6 style")}</option>
+              <option value="linear">{tr("Linear")}</option>
+              <option value="custom">{tr("Custom polynomial")}</option>
+            </select>
+          </Field>
+          {coeff && (
+            <div className="form-grid">
+              <Field label={tr("Base XP")} htmlFor="parity-base">
                 <input
-                  id="parity-quadratic"
+                  id="parity-base"
                   className="pixel-input input-short"
                   type="number"
-                  min={0}
-                  max={1000}
-                  value={"quadratic" in coeff ? coeff.quadratic : 0}
+                  min={10}
+                  max={100000}
+                  value={coeff.base}
                   onChange={(e) =>
-                    set("curve", { polynomial: { ...coeff, quadratic: Number(e.target.value) } } as Curve)
+                    set(
+                      "curve",
+                      kind === "linear"
+                        ? ({ linear: { ...coeff, base: Number(e.target.value) } } as Curve)
+                        : ({ polynomial: { ...coeff, base: Number(e.target.value) } } as Curve),
+                    )
                   }
                 />
               </Field>
-            )}
-          </div>
-        )}
-        <div className="form-grid">
-          {number("message_min", "Minimum message XP", 1, 1000)}
-          {number("message_max", "Maximum message XP", 1, 1000)}
-          {number("message_cooldown_secs", "Message cooldown (seconds)", 5, 3600)}
-          {number("reaction_xp", "Reaction XP", 1, 100)}
-          {number("effort_bonus", "Effort bonus XP", 1, 100)}
-          {number("vote_xp", "Vote XP", 1, 100)}
-          {number("leave_grace_secs", "Leave grace (seconds)", 0, 604800)}
-        </div>
-        <div className="list">
-          {toggle("messages", "Messages")}
-          {toggle("reactions", "Reactions")}
-          {toggle("voice", "Voice time")}
-          {toggle("effort", "Long messages and attachments")}
-          {toggle("votes", "Votes")}
-          {toggle("separate_voice_level", "Separate voice level")}
-          {toggle("reset_on_leave", "Reset XP when a member leaves")}
-        </div>
-        {!messageContent && (
-          <p className="notice" role="status">
-            {tr("Long-message effort needs the Message Content intent. Attachment bonuses still work.")}
-          </p>
-        )}
-        <div className="form-grid">
-          <Field label={tr("Highlights channel ID")} htmlFor="parity-highlights">
-            <ChannelPicker
-              id="parity-highlights"
-              info={info}
-              value={draft.highlights_channel_id}
-              onChange={(id) => set("highlights_channel_id", id)}
-            />
-          </Field>
-          <SwitchRow
-            title={tr("Public leaderboard")}
-            control={
-              <PixelToggle
-                label={tr("Public leaderboard")}
-                checked={draft.vanity_slug !== null}
-                onChange={(on) => {
-                  if (!on) setLastSlug(draft.vanity_slug ?? "");
-                  set("vanity_slug", on ? lastSlug || `server-${guild}` : null);
-                }}
-              />
-            }
-          >
-            {tr(
-              "Anyone with the link can view this board. Turning it off removes the public URL when you save.",
-            )}
-          </SwitchRow>
-          <Field label={tr("Leaderboard URL name")} htmlFor="parity-vanity">
-            <input
-              id="parity-vanity"
-              className="pixel-input"
-              maxLength={32}
-              value={draft.vanity_slug ?? ""}
-              disabled={draft.vanity_slug === null}
-              onChange={(e) => set("vanity_slug", e.target.value)}
-            />
-          </Field>
-        </div>
-        {saved.vanity_slug && (
-          <p style={{ overflowWrap: "anywhere" }}>
-            <a href={`/lb/${saved.vanity_slug}`}>{`${window.location.origin}/lb/${saved.vanity_slug}`}</a>
-          </p>
-        )}
-        {invalid && (
-          <p className="field-error" role="alert">
-            {tr("Check XP ranges and the URL name.")}
-          </p>
-        )}
-        {data.save.isError && (
-          <p className="field-error" role="alert">
-            {apiError(data.save.error.message)}
-          </p>
-        )}
-        <div className="add-actions">
-          <PixelButton
-            disabled={invalid || JSON.stringify(draft) === JSON.stringify(saved) || data.save.isPending}
-            onClick={() => data.save.mutate(draft)}
-          >
-            {tr("Save XP options")}
-          </PixelButton>
-          <PixelButton
-            variant="ghost"
-            disabled={JSON.stringify(draft) === JSON.stringify(saved)}
-            onClick={() => setDraft(saved)}
-          >
-            {tr("Reset")}
-          </PixelButton>
-        </div>
-      </Panel>
-      <Panel
-        title={tr("VOICE LEVEL ROLES")}
-        aside={<span className="pixel-label muted">{data.voiceRoles.data?.items.length ?? 0}/25</span>}
-      >
-        <p className="muted panel-lead">
-          {tr("When separate voice levels are on, members earn these roles from voice time.")}
-        </p>
-        {data.voiceRoles.data?.items.length ? (
-          <ul className="list">
-            {data.voiceRoles.data.items.map((row) => (
-              <li className="list-row" key={row.role_id}>
-                <span className="pixel-label">
-                  {tr("Voice level")} {row.level}
-                </span>
-                <span className="list-main">
-                  <RoleTag info={info} id={row.role_id} />
-                </span>
-                <PixelButton
-                  variant="ghost"
-                  disabled={data.deleteVoiceRole.isPending}
-                  onClick={() => data.deleteVoiceRole.mutate(row.role_id)}
-                >
-                  {tr("Remove")}
-                </PixelButton>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted">{tr("No voice level roles yet.")}</p>
-        )}
-        <div className="add-row">
-          <Field label={tr("Voice level")} htmlFor="voice-role-level">
-            <input
-              id="voice-role-level"
-              className="pixel-input input-short"
-              type="number"
-              min={1}
-              max={1000}
-              value={voiceRoleLevel}
-              onChange={(e) => setVoiceRoleLevel(Number(e.target.value))}
-            />
-          </Field>
-          <Field label={tr("Role")} htmlFor="voice-role-pick">
-            <RolePicker
-              id="voice-role-pick"
-              info={info}
-              value={voiceRole}
-              onChange={setVoiceRole}
-              assignable
-            />
-          </Field>
-          <PixelButton
-            disabled={
-              !voiceRole || voiceRoleLevel < 1 || voiceRoleLevel > 1000 || data.putVoiceRole.isPending
-            }
-            onClick={() =>
-              voiceRole &&
-              data.putVoiceRole.mutate(
-                { role: voiceRole, level: voiceRoleLevel },
-                { onSuccess: () => setVoiceRole(null) },
-              )
-            }
-          >
-            {tr("Add")}
-          </PixelButton>
-        </div>
-        {data.putVoiceRole.isError && (
-          <p className="field-error" role="alert">
-            {apiError(data.putVoiceRole.error.message)}
-          </p>
-        )}
-      </Panel>
-      <Panel title={tr("TOP GAINERS THIS WEEK")}>
-        <p className="muted panel-lead">
-          {tr("The current UTC week starts Monday. Members with the most new server XP appear here.")}
-        </p>
-        {data.highlights.data?.items.length ? (
-          <ol>
-            {data.highlights.data.items.map((row) => (
-              <li key={row.user_id}>
-                {row.user_id}: {row.xp} XP
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="muted">{tr("No XP earned this week yet.")}</p>
-        )}
-      </Panel>
-      <Panel title={tr("IMPORT LEVELS FROM ANOTHER BOT")}>
-        <p className="muted panel-lead">
-          {tr(
-            "Upload an Arcane, Lurkr or Amari style JSON or CSV export. Preview the rows before applying them. Files stay private to this session for ten minutes.",
+              <Field label={tr("Linear coefficient")} htmlFor="parity-linear">
+                <input
+                  id="parity-linear"
+                  className="pixel-input input-short"
+                  type="number"
+                  min={0}
+                  max={10000}
+                  value={"per_level" in coeff ? coeff.per_level : coeff.linear}
+                  onChange={(e) =>
+                    set(
+                      "curve",
+                      kind === "linear"
+                        ? ({ linear: { ...coeff, per_level: Number(e.target.value) } } as Curve)
+                        : ({ polynomial: { ...coeff, linear: Number(e.target.value) } } as Curve),
+                    )
+                  }
+                />
+              </Field>
+              {kind === "custom" && (
+                <Field label={tr("Quadratic coefficient")} htmlFor="parity-quadratic">
+                  <input
+                    id="parity-quadratic"
+                    className="pixel-input input-short"
+                    type="number"
+                    min={0}
+                    max={1000}
+                    value={"quadratic" in coeff ? coeff.quadratic : 0}
+                    onChange={(e) =>
+                      set("curve", { polynomial: { ...coeff, quadratic: Number(e.target.value) } } as Curve)
+                    }
+                  />
+                </Field>
+              )}
+            </div>
           )}
-        </p>
-        <div className="form-grid">
-          <Field label={tr("Export file")} htmlFor="parity-file">
-            <input
-              id="parity-file"
-              type="file"
-              accept=".json,.csv,application/json,text/csv"
-              onChange={readFile}
-            />
-          </Field>
-          <Field label={tr("How to combine XP")} htmlFor="parity-mode">
-            <select
-              id="parity-mode"
-              className="pixel-input pixel-select"
-              value={mode}
-              onChange={(e) => {
-                ++previewVersion.current;
-                setMode(e.target.value as typeof mode);
-                setPreviewId(null);
-              }}
-            >
-              <option value="merge">{tr("Keep higher XP")}</option>
-              <option value="replace">{tr("Use imported XP")}</option>
-            </select>
-          </Field>
-        </div>
-        {fileError && (
-          <p role="alert" className="field-error">
-            {fileError}
-          </p>
-        )}
-        <PixelButton
-          disabled={!file || data.preview.isPending}
-          onClick={() => {
-            const version = previewVersion.current;
-            data.preview.mutate(
-              { format, data: file, mode },
-              {
-                onSuccess: (result) => {
-                  if (version === previewVersion.current) setPreviewId(result.preview_id);
-                },
-              },
-            );
-          }}
-        >
-          {tr("Preview import")}
-        </PixelButton>
-        {data.preview.isError && (
-          <p role="alert" className="field-error">
-            {apiError(data.preview.error.message)}
-          </p>
-        )}
-        {previewId && data.preview.data && (
-          <div>
-            <p>
-              {tr("Members in file")}: {data.preview.data.count} · {tr("Members changing")}:{" "}
-              {data.preview.data.changed}
+          <div className="form-grid">
+            {number("message_min", "Minimum message XP", 1, 1000)}
+            {number("message_max", "Maximum message XP", 1, 1000)}
+            {number("message_cooldown_secs", "Message cooldown (seconds)", 5, 3600)}
+            {number("reaction_xp", "Reaction XP", 1, 100)}
+            {number("effort_bonus", "Effort bonus XP", 1, 100)}
+            {number("vote_xp", "Vote XP", 1, 100)}
+            {number("leave_grace_secs", "Leave grace (seconds)", 0, 604800)}
+          </div>
+          <div className="list">
+            {toggle("messages", "Messages")}
+            {toggle("reactions", "Reactions")}
+            {toggle("voice", "Voice time")}
+            {toggle("effort", "Long messages and attachments")}
+            {toggle("votes", "Votes")}
+            {toggle("separate_voice_level", "Separate voice level")}
+            {toggle("reset_on_leave", "Reset XP when a member leaves")}
+          </div>
+          {!messageContent && (
+            <p className="notice" role="status">
+              {tr("Long-message effort needs the Message Content intent. Attachment bonuses still work.")}
             </p>
-            <ol>
-              {data.preview.data.sample.map((row) => (
-                <li key={row.user_id}>
-                  {row.user_id}: {row.current_xp} → {row.result_xp} XP
-                </li>
-              ))}
-            </ol>
-            <PixelButton
-              disabled={data.apply.isPending}
-              onClick={() => data.apply.mutate(previewId, { onSuccess: () => setPreviewId(null) })}
+          )}
+          <div className="form-grid">
+            <Field label={tr("Highlights channel ID")} htmlFor="parity-highlights">
+              <ChannelPicker
+                id="parity-highlights"
+                info={info}
+                value={draft.highlights_channel_id}
+                onChange={(id) => set("highlights_channel_id", id)}
+              />
+            </Field>
+            <SwitchRow
+              title={tr("Public leaderboard")}
+              control={
+                <PixelToggle
+                  label={tr("Public leaderboard")}
+                  checked={draft.vanity_slug !== null}
+                  onChange={(on) => {
+                    if (!on) setLastSlug(draft.vanity_slug ?? "");
+                    set("vanity_slug", on ? lastSlug || `server-${guild}` : null);
+                  }}
+                />
+              }
             >
-              {tr("Apply import")}
+              {tr(
+                "Anyone with the link can view this board. Turning it off removes the public URL when you save.",
+              )}
+            </SwitchRow>
+            <Field label={tr("Leaderboard URL name")} htmlFor="parity-vanity">
+              <input
+                id="parity-vanity"
+                className="pixel-input"
+                maxLength={32}
+                value={draft.vanity_slug ?? ""}
+                disabled={draft.vanity_slug === null}
+                onChange={(e) => set("vanity_slug", e.target.value)}
+              />
+            </Field>
+          </div>
+          {saved.vanity_slug && (
+            <p style={{ overflowWrap: "anywhere" }}>
+              <a href={`/lb/${saved.vanity_slug}`}>{`${window.location.origin}/lb/${saved.vanity_slug}`}</a>
+            </p>
+          )}
+          {invalid && (
+            <p className="field-error" role="alert">
+              {tr("Check XP ranges and the URL name.")}
+            </p>
+          )}
+          {data.save.isError && (
+            <p className="field-error" role="alert">
+              {apiError(data.save.error.message)}
+            </p>
+          )}
+          <div className="add-actions">
+            <PixelButton
+              disabled={invalid || JSON.stringify(draft) === JSON.stringify(saved) || data.save.isPending}
+              onClick={() => data.save.mutate(draft)}
+            >
+              {tr("Save XP options")}
+            </PixelButton>
+            <PixelButton
+              variant="ghost"
+              disabled={JSON.stringify(draft) === JSON.stringify(saved)}
+              onClick={() => setDraft(saved)}
+            >
+              {tr("Reset")}
             </PixelButton>
           </div>
-        )}
-        {data.apply.isSuccess && (
-          <p role="status">
-            {tr("Import complete")}: {data.apply.data.updated}/{data.apply.data.checked}
-          </p>
-        )}
-        {data.apply.isError && (
-          <p role="alert" className="field-error">
-            {apiError(data.apply.error.message)}
-          </p>
-        )}
-      </Panel>
+        </div>
+      </SettingsRow>
+      <LevelingPolicyExtras data={data} info={info} errorText={apiError} />
     </>
   );
 }

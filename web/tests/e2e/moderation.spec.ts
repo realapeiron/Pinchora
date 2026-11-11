@@ -19,8 +19,10 @@ test("set the mod-log and the ladder, shape the server log, and find both in the
   await login(page);
   await page.goto(`/g/${guild}/moderation`);
   await expect(page.getByRole("heading", { name: "MODERATION", exact: true })).toBeVisible();
+  await expect(page.locator(".settings-detail-row")).toHaveCount(3);
   await page.getByLabel("Mod-log channel").selectOption({ label: "#mod-log" });
   await page.getByRole("switch", { name: "Tell members" }).click();
+  await page.getByRole("button", { name: /WARN LADDER/ }).click();
   await page.getByRole("button", { name: "Add rung" }).click();
   await page.getByLabel("Warns", { exact: true }).fill("5");
   await page.getByLabel("Brings", { exact: true }).selectOption("kick");

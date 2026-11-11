@@ -76,9 +76,15 @@ test("the welcome page shows the image the bot sends and opens the editor", asyn
 test("level roles refuse what the bot cannot give, and the sync runs", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/leveling`);
-  const levelRoles = page.locator("section.panel").filter({
-    has: page.getByRole("heading", { name: "LEVEL ROLES", exact: true }),
+  await expect(page.locator(".settings-detail-row")).toHaveCount(11);
+  const levelRoles = page.locator(".settings-detail-row").filter({
+    has: page.getByRole("button", { name: /^LEVEL ROLES/ }),
   });
+  await levelRoles.getByRole("button", { name: /^LEVEL ROLES/ }).click();
+  await expect(levelRoles.getByRole("button", { name: /^LEVEL ROLES/ })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   const roles = levelRoles.getByLabel("Role", { exact: true });
   await expect(roles.locator("option", { hasText: "@Admin" })).toBeDisabled();
   await expect(roles.locator("option", { hasText: "@Admin" })).toContainText("above my role");
@@ -95,6 +101,7 @@ test("level roles refuse what the bot cannot give, and the sync runs", async ({ 
   await expect(page.getByText("Checked 0 members and updated the level roles of 0.")).toBeVisible();
 
   // An XP multiplier for a channel, and a no-XP role.
+  await page.getByRole("button", { name: /XP MULTIPLIERS/ }).click();
   await page.getByLabel("Channel", { exact: true }).selectOption({ label: "#memes" });
   await page.getByLabel("Multiplier", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Set", exact: true }).click();
@@ -120,6 +127,7 @@ test("level roles refuse what the bot cannot give, and the sync runs", async ({ 
 test("points and the store", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/points`);
+  await expect(page.locator(".settings-detail-row")).toHaveCount(2);
   await expect(page.getByRole("switch", { name: "Module: Chat points" })).toHaveCount(1);
   await page.getByLabel("Emoji").fill("coins");
   await expect(page.getByText("Use one emoji")).toBeVisible();
@@ -129,6 +137,7 @@ test("points and the store", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 
+  await page.getByRole("button", { name: /^STORE/ }).click();
   await page.getByLabel("Role", { exact: true }).selectOption({ label: "@Regular" });
   await page.getByLabel(/^Price/).fill("250");
   await page.getByLabel("Stock").fill("5");

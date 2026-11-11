@@ -1538,7 +1538,6 @@ export const en = {
   LEVELING: "LEVELING",
   "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.":
     "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.",
-  "CHAT XP": "CHAT XP",
   "Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay when it is off.":
     "Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay when it is off.",
   "Where level-ups go": "Where level-ups go",

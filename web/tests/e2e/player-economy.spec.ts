@@ -22,6 +22,7 @@ test("economy settings save only changed writable fields", async ({ page }) => {
   const guild = `${run}72`;
   await devLogin(page, `${run}73`, [{ id: guild, name: "Reef", owner: true, permissions: "0" }]);
   await page.goto(`/g/${guild}/economy`);
+  await expect(page.locator(".settings-detail-row")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.getByLabel("Donation goal", { exact: true }).fill("15000");
   await page.getByLabel("Donation goal", { exact: true }).fill("10000");
@@ -37,6 +38,7 @@ test("economy settings save only changed writable fields", async ({ page }) => {
   });
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.screenshot({ path: "test-results/economy-settings-desktop.png", fullPage: true });
+  await page.getByRole("button", { name: /Server-point reset & inflation/ }).click();
   await page.getByRole("button", { name: "Preview affected balances" }).click();
   await expect(page.getByRole("button", { name: "Apply point reduction" })).toBeDisabled();
   await page.setViewportSize({ width: 390, height: 844 });

@@ -224,6 +224,7 @@ test("open save bar leaves the last control reachable at 390px", async ({ page }
   await toggle.click();
   const save = page.locator(".save-bar.is-open");
   await expect(save).toBeVisible();
+  await page.getByRole("button", { name: /WARN LADDER/ }).click();
   const lastControl = page.locator(".mod-page .add-actions button").last();
   await lastControl.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));

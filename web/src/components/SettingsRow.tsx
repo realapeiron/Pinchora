@@ -7,6 +7,7 @@ export function SettingsRow({
   summary,
   enabled,
   onToggle,
+  toggleLabel,
   children,
   initialOpen = false,
 }: {
@@ -15,6 +16,7 @@ export function SettingsRow({
   summary: string;
   enabled?: boolean;
   onToggle?: (next: boolean) => void;
+  toggleLabel?: string;
   children: ReactNode;
   initialOpen?: boolean;
 }) {
@@ -41,7 +43,7 @@ export function SettingsRow({
           </span>
         </button>
         {onToggle && enabled !== undefined && (
-          <PixelToggle label={title} checked={enabled} onChange={onToggle} />
+          <PixelToggle label={toggleLabel ?? title} checked={enabled} onChange={onToggle} />
         )}
       </div>
       <div id={bodyId} className="settings-detail-body" hidden={!open}>

@@ -97,6 +97,9 @@
 :where(.shell-page) .settings-detail-body[hidden] {
   display: none;
 }
+:where(.shell-page) .settings-detail-body:not(:has(.settings-detail-preview)) {
+  grid-template-columns: minmax(0, 1fr);
+}
 :where(.shell-page) .settings-detail-fields {
   display: grid;
   align-content: start;
@@ -116,6 +119,14 @@
 }
 :where(.shell-page) .settings-detail-preview {
   min-width: 0;
+}
+:where(.shell-page) .settings-detail-body .form-grid,
+:where(.shell-page) .settings-detail-body .add-row,
+:where(.shell-page) .settings-detail-body .list-row {
+  min-width: 0;
+}
+:where(.shell-page) .economy-settings .settings-detail-list {
+  margin: 0;
 }
 :where(.shell-page) .welcome-card-link {
   display: grid;
@@ -153,6 +164,11 @@
     padding: 14px;
   }
   :where(.shell-page) .settings-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .settings-detail-body .form-grid,
+  :where(.shell-page) .settings-detail-body .economy-form {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
   :where(.shell-page) .settings-detail-head {

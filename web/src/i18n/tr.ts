@@ -1549,7 +1549,6 @@ export const tr: { [K in keyof typeof en]: string } = {
   LEVELING: "TESVİYE",
   "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.":
     "Seviye atlamaların, çarpanların ve seviyelerin kazandığı rollerin olduğu sohbet ve ses için XP.",
-  "CHAT XP": "SOHBET XP'Sİ",
   "Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay when it is off.":
     "Üyeler sohbet ederek, seviye atlayarak ve seviye atlama mesajı alarak XP kazanırlar. Zaten kazanılan seviyeler kapalıyken kalır.",
   "Where level-ups go": "Seviye atlamaları nereye gidiyor",
