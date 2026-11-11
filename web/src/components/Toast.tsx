@@ -30,12 +30,24 @@ export function ToastProvider({ children, className }: { children: ReactNode; cl
       {className ? (
         <div className={className}>
           {children}
-          <ToastDisplay message={active?.message ?? null} onDone={dismiss} action={active?.action} />
+          <ToastDisplay
+            noticeId={active?.id}
+            waiting={notices.length > 1}
+            message={active?.message ?? null}
+            onDone={dismiss}
+            action={active?.action}
+          />
         </div>
       ) : (
         <>
           {children}
-          <ToastDisplay message={active?.message ?? null} onDone={dismiss} action={active?.action} />
+          <ToastDisplay
+            noticeId={active?.id}
+            waiting={notices.length > 1}
+            message={active?.message ?? null}
+            onDone={dismiss}
+            action={active?.action}
+          />
         </>
       )}
     </ToastContext.Provider>
@@ -77,19 +89,28 @@ export function Toast({
 }
 
 function ToastDisplay({
+  noticeId,
+  waiting = false,
   message,
   onDone,
   action,
 }: {
+  noticeId?: string;
+  waiting?: boolean;
   message: string | null;
   onDone: () => void;
   action?: Action;
 }) {
+  const done = useRef(onDone);
+  done.current = onDone;
+  const hasAction = !!action;
+  // The timer belongs to the notice shown, not to callback identities that change on every render;
+  // a notice waiting behind it cuts the wait short, so a confirmation never sits behind an Undo for long.
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(onDone, action ? 5000 : 2800);
+    const timer = window.setTimeout(() => done.current(), waiting ? 1500 : hasAction ? 5000 : 2800);
     return () => window.clearTimeout(timer);
-  }, [message, onDone, action]);
+  }, [noticeId ?? message, message, waiting, hasAction]);
   if (!message) return null;
   return (
     <div className="toast" role="status">
