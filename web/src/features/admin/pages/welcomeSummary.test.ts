@@ -23,6 +23,7 @@ test("collapsed Welcome rows summarise the current channel, format, role and goo
     role: "@New",
     goodbye: "#farewell · See you soon, {user}!",
   });
+  expect(welcomeSummary({ ...settings, welcome_enabled: false }, info, "text + card").welcome).toBe("Off");
   expect(
     welcomeSummary(
       {

@@ -40,7 +40,15 @@ for (const width of [1440, 390]) {
     await welcome.getByLabel("Channel").selectOption({ label: "#welcome" });
     await heading.focus();
     await page.keyboard.press("Enter");
+    await expect(heading).toContainText("Off");
+    const master = page.getByRole("switch", { name: "Module: Welcome cards" });
+    await expect(master).toHaveCount(1);
+    await master.click();
+    await expect(master).toHaveAttribute("aria-checked", "true");
     await expect(heading).toContainText("#welcome");
+    const moduleToast = page.getByRole("status").filter({ hasText: "Module enabled" });
+    await expect(moduleToast).toBeVisible();
+    await expect(moduleToast).toBeHidden({ timeout: 8_000 });
 
     const roleHeading = join.getByRole("button", { name: /Join role/ });
     await roleHeading.focus();
@@ -78,8 +86,6 @@ for (const width of [1440, 390]) {
     expect(restored.join_role_id).toBe(before.join_role_id);
     expect(restored.goodbye_channel_id).toBe(before.goodbye_channel_id);
 
-    const master = page.getByRole("switch", { name: "Module: Welcome cards" });
-    await expect(master).toHaveCount(1);
     if ((await master.getAttribute("aria-checked")) === "false") {
       await expect(page.locator(".module-off-note")).toContainText("Nothing is sent while it is off");
       await master.click();

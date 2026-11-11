@@ -2,7 +2,6 @@ import type { ModuleEntry } from "../../../lib/api";
 
 const switchPages = new Set([
   "branding",
-  "command-control",
   "stats",
   "invites",
   "utility",
@@ -48,6 +47,7 @@ export function headerModule(path: string, modules: ModuleEntry[]) {
 }
 
 export function modulePage(key: string) {
+  if (key === "command_control") return "command-control";
   if (key === "goodbye") return "welcome";
   if (key === "store") return "points";
   if (key === "role_panels" || key === "autoroles" || key === "color_roles") return "roles";

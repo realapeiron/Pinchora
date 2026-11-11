@@ -4,8 +4,8 @@ import { translate as spaTranslate } from "../i18n";
 
 import { useCallback, useState } from "react";
 
-import { ApiError, type FieldError, type Settings } from "./api";
-import { changedFields, patchOf, undoPatch } from "./draft";
+import { ApiError, api, type FieldError, type Overview, type Settings } from "./api";
+import { changedFields, patchOf, safeUndoPatch, undoPatch } from "./draft";
 import { useSaveSettings } from "./queries";
 
 export function useSettingsForm(
@@ -16,7 +16,10 @@ export function useSettingsForm(
   const [draft, setDraft] = useState<Partial<Settings>>({});
   const [serverErrors, setServerErrors] = useState<FieldError[]>([]);
   const [toast, setToast] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<Partial<Settings> | null>(null);
+  const [previous, setPrevious] = useState<{
+    before: Partial<Settings>;
+    written: Partial<Settings>;
+  } | null>(null);
   const save = useSaveSettings(guild);
   const value: Settings = { ...saved, ...draft };
   const changed = changedFields(saved, draft);
@@ -38,22 +41,28 @@ export function useSettingsForm(
       onSuccess: () => {
         setDraft({});
         setServerErrors([]);
-        setPrevious(before);
+        setPrevious({ before, written: patch });
         setToast("Saved. The bot uses it from the next message.");
       },
       onError: (error) => setServerErrors(error instanceof ApiError ? error.errors : []),
     });
   };
 
-  const undo = () => {
+  const undo = async () => {
     if (!previous) return;
-    save.mutate(previous, {
-      onSuccess: () => {
-        setPrevious(null);
-        setToast("Previous values restored.");
-      },
-      onError: (error) => setToast(error.message),
-    });
+    try {
+      const current = (await api<Overview>(`/api/guilds/${guild}`)).settings;
+      const result = safeUndoPatch(current, previous.written, previous.before);
+      if (Object.keys(result.patch).length) await save.mutateAsync(result.patch);
+      setPrevious(null);
+      setToast(
+        result.changedElsewhere
+          ? "Some values changed since this save and were left alone."
+          : "Previous values restored.",
+      );
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Could not restore previous values.");
+    }
   };
 
   const reset = () => {

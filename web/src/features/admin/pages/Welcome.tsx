@@ -204,7 +204,7 @@ export function Welcome() {
         onReset={form.reset}
       />
       <Toast
-        message={form.toast === "Previous values restored." ? t("Previous values restored.") : form.toast}
+        message={form.toast ? t(form.toast) : null}
         onDone={form.clearToast}
         action={form.undo ? { label: spaTranslate("Undo"), onClick: form.undo } : undefined}
       />

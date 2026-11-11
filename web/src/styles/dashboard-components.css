@@ -219,6 +219,7 @@
   left: 50%;
   right: auto;
   bottom: 92px;
+  z-index: 70;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -434,6 +435,9 @@
   }
   :where(.shell-page) .toast {
     bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+  :where(.shell-page) .toast-action {
+    min-height: 44px;
   }
   :where(.shell-page):has(.save-bar.is-open) .toast {
     bottom: calc(150px + env(safe-area-inset-bottom));

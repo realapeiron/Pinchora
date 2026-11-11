@@ -6,6 +6,7 @@ import { NavLink, useLocation, useParams } from "react-router";
 
 import { PixelLink } from "../../../components/PixelButton";
 import { Panel } from "../../../components/Panel";
+import { ToastProvider } from "../../../components/Toast";
 import { GuildTopBar } from "./GuildTopBar";
 import { ApiError, type Me } from "../../../lib/api";
 import { configureGuild, translate } from "../../../i18n";
@@ -35,7 +36,11 @@ export { NAV } from "./guildNav";
 export function GuildLayout({ me }: { me: Me }) {
   const { guildId = "" } = useParams();
   if (!isDiscordId(guildId)) return <NotFound />;
-  return <ValidGuildLayout me={me} guildId={guildId} />;
+  return (
+    <ToastProvider className="page shell-page">
+      <ValidGuildLayout me={me} guildId={guildId} />
+    </ToastProvider>
+  );
 }
 
 function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
@@ -62,7 +67,9 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   })).filter((group) => group.pages.length);
   const currentGroup = groups.find((group) => group.pages.some((page) => page.to === openPage));
   const currentPage = currentGroup?.pages.find((page) => page.to === openPage);
-  const currentModule = headerModule(openPage, overview.data?.modules ?? []);
+  const currentModule = canOpenPage(overview.data, openPage)
+    ? headerModule(openPage, overview.data?.modules ?? [])
+    : undefined;
   const openDrawer = (servers = false) => {
     drawerReturn.current = document.activeElement as HTMLElement;
     setServerOpenRequested(servers);
@@ -118,7 +125,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
     closeButton,
   };
   return (
-    <div className="page shell-page">
+    <>
       <IconSprite />
       <div className="guild shell-guild">
         <ShellNav {...navProps} />
@@ -190,7 +197,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
         onClose={() => setPaletteOpen(false)}
         returnTo={paletteReturn.current}
       />
-    </div>
+    </>
   );
 }
 

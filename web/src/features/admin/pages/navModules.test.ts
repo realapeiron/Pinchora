@@ -5,10 +5,11 @@ import { headerModule, modulePage, navModule } from "./navModules";
 
 test("header master follows the route alias and its current module state", () => {
   const modules = [
-    { key: "command_control", enabled: true },
+    { key: "custom_commands", enabled: true },
     { key: "welcome", enabled: false },
   ] as Parameters<typeof headerModule>[1];
-  expect(headerModule("command-control", modules)).toBe(modules[0]);
+  expect(headerModule("commands", modules)).toBe(modules[0]);
+  expect(headerModule("command-control", modules)).toBeUndefined();
   expect(headerModule("welcome", modules)).toBe(modules[1]);
   expect(headerModule("overview", modules)).toBeUndefined();
   expect(headerModule("roles", modules)).toBeUndefined();
@@ -30,8 +31,60 @@ test("every sidebar route has a deliberate module mapping with a catalog key", (
   }
   expect(navModule("commands")).toBe("custom_commands");
   expect(navModule("temp-voice")).toBe("temp_voice");
-  expect(navModule("command-control")).toBe("command_control");
+  expect(navModule("command-control")).toBeUndefined();
   expect(navModule("roles")).toBeUndefined();
+});
+
+test("header switches match the backend's persisted module settings", () => {
+  const db = readFileSync(
+    new URL("../../../../../crates/pinchora-db/src/admin/modules.rs", import.meta.url),
+    "utf8",
+  );
+  const catalog = readFileSync(
+    new URL("../../../../../crates/pinchora-core/src/admin/modules/catalog.rs", import.meta.url),
+    "utf8",
+  );
+  const noop = [
+    ...db.matchAll(/if module == Module::(\w+)\s*\{\s*return Ok\(ModuleRule::default\(\)\)/g),
+  ].map((match) => match[1]);
+  expect(noop).toEqual(["CommandControl"]);
+  const keys = new Map(
+    [...catalog.matchAll(/Self::(\w+) => "([^"]+)"/g)].map((match) => [match[1], match[2]]),
+  );
+  const routes = NAV.flatMap((group) => group.pages.map((page) => page.to));
+  const switchable = routes.filter((route) => navModule(route));
+  expect(switchable).toEqual([
+    "branding",
+    "stats",
+    "invites",
+    "utility",
+    "welcome",
+    "leveling",
+    "points",
+    "economy",
+    "commands",
+    "workflows",
+    "moderation",
+    "automod",
+    "anti-nuke",
+    "log",
+    "tickets",
+    "events",
+    "temp-voice",
+    "starboard",
+    "birthdays",
+    "giveaways",
+    "polls",
+    "suggestions",
+    "feeds",
+    "roblox",
+    "trackers",
+    "achievements",
+  ]);
+  for (const module of noop) expect(switchable.map(navModule)).not.toContain(keys.get(module));
+  expect(db).toContain("(None, Some(on)) => rule.enabled = on");
+  expect(db).toContain("SET enabled = EXCLUDED.enabled");
+  expect(db).toContain("rule.enabled = sqlx::query_scalar(get)");
 });
 
 test("catalog cards open the page that holds their main setting", () => {

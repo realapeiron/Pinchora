@@ -430,7 +430,11 @@ function LevelRoles({
               role &&
               write.mutate(
                 { method: "PUT", sub: `/${role}`, body: { level: Number(level) } },
-                { onSuccess: () => setRole(null) },
+                {
+                  onSuccess: (list) => {
+                    if (list.items.some((item) => item.role_id === role)) setRole(null);
+                  },
+                },
               )
             }
           >

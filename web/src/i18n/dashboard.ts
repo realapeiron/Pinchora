@@ -82,6 +82,9 @@ export const dashboardEn = {
   "Channel selected": "Channel selected",
   "Role selected": "Role selected",
   "Previous values restored.": "Previous values restored.",
+  "Some values changed since this save and were left alone.":
+    "Some values changed since this save and were left alone.",
+  "Could not restore previous values.": "Could not restore previous values.",
 };
 
 export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
@@ -165,6 +168,9 @@ export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
   "Channel selected": "Kanal seçildi",
   "Role selected": "Rol seçildi",
   "Previous values restored.": "Önceki değerler geri yüklendi.",
+  "Some values changed since this save and were left alone.":
+    "Bu kayıttan sonra değişen değerler olduğu gibi bırakıldı.",
+  "Could not restore previous values.": "Önceki değerler geri yüklenemedi.",
 };
 
 /** Loaded with guild dashboard routes, outside the playable room cold path. */
