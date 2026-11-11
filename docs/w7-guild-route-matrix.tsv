@@ -104,6 +104,7 @@ PUT	/logs	safety
 GET	/cases	safety
 GET	/cases/{case}	safety
 PATCH	/cases/{case}	safety
+POST	/cases/{case}/revoke	safety
 GET	/staff-log	safety
 GET	/command-control	full
 PUT	/command-control	full
