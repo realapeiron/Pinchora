@@ -493,8 +493,23 @@ export const dashboardEn = {
   "Close overlay": "Close overlay",
   "Close case": "Close case",
   "Case #{number} does not exist.": "Case #{number} does not exist.",
+  "{member} has {count} active warning. Next: {action}.":
+    "{member} has {count} active warning. Next: {action}.",
   "{member} has {count} active warnings. Next: {action}.":
     "{member} has {count} active warnings. Next: {action}.",
   "No other cases for this member.": "No other cases for this member.",
   "Case reason saved.": "Case reason saved.",
+  Revoke: "Revoke",
+  "Confirm revoke": "Confirm revoke",
+  warning: "warning",
+  timeout: "timeout",
+  "Ban case": "ban",
+  "Remove the warning for {member}? Their active warning count drops by one.":
+    "Remove the warning for {member}? Their active warning count drops by one.",
+  "Remove the {kind} for {member}?": "Remove the {kind} for {member}?",
+  "Reason (optional)": "Reason (optional)",
+  "Yes, revoke": "Yes, revoke",
+  "Revoking…": "Revoking…",
+  "Case revoked.": "Case revoked.",
+  "Could not revoke the case.": "Could not revoke the case.",
 };

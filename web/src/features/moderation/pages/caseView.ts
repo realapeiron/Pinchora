@@ -24,7 +24,7 @@ export function visibleKinds(kinds: CasesPage["kinds"], chosen: string): CasesPa
 }
 
 export function nextWarningRung(entry: Case, history: Case[], ladder: Rung[] | undefined) {
-  if (entry.kind !== "warn" || entry.on_channel || !ladder?.length) return null;
+  if (entry.kind !== "warn" || !entry.active || entry.on_channel || !ladder?.length) return null;
   const active = Number(entry.active) + history.filter((c) => c.kind === "warn" && c.active).length;
   const rung = [...ladder].sort((a, b) => a.warns - b.warns).find((item) => item.warns > active);
   return rung ? { active, rung } : null;

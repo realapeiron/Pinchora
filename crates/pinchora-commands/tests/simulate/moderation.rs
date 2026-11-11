@@ -16,6 +16,7 @@ use twilight_model::gateway::payload::incoming::{
 };
 
 use crate::*;
+mod revoke_race;
 
 const KICK: u64 = 1 << 1;
 const BAN: u64 = 1 << 2;
@@ -932,7 +933,6 @@ async fn temporary_bans_end_on_the_ticker_with_a_case_of_their_own() {
     assert_eq!(sim.cases().await.len(), 2);
     sim.app.shift_clock(chrono::Duration::minutes(-2));
 }
-
 /// `/mod unwarn` and `/mod reason` follow the hierarchy of the case: a junior moderator can neither take back nor
 /// reword a senior's warn, the senior can do both to the junior's, and everyone may reword their own.
 #[tokio::test]

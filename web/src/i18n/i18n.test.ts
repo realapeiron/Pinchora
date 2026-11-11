@@ -29,6 +29,39 @@ function rustFiles(directory: string): string[] {
 }
 
 describe("SPA message catalogs", () => {
+  it("uses singular and plural warning hints in both languages", async () => {
+    await setLocale("en");
+    expect(
+      dashboardText("{member} has {count} active warning. Next: {action}.", {
+        member: "Mia",
+        count: 1,
+        action: "timeout",
+      }),
+    ).toBe("Mia has 1 active warning. Next: timeout.");
+    expect(
+      dashboardText("{member} has {count} active warnings. Next: {action}.", {
+        member: "Mia",
+        count: 2,
+        action: "timeout",
+      }),
+    ).toBe("Mia has 2 active warnings. Next: timeout.");
+    await setLocale("tr");
+    expect(
+      dashboardText("{member} has {count} active warning. Next: {action}.", {
+        member: "Mia",
+        count: 1,
+        action: "timeout",
+      }),
+    ).toBe("Mia için 1 aktif uyarı var. Sonraki eşik: timeout.");
+    expect(
+      dashboardText("{member} has {count} active warnings. Next: {action}.", {
+        member: "Mia",
+        count: 2,
+        action: "timeout",
+      }),
+    ).toBe("Mia için 2 aktif uyarı var. Sonraki eşik: timeout.");
+    await setLocale("en");
+  });
   it("keeps deferred dashboard translations complete and switches languages", async () => {
     expect(Object.keys(dashboardTr).sort()).toEqual(Object.keys(dashboardEn).sort());
     for (const key of Object.keys(dashboardEn) as (keyof typeof dashboardEn)[]) {

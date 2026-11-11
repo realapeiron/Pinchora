@@ -170,6 +170,7 @@ function userJson(id: string) {
 
 /** Roles members were given, by user id. */
 const held = new Map<string, Set<string>>();
+const reversals: string[] = [];
 
 function send(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "content-type": "application/json" });
@@ -181,6 +182,7 @@ createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://mock");
   const parts = url.pathname.split("/").filter(Boolean);
   if (url.pathname === "/health") return send(res, 200, { ok: true });
+  if (url.pathname === "/mock/reversals" && req.method === "GET") return send(res, 200, { items: reversals });
   const [api, , resource, id, sub, member, extra, roleId] = parts;
   if (api === "api" && resource === "guilds" && id && sub === "channels" && req.method === "GET") {
     return send(res, 200, channelsJson(id));
@@ -206,6 +208,23 @@ createServer((req, res) => {
     held.set(member, roles);
     res.writeHead(204).end();
     return;
+  }
+  if (api === "api" && resource === "guilds" && id && sub === "bans" && member && req.method === "DELETE") {
+    reversals.push(`unban:${id}:${member}`);
+    res.writeHead(204).end();
+    return;
+  }
+  if (
+    api === "api" &&
+    resource === "guilds" &&
+    id &&
+    sub === "members" &&
+    member &&
+    !extra &&
+    req.method === "PATCH"
+  ) {
+    reversals.push(`untimeout:${id}:${member}`);
+    return send(res, 200, memberJson(member, [...(held.get(member) ?? [])]));
   }
   if (api === "api" && resource === "guilds" && id && !sub && req.method === "GET") {
     return botIn(id)

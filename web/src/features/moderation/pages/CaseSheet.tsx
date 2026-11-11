@@ -1,5 +1,5 @@
 import { translate as spaTranslate } from "../../../i18n";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dateTime } from "../../../i18n";
 import { t } from "../../../i18n/dashboard";
@@ -14,6 +14,7 @@ import { timeAgo } from "../../../lib/text";
 import { trapTab } from "../../../components/overlayFocus";
 import { CasePills } from "./CaseList";
 import { nextWarningRung } from "./caseView";
+import { CaseRevoke } from "./CaseRevoke";
 
 export function CaseSheet({
   guild,
@@ -27,13 +28,14 @@ export function CaseSheet({
   onOpen: (number: number) => void;
 }) {
   const detail = useCase(guild, number);
+  const [revokeNotice, setRevokeNotice] = useState<string | null>(null);
   const settings = useModeration(guild).query;
   const dialog = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const closeAction = useRef(onClose);
   closeAction.current = onClose;
-  useEffect(() => {
+  useLayoutEffect(() => {
     returnFocus.current = document.activeElement as HTMLElement;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -90,6 +92,13 @@ export function CaseSheet({
               className="cases-sheet-close"
               aria-label={t("Close case")}
               onClick={onClose}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onClose();
+                }
+              }}
             >
               <Icon name="x" />
             </button>
@@ -143,14 +152,30 @@ export function CaseSheet({
               </dl>
               {hint && (
                 <p className="cases-ladder-hint">
-                  {t("{member} has {count} active warnings. Next: {action}.", {
-                    member: entry.target_name || entry.target_id,
-                    count: hint.active,
-                    action: hint.rung.label,
-                  })}
+                  {t(
+                    hint.active === 1
+                      ? "{member} has {count} active warning. Next: {action}."
+                      : "{member} has {count} active warnings. Next: {action}.",
+                    {
+                      member: entry.target_name || entry.target_id,
+                      count: hint.active,
+                      action: hint.rung.label,
+                    },
+                  )}
                 </p>
               )}
               <ReasonEditor key={entry.number} guild={guild} entry={entry} />
+              {entry.active && !entry.on_channel && ["warn", "timeout", "ban"].includes(entry.kind) && (
+                <CaseRevoke
+                  key={`revoke-${entry.number}`}
+                  guild={guild}
+                  entry={entry}
+                  onRevoked={() => {
+                    setRevokeNotice(t("Case revoked."));
+                    close.current?.focus();
+                  }}
+                />
+              )}
               {!entry.on_channel && (
                 <section className="cases-history" aria-label={spaTranslate("Their other cases")}>
                   <h3>{spaTranslate("Their other cases")}</h3>
@@ -175,6 +200,7 @@ export function CaseSheet({
               )}
             </>
           )}
+          <Toast message={revokeNotice} onDone={() => setRevokeNotice(null)} />
         </div>
       </div>
     </div>,

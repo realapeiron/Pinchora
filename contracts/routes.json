@@ -369,6 +369,7 @@
   "POST /api/guilds/{g}/cards/uploads",
   "POST /api/guilds/{g}/cards/{kind}/history/{revision}/rollback",
   "POST /api/guilds/{g}/cards/{kind}/test",
+  "POST /api/guilds/{g}/cases/{case}/revoke",
   "POST /api/guilds/{g}/commands",
   "POST /api/guilds/{g}/commands/import",
   "POST /api/guilds/{g}/commands/preview",

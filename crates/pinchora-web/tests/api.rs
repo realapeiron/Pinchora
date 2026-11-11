@@ -48,6 +48,7 @@ use reqwest::Url;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use tokio::net::TcpListener;
+use tokio::sync::Notify;
 use tower::ServiceExt;
 use twilight_http::Client;
 use twilight_model::{
@@ -177,6 +178,15 @@ struct Mock {
     token_delay_ms: Arc<AtomicU64>,
     /// Roles each member holds.
     member_roles: Arc<Mutex<HashMap<u64, Vec<u64>>>>,
+    timed_out_members: Arc<Mutex<HashSet<u64>>>,
+    role_permissions: Arc<Mutex<HashMap<u64, u64>>>,
+    reversal_calls: Arc<Mutex<Vec<String>>>,
+    refuse_reversal: Arc<AtomicBool>,
+    reversal_delay_ms: Arc<AtomicU64>,
+    unban_delay_ms: Arc<AtomicU64>,
+    track_ban_state: Arc<AtomicBool>,
+    absent_bans: Arc<Mutex<HashSet<u64>>>,
+    reversal_started: Arc<Notify>,
     /// Role changes, as `PUT user role` / `DELETE user role`.
     role_calls: Arc<Mutex<Vec<String>>>,
     /// How many times a server's channels were asked for.
@@ -476,6 +486,7 @@ async fn discord(
             if mock.stats_public_channels.load(Ordering::SeqCst) {
                 roles[0]["permissions"] = json!((SEND_MESSAGES | (1u64 << 10)).to_string());
             }
+            apply_role_permissions(&mock, &mut roles);
             (StatusCode::OK, roles.to_string())
         }
         (&Method::GET, [.., "guilds", guild, "members", user]) => {
@@ -501,18 +512,17 @@ async fn discord(
                     .cloned()
                     .unwrap_or_default()
             };
-            (StatusCode::OK, member_json(user, &roles).to_string())
+            (
+                StatusCode::OK,
+                case_revoke::member_with_timeout(&mock, user, &roles).to_string(),
+            )
+        }
+        (&Method::DELETE, [.., "guilds", guild, "bans", user]) => case_revoke::unban_response(&mock, guild, user).await,
+        (&Method::PATCH, [.., "guilds", guild, "members", user]) => {
+            case_revoke::timeout_reversal_response(&mock, guild, user).await
         }
         (&Method::PUT | &Method::DELETE, [.., "guilds", _, "members", user, "roles", role]) => {
-            let (user, role) = (user.parse::<u64>().unwrap_or(0), role.parse::<u64>().unwrap_or(0));
-            mock.role_calls.lock().unwrap().push(format!("{method} {user} {role}"));
-            let mut members = mock.member_roles.lock().unwrap();
-            let held = members.entry(user).or_default();
-            held.retain(|r| *r != role);
-            if method == Method::PUT {
-                held.push(role);
-            }
-            (StatusCode::NO_CONTENT, String::new())
+            role_change_response(&mock, &method, user, role)
         }
         (&Method::GET, [.., "guilds", guild]) => {
             mock.guild_lookups.fetch_add(1, Ordering::SeqCst);
@@ -557,6 +567,45 @@ async fn discord(
     }
 }
 
+fn reversal_response(mock: &Mock, kind: &str, guild: &str, user: &str) -> (StatusCode, String) {
+    mock.reversal_calls
+        .lock()
+        .unwrap()
+        .push(format!("{kind}:{guild}:{user}"));
+    if mock.refuse_reversal.load(Ordering::SeqCst) {
+        (
+            StatusCode::FORBIDDEN,
+            json!({"message":"Missing Permissions","code":50013}).to_string(),
+        )
+    } else if kind == "unban" {
+        (StatusCode::NO_CONTENT, String::new())
+    } else {
+        (StatusCode::OK, member_json(user.parse().unwrap_or(0), &[]).to_string())
+    }
+}
+
+fn apply_role_permissions(mock: &Mock, roles: &mut Value) {
+    let overrides = mock.role_permissions.lock().unwrap();
+    for role in roles.as_array_mut().expect("roles") {
+        let id = role["id"].as_str().unwrap().parse::<u64>().unwrap();
+        if let Some(powers) = overrides.get(&id) {
+            role["permissions"] = json!(powers.to_string());
+        }
+    }
+}
+
+fn role_change_response(mock: &Mock, method: &Method, user: &str, role: &str) -> (StatusCode, String) {
+    let (user, role) = (user.parse::<u64>().unwrap_or(0), role.parse::<u64>().unwrap_or(0));
+    mock.role_calls.lock().unwrap().push(format!("{method} {user} {role}"));
+    let mut members = mock.member_roles.lock().unwrap();
+    let held = members.entry(user).or_default();
+    held.retain(|r| *r != role);
+    if method == Method::PUT {
+        held.push(role);
+    }
+    (StatusCode::NO_CONTENT, String::new())
+}
+
 fn redirect_uri() -> String {
     format!("{PUBLIC_URL}/auth/callback")
 }
@@ -578,8 +627,16 @@ impl Harness {
         Self::with(name, |_| {}).await
     }
 
+    async fn with_pool(name: &str, pool: u32) -> Option<Self> {
+        Self::with_pool_config(name, pool, |_| {}).await
+    }
+
     /// A dashboard whose configuration `configure` adjusts first.
     async fn with(name: &str, configure: impl FnOnce(&mut WebConfig)) -> Option<Self> {
+        Self::with_pool_config(name, 5, configure).await
+    }
+
+    async fn with_pool_config(name: &str, pool: u32, configure: impl FnOnce(&mut WebConfig)) -> Option<Self> {
         let (Ok(database), Ok(redis)) = (
             std::env::var("PINCHORA_TEST_DATABASE_URL"),
             std::env::var("PINCHORA_TEST_REDIS_URL"),
@@ -598,7 +655,7 @@ impl Harness {
             .with_state(mock.clone());
         tokio::spawn(axum::serve(listener, routes).into_future());
 
-        let app = app(&database, &redis, mock_addr).await;
+        let app = app_with_pool(&database, &redis, mock_addr, pool).await;
         let mut web = WebConfig {
             public_url: PUBLIC_URL.into(),
             client_secret: Some(String::from("test-secret").into()),
@@ -676,8 +733,12 @@ impl Harness {
 
 /// The real [`App`] on the test databases, its REST client pointed at the mock.
 async fn app(database: &str, redis: &str, mock: SocketAddr) -> Arc<App> {
+    app_with_pool(database, redis, mock, 5).await
+}
+
+async fn app_with_pool(database: &str, redis: &str, mock: SocketAddr, pool: u32) -> Arc<App> {
     fixture_isolation::shared().await;
-    let db = Db::connect_waiting(database, 5, std::time::Duration::from_secs(60))
+    let db = Db::connect_waiting(database, pool, std::time::Duration::from_secs(5))
         .await
         .expect("connect to the database");
     db.migrate().await.expect("migrate");
@@ -3950,74 +4011,8 @@ async fn the_landing_data_is_public_cached_and_knows_who_is_looking() {
     assert!(refused > 0, "an address that asks 125 times a minute is slowed down");
 }
 
-#[tokio::test]
-async fn case_reason_edits_require_the_author_or_a_higher_moderator() {
-    use pinchora_core::moderation::moderation::CaseKind;
-    let Some(h) = Harness::new("reason_hierarchy").await else {
-        return;
-    };
-    let (guild, junior, senior, target) = (unique(), unique(), unique(), unique());
-    h.mock.bot_guilds.lock().unwrap().insert(guild);
-    h.mock
-        .member_roles
-        .lock()
-        .unwrap()
-        .extend([(junior, vec![FAN]), (senior, vec![REGULAR]), (target, vec![REGULAR])]);
-    let mut browser = h.browser();
-    browser
-        .login(
-            &h,
-            junior,
-            vec![guild_entry(guild, "Reef", false, MANAGE_GUILD | ADMINISTRATOR)],
-        )
-        .await;
-    let db = &h.state.app.db;
-    for moderator in [senior, junior, APPLICATION_ID, 0] {
-        db.open_case(&pinchora_db::NewCase {
-            guild,
-            kind: CaseKind::Warn,
-            target,
-            target_name: "Mia",
-            moderator,
-            moderator_name: "Mod",
-            reason: Some("original"),
-            duration: None,
-            expires_at: None,
-            details: None,
-        })
-        .await
-        .unwrap();
-    }
-    let path = |number| format!("/api/guilds/{guild}/cases/{number}");
-    for number in [1, 3, 4] {
-        let denied = browser
-            .write(Method::PATCH, &path(number), json!({"reason": "bypass"}))
-            .await;
-        assert_eq!(denied.status, StatusCode::FORBIDDEN, "{}", denied.json());
-        assert_eq!(denied.json()["error"]["code"], "hierarchy");
-        assert_eq!(
-            db.case(guild, number).await.unwrap().unwrap().reason.as_deref(),
-            Some("original")
-        );
-    }
-    let own = browser.write(Method::PATCH, &path(2), json!({"reason": "own"})).await;
-    assert_eq!(own.status, StatusCode::OK);
-    h.mock.member_roles.lock().unwrap().insert(junior, vec![REGULAR]);
-    assert_eq!(
-        browser
-            .write(Method::PATCH, &path(1), json!({"reason": "peer"}))
-            .await
-            .status,
-        StatusCode::FORBIDDEN
-    );
-    h.mock.member_roles.lock().unwrap().insert(junior, vec![ADMIN]);
-    for number in [1, 3, 4] {
-        let higher = browser
-            .write(Method::PATCH, &path(number), json!({"reason": "higher"}))
-            .await;
-        assert_eq!(higher.status, StatusCode::OK, "{}", higher.json());
-    }
-}
+#[path = "api/case_revoke.rs"]
+mod case_revoke;
 
 #[path = "api/command_control.rs"]
 mod command_control;

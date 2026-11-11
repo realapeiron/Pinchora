@@ -111,7 +111,7 @@ pub(super) async fn execute(
         action,
     };
     let kind = match action {
-        "ban" => sanction.ban().await?,
+        "ban" => return sanction.ban().await,
         "softban" => sanction.softban().await?,
         "kick" => sanction.kick().await?,
         "warn" => return sanction.warn().await,
@@ -160,7 +160,7 @@ struct Sanction<'a> {
 }
 
 impl Sanction<'_> {
-    async fn ban(&self) -> anyhow::Result<CaseKind> {
+    async fn ban(&self) -> anyhow::Result<()> {
         let cx = self.cx;
         let g = self.guild;
         let user = self.user;
@@ -168,9 +168,19 @@ impl Sanction<'_> {
         let http = &self.cx.app.http;
         let gid = Id::new(self.guild);
         let uid = Id::new(self.user);
-        let _guard = cx.app.db.lock_ban(g, user).await?;
+        let guard = cx.app.db.lock_ban(g, user).await?;
         http.create_ban(gid, uid).reason(audit).await?;
-        Ok(CaseKind::Ban)
+        let act = Act {
+            kind: CaseKind::Ban,
+            target: user,
+            target_name: user.to_string(),
+            reason: self.reason.clone(),
+            duration: None,
+            details: None,
+        };
+        super::super::revoke::record_locked(&cx.app, guard, g, (self.actor.id, &self.actor.name), &act, None).await?;
+        extra_log(&cx.app, g, self.actor.id, CaseKind::Ban, user).await;
+        Ok(())
     }
 
     async fn softban(&self) -> anyhow::Result<CaseKind> {

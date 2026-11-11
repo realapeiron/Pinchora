@@ -24,6 +24,7 @@ use crate::routes::economy::store;
 use crate::routes::infra::me::icon_url;
 use crate::routes::moderation::audit_log;
 use crate::routes::moderation::moderation;
+use crate::routes::moderation::moderation::{moderation as get_moderation, put_moderation};
 use crate::routes::progression::leveling;
 use crate::state::WebState;
 
@@ -93,13 +94,11 @@ pub fn router() -> Router<WebState> {
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))
         .route("/surge/settings", put(community::put_surge))
-        .route(
-            "/moderation",
-            get(moderation::moderation).put(moderation::put_moderation),
-        )
+        .route("/moderation", get(get_moderation).put(put_moderation))
         .route("/logs", get(moderation::logs).put(moderation::put_logs))
         .route("/cases", get(moderation::cases))
         .route("/cases/{case}", get(moderation::case).patch(moderation::patch_case))
+        .route("/cases/{case}/revoke", post(moderation::revoke_case))
         .route("/staff-log", get(moderation::staff_log))
         .nest("/command-control", crate::routes::admin::command_control::router())
         .nest("/backup", crate::routes::admin::config_backup::router())

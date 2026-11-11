@@ -15491,6 +15491,8 @@ mod command_control;
 
 #[path = "simulate/moderation_policy.rs"]
 mod moderation_policy;
+#[path = "simulate/policy_ban_lock.rs"]
+mod policy_ban_lock;
 
 #[path = "simulate/web_house_edit.rs"]
 mod web_house_edit;

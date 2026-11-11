@@ -48,6 +48,7 @@ test("warning hint counts active warnings and chooses the next rung", () => {
     rung: ladder[0],
   });
   expect(nextWarningRung(entry("warn", true), [entry("warn", true)], undefined)).toBeNull();
+  expect(nextWarningRung(entry("warn", false), [entry("warn", true)], ladder)).toBeNull();
   expect(nextWarningRung(entry("ban", true), [], ladder)).toBeNull();
   expect(nextWarningRung(entry("warn", true), Array(4).fill(entry("warn", true)), ladder)).toBeNull();
 });

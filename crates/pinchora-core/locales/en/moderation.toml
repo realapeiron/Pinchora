@@ -18,6 +18,7 @@ refused-kick = "Discord refused the kick: {why}."
 refused-timeout = "Discord refused the timeout: {why}."
 refused = "Discord refused it: {why}."
 refused-delete = "Discord refused to delete them: {why}."
+discord-no-response = "Discord did not respond in time. The action may still complete."
 told-anyway = "They had already been told by direct message, so I told them it did not go through."
 warn-why = "Say why you are warning them."
 active-warns = { one = "They have **{count}** active warn.", other = "They have **{count}** active warns." }

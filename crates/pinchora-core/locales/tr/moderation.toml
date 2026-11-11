@@ -18,6 +18,7 @@ refused-kick = "Discord atmayı kabul etmedi: {why}."
 refused-timeout = "Discord susturmayı kabul etmedi: {why}."
 refused = "Discord bunu kabul etmedi: {why}."
 refused-delete = "Discord mesajları silmeyi kabul etmedi: {why}."
+discord-no-response = "Discord zamanında yanıt vermedi. İşlem yine de tamamlanabilir."
 told-anyway = "Üyeye özel mesajla haber verilmişti; işlemin gerçekleşmediğini de kendisine bildirdim."
 warn-why = "Neden uyardığını yaz."
 active-warns = { other = "Geçerli **{count}** uyarısı var." }

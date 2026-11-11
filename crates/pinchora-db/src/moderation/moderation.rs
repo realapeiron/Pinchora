@@ -69,6 +69,10 @@ macro_rules! case_columns {
     };
 }
 
+#[path = "reversal.rs"]
+mod reversal;
+use reversal::open_case_in;
+
 fn push_case_filters(sql: &mut QueryBuilder<Postgres>, filter: &CaseFilter, include_kind: bool) {
     if let Some(target) = filter.target {
         sql.push(" AND target_id = ").push_bind(sql_id(target));
@@ -159,7 +163,7 @@ pub struct NewStaffAction<'a> {
     pub guild: u64,
     pub actor: u64,
     pub actor_name: &'a str,
-    /// `command` or `discord`.
+    /// `command`, `web` or `discord`.
     pub source: &'a str,
     pub action: &'a str,
     pub target: Option<u64>,
@@ -324,8 +328,12 @@ impl Db {
     /// A ban or timeout replaces the member's earlier one (its end no longer counts), an unban or a
     /// removed timeout ends them.
     pub async fn open_case(&self, new: &NewCase<'_>) -> anyhow::Result<OpenedCase> {
+        self.open_case_from(new, "command").await
+    }
+
+    pub async fn open_case_from(&self, new: &NewCase<'_>, source: &str) -> anyhow::Result<OpenedCase> {
         let mut tx = self.pool().begin().await?;
-        let opened = open_case_in(&mut tx, new).await?;
+        let opened = open_case_in(&mut tx, new, source).await?;
         tx.commit().await?;
         Ok(opened)
     }
@@ -333,6 +341,15 @@ impl Db {
     /// Takes a warn back: the warn stops counting and an `unwarn` case records who did it. `None`
     /// when `number` is no warn of this server that still counts.
     pub async fn remove_warn(&self, number: i32, new: &NewCase<'_>) -> anyhow::Result<Option<(CaseRow, OpenedCase)>> {
+        self.remove_warn_from(number, new, "command").await
+    }
+
+    pub async fn remove_warn_from(
+        &self,
+        number: i32,
+        new: &NewCase<'_>,
+        source: &str,
+    ) -> anyhow::Result<Option<(CaseRow, OpenedCase)>> {
         let mut tx = self.pool().begin().await?;
         let warn = sqlx::query_as::<_, CaseRow>(concat!(
             "UPDATE mod_cases SET active = FALSE, updated_at = now()
@@ -351,7 +368,7 @@ impl Db {
             target_name: &warn.target_name,
             ..new.clone()
         };
-        let opened = open_case_in(&mut tx, &unwarn).await?;
+        let opened = open_case_in(&mut tx, &unwarn, source).await?;
         tx.commit().await?;
         Ok(Some((warn, opened)))
     }
@@ -665,80 +682,6 @@ impl Db {
 /// Opens a case inside `tx`. The counter row taken first is held to the end of the transaction, so
 /// cases of one server are numbered one after the other, and the warn count read after it sees every
 /// warn opened before.
-async fn open_case_in(tx: &mut sqlx::Transaction<'_, Postgres>, new: &NewCase<'_>) -> anyhow::Result<OpenedCase> {
-    let guild = sql_id(new.guild);
-    let (number,): (i32,) = sqlx::query_as(
-        "INSERT INTO mod_case_counters (guild_id, last_case) VALUES ($1, 1)
-         ON CONFLICT (guild_id) DO UPDATE SET last_case = mod_case_counters.last_case + 1
-         RETURNING last_case",
-    )
-    .bind(guild)
-    .fetch_one(&mut **tx)
-    .await?;
-    // What a new ban, unban, timeout or removed timeout ends.
-    let ends: &[&str] = match new.kind {
-        CaseKind::Ban | CaseKind::Unban => &["ban"],
-        CaseKind::Timeout | CaseKind::Untimeout => &["timeout"],
-        _ => &[],
-    };
-    if !ends.is_empty() {
-        sqlx::query(
-            "UPDATE mod_cases SET active = FALSE, updated_at = now()
-             WHERE guild_id = $1 AND target_id = $2 AND active AND kind = ANY($3)",
-        )
-        .bind(guild)
-        .bind(sql_id(new.target))
-        .bind(ends)
-        .execute(&mut **tx)
-        .await?;
-    }
-    let case = sqlx::query_as::<_, CaseRow>(concat!(
-        "INSERT INTO mod_cases (guild_id, number, kind, target_id, target_name, moderator_id, moderator_name, reason,
-                                duration_secs, expires_at, details, active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING ",
-        case_columns!()
-    ))
-    .bind(guild)
-    .bind(number)
-    .bind(new.kind.key())
-    .bind(sql_id(new.target))
-    .bind(new.target_name)
-    .bind(sql_id(new.moderator))
-    .bind(new.moderator_name)
-    .bind(new.reason)
-    .bind(new.duration.map(|d| d.num_seconds()))
-    .bind(new.expires_at)
-    .bind(new.details)
-    // Only bans, warns and timeouts stand until something ends them.
-    .bind(matches!(new.kind, CaseKind::Ban | CaseKind::Warn | CaseKind::Timeout))
-    .fetch_one(&mut **tx)
-    .await?;
-    let (active_warns,): (i64,) = sqlx::query_as(
-        "SELECT count(*) FROM mod_cases WHERE guild_id = $1 AND target_id = $2 AND kind = 'warn' AND active",
-    )
-    .bind(guild)
-    .bind(sql_id(new.target))
-    .fetch_one(&mut **tx)
-    .await?;
-    record_staff_in(
-        tx,
-        &NewStaffAction {
-            guild: new.guild,
-            actor: new.moderator,
-            actor_name: new.moderator_name,
-            source: "command",
-            action: new.kind.key(),
-            target: Some(new.target),
-            target_name: Some(new.target_name),
-            case_number: Some(number),
-            reason: new.reason,
-            details: new.details,
-        },
-    )
-    .await?;
-    Ok(OpenedCase { case, active_warns })
-}
-
 async fn record_staff_in(tx: &mut sqlx::Transaction<'_, Postgres>, a: &NewStaffAction<'_>) -> anyhow::Result<()> {
     sqlx::query(
         "INSERT INTO staff_actions (guild_id, actor_id, actor_name, source, action, target_id, target_name,

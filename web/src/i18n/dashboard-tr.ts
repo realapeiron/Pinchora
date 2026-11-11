@@ -494,8 +494,23 @@ export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
   "Close overlay": "Katmanı kapat",
   "Close case": "Vakayı kapat",
   "Case #{number} does not exist.": "Vaka #{number} bulunamadı.",
+  "{member} has {count} active warning. Next: {action}.":
+    "{member} için {count} aktif uyarı var. Sonraki eşik: {action}.",
   "{member} has {count} active warnings. Next: {action}.":
     "{member} için {count} aktif uyarı var. Sonraki eşik: {action}.",
   "No other cases for this member.": "Bu üyenin başka vakası yok.",
   "Case reason saved.": "Vaka sebebi kaydedildi.",
+  Revoke: "Geri al",
+  "Confirm revoke": "Geri almayı onayla",
+  warning: "uyarıyı",
+  timeout: "zaman aşımını",
+  "Ban case": "yasağı",
+  "Remove the warning for {member}? Their active warning count drops by one.":
+    "{member} için uyarı kaldırılsın mı? Aktif uyarı sayısı bir azalacak.",
+  "Remove the {kind} for {member}?": "{member} için {kind} kaldırılsın mı?",
+  "Reason (optional)": "Sebep (isteğe bağlı)",
+  "Yes, revoke": "Evet, geri al",
+  "Revoking…": "Geri alınıyor…",
+  "Case revoked.": "Vaka geri alındı.",
+  "Could not revoke the case.": "Vaka geri alınamadı.",
 };

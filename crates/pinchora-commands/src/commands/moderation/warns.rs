@@ -5,10 +5,8 @@ use pinchora_core::moderation::moderation::CaseKind;
 use pinchora_core::moderation::moderation::Punishment;
 use pinchora_core::moderation::moderation::Threshold;
 use pinchora_core::moderation::moderation::check_reason;
-use pinchora_core::moderation::moderation::outranks;
 use pinchora_core::moderation::moderation::reached;
 use pinchora_core::t;
-use pinchora_db::NewCase;
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{guild::Permissions, id::Id};
@@ -31,7 +29,6 @@ use crate::commands::moderation::take_back;
 use crate::commands::moderation::tell;
 use crate::commands::moderation::words;
 use crate::infra::util::WARN;
-use crate::infra::util::mention;
 use crate::infra::util::relative;
 use crate::infra::util::resolved_display_name;
 
@@ -127,10 +124,10 @@ pub(crate) async fn climb(
     } else {
         None
     };
-    let _guard = if kind == CaseKind::Ban {
-        Some(cx.app.db.lock_ban(guild, act.target).await?)
-    } else {
-        None
+    let guard = match kind {
+        CaseKind::Ban => Some(cx.app.db.lock_ban(guild, act.target).await?),
+        CaseKind::Timeout => Some(cx.app.db.lock_timeout(guild, act.target).await?),
+        _ => None,
     };
     let http = &cx.app.http;
     let done = match rung.action {
@@ -161,7 +158,11 @@ pub(crate) async fn climb(
         return Ok(t!(lang, "mod.ladder-refused", count = warns, why = why));
     }
     let told = kind.tells_first().then_some(told.is_some());
-    let opened = record(&cx.app, guild, (cx.app.application_id.get(), BOT_NAME), &act, told).await?;
+    let opened = if let Some(guard) = guard {
+        super::revoke::record_locked(&cx.app, guard, guild, (cx.app.application_id.get(), BOT_NAME), &act, told).await?
+    } else {
+        record(&cx.app, guild, (cx.app.application_id.get(), BOT_NAME), &act, told).await?
+    };
     let what = match (rung.action, rung.duration) {
         (Punishment::Timeout, Some(d)) => t!(lang, "mod.ladder-timed-out", duration = words::duration(lang, d)),
         (Punishment::Ban, Some(d)) => t!(lang, "mod.ladder-banned-for", duration = words::duration(lang, d)),
@@ -265,60 +266,17 @@ impl Unwarn {
         };
         let moderator = Moderator::of(cx)?;
         let number = self.case.clamp(1, i64::from(i32::MAX)) as i32;
-        let warn = cx.app.db.case(guild, number).await?;
-        let Some(warn) = warn.filter(|c| c.kind() == Some(CaseKind::Warn) && c.active) else {
-            return cx.reply_ephemeral(t!(lang, "mod.not-a-warn", number = number)).await;
+        let opened = match super::revoke_case(&cx.app, guild, number, super::RevokeActor {
+            id: moderator.id, name: &moderator.name, roles: moderator.roles.clone(), source: "command", target_name: None, language: lang,
+        }, reason.as_deref()).await {
+            Ok(opened) => opened,
+            Err(super::RevokeError::Hierarchy(message) | super::RevokeError::Permission(message)) => return cx.reply_ephemeral(message).await,
+            Err(super::RevokeError::Missing | super::RevokeError::Inactive | super::RevokeError::Kind) =>
+                return cx.reply_ephemeral(t!(lang, "mod.not-a-warn", number = number)).await,
+            Err(super::RevokeError::Discord(message)) => return cx.reply_ephemeral(message).await,
+            Err(super::RevokeError::NotTimedOut(message)) => return cx.reply_ephemeral(message).await,
+            Err(super::RevokeError::Internal(error)) => return Err(error),
         };
-        // A moderator's own warns are for someone else to take back.
-        let target = warn.target_id as u64;
-        if target == moderator.id {
-            return cx.reply_ephemeral(t!(lang, "mod.own-warn")).await;
-        }
-        // Like the warn itself: only over a member below you, and a warn given by someone below you.
-        let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
-        };
-        let Some(member) = ranks.of(&cx.app, guild, target).await else {
-            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
-        };
-        if !outranks(ranks.owner, ranks.actor, member) {
-            return cx.reply_ephemeral(t!(lang, "mod.unwarn-above")).await;
-        }
-        let given_by = warn.moderator_id as u64;
-        if given_by != moderator.id && given_by != ranks.bot.id && given_by != 0 {
-            let Some(giver) = ranks.of(&cx.app, guild, given_by).await else {
-                return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
-            };
-            if !outranks(ranks.owner, ranks.actor, giver) {
-                let text = t!(lang, "mod.unwarn-moderator", moderator = mention(given_by));
-                return cx.reply_ephemeral(text).await;
-            }
-        }
-        let server = cx.app.guild_lang(guild).await;
-        let details = t!(server, "mod.details.unwarn", number = number);
-        let removed = cx
-            .app
-            .db
-            .remove_warn(
-                number,
-                &NewCase {
-                    guild,
-                    kind: CaseKind::Unwarn,
-                    target: 0,
-                    target_name: "",
-                    moderator: moderator.id,
-                    moderator_name: &moderator.name,
-                    reason: reason.as_deref(),
-                    duration: None,
-                    expires_at: None,
-                    details: Some(&details),
-                },
-            )
-            .await?;
-        let Some((_, opened)) = removed else {
-            return cx.reply_ephemeral(t!(lang, "mod.not-a-warn", number = number)).await;
-        };
-        crate::commands::moderation::post_case(&cx.app, guild, &opened.case).await;
         let line = t!(lang, "mod.active-warns-now", count = opened.active_warns);
         let mut embed = reply_embed(&opened.case, &[line], lang);
         embed.color = Some(color(Some(CaseKind::Unwarn)));

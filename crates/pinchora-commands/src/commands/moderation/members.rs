@@ -158,7 +158,7 @@ impl Ban {
             None => None,
         };
         let audit = audit_reason(lang, &moderator, act.reason.as_deref());
-        let _guard = cx.app.db.lock_ban(guild, act.target).await?;
+        let guard = cx.app.db.lock_ban(guild, act.target).await?;
         let days = self.delete_days.unwrap_or(0).clamp(0, 7) as u32;
         if let Err(error) = cx
             .app
@@ -177,7 +177,7 @@ impl Ban {
             return cx.reply_ephemeral(text).await;
         }
         let told = told.is_some();
-        let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, Some(told)).await?;
+        let opened = super::revoke::record_locked(&cx.app, guard, guild, (moderator.id, &moderator.name), &act, Some(told)).await?;
         cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
@@ -209,19 +209,35 @@ impl Unban {
         };
         let moderator = Moderator::of(cx)?;
         let act = Act::on(CaseKind::Unban, &self.user, reason);
-        let _guard = cx.app.db.lock_ban(guild, act.target).await?;
-        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
-        if let Err(error) = cx
-            .app
-            .http
-            .delete_ban(Id::new(guild), self.user.resolved.id)
-            .reason(&audit)
-            .await
-        {
-            let text = t!(lang, "mod.refused-unban", why = refusal(lang, &error));
-            return cx.reply_ephemeral(text).await;
+        let opened = loop {
+            if let Some(case) = cx.app.db.active_case_for(guild, act.target, CaseKind::Ban).await? {
+            match super::revoke_case(&cx.app, guild, case.number, super::RevokeActor {
+                id: moderator.id, name: &moderator.name, roles: moderator.roles.clone(), source: "command", target_name: Some(&act.target_name), language: lang,
+            }, act.reason.as_deref()).await {
+                Ok(opened) => break opened,
+                Err(super::RevokeError::Hierarchy(message) | super::RevokeError::Permission(message)) =>
+                    return cx.reply_ephemeral(message).await,
+                Err(super::RevokeError::Discord(why)) =>
+                    return cx.reply_ephemeral(t!(lang, "mod.refused-unban", why = why)).await,
+                Err(super::RevokeError::Inactive | super::RevokeError::Missing) => continue,
+                Err(super::RevokeError::NotTimedOut(message)) => return cx.reply_ephemeral(message).await,
+                Err(super::RevokeError::Kind) =>
+                    return cx.reply_ephemeral(t!(lang, "mod.refused-unban", why = t!(lang, "mod.why.unknown-ban"))).await,
+                Err(super::RevokeError::Internal(error)) => return Err(error),
+            }
+        } else {
+            let mut guard = cx.app.db.lock_ban(guild, act.target).await?;
+            if pinchora_db::Db::active_case_for_in(&mut guard, guild, act.target, CaseKind::Ban).await?.is_some() {
+                continue;
+            }
+            let audit = audit_reason(lang, &moderator, act.reason.as_deref());
+            if let Err(error) = cx.app.http.delete_ban(Id::new(guild), self.user.resolved.id).reason(&audit).await {
+                let text = t!(lang, "mod.refused-unban", why = refusal(lang, &error));
+                return cx.reply_ephemeral(text).await;
+            }
+            break super::revoke::record_locked(&cx.app, guard, guild, (moderator.id, &moderator.name), &act, None).await?;
         }
-        let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
+        };
         cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
@@ -366,10 +382,11 @@ impl Timeout {
         let mut act = Act::on(CaseKind::Timeout, &self.user, reason);
         act.duration = Some(duration);
         let audit = audit_reason(lang, &moderator, act.reason.as_deref());
+        let guard = cx.app.db.lock_timeout(guild, act.target).await?;
         if let Err(why) = set_timeout(cx, guild, &self.user, Some(cx.app.now() + duration), &audit).await {
             return cx.reply_ephemeral(t!(lang, "mod.refused-timeout", why = why)).await;
         }
-        let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
+        let opened = super::revoke::record_locked(&cx.app, guard, guild, (moderator.id, &moderator.name), &act, None).await?;
         cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
@@ -417,11 +434,33 @@ impl Untimeout {
             return cx.reply_ephemeral(why).await;
         }
         let act = Act::on(CaseKind::Untimeout, &self.user, reason);
-        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
-        if let Err(why) = set_timeout(cx, guild, &self.user, None, &audit).await {
-            return cx.reply_ephemeral(t!(lang, "mod.refused", why = why)).await;
+        let opened = loop {
+        if let Some(case) = cx.app.db.active_case_for(guild, act.target, CaseKind::Timeout).await? {
+            match super::revoke_case(&cx.app, guild, case.number, super::RevokeActor {
+                id: moderator.id, name: &moderator.name, roles: moderator.roles.clone(), source: "command", target_name: Some(&act.target_name), language: lang,
+            }, act.reason.as_deref()).await {
+                Ok(opened) => break opened,
+                Err(super::RevokeError::Hierarchy(message) | super::RevokeError::Permission(message)) =>
+                    return cx.reply_ephemeral(message).await,
+                Err(super::RevokeError::Discord(why)) =>
+                    return cx.reply_ephemeral(t!(lang, "mod.refused", why = why)).await,
+                Err(super::RevokeError::Inactive | super::RevokeError::Missing) => continue,
+                Err(super::RevokeError::NotTimedOut(message)) => return cx.reply_ephemeral(message).await,
+                Err(super::RevokeError::Kind) => return cx.reply_ephemeral(t!(lang, "mod.not-timed-out")).await,
+                Err(super::RevokeError::Internal(error)) => return Err(error),
+            }
+        } else {
+            let mut guard = cx.app.db.lock_timeout(guild, act.target).await?;
+            if pinchora_db::Db::active_case_for_in(&mut guard, guild, act.target, CaseKind::Timeout).await?.is_some() {
+                continue;
+            }
+            let audit = audit_reason(lang, &moderator, act.reason.as_deref());
+            if let Err(why) = set_timeout(cx, guild, &self.user, None, &audit).await {
+                return cx.reply_ephemeral(t!(lang, "mod.refused", why = why)).await;
+            }
+            break super::revoke::record_locked(&cx.app, guard, guild, (moderator.id, &moderator.name), &act, None).await?;
         }
-        let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
+        };
         cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }

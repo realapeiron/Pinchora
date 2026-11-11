@@ -403,6 +403,19 @@ export function useSaveReason(guild: string) {
   });
 }
 
+export function useRevokeCase(guild: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ number, reason }: { number: number; reason: string | null }) =>
+      api<{ case: Case }>(`/api/guilds/${guild}/cases/${number}/revoke`, "POST", { reason }),
+    onSuccess: async (_saved, variables) => {
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/cases`] });
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/cases/${variables.number}`] });
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/staff-log`] });
+    },
+  });
+}
+
 /** What the staff log is narrowed to. */
 export interface StaffFilters {
   q: string;

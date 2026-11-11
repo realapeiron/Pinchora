@@ -188,6 +188,7 @@ pub use commands::definitions as command_definitions;
 pub use commands::moderation::lift_expired_bans;
 pub use commands::moderation::refresh_post as refresh_case_post;
 pub use commands::moderation::spawn_ticker as spawn_moderation_ticker;
+pub use commands::moderation::{RevokeActor, RevokeError, revoke_case};
 
 /// Grant a form acceptance role after rechecking the bot hierarchy and role permissions.
 pub async fn grant_community_role(app: &App, guild: u64, user: u64, role: u64) -> anyhow::Result<()> {

@@ -192,6 +192,29 @@
 :where(.shell-page) .cases-reason-editor textarea {
   width: 100%;
 }
+:where(.shell-page) .cases-revoke {
+  margin-top: 18px;
+}
+:where(.shell-page) .cases-revoke-confirm {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+}
+:where(.shell-page) .cases-revoke-confirm p {
+  margin: 0;
+}
+:where(.shell-page) .cases-revoke-confirm textarea {
+  width: 100%;
+}
+:where(.shell-page) .cases-revoke-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+:where(.shell-page) .cases-revoke button {
+  min-height: 44px;
+}
 :where(.shell-page) .cases-history {
   margin-top: 24px;
 }

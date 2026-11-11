@@ -8754,6 +8754,75 @@
     "$.error:object",
     "$:object"
   ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 200": [
+    "$.case.active:boolean",
+    "$.case.created_at:string",
+    "$.case.details:null",
+    "$.case.details:string",
+    "$.case.dm_sent:null",
+    "$.case.duration:null",
+    "$.case.expires_at:null",
+    "$.case.kind:string",
+    "$.case.label:string",
+    "$.case.moderator_id:string",
+    "$.case.moderator_name:string",
+    "$.case.number:number",
+    "$.case.on_channel:boolean",
+    "$.case.reason:null",
+    "$.case.reason:string",
+    "$.case.target_id:string",
+    "$.case.target_name:string",
+    "$.case.updated_at:null",
+    "$.case:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 400": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 401": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 403": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 404": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 409": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 422": [
+    "$.error.code:string",
+    "$.error.errors:array",
+    "$.error.errors[].field:string",
+    "$.error.errors[].message:string",
+    "$.error.errors[]:object",
+    "$.error.field:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 502": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
   "POST /api/guilds/{g}/commands 200": [
     "$.actions:array",
     "$.actions[].amount:number",

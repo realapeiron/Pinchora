@@ -347,6 +347,9 @@ pub fn check_reason(text: Option<&str>) -> Result<Option<String>, FieldError> {
             format!("A reason is at most {REASON_MAX} characters."),
         ));
     }
+    if text.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
+        return Err(FieldError::new("reason", "A reason cannot contain control characters."));
+    }
     Ok(Some(text.to_owned()))
 }
 
@@ -575,6 +578,12 @@ mod tests {
         assert_eq!(check_reason(None).unwrap(), None);
         assert!(check_reason(Some(&"é".repeat(REASON_MAX))).is_ok());
         assert!(check_reason(Some(&"x".repeat(REASON_MAX + 1))).is_err());
+        assert!(check_reason(Some("bad\0reason")).is_err());
+        assert!(check_reason(Some("bad\u{1b}reason")).is_err());
+        assert_eq!(
+            check_reason(Some("line one\n\tline two")).unwrap().as_deref(),
+            Some("line one\n\tline two")
+        );
     }
 
     #[test]

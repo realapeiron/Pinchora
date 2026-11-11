@@ -7,8 +7,10 @@
 //! strictly above the member.
 pub(crate) mod registration;
 mod cases;
+mod case_record;
 pub(crate) mod channels;
 mod members;
+mod revoke;
 pub(crate) mod setup;
 mod warns;
 pub(crate) mod words;
@@ -23,7 +25,8 @@ use pinchora_core::moderation::moderation::CaseKind;
 use pinchora_core::moderation::moderation::Rank;
 use pinchora_core::moderation::moderation::may_act;
 use pinchora_core::t;
-use pinchora_db::{CaseRow, NewCase, OpenedCase};
+use pinchora_db::CaseRow;
+pub(crate) use case_record::{Act, record};
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::ResolvedUser;
 use twilight_model::{
@@ -40,6 +43,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooter
 pub(crate) use cases::{CaseCommand, ReasonCommand};
 pub(crate) use channels::{Lock, Purge, Slowmode, Unlock};
 pub(crate) use members::{Ban, Kick, Nick, RoleCommand, Timeout, Unban, Untimeout};
+pub use revoke::{RevokeActor, RevokeError, revoke_case};
 pub(crate) use warns::{Unwarn, Warn, Warnings};
 
 use crate::App;
@@ -50,7 +54,6 @@ use crate::infra::util::SUCCESS;
 use crate::infra::util::WARN;
 use crate::infra::util::mention;
 use crate::infra::util::relative;
-use crate::infra::util::resolved_display_name;
 use crate::progression::leveling::private_channel;
 use crate::roles::roles::error_code;
 
@@ -336,75 +339,6 @@ impl Ranks {
             }
         }
     }
-}
-
-/// What an action records, before it has a number.
-pub(crate) struct Act {
-    pub(crate) kind: CaseKind,
-    pub(crate) target: u64,
-    pub(crate) target_name: String,
-    pub(crate) reason: Option<String>,
-    pub(crate) duration: Option<Duration>,
-    pub(crate) details: Option<String>,
-}
-
-impl Act {
-    pub(crate) fn on(kind: CaseKind, target: &ResolvedUser, reason: Option<String>) -> Self {
-        Self {
-            kind,
-            target: target.resolved.id.get(),
-            target_name: resolved_display_name(target),
-            reason,
-            duration: None,
-            details: None,
-        }
-    }
-
-    /// When a temporary ban ends.
-    fn expires_at(&self, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
-        self.duration.filter(|_| self.kind == CaseKind::Ban).map(|d| now + d)
-    }
-}
-
-/// Opens the case, tells the member (unless `told` says it was done before the action), posts the
-/// mod-log, and returns the case.
-pub(crate) async fn record(
-    app: &App,
-    guild: u64,
-    moderator: (u64, &str),
-    act: &Act,
-    told: Option<bool>,
-) -> anyhow::Result<OpenedCase> {
-    let opened = app
-        .db
-        .open_case(&NewCase {
-            guild,
-            kind: act.kind,
-            target: act.target,
-            target_name: &act.target_name,
-            moderator: moderator.0,
-            moderator_name: moderator.1,
-            reason: act.reason.as_deref(),
-            duration: act.duration,
-            expires_at: act.expires_at(app.now()),
-            details: act.details.as_deref(),
-        })
-        .await?;
-    let case = &opened.case;
-    let told = match told {
-        Some(told) => Some(told),
-        None if act.kind.tells_member() => Some(tell(app, guild, act).await.is_some()),
-        None => None,
-    };
-    if let Some(told) = told
-        && let Err(error) = app.db.set_case_dm(guild, case.number, told).await
-    {
-        tracing::warn!(%error, guild, "could not note the direct message");
-    }
-    post_case(app, guild, case).await;
-    crate::commands::moderation::policy::appeal_hint(app, guild, case).await;
-    metrics::counter!("pinchora_mod_cases_total", "kind" => act.kind.key()).increment(1);
-    Ok(opened)
 }
 
 /// A direct message that went out, so it can be taken back when the action fails after it.

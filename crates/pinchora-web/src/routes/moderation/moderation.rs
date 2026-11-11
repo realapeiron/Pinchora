@@ -446,6 +446,13 @@ pub struct ReasonBody {
     reason: Option<String>,
 }
 
+fn checked_reason(raw: Option<&str>) -> ApiResult<Option<String>> {
+    if raw.is_some_and(|text| text.chars().any(|c| c.is_control() && c != '\n' && c != '\t')) {
+        return Err(ApiError::malformed("A reason cannot contain control characters."));
+    }
+    Ok(check_reason(raw)?)
+}
+
 /// Read the hierarchy live for a reason edit; failed lookups never grant permission.
 async fn check_reason_editor(state: &WebState, managed: &ManagedGuild, case: &CaseRow) -> ApiResult<()> {
     let actor = managed.current.session.user_id;
@@ -530,7 +537,7 @@ pub async fn patch_case(
     ApiJson(body): ApiJson<ReasonBody>,
 ) -> ApiResult<Json<Value>> {
     let number = case_number(&params)?;
-    let reason = check_reason(body.reason.as_deref())?;
+    let reason = checked_reason(body.reason.as_deref())?;
     let session = &managed.current.session;
     let original = state
         .app
@@ -560,6 +567,79 @@ pub async fn patch_case(
         "case reason changed on the web"
     );
     Ok(Json(case_json(&case)))
+}
+
+/// `POST /cases/{case}/revoke`: reverse a standing member action.
+pub async fn revoke_case(
+    State(state): State<WebState>,
+    managed: ManagedGuild,
+    Path(params): Path<HashMap<String, String>>,
+    ApiJson(body): ApiJson<ReasonBody>,
+) -> ApiResult<Json<Value>> {
+    use axum::http::StatusCode;
+    use pinchora_commands::{RevokeActor, RevokeError};
+
+    let number = case_number(&params)?;
+    let reason = checked_reason(body.reason.as_deref())?;
+    let session = &managed.current.session;
+    let member = state
+        .app
+        .http
+        .guild_member(Id::new(managed.id), Id::new(session.user_id))
+        .await
+        .map_err(|_| ApiError::not_manager())?
+        .model()
+        .await
+        .map_err(|_| ApiError::not_manager())?;
+    let result = pinchora_commands::revoke_case(
+        &state.app,
+        managed.id,
+        number,
+        RevokeActor {
+            id: session.user_id,
+            name: session.display_name(),
+            roles: member.roles.iter().map(|r| r.get()).collect(),
+            source: "web",
+            target_name: None,
+            language: state.app.guild_lang(managed.id).await,
+        },
+        reason.as_deref(),
+    )
+    .await;
+    let opened = match result {
+        Ok(opened) => opened,
+        Err(RevokeError::Missing) => return Err(ApiError::not_found()),
+        Err(RevokeError::Inactive) => {
+            return Err(ApiError::new(
+                StatusCode::CONFLICT,
+                "inactive",
+                "This case is no longer active.",
+            ));
+        }
+        Err(RevokeError::NotTimedOut(message)) => {
+            return Err(ApiError::new(StatusCode::CONFLICT, "not_timed_out", message));
+        }
+        Err(RevokeError::Kind) => {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "kind",
+                "This kind of case cannot be revoked.",
+            ));
+        }
+        Err(RevokeError::Hierarchy(message)) => return Err(ApiError::new(StatusCode::FORBIDDEN, "hierarchy", message)),
+        Err(RevokeError::Permission(message)) => {
+            return Err(ApiError::new(StatusCode::FORBIDDEN, "permission", message));
+        }
+        Err(RevokeError::Discord(message)) => {
+            return Err(ApiError::new(
+                StatusCode::BAD_GATEWAY,
+                "discord",
+                format!("Discord refused the reversal: {message}"),
+            ));
+        }
+        Err(RevokeError::Internal(error)) => return Err(error.into()),
+    };
+    Ok(Json(json!({ "case": case_json(&opened.case) })))
 }
 
 fn staff_json(row: &StaffActionRow) -> Value {
