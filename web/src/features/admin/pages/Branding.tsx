@@ -18,6 +18,7 @@ import {
 import { SettingsPage } from "../../../components/PageHead";
 import { Loading, Problem } from "../../../components/States";
 import "../../../styles/branding.css";
+import { BrandingFields } from "./BrandingFields";
 
 const defaultDraft: BrandingDraft = {
   nickname: null,
@@ -110,183 +111,103 @@ export function BrandingPage() {
         "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.",
       )}
     >
-      <div className="branding-grid">
-        <section className="branding-editor" aria-label={t("Branding settings")}>
-          <h2>{t("Profile")}</h2>
-          <label>
-            {t("Server nickname")}
-            <input
-              maxLength={32}
-              value={draft.nickname ?? ""}
-              onChange={(event) => setField("nickname", event.target.value || null)}
-              placeholder="Pinchora"
-            />
-          </label>
-          <label>
-            {t("Bio")}
-            <textarea
-              maxLength={190}
-              rows={3}
-              value={draft.bio ?? ""}
-              onChange={(event) => setField("bio", event.target.value || null)}
-              placeholder={t("A little about this bot in your server")}
-            />
-          </label>
-          <div className="branding-images">
-            <label>
-              {t("Avatar")}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) => upload("avatar", event.target.files?.[0])}
-              />
-            </label>
-            <label>
-              {t("Banner")}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) => upload("banner", event.target.files?.[0])}
-              />
-            </label>
-          </div>
-          <p className="branding-hint">
-            {t("Images use the welcome card upload limits and are converted to PNG.")}
+      <BrandingFields
+        draft={draft}
+        color={color}
+        avatar={avatar}
+        banner={banner}
+        guildName={guild.name}
+        activeNickname={saved.active_nickname}
+        activeBio={saved.active_bio}
+        setField={setField}
+        upload={upload}
+      />
+      <div className="branding-feedback">
+        {saved.last_error && (
+          <p className="branding-warning" role="status">
+            {t("Discord refused part of the last apply: {detail}", {
+              detail: refusedFields(saved.last_error),
+            })}
           </p>
-          <h2>{t("Messages")}</h2>
-          <label>
-            {t("Embed colour")}
-            <span className="branding-color-row">
-              <input
-                type="color"
-                value={color}
-                onChange={(event) => setField("embed_color", event.target.value)}
-              />
-              <input
-                aria-label={t("Hex colour")}
-                maxLength={7}
-                value={draft.embed_color ?? ""}
-                onChange={(event) => setField("embed_color", event.target.value || null)}
-                placeholder={t("Hex colour")}
-              />
-            </span>
-          </label>
-          <p className="branding-hint">
-            {t("This colour is used on Pinchora embeds throughout this server.")}
+        )}
+        {(saved.avatar_supported === false ||
+          saved.banner_supported === false ||
+          saved.bio_supported === false) && (
+          <p className="branding-warning">
+            {t(
+              "Some profile fields are unavailable to this app. The colour and available fields still work.",
+            )}
           </p>
-          {saved.last_error && (
-            <p className="branding-warning" role="status">
-              {t("Discord refused part of the last apply: {detail}", {
-                detail: refusedFields(saved.last_error),
-              })}
-            </p>
-          )}
-          {(saved.avatar_supported === false ||
-            saved.banner_supported === false ||
-            saved.bio_supported === false) && (
-            <p className="branding-warning">
-              {t(
-                "Some profile fields are unavailable to this app. The colour and available fields still work.",
-              )}
-            </p>
-          )}
-          {error && (
-            <p className="branding-warning" role="alert">
-              {error.message}
-            </p>
-          )}
-          {notice && <p role="status">{notice}</p>}
-          <div className="branding-actions">
+        )}
+        {error && (
+          <p className="branding-warning" role="alert">
+            {error.message}
+          </p>
+        )}
+        {notice && <p role="status">{notice}</p>}
+        <div className="branding-actions">
+          <PixelButton
+            disabled={busy || !changed}
+            onClick={() =>
+              void run(async () => {
+                const value = await saveBranding(guild.id, draft);
+                setSaved(value);
+                setDraft(brandingDraft(value));
+                setAvatar(value.avatar_url);
+                setBanner(value.banner_url);
+                setNotice(t("Changes saved."));
+              })
+            }
+          >
+            {t("Save changes")}
+          </PixelButton>
+          <PixelButton
+            variant="secondary"
+            disabled={busy || wait > 0}
+            onClick={() =>
+              void run(async () => {
+                if (changed) await saveBranding(guild.id, draft);
+                const value = await applyBranding(guild.id);
+                setSaved(value);
+                setDraft(brandingDraft(value));
+                setAvatar(value.avatar_url);
+                setBanner(value.banner_url);
+                setNotice(brandingResultMessage(Boolean(value.last_error)));
+              })
+            }
+          >
+            {wait > 0
+              ? t("Apply in {minutes} min", { minutes: Math.ceil(wait / 60) })
+              : t("Apply to Discord")}
+          </PixelButton>
+          <PixelButton variant="ghost" disabled={busy || wait > 0} onClick={() => setResetting(true)}>
+            {t("Reset branding")}
+          </PixelButton>
+        </div>
+        {resetting && (
+          <div className="branding-reset" role="group" aria-label={t("Confirm reset")}>
+            <p>{t("Clear the saved profile and colour for this server?")}</p>
             <PixelButton
-              disabled={busy || !changed}
+              disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  const value = await saveBranding(guild.id, draft);
-                  setSaved(value);
-                  setDraft(brandingDraft(value));
-                  setAvatar(value.avatar_url);
-                  setBanner(value.banner_url);
-                  setNotice(t("Changes saved."));
+                  const result = await resetBranding(guild.id);
+                  setSaved(result.branding);
+                  setDraft(brandingDraft(result.branding));
+                  setAvatar(result.branding.avatar_url);
+                  setBanner(result.branding.banner_url);
+                  setResetting(false);
+                  setNotice(brandingResultMessage(result.discord_failed.length > 0, true));
                 })
               }
             >
-              {t("Save changes")}
+              {t("Confirm reset")}
             </PixelButton>
-            <PixelButton
-              variant="secondary"
-              disabled={busy || wait > 0}
-              onClick={() =>
-                void run(async () => {
-                  if (changed) await saveBranding(guild.id, draft);
-                  const value = await applyBranding(guild.id);
-                  setSaved(value);
-                  setDraft(brandingDraft(value));
-                  setAvatar(value.avatar_url);
-                  setBanner(value.banner_url);
-                  setNotice(brandingResultMessage(Boolean(value.last_error)));
-                })
-              }
-            >
-              {wait > 0
-                ? t("Apply in {minutes} min", { minutes: Math.ceil(wait / 60) })
-                : t("Apply to Discord")}
-            </PixelButton>
-            <PixelButton variant="ghost" disabled={busy || wait > 0} onClick={() => setResetting(true)}>
-              {t("Reset branding")}
+            <PixelButton variant="ghost" onClick={() => setResetting(false)}>
+              {t("Cancel")}
             </PixelButton>
           </div>
-          {resetting && (
-            <div className="branding-reset" role="group" aria-label={t("Confirm reset")}>
-              <p>{t("Clear the saved profile and colour for this server?")}</p>
-              <PixelButton
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    const result = await resetBranding(guild.id);
-                    setSaved(result.branding);
-                    setDraft(brandingDraft(result.branding));
-                    setAvatar(result.branding.avatar_url);
-                    setBanner(result.branding.banner_url);
-                    setResetting(false);
-                    setNotice(brandingResultMessage(result.discord_failed.length > 0, true));
-                  })
-                }
-              >
-                {t("Confirm reset")}
-              </PixelButton>
-              <PixelButton variant="ghost" onClick={() => setResetting(false)}>
-                {t("Cancel")}
-              </PixelButton>
-            </div>
-          )}
-        </section>
-        <aside className="branding-preview" aria-label={t("Live preview")}>
-          <h2>{t("Live preview")}</h2>
-          <p>{t("Last accepted nickname: {name}", { name: saved.active_nickname ?? "Pinchora" })}</p>
-          <p>{t("Last accepted bio: {bio}", { bio: saved.active_bio ?? "—" })}</p>
-          <div className="branding-profile">
-            <div
-              className="branding-banner"
-              style={banner ? { backgroundImage: `url(${banner})` } : { backgroundColor: color }}
-            />
-            <div
-              className="branding-avatar"
-              style={avatar ? { backgroundImage: `url(${avatar})` } : { backgroundColor: color }}
-            >
-              {" "}
-              {!avatar && "P"}{" "}
-            </div>
-            <div className="branding-profile-body">
-              <strong>{draft.nickname || "Pinchora"}</strong>
-              <span>{t("Bot")}</span>
-              <p>{draft.bio || t("A little about this bot in your server")}</p>
-            </div>
-          </div>
-          <div className="branding-embed" style={{ borderLeftColor: color }}>
-            <strong>{t("Welcome to {server}", { server: guild.name })}</strong>
-            <p>{t("Your server's colour appears on every Pinchora embed.")}</p>
-          </div>
-        </aside>
+        )}
       </div>
     </SettingsPage>
   );

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
+import { SettingsRow } from "../../../components/SettingsRow";
+import { t as dashboardT } from "../../../i18n/dashboard";
+import { accessSummary } from "./accessSummary";
 import { RolePicker, RoleTag } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { SaveBar } from "../../../components/SaveBar";
@@ -70,116 +73,123 @@ function AccessEditor({
           "The owner, Administrators and members with Manage Server always have full access. Only they can change access, backups and command controls.",
         )}
       </p>
-      <Panel
-        title={t("MANAGER ROLES")}
-        aside={
-          <span className="pixel-label muted">
-            {draft.length}/{initial.max}
-          </span>
-        }
-      >
-        <p className="muted panel-lead">
-          {t(
-            "Grants from all held roles combine. Removing a grant or a Discord role takes effect on the next request.",
-          )}
-        </p>
-        {discord.isError && <Problem error={discord.error} />}
-        {draft.length === 0 && (
-          <p className="empty-row muted">
-            {t("No delegated roles. Only Discord server managers can use this dashboard.")}
-          </p>
-        )}
-        <ul className="access-grants">
-          {draft.map((grant) => (
-            <li key={grant.role_id} className="access-grant">
-              <div className="access-role">
-                <RoleTag info={discord.data} id={grant.role_id} />
-                <PixelButton
-                  variant="ghost"
-                  disabled={access.save.isPending}
-                  aria-label={t("Remove access for {role}", {
-                    role: discord.data?.roles.find((r) => r.id === grant.role_id)?.name ?? grant.role_id,
-                  })}
-                  onClick={() => setDraft(draft.filter((r) => r.role_id !== grant.role_id))}
-                >
-                  {t("Remove")}
-                </PixelButton>
-              </div>
-              <fieldset className="access-areas" disabled={access.save.isPending}>
-                <legend>{t("Allowed areas")}</legend>
-                {initial.areas.map((area) => (
-                  <label key={area}>
-                    <input
-                      type="checkbox"
-                      checked={grant.areas.includes(area)}
-                      onChange={(e) =>
-                        setDraft(
-                          draft.map((r) =>
-                            r.role_id === grant.role_id
-                              ? {
-                                  ...r,
-                                  areas: e.target.checked
-                                    ? [...r.areas, area]
-                                    : r.areas.filter((a) => a !== area),
-                                }
-                              : r,
-                          ),
-                        )
-                      }
-                    />
-                    {areaLabel(area)}
-                  </label>
-                ))}
-              </fieldset>
-              {grant.areas.length === 0 && (
-                <p className="field-error">{t("Choose at least one area or remove this role.")}</p>
+      <div className="settings-detail-list">
+        <SettingsRow
+          title={t("MANAGER ROLES")}
+          description={dashboardT("Manage roles that can open dashboard areas.")}
+          summary={accessSummary(draft)}
+          initialOpen
+        >
+          <div className="settings-detail-fields">
+            <span className="pixel-label muted">
+              {draft.length}/{initial.max}
+            </span>
+            <p className="muted panel-lead">
+              {t(
+                "Grants from all held roles combine. Removing a grant or a Discord role takes effect on the next request.",
               )}
-            </li>
-          ))}
-        </ul>
-        <p className="muted fine">
-          {t(
-            "Configuration includes welcome, leveling, points, modules, branding, custom commands and responders. Audit access includes all server dashboard changes.",
-          )}
-        </p>
-        <div className="add-row">
-          <Field label={t("Role")} htmlFor="access-role">
-            <RolePicker
-              id="access-role"
-              info={discord.data}
-              value={role}
-              onChange={setRole}
-              none={t("Pick a role")}
-              disabled={access.save.isPending}
-            />
-          </Field>
-          <PixelButton
-            disabled={!canAdd || access.save.isPending}
-            onClick={() => {
-              if (role && canAdd) {
-                setDraft([...draft, { role_id: role, areas: [] }]);
-                setRole(null);
-              }
-            }}
-          >
-            {t("Add manager role")}
-          </PixelButton>
-        </div>
-        {access.save.isError && <Problem error={access.save.error} />}
-      </Panel>
-      {preview && (
-        <Panel title={t("ACCESS PREVIEW")}>
-          <p className="muted">
-            {t("Unsaved preview. Each role can open these areas; other pages are denied.")}
-          </p>
-          {draft.map((r) => (
-            <p className="access-preview" key={r.role_id}>
-              <RoleTag info={discord.data} id={r.role_id} />
-              <span>{r.areas.map(areaLabel).join(" · ") || t("No areas selected")}</span>
             </p>
-          ))}
-        </Panel>
-      )}
+            {discord.isError && <Problem error={discord.error} />}
+            {draft.length === 0 && (
+              <p className="empty-row muted">
+                {t("No delegated roles. Only Discord server managers can use this dashboard.")}
+              </p>
+            )}
+            <ul className="access-grants">
+              {draft.map((grant) => (
+                <li key={grant.role_id} className="access-grant">
+                  <div className="access-role">
+                    <RoleTag info={discord.data} id={grant.role_id} />
+                    <PixelButton
+                      variant="ghost"
+                      disabled={access.save.isPending}
+                      aria-label={t("Remove access for {role}", {
+                        role: discord.data?.roles.find((r) => r.id === grant.role_id)?.name ?? grant.role_id,
+                      })}
+                      onClick={() => setDraft(draft.filter((r) => r.role_id !== grant.role_id))}
+                    >
+                      {t("Remove")}
+                    </PixelButton>
+                  </div>
+                  <fieldset className="access-areas" disabled={access.save.isPending}>
+                    <legend>{t("Allowed areas")}</legend>
+                    {initial.areas.map((area) => (
+                      <label key={area}>
+                        <input
+                          type="checkbox"
+                          checked={grant.areas.includes(area)}
+                          onChange={(e) =>
+                            setDraft(
+                              draft.map((r) =>
+                                r.role_id === grant.role_id
+                                  ? {
+                                      ...r,
+                                      areas: e.target.checked
+                                        ? [...r.areas, area]
+                                        : r.areas.filter((a) => a !== area),
+                                    }
+                                  : r,
+                              ),
+                            )
+                          }
+                        />
+                        {areaLabel(area)}
+                      </label>
+                    ))}
+                  </fieldset>
+                  {grant.areas.length === 0 && (
+                    <p className="field-error">{t("Choose at least one area or remove this role.")}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="muted fine">
+              {t(
+                "Configuration includes welcome, leveling, points, modules, branding, custom commands and responders. Audit access includes all server dashboard changes.",
+              )}
+            </p>
+            <div className="add-row">
+              <Field label={t("Role")} htmlFor="access-role">
+                <RolePicker
+                  id="access-role"
+                  info={discord.data}
+                  value={role}
+                  onChange={setRole}
+                  none={t("Pick a role")}
+                  disabled={access.save.isPending}
+                />
+              </Field>
+              <PixelButton
+                disabled={!canAdd || access.save.isPending}
+                onClick={() => {
+                  if (role && canAdd) {
+                    setDraft([...draft, { role_id: role, areas: [] }]);
+                    setRole(null);
+                  }
+                }}
+              >
+                {t("Add manager role")}
+              </PixelButton>
+            </div>
+            {access.save.isError && <Problem error={access.save.error} />}
+          </div>
+          {preview && (
+            <div className="settings-detail-preview">
+              <Panel title={t("ACCESS PREVIEW")}>
+                <p className="muted">
+                  {t("Unsaved preview. Each role can open these areas; other pages are denied.")}
+                </p>
+                {draft.map((r) => (
+                  <p className="access-preview" key={r.role_id}>
+                    <RoleTag info={discord.data} id={r.role_id} />
+                    <span>{r.areas.map(areaLabel).join(" · ") || t("No areas selected")}</span>
+                  </p>
+                ))}
+              </Panel>
+            </div>
+          )}
+        </SettingsRow>
+      </div>
       <SaveBar
         count={dirty ? 1 : 0}
         saving={access.save.isPending}

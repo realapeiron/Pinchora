@@ -183,6 +183,29 @@
   :where(.shell-page) .settings-detail-expand {
     min-height: 60px;
   }
+  :where(.shell-page) .inv-page .inv-number-grid,
+  :where(.shell-page) .inv-page .inv-add-reward,
+  :where(.shell-page) .inv-page .inv-reward {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .inv-page .inv-reward > *,
+  :where(.shell-page) .inv-page .inv-add-reward .pixel-button {
+    grid-column: auto;
+  }
+  :where(.shell-page) .command-control-page .command-open,
+  :where(.shell-page) .command-control-page .command-switch,
+  :where(.shell-page) .utility-page .utility-actions .pixel-button,
+  :where(.shell-page) .utility-page .utility-dialog-head button,
+  :where(.shell-page) .inv-page .inv-tabs button,
+  :where(.shell-page) .inv-page .inv-member-link {
+    min-height: 44px;
+  }
+  :where(.shell-page) .settings-detail-row .field,
+  :where(.shell-page) .settings-detail-row input,
+  :where(.shell-page) .settings-detail-row select,
+  :where(.shell-page) .settings-detail-row textarea {
+    min-width: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   :where(.shell-page) .settings-detail-chevron {

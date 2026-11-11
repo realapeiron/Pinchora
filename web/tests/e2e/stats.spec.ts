@@ -172,6 +172,10 @@ test("an empty server, a counter channel and the public page", async ({ page }) 
   await page.getByRole("button", { name: "Add counter" }).click();
   await expect(page.locator(".counter-row")).toHaveCount(1);
   await expect(page.locator(".counter-row")).toContainText("Lounge");
+  const countersSaved = await (await page.request.get(`/api/guilds/${quiet}/stats/counters`)).json();
+  expect(countersSaved.counters).toEqual(
+    expect.arrayContaining([expect.objectContaining({ template: "Crabs: {count}" })]),
+  );
   await expect(page.getByText("1/10 USED")).toBeVisible();
   await page.getByLabel("Name").fill("Crabs");
   await expect(page.getByText("Put {count} where the number goes.")).toBeVisible();
@@ -184,10 +188,12 @@ test("an empty server, a counter channel and the public page", async ({ page }) 
     "aria-checked",
     "true",
   );
+  await page.locator(".settings-detail-expand").filter({ hasText: "Public stats page" }).click();
   await expect(page.getByRole("link", { name: "Open the public page" })).toBeVisible();
   expect((await page.request.get(`/api/public/stats/${quiet}`)).status()).toBe(200);
 
-  await page.getByRole("button", { name: "Preview the /stats card" }).click();
+  await page.locator(".settings-detail-expand").filter({ hasText: "Preview the /stats card" }).click();
+  await page.getByRole("button", { name: "Preview the /stats card", exact: true }).click();
   const card = page.locator(".card-preview img");
   await expect(card).toBeVisible();
   await expect
@@ -196,6 +202,8 @@ test("an empty server, a counter channel and the public page", async ({ page }) 
 
   await page.getByRole("button", { name: /Stop counting in/ }).click();
   await expect(page.locator(".counter-row")).toHaveCount(0);
+  const countersRemoved = await (await page.request.get(`/api/guilds/${quiet}/stats/counters`)).json();
+  expect(countersRemoved.counters).toHaveLength(0);
 });
 
 test("the public pages: a server that opened its stats, one that did not, and the bot's totals", async ({

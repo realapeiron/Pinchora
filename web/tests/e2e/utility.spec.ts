@@ -11,6 +11,7 @@ test("Messages editor saves a schedule and fits desktop and phone", async ({ pag
   await page.goto(`/g/${guild}/utility`);
   await expect(page.getByRole("heading", { name: "MESSAGES", exact: true })).toBeVisible();
   await expect(page.getByText("SCHEDULED MESSAGES · 0/20 USED")).toBeVisible();
+  await page.locator(".settings-detail-expand").filter({ hasText: "SCHEDULED MESSAGES" }).click();
   await page.getByRole("button", { name: "Schedule a message" }).click();
   await page.getByLabel("Channel").selectOption({ label: "#general" });
   await page.getByLabel("Message", { exact: true }).fill("Reef cleanup starts soon.");
@@ -21,12 +22,21 @@ test("Messages editor saves a schedule and fits desktop and phone", async ({ pag
   await page.getByRole("button", { name: "Close preview" }).click();
   await page.getByRole("button", { name: "Schedule", exact: true }).click();
   await expect(page.getByText("Reef cleanup starts soon.").first()).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Scheduled message saved." })).toBeVisible();
+  await expect(page.getByText("SCHEDULED MESSAGES · 1/20 USED")).toBeVisible();
+  const scheduledSaved = await (await page.request.get(`/api/guilds/${guild}/utility`)).json();
+  expect(scheduledSaved.scheduled).toEqual(
+    expect.arrayContaining([expect.objectContaining({ content: "Reef cleanup starts soon." })]),
+  );
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Message", { exact: true }).fill("Reef cleanup starts at noon.");
   await page.getByRole("button", { name: "Save schedule" }).click();
   await expect(page.getByText("Reef cleanup starts at noon.").first()).toBeVisible();
   await shot(page, "utility-desktop", true);
   await page.getByRole("button", { name: "Preview 5 runs" }).click();
+  await expect(page.locator(".settings-detail-row .settings-detail-preview")).toContainText(
+    "Reef cleanup starts at noon.",
+  );
   await expect(page.getByText("NEXT RUNS")).toBeVisible();
   await page.getByRole("button", { name: "Close preview" }).click();
   await page.setViewportSize({ width: 390, height: 844 });

@@ -20,10 +20,13 @@ test("invites settings and leaderboard fit desktop and phone", async ({ page }) 
   await expect(page.getByRole("status").filter({ hasText: "saved" })).toBeVisible();
   const saved = await (await page.request.get(`/api/guilds/${guild}/invites`)).json();
   expect(saved.settings.fake_days).toBe(14);
+  await page.locator(".settings-detail-expand").filter({ hasText: "REWARD ROLES" }).click();
   await page.getByLabel("Invites needed").fill("5");
   await page.getByLabel("Role", { exact: true }).selectOption({ label: "@Fan" });
   await page.getByRole("button", { name: "Add reward" }).click();
   await expect(page.getByRole("list", { name: "Invite rewards" })).toContainText("5 invites");
+  const rewardsSaved = await (await page.request.get(`/api/guilds/${guild}/invites`)).json();
+  expect(rewardsSaved.rewards).toEqual(expect.arrayContaining([expect.objectContaining({ invites: 5 })]));
   await expect(page.getByText("No counted invitations in this period yet.")).toBeVisible();
   await shot(page, "invites-desktop", true);
   await page.setViewportSize({ width: 390, height: 844 });

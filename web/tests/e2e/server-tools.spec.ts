@@ -11,6 +11,7 @@ for (const language of ["en", "tr"] as const) {
     await page.request.post("/api/me/language", { headers: { "X-CSRF-Token": me.csrf }, data: { language } });
     await page.goto(`/g/${guild}/access`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(language === "en" ? "ACCESS" : "ERİŞİM");
+    await expect(page.locator(".settings-detail-row")).toHaveCount(1);
     await page.locator("#access-role").selectOption("9001");
     await page
       .getByRole("button", { name: language === "en" ? "Add manager role" : "Yönetici rolü ekle" })
@@ -26,6 +27,8 @@ for (const language of ["en", "tr"] as const) {
     await expect(saveButton).toBeEnabled();
     await saveButton.click();
     await expect(page.locator(".save-bar")).not.toHaveClass(/is-open/);
+    const accessSaved = await (await page.request.get(`/api/guilds/${guild}/access`)).json();
+    expect(accessSaved.items).toEqual(expect.arrayContaining([expect.objectContaining({ role_id: "9001" })]));
     await expect(save).not.toBeVisible();
     for (const viewport of [
       { width: 1280, height: 800 },

@@ -42,10 +42,14 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
   await page.getByLabel("Server nickname").fill("");
   await expect(save).toBeDisabled();
   await page.getByLabel("Server nickname").fill("Coral Helper");
+  await page.locator(".branding-rows .settings-detail-expand").nth(1).click();
   await page.getByLabel("Bio").fill("Your reef guide");
+  await page.locator(".branding-rows .settings-detail-expand").nth(3).click();
   await page.getByLabel("Hex colour").fill("#31b8d4");
-  await expect(page.getByLabel("Live preview")).toContainText("Coral Helper");
-  await expect(page.getByLabel("Live preview")).toContainText("Your reef guide");
+  await expect(page.locator(".branding-rows .settings-detail-preview").first()).toContainText("Coral Helper");
+  await expect(page.locator(".branding-rows .settings-detail-preview").nth(1)).toContainText(
+    "Your reef guide",
+  );
   await save.click();
   await expect(page.getByRole("status").filter({ hasText: "Changes saved." })).toBeVisible();
   await expect(save).toBeDisabled();
@@ -70,11 +74,15 @@ test("branding previews nickname, bio, colour and fits a phone", async ({ page }
     page.getByRole("heading", { level: 1, name: "Sunucu marka kimliği", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sunucu marka kimliği", exact: true })).toHaveCount(1);
-  await expect(page.getByLabel("Canlı önizleme")).toContainText("Coral Helper");
+  await expect(page.locator(".branding-rows .settings-detail-preview").first()).toContainText("Coral Helper");
   await page.setViewportSize({ width: 390, height: 844 });
   // Long unbroken profile text must wrap inside the narrow preview.
   await page.locator('.branding-editor input[maxlength="32"]').fill("C".repeat(32));
+  // The language switch re-renders the rows; open the bio row again if it closed.
+  const bioRow = page.locator(".branding-rows .settings-detail-expand").nth(1);
+  if ((await bioRow.getAttribute("aria-expanded")) !== "true") await bioRow.click();
   await page.locator(".branding-editor textarea").fill("B".repeat(190));
+  await expect(page.locator(".branding-rows .settings-detail-preview").nth(1)).toContainText("B".repeat(190));
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "branding-phone", true);
 

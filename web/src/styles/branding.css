@@ -180,3 +180,32 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+:where(.shell-page) .branding-rows .branding-editor,
+:where(.shell-page) .branding-rows .branding-preview {
+  min-width: 0;
+  position: static;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+:where(.shell-page) .branding-rows .branding-preview h2 {
+  margin: 0 0 12px;
+}
+:where(.shell-page) .branding-rows .branding-editor label {
+  margin: 0;
+}
+:where(.shell-page) .branding-feedback {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  :where(.shell-page) .branding-rows .branding-images {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .branding-rows input[type="color"] {
+    min-height: 44px;
+  }
+}
