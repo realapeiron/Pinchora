@@ -4,7 +4,9 @@ import { Link, useLocation, useOutletContext } from "react-router";
 
 import { Panel } from "../../../components/Panel";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
+import { SettingsRow } from "../../../components/SettingsRow";
+import { t } from "../../../i18n/dashboard";
+import { responderItemSummary, responderListSummary } from "./tagSummary";
 import { TagTransfer } from "../components/TagTransfer";
 import { Toast } from "../../../components/Toast";
 import type { AutoResponder, Overview } from "../../../lib/api";
@@ -97,6 +99,7 @@ export function Responders() {
             </span>
           }
         >
+          <p className="muted fine">{responderListSummary(list.data.items)}</p>
           {toggle.isError && (
             <p className="field-error" role="alert">
               {toggle.error.message}
@@ -110,66 +113,70 @@ export function Responders() {
               )}{" "}
             </p>
           ) : (
-            <ul className="tag-list">
+            <div className="settings-detail-list" aria-label={spaTranslate("RESPONDERS")}>
               {list.data.items.map((responder) => {
                 const asleep = responder.trigger_kind === "keyword" && locked;
                 return (
-                  <li key={responder.id} className="tag-row" data-responder={responder.name}>
-                    <div className="tag-main">
-                      <Link to={`/g/${guild}/responders/${responder.id}`} className="tag-name">
-                        {responder.name}
-                      </Link>
-                      <p className="tag-detail muted">
-                        {when(responder, roleName)}
-                        {asleep && (
-                          <span className="badge badge-gold tag-lock">{spaTranslate("LOCKED")}</span>
-                        )}
-                      </p>
-                      <p className="tag-facts muted">
-                        {responder.destination === "dm"
-                          ? spaTranslate("Answers by direct message")
-                          : responder.destination === "channel"
-                            ? spaTranslate("Answers in one channel")
-                            : spaTranslate("Answers where it happened")}
-                        {responder.chance < 100 && ` · ${responder.chance}% of the time`}
-                        {responder.cooldown_secs > 0 &&
-                          spaTranslate(" · cooldown {arg1}", {
-                            arg1: cooldownLabel(responder.cooldown_secs),
-                          })}
-                        {responder.actions.length > 0 &&
-                          spaPlural(responder.actions.length, {
-                            one: " · {count} action",
-                            other: " · {count} actions",
-                          })}
-                      </p>
-                    </div>
-                    <div className="tag-actions">
-                      <PixelToggle
-                        label={spaTranslate("Responder {arg1}", { arg1: responder.name })}
-                        checked={responder.enabled}
-                        onChange={(enabled) => toggle.mutate({ id: responder.id, enabled })}
-                        disabled={toggle.isPending || (asleep && !responder.enabled)}
-                      />
-                      <PixelLink
-                        variant="secondary"
-                        className="button-small"
-                        href={`/g/${guild}/responders/${responder.id}`}
-                      >
-                        {spaTranslate("Edit")}
-                      </PixelLink>
-                      <PixelButton
-                        variant="ghost"
-                        className="button-small"
-                        aria-label={spaTranslate("Delete {arg1}", { arg1: responder.name })}
-                        onClick={() => setAsking(responder)}
-                      >
-                        {spaTranslate("Delete")}
-                      </PixelButton>
-                    </div>
-                  </li>
+                  <div key={responder.id} data-responder={responder.name}>
+                    <SettingsRow
+                      title={responder.name}
+                      description={t("Edit the trigger, reply and actions.")}
+                      summary={responderItemSummary(responder)}
+                      enabled={responder.enabled}
+                      onToggle={(enabled) => toggle.mutate({ id: responder.id, enabled })}
+                      toggleLabel={spaTranslate("Responder {arg1}", { arg1: responder.name })}
+                      toggleDisabled={toggle.isPending || (asleep && !responder.enabled)}
+                    >
+                      <div className="settings-detail-fields">
+                        <Link to={`/g/${guild}/responders/${responder.id}`} className="tag-name">
+                          {responder.name}
+                        </Link>
+                        <p className="tag-detail muted">
+                          {when(responder, roleName)}
+                          {asleep && (
+                            <span className="badge badge-gold tag-lock">{spaTranslate("LOCKED")}</span>
+                          )}
+                        </p>
+                        <p className="tag-facts muted">
+                          {responder.destination === "dm"
+                            ? spaTranslate("Answers by direct message")
+                            : responder.destination === "channel"
+                              ? spaTranslate("Answers in one channel")
+                              : spaTranslate("Answers where it happened")}
+                          {responder.chance < 100 && ` · ${responder.chance}% of the time`}
+                          {responder.cooldown_secs > 0 &&
+                            spaTranslate(" · cooldown {arg1}", {
+                              arg1: cooldownLabel(responder.cooldown_secs),
+                            })}
+                          {responder.actions.length > 0 &&
+                            spaPlural(responder.actions.length, {
+                              one: " · {count} action",
+                              other: " · {count} actions",
+                            })}
+                        </p>
+                        <div className="tag-actions">
+                          <PixelLink
+                            variant="secondary"
+                            className="button-small"
+                            href={`/g/${guild}/responders/${responder.id}`}
+                          >
+                            {spaTranslate("Edit")}
+                          </PixelLink>
+                          <PixelButton
+                            variant="ghost"
+                            className="button-small"
+                            aria-label={spaTranslate("Delete {arg1}", { arg1: responder.name })}
+                            onClick={() => setAsking(responder)}
+                          >
+                            {spaTranslate("Delete")}
+                          </PixelButton>
+                        </div>
+                      </div>
+                    </SettingsRow>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
           {full && (
             <p className="field-hint muted">

@@ -47,7 +47,10 @@ test("auto roles: a delay, an expiry, pausing and sticky roles", async ({ page }
   await page.goto(`/g/${guild}/roles`);
   await expect(page.getByRole("heading", { name: "ROLES", exact: true })).toBeVisible();
   await expect(page.getByText("No auto roles yet.")).toBeVisible();
-  const auto = page.locator("section", { has: page.getByRole("heading", { name: "AUTO ROLES" }) });
+  const auto = page
+    .locator(".settings-detail-row")
+    .filter({ has: page.getByRole("button", { name: /AUTO ROLES/ }) })
+    .first();
 
   // A role the bot cannot give is greyed out in the picker, with the reason.
   await expect(page.locator("#auto-role option", { hasText: "@Admin" })).toBeDisabled();
@@ -139,7 +142,7 @@ test("the panel editor previews the message, saves it and has the bot post it", 
   await shot(page, "roles-panel-invalid");
   await page.getByLabel("Fewest roles").fill("1");
 
-  const editor = page.locator("section", { has: page.getByRole("heading", { name: "NEW PANEL" }) });
+  const editor = page.locator(".panel", { has: page.getByRole("heading", { name: "NEW PANEL" }) }).last();
   await panelShot(editor, "roles-panel-editor-desktop");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Panel saved." })).toBeVisible();
@@ -168,13 +171,18 @@ test("the panel editor previews the message, saves it and has the bot post it", 
   );
   await page.setViewportSize(phone);
   await page.reload();
+  await page
+    .locator("[data-panel]")
+    .filter({ hasText: "Pick your games" })
+    .locator(".settings-detail-expand")
+    .click();
   await page.getByRole("button", { name: "Edit Pick your games" }).click();
   await expect(page.getByRole("heading", { name: "EDIT PANEL" })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await page.getByRole("region", { name: "Panel preview" }).scrollIntoViewIfNeeded();
   await shot(page, "roles-panel-editor-phone");
   await panelShot(
-    page.locator("section", { has: page.getByRole("heading", { name: "EDIT PANEL" }) }),
+    page.locator(".panel", { has: page.getByRole("heading", { name: "EDIT PANEL" }) }).last(),
     "roles-panel-editor-phone-full",
   );
   await page.setViewportSize(desktop);
@@ -194,8 +202,10 @@ test("the panel editor previews the message, saves it and has the bot post it", 
 test("colour roles: the palette, the mode, who may pick and the anchor", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/roles`);
-  const colours = page.locator("section", { has: page.getByRole("heading", { name: "COLOUR ROLES" }) });
+  const colours = page.locator(".color-role-settings");
   await expect(colours).toBeVisible();
+  await colours.locator(".settings-detail-expand").first().click();
+  await colours.locator(".settings-detail-expand").nth(1).click();
   await expect(colours.getByRole("list", { name: "Palette" }).getByRole("listitem")).not.toHaveCount(0);
 
   await colours.getByRole("switch", { name: "Colour roles" }).click();
@@ -212,7 +222,7 @@ test("colour roles: the palette, the mode, who may pick and the anchor", async (
   await expect(colours.getByLabel("Make new colour roles under")).toHaveValue("9002");
 
   // The bot cannot make roles in this mock: the answer is shown, not swallowed.
-  await colours.getByRole("button", { name: "Create the missing roles" }).click();
+  await colours.getByRole("button", { name: "Create the missing roles", exact: true }).click();
   await expect(colours.getByRole("status")).toContainText("Made no roles");
   const saved = await (await page.request.get(`/api/guilds/${guild}/roles`)).json();
   expect(saved.colors).toMatchObject({
@@ -231,12 +241,7 @@ test("colour roles: the palette, the mode, who may pick and the anchor", async (
   await page.setViewportSize(phone);
   await page.reload();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
-  await page
-    .locator("section", { has: page.getByRole("heading", { name: "COLOUR ROLES" }) })
-    .scrollIntoViewIfNeeded();
+  await page.locator(".color-role-settings").scrollIntoViewIfNeeded();
   await shot(page, "roles-colours-phone");
-  await panelShot(
-    page.locator("section", { has: page.getByRole("heading", { name: "COLOUR ROLES" }) }),
-    "roles-colours-phone-full",
-  );
+  await panelShot(page.locator(".color-role-settings"), "roles-colours-phone-full");
 });

@@ -99,6 +99,15 @@ test("write a command with the bot's own preview, save it, switch it off, move i
   await expect(row(page, "rules")).toContainText("cooldown 30 s");
   await expect(row(page, "rules")).toContainText("embed");
   await expect(row(page, "rules")).toContainText("2 replies");
+  await expect(row(page, "rules").locator(".settings-detail-expand")).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await row(page, "rules").locator(".settings-detail-expand").click();
+  await expect(row(page, "rules").locator(".settings-detail-expand")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   await shot(page, "commands-list-desktop", true);
 
   // The server saved what the form said, ids as strings.
@@ -135,6 +144,7 @@ test("write a command with the bot's own preview, save it, switch it off, move i
   await expect(result).toContainText("1 added, 1 skipped (already there), 1 refused");
   await expect(result).toContainText("BAD NAME");
   await expect(row(page, "faq")).toBeVisible();
+  await row(page, "faq").locator(".settings-detail-expand").click();
   await shot(page, "commands-imported", true);
 
   // Delete asks first.

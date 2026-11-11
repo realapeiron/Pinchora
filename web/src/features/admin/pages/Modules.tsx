@@ -1,18 +1,15 @@
 import { locale, translate as spaTranslate } from "../../../i18n";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
 
 import { Choice } from "../../../components/Choice";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, ChannelTag } from "../../../components/Pickers";
-import { PixelButton } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
+import { SettingsRow } from "../../../components/SettingsRow";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
 import type { ChannelMode, GuildInfo, ModuleEntry, Modules as ModulesData, Overview } from "../../../lib/api";
 import {
   type ModuleDraft,
-  badge,
   changeCount,
   effective,
   patchFor,
@@ -20,6 +17,8 @@ import {
   withChannels,
   withMode,
 } from "../api/modules";
+import { moduleSummary } from "./moduleSummary";
+import { ModuleChannels } from "./ModuleChannels";
 import { ModuleSaveError, useDiscord, useModules, useSaveModules } from "../../../lib/queries";
 import { SettingsPage } from "../../../components/PageHead";
 import { Loading, Problem } from "../../../components/States";
@@ -92,7 +91,7 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
             key={group.key}
             title={spaTranslate(group.label).toLocaleUpperCase(locale() === "tr" ? "tr-TR" : "en-US")}
           >
-            <ul className="module-list">
+            <div className="settings-detail-list">
               {items.map((saved) => (
                 <ModuleRow
                   key={saved.key}
@@ -104,7 +103,7 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
                   onChange={(next) => edit(saved.key, next)}
                 />
               ))}
-            </ul>
+            </div>
           </Panel>
         );
       })}
@@ -139,133 +138,47 @@ function ModuleRow({
   error: string | null;
   onChange: (next: ModuleDraft) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const sheet = useId();
   const now = effective(saved, draft);
-  const state = badge(now.enabled, now.mode, now.channels.length);
   const why = problem(saved, draft, max);
   const edited = patchFor(saved, draft) !== null;
   return (
-    <li className={`module-row ${edited ? "is-edited" : ""}`} data-module={saved.key}>
-      <div className="module-main">
-        <div className="module-title">
-          <h3 className="setting-name">{spaTranslate(saved.label)}</h3>
-          {/* The switch already says on or off; the badge is for what it does not say: kept to some channels. */}
-          {state.tone === "gold" && <span className={`badge badge-${state.tone}`}>{state.text}</span>}
-        </div>
-        <p className="muted">{spaTranslate(saved.blurb)}</p>
-        {(error || why) && (
-          <p className="field-error" role="alert">
-            {error ?? why}
-          </p>
-        )}
-      </div>
-      <div className="module-actions">
-        {saved.server_only ? (
-          <span className="module-scope muted">{spaTranslate("Whole server")}</span>
-        ) : (
-          <PixelButton
-            variant="ghost"
-            className="button-small"
-            aria-expanded={open}
-            aria-controls={sheet}
-            onClick={() => setOpen(!open)}
-          >
-            {open ? spaTranslate("Close") : spaTranslate("Channels")}
-          </PixelButton>
-        )}
-        <PixelToggle
-          label={spaTranslate(saved.label)}
-          checked={now.enabled}
-          onChange={(enabled) => onChange({ ...draft, enabled })}
-        />
-      </div>
-      {open && !saved.server_only && (
-        <div className="module-sheet" id={sheet}>
-          <Choice
-            name={spaTranslate("Where {arg1} works", { arg1: saved.label })}
-            value={now.mode}
-            options={MODES}
-            onChange={(mode) => onChange(withMode(saved, draft, mode))}
-          />
-          {now.mode !== "all" && (
-            <ChannelList
-              info={info}
-              max={max}
-              channels={now.channels}
-              onChange={(channels) => onChange(withChannels(withMode(saved, draft, now.mode), channels))}
-            />
+    <div className={`module-settings-row ${edited ? "is-edited" : ""}`} data-module={saved.key}>
+      <SettingsRow
+        title={spaTranslate(saved.label)}
+        description={spaTranslate(saved.blurb)}
+        summary={moduleSummary(saved, draft, info)}
+        enabled={now.enabled}
+        onToggle={(enabled) => onChange({ ...draft, enabled })}
+        toggleLabel={spaTranslate(saved.label)}
+      >
+        <div className="settings-detail-fields">
+          {saved.server_only ? (
+            <p className="module-scope muted">{spaTranslate("Whole server")}</p>
+          ) : (
+            <>
+              <Choice
+                name={spaTranslate("Where {arg1} works", { arg1: saved.label })}
+                value={now.mode}
+                options={MODES}
+                onChange={(mode) => onChange(withMode(saved, draft, mode))}
+              />
+              {now.mode !== "all" && (
+                <ModuleChannels
+                  info={info}
+                  max={max}
+                  channels={now.channels}
+                  onChange={(channels) => onChange(withChannels(withMode(saved, draft, now.mode), channels))}
+                />
+              )}
+            </>
           )}
         </div>
+      </SettingsRow>
+      {(error || why) && (
+        <p className="field-error" role="alert">
+          {error ?? why}
+        </p>
       )}
-    </li>
-  );
-}
-
-function ChannelList({
-  info,
-  max,
-  channels,
-  onChange,
-}: {
-  info: GuildInfo | undefined;
-  max: number;
-  channels: string[];
-  onChange: (next: string[]) => void;
-}) {
-  const [pick, setPick] = useState<string | null>(null);
-  const full = channels.length >= max;
-  return (
-    <div className="module-channels">
-      {channels.length === 0 ? (
-        <p className="muted">{spaTranslate("No channels yet.")}</p>
-      ) : (
-        <ul className="channel-chips" aria-label={spaTranslate("Channels")}>
-          {channels.map((id) => (
-            <li key={id} className="channel-chip">
-              <ChannelTag info={info} id={id} />
-              <button
-                type="button"
-                className="chip-remove"
-                aria-label={spaTranslate("Remove {arg1}", {
-                  arg1: info?.channels.find((c) => c.id === id)?.name ?? id,
-                })}
-                onClick={() => onChange(channels.filter((c) => c !== id))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="module-add">
-        <ChannelPicker
-          label={spaTranslate("Add a channel")}
-          info={info}
-          value={pick}
-          onChange={setPick}
-          any
-          none={full ? `Up to ${max} channels` : spaTranslate("Pick a channel or category")}
-          disabled={full}
-        />
-        <PixelButton
-          variant="secondary"
-          className="button-small"
-          disabled={!pick || full || channels.includes(pick)}
-          onClick={() => {
-            if (pick) onChange([...channels, pick]);
-            setPick(null);
-          }}
-        >
-          {" "}
-          {spaTranslate("Add")}{" "}
-        </PixelButton>
-      </div>
-      <p className="field-hint muted">
-        {" "}
-        {spaTranslate("A category covers the channels and threads under it.")} {channels.length}{" "}
-        {spaTranslate("of")} {max}.
-      </p>
     </div>
   );
 }

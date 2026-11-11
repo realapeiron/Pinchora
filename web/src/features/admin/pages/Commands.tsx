@@ -4,7 +4,9 @@ import { Link, useLocation, useOutletContext } from "react-router";
 
 import { Panel } from "../../../components/Panel";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
+import { SettingsRow } from "../../../components/SettingsRow";
+import { t } from "../../../i18n/dashboard";
+import { commandItemSummary, commandListSummary } from "./tagSummary";
 import { TagTransfer } from "../components/TagTransfer";
 import { Toast } from "../../../components/Toast";
 import type { CustomCommand, Overview } from "../../../lib/api";
@@ -58,6 +60,7 @@ export function Commands() {
             </span>
           }
         >
+          <p className="muted fine">{commandListSummary(list.data.items)}</p>
           {toggle.isError && (
             <p className="field-error" role="alert">
               {toggle.error.message}
@@ -71,52 +74,56 @@ export function Commands() {
               )}{" "}
             </p>
           ) : (
-            <ul className="tag-list">
+            <div className="settings-detail-list" aria-label={spaTranslate("COMMANDS")}>
               {list.data.items.map((command) => (
-                <li key={command.id} className="tag-row" data-command={command.name}>
-                  <div className="tag-main">
-                    <Link to={`/g/${guild}/commands/${command.id}`} className="tag-name">
-                      /tag {command.name}
-                    </Link>
-                    {command.description && <p className="muted tag-detail">{command.description}</p>}
-                    <p className="tag-facts muted">
-                      {spaTranslate("Used")} {command.uses} {command.uses === 1 ? "time" : "times"}
-                      {command.cooldown_secs > 0 &&
-                        spaTranslate(" · cooldown {arg1}", { arg1: cooldownLabel(command.cooldown_secs) })}
-                      {command.reply_mode === "ephemeral" && " · private answer"}
-                      {command.embed && " · embed"}
-                      {command.responses.length > 1 && ` · ${command.responses.length} replies`}
-                      {command.actions.length > 0 &&
-                        ` · ${command.actions.map((a) => describeAction(a)).join(", ")}`}
-                      {command.allow_roles.length + command.allow_channels.length > 0 && " · limited"}
-                    </p>
-                  </div>
-                  <div className="tag-actions">
-                    <PixelToggle
-                      label={spaTranslate("Command {arg1}", { arg1: command.name })}
-                      checked={command.enabled}
-                      onChange={(enabled) => toggle.mutate({ id: command.id, enabled })}
-                      disabled={toggle.isPending}
-                    />
-                    <PixelLink
-                      variant="secondary"
-                      className="button-small"
-                      href={`/g/${guild}/commands/${command.id}`}
-                    >
-                      {spaTranslate("Edit")}
-                    </PixelLink>
-                    <PixelButton
-                      variant="ghost"
-                      className="button-small"
-                      aria-label={spaTranslate("Delete {arg1}", { arg1: command.name })}
-                      onClick={() => setAsking(command)}
-                    >
-                      {spaTranslate("Delete")}
-                    </PixelButton>
-                  </div>
-                </li>
+                <div key={command.id} data-command={command.name}>
+                  <SettingsRow
+                    title={`/tag ${command.name}`}
+                    description={t("Edit the command reply and actions.")}
+                    summary={commandItemSummary(command)}
+                    enabled={command.enabled}
+                    onToggle={(enabled) => toggle.mutate({ id: command.id, enabled })}
+                    toggleLabel={spaTranslate("Command {arg1}", { arg1: command.name })}
+                    toggleDisabled={toggle.isPending}
+                  >
+                    <div className="settings-detail-fields">
+                      <Link to={`/g/${guild}/commands/${command.id}`} className="tag-name">
+                        /tag {command.name}
+                      </Link>
+                      {command.description && <p className="muted tag-detail">{command.description}</p>}
+                      <p className="tag-facts muted">
+                        {spaTranslate("Used")} {command.uses} {command.uses === 1 ? "time" : "times"}
+                        {command.cooldown_secs > 0 &&
+                          spaTranslate(" · cooldown {arg1}", { arg1: cooldownLabel(command.cooldown_secs) })}
+                        {command.reply_mode === "ephemeral" && " · private answer"}
+                        {command.embed && " · embed"}
+                        {command.responses.length > 1 && ` · ${command.responses.length} replies`}
+                        {command.actions.length > 0 &&
+                          ` · ${command.actions.map((a) => describeAction(a)).join(", ")}`}
+                        {command.allow_roles.length + command.allow_channels.length > 0 && " · limited"}
+                      </p>
+                      <div className="tag-actions">
+                        <PixelLink
+                          variant="secondary"
+                          className="button-small"
+                          href={`/g/${guild}/commands/${command.id}`}
+                        >
+                          {spaTranslate("Edit")}
+                        </PixelLink>
+                        <PixelButton
+                          variant="ghost"
+                          className="button-small"
+                          aria-label={spaTranslate("Delete {arg1}", { arg1: command.name })}
+                          onClick={() => setAsking(command)}
+                        >
+                          {spaTranslate("Delete")}
+                        </PixelButton>
+                      </div>
+                    </div>
+                  </SettingsRow>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
           {full && (
             <p className="field-hint muted">

@@ -1,6 +1,24 @@
 /* /Roles page: auto roles, role panels, colour roles. Built from the dashboard's own pieces (panels, lists,
    choices, the Discord message look); only what they do not have is here. */
 
+:where(.shell-page) .role-panel-settings .settings-detail-body,
+:where(.shell-page) .settings-page > .settings-detail-row .settings-detail-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.shell-page) .role-panel-settings .panel-designer {
+  min-width: 0;
+}
+:where(.shell-page) .role-panel-settings .panel {
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  :where(.shell-page) .role-panel-settings .panel-card-actions,
+  :where(.shell-page) .role-panel-settings .panel-card-actions .pixel-button,
+  :where(.shell-page) .colour-grid .colour-tile {
+    min-height: 44px;
+  }
+}
+
 /* /Times: an amount and its unit side by side */
 
 .duration {

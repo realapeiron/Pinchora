@@ -31,6 +31,11 @@ test("switch a part off, keep another to one channel, and see it on the overview
     "false",
   );
   await expect(row(page, "welcome")).toContainText("Whole server");
+  await row(page, "welcome").locator(".settings-detail-expand").click();
+  await expect(row(page, "welcome").locator(".settings-detail-expand")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   await expect(row(page, "welcome").getByRole("button", { name: "Channels" })).toHaveCount(0);
   await shot(page, "modules-before", true);
 
@@ -41,14 +46,15 @@ test("switch a part off, keep another to one channel, and see it on the overview
 
   // A list needs a channel before it can be saved.
   const fishing = row(page, "fishing");
-  await fishing.getByRole("button", { name: "Channels" }).click();
+  await fishing.locator(".settings-detail-expand").click();
   await fishing.getByRole("radio", { name: /Only in these/ }).check({ force: true });
   await expect(fishing.getByRole("alert")).toContainText("Pick at least one channel");
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await fishing.getByLabel("Add a channel").selectOption({ label: "#general" });
   await fishing.getByRole("button", { name: "Add", exact: true }).click();
   await expect(fishing.locator(".channel-chip")).toContainText("#general");
-  await expect(fishing.locator(".badge")).toHaveText("ONLY IN 1 CHANNEL");
+  await fishing.locator(".settings-detail-expand").click();
+  await expect(fishing.locator(".settings-detail-summary")).toContainText("Only in: #general");
   await expect(page.getByText("2 unsaved changes")).toBeVisible();
   await shot(page, "modules-edited", true);
 
@@ -87,7 +93,7 @@ test("switch a part off, keep another to one channel, and see it on the overview
 
   // Back to all channels: the badge and the row go back to normal.
   await page.goto(`/g/${guild}/modules`);
-  await row(page, "fishing").getByRole("button", { name: "Channels" }).click();
+  await row(page, "fishing").locator(".settings-detail-expand").click();
   await row(page, "fishing")
     .getByRole("radio", { name: /All channels/ })
     .check({ force: true });
@@ -107,7 +113,7 @@ test("the modules page fits a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/g/${guild}/modules`);
   await expect(page.getByRole("heading", { name: "MODULES", exact: true })).toBeVisible();
-  await row(page, "house").getByRole("button", { name: "Channels" }).click();
+  await row(page, "house").locator(".settings-detail-expand").click();
   await row(page, "house")
     .getByRole("radio", { name: /Everywhere but these/ })
     .check({ force: true });
