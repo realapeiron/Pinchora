@@ -24,6 +24,7 @@ test("achievement editor, icon picker, preview and holder list fit desktop and p
   expect(response.ok()).toBeTruthy();
   const data = await response.json();
   expect(data.items[0].icon).toBe("shell");
+  await page.getByRole("button", { name: /^First Pearl/ }).click();
   await page.getByRole("button", { name: "Who earned it" }).click();
   await expect(page.getByText("No one yet.")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });

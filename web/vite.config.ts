@@ -67,7 +67,7 @@ export default defineConfig({
       output: {
         onlyExplicitManualChunks: true,
         manualChunks(id) {
-          if (id.endsWith("/src/i18n/dashboard.ts")) return "dashboard";
+          if (/\/src\/i18n\/dashboard(-en|-tr)?\.ts$/.test(id)) return "dashboard";
         },
       },
     },

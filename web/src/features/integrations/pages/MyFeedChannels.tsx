@@ -4,6 +4,9 @@ import { FeedWordsContext, useFeedWords } from "../api/feedsWords";
 
 import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
+import { SettingsRow } from "../../../components/SettingsRow";
+import { t as dt } from "../../../i18n/dashboard";
+import { linkedChannelsSummary } from "./feedsSummary";
 import { PixelButton } from "../../../components/PixelButton";
 import { TopBar } from "../../../components/TopBar";
 import { type Me } from "../../../lib/api";
@@ -45,7 +48,7 @@ export function MyFeedsChannelsRoute() {
 }
 
 export function MyChannels({ list }: { list?: FeedList }) {
-  const t = useFeedWords();
+  const text = useFeedWords();
   const channels = useMyChannels();
   const start = useStartChannel();
   const verify = useVerifyChannel();
@@ -53,26 +56,28 @@ export function MyChannels({ list }: { list?: FeedList }) {
   const [kind, setKind] = useState<"twitch" | "kick">("twitch");
   const [source, setSource] = useState("");
   const selectedKind = (list?.kinds ?? channels.data?.kinds)?.find((item) => item.key === kind);
-  return (
-    <Panel title={t("my-channels")}>
-      <p className="muted">{t("my-channels-help")}</p>
+  const content = (
+    <>
+      <p className="muted">{text("my-channels-help")}</p>
       {channels.data?.items.map((channel) => (
         <div key={channel.kind} className="tag-row feed-row">
           <div className="tag-main">
             <strong>
-              {t(channel.kind)}: {channel.source}
+              {text(channel.kind)}: {channel.source}
             </strong>
-            <p className="muted">{channel.verified_at ? t("channel-verified") : t("channel-pending")}</p>
+            <p className="muted">
+              {channel.verified_at ? text("channel-verified") : text("channel-pending")}
+            </p>
             {channel.code && (
               <p>
-                {t("put-code-in-title-or-bio")}: <code>{channel.code}</code>
+                {text("put-code-in-title-or-bio")}: <code>{channel.code}</code>
               </p>
             )}
           </div>
           <div className="tag-actions">
             {!channel.verified_at && (
               <PixelButton disabled={verify.isPending} onClick={() => verify.mutate(channel.kind)}>
-                {t("verify-channel")}
+                {text("verify-channel")}
               </PixelButton>
             )}
             <PixelButton
@@ -80,23 +85,23 @@ export function MyChannels({ list }: { list?: FeedList }) {
               disabled={unlink.isPending}
               onClick={() => unlink.mutate(channel.kind)}
             >
-              {t("unlink-channel")}
+              {text("unlink-channel")}
             </PixelButton>
           </div>
         </div>
       ))}
       <div className="form-grid form-grid-2">
-        <Field label={t("platform")} htmlFor="my-channel-kind">
+        <Field label={text("platform")} htmlFor="my-channel-kind">
           <select
             id="my-channel-kind"
             value={kind}
             onChange={(event) => setKind(event.target.value as "twitch" | "kick")}
           >
-            <option value="twitch">{t("twitch")}</option>
-            <option value="kick">{t("kick")}</option>
+            <option value="twitch">{text("twitch")}</option>
+            <option value="kick">{text("kick")}</option>
           </select>
         </Field>
-        <Field label={t("channel-login")} htmlFor="my-channel-login">
+        <Field label={text("channel-login")} htmlFor="my-channel-login">
           <input id="my-channel-login" value={source} onChange={(event) => setSource(event.target.value)} />
         </Field>
       </div>
@@ -109,14 +114,25 @@ export function MyChannels({ list }: { list?: FeedList }) {
         disabled={!source.trim() || start.isPending || !selectedKind?.available}
         onClick={() => start.mutate({ kind, source })}
       >
-        {t("link-channel")}
+        {text("link-channel")}
       </PixelButton>
       {[channels.error, start.error, verify.error, unlink.error].filter(Boolean).map((error, i) => (
         <p className="field-error" role="alert" key={i}>
           {serverText("error", { error: (error as Error).message })}
         </p>
       ))}
-    </Panel>
+    </>
+  );
+  return list ? (
+    <SettingsRow
+      title={text("my-channels")}
+      description={dt("Manage your linked streaming channels.")}
+      summary={linkedChannelsSummary(channels.data?.items.length ?? 0)}
+    >
+      {content}
+    </SettingsRow>
+  ) : (
+    <Panel title={text("my-channels")}>{content}</Panel>
   );
 }
 

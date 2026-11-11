@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import { ChannelPicker } from "../../../components/Pickers";
 import { Field } from "../../../components/Field";
-import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
 import { Toast } from "../../../components/Toast";
 import { type Overview } from "../../../lib/api";
@@ -12,11 +11,14 @@ import {
   useTrackers,
   useSaveTrackers,
   trackersDraft,
-  words,
+  words as serverWords,
 } from "../api/trackers";
 import { useDiscord } from "../../../lib/queries";
 import { Loading, Problem } from "../../../components/States";
 import { SettingsPage } from "../../../components/PageHead";
+import { SettingsRow } from "../../../components/SettingsRow";
+import { t as dt } from "../../../i18n/dashboard";
+import { trackersSummary, watchSummary } from "./trackersSummary";
 import "../../../styles/trackers.css";
 
 const games = ["lol", "valorant", "mc"] as const;
@@ -35,7 +37,7 @@ export function Trackers() {
   );
 }
 function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersData; enabled: boolean }) {
-  const t = words(data);
+  const text = serverWords(data);
   const discord = useDiscord(guild);
   const save = useSaveTrackers(guild);
   const [draft, setDraft] = useState<TrackersDraft>(() => trackersDraft(data));
@@ -43,6 +45,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
   const [newChannel, setNewChannel] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const changed = JSON.stringify(trackersDraft(draft)) !== JSON.stringify(trackersDraft(data));
+  const summary = trackersSummary(draft, discord.data);
   const addWatch = () => {
     const host = newHost.trim();
     if (
@@ -59,30 +62,29 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
   return (
     <SettingsPage
       className="settings-page trackers-page"
-      title={t("Game trackers")}
-      lead={t("Follow official game updates and keep Minecraft servers in sight.")}
+      title={text("Game trackers")}
+      lead={text("Follow official game updates and keep Minecraft servers in sight.")}
     >
       {!enabled && (
         <div className="notice notice-heart" role="note">
-          {t("The Game trackers module is off.")} <Link to={`/g/${guild}/modules`}>{t("Open modules")}</Link>
+          {text("The Game trackers module is off.")}{" "}
+          <Link to={`/g/${guild}/modules`}>{text("Open modules")}</Link>
         </div>
       )}
-      <div className="trackers-grid">
-        <Panel title={t("PATCH NOTES")} tone="accent">
-          <p className="muted">
-            {t("Official League, Valorant and Minecraft updates are posted once per release.")}
-          </p>
-          {games.map((game) => (
-            <Field
-              key={game}
-              label={t(game === "lol" ? "League of Legends" : game === "mc" ? "Minecraft" : "Valorant")}
-              htmlFor={`patch-${game}`}
-            >
+      <div className="settings-detail-list">
+        {games.map((game) => (
+          <SettingsRow
+            key={game}
+            title={text(game === "lol" ? "League of Legends" : game === "mc" ? "Minecraft" : "Valorant")}
+            description={dt("Follow official updates for this game.")}
+            summary={summary[game]}
+          >
+            <Field label={text("Release channel")} htmlFor={`patch-${game}`}>
               <ChannelPicker
                 id={`patch-${game}`}
                 info={discord.data}
                 value={draft.patch_channels[game] ?? null}
-                none={t("No channel")}
+                none={text("No channel")}
                 onChange={(channel) =>
                   setDraft((old) => {
                     const patch_channels = { ...old.patch_channels };
@@ -93,36 +95,46 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
                 }
               />
             </Field>
-          ))}
-        </Panel>
-        <Panel title={t("MINECRAFT WATCH LIST")} tone="gold">
-          <p className="muted">{t("Status cards refresh every five minutes. Public Java servers only.")}</p>
+          </SettingsRow>
+        ))}
+        <SettingsRow
+          title={text("MINECRAFT WATCH LIST")}
+          description={dt("Watch Minecraft server status.")}
+          summary={summary.watch}
+        >
+          <p className="muted">
+            {text("Status cards refresh every five minutes. Public Java servers only.")}
+          </p>
           <ul className="trackers-watch-list">
             {draft.mc_watch.map((watch) => (
               <li key={watch.host}>
-                <span>
-                  <strong>{watch.host}</strong>
-                  <small>
-                    #{discord.data?.channels.find((c) => c.id === watch.channel_id)?.name ?? watch.channel_id}
-                  </small>
-                </span>
-                <PixelButton
-                  variant="ghost"
-                  aria-label={`${t("Remove")} ${watch.host}`}
-                  onClick={() =>
-                    setDraft((old) => ({
-                      ...old,
-                      mc_watch: old.mc_watch.filter((item) => item.host !== watch.host),
-                    }))
-                  }
+                <SettingsRow
+                  title={watch.host}
+                  description={dt("Watch Minecraft server status.")}
+                  summary={watchSummary(watch.channel_id, discord.data)}
                 >
-                  {t("Remove")}
-                </PixelButton>
+                  <PixelButton
+                    variant="ghost"
+                    aria-label={`${text("Remove")} ${watch.host}`}
+                    onClick={() =>
+                      setDraft((old) => ({
+                        ...old,
+                        mc_watch: old.mc_watch.filter((item) => item.host !== watch.host),
+                      }))
+                    }
+                  >
+                    {text("Remove")}
+                  </PixelButton>
+                </SettingsRow>
               </li>
             ))}
           </ul>
           <div className="trackers-add">
-            <Field label={t("Server address")} htmlFor="mc-host" hint={t("Example: play.example.com:25565")}>
+            <Field
+              label={text("Server address")}
+              htmlFor="mc-host"
+              hint={text("Example: play.example.com:25565")}
+            >
               <input
                 id="mc-host"
                 className="pixel-input"
@@ -131,12 +143,12 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
                 onChange={(e) => setNewHost(e.target.value)}
               />
             </Field>
-            <Field label={t("Status channel")} htmlFor="mc-channel">
+            <Field label={text("Status channel")} htmlFor="mc-channel">
               <ChannelPicker
                 id="mc-channel"
                 info={discord.data}
                 value={newChannel}
-                none={t("Pick a channel")}
+                none={text("Pick a channel")}
                 onChange={setNewChannel}
               />
             </Field>
@@ -146,21 +158,25 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
             disabled={!newHost.trim() || !newChannel || draft.mc_watch.length >= 20}
             onClick={addWatch}
           >
-            {t("Add server")}
+            {text("Add server")}
           </PixelButton>
-        </Panel>
+        </SettingsRow>
+        <SettingsRow
+          title={text("MINECRAFT NEWS")}
+          description={dt("Post Minecraft release news.")}
+          summary={summary.news}
+        >
+          <Field label={text("Release channel")} htmlFor="mc-news">
+            <ChannelPicker
+              id="mc-news"
+              info={discord.data}
+              value={draft.mc_news_channel_id}
+              none={text("No channel")}
+              onChange={(channel) => setDraft((old) => ({ ...old, mc_news_channel_id: channel }))}
+            />
+          </Field>
+        </SettingsRow>
       </div>
-      <Panel title={t("MINECRAFT NEWS")}>
-        <Field label={t("Release channel")} htmlFor="mc-news">
-          <ChannelPicker
-            id="mc-news"
-            info={discord.data}
-            value={draft.mc_news_channel_id}
-            none={t("No channel")}
-            onChange={(channel) => setDraft((old) => ({ ...old, mc_news_channel_id: channel }))}
-          />
-        </Field>
-      </Panel>
       <div className="trackers-actions">
         <PixelButton
           disabled={!changed || save.isPending}
@@ -168,13 +184,13 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
             save.mutate(draft, {
               onSuccess: (result) => {
                 setDraft(trackersDraft(result));
-                setNotice(t("Tracker settings saved."));
+                setNotice(text("Tracker settings saved."));
               },
               onError: (error) => setNotice(error.message),
             })
           }
         >
-          {save.isPending ? t("Saving…") : t("Save changes")}
+          {save.isPending ? text("Saving…") : text("Save changes")}
         </PixelButton>
         {changed && (
           <PixelButton
@@ -182,7 +198,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
             disabled={save.isPending}
             onClick={() => setDraft(trackersDraft(data))}
           >
-            {t("Discard changes")}
+            {text("Discard changes")}
           </PixelButton>
         )}
       </div>

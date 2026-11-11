@@ -44,8 +44,8 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/temp-voice`);
   await expect(page.getByRole("heading", { name: "TEMP VOICE", exact: true })).toBeVisible();
-  await expect(page.getByText("No creator channels yet")).toBeVisible();
-  await expect(page.getByText("No rooms right now")).toBeVisible();
+  await expect(page.getByText(/^No creator channels yet\./)).toBeVisible();
+  await expect(page.getByText("No rooms right now", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Temp voice" })).toBeVisible();
   await shot(page, "temp-voice-empty", true);
 
@@ -127,6 +127,7 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
     );
   if (seeded) {
     await page.reload();
+    await page.getByRole("button", { name: /^LIVE ROOMS/ }).click();
     const rooms = page.getByRole("list", { name: "Live rooms" });
     await expect(rooms.locator("li")).toHaveCount(2);
     await expect(rooms.locator("li", { hasText: "Gaming" })).toContainText("LOCKED");
@@ -143,6 +144,7 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "TEMP VOICE", exact: true })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "temp-voice-phone", true);
+  await page.getByRole("button", { name: /^🔊 Lounge/ }).click();
   await page.getByRole("button", { name: "Edit Lounge" }).click();
   await expect(form(page, "Lounge")).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -156,8 +158,14 @@ test("set a creator up, tune it, and watch the rooms", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Remove Lounge" })).toBeVisible();
   await page.getByRole("button", { name: "Remove Lounge" }).click();
   await page.getByRole("button", { name: "Really remove Lounge" }).click();
-  await expect(page.getByText("No creator channels yet")).toBeVisible();
-  if (seeded) await expect(page.getByRole("list", { name: "Live rooms" }).locator("li")).toHaveCount(2);
+  await expect(page.getByText(/^No creator channels yet\./)).toBeVisible();
+  if (seeded) {
+    // Removing the creator re-renders the page; open the rooms row again if it closed.
+    const roomsRow = page.getByRole("button", { name: /^LIVE ROOMS/ });
+    await expect(roomsRow).toContainText("2 live rooms");
+    if ((await roomsRow.getAttribute("aria-expanded")) !== "true") await roomsRow.click();
+    await expect(page.getByRole("list", { name: "Live rooms" }).locator("li")).toHaveCount(2);
+  }
   await shot(page, "temp-voice-removed", true);
 });
 

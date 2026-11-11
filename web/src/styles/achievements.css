@@ -7,6 +7,22 @@
   border: 2px solid var(--line, #31436c);
   background: #111d3d;
 }
+:where(.shell-page) .ach-page .settings-detail-body:has(.ach-editor-grid),
+:where(.shell-page) .ach-page .ach-list .settings-detail-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.shell-page) .ach-page .ach-list-card {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+@media (max-width: 610px) {
+  :where(.shell-page) .ach-page .ach-list-actions .pixel-button,
+  :where(.shell-page) .ach-page .ach-actions .pixel-button,
+  :where(.shell-page) .ach-page .ach-icon {
+    min-height: 44px;
+  }
+}
 .ach-summary strong {
   font:
     700 28px/1 "Silkscreen",

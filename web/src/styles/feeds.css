@@ -1,5 +1,30 @@
 /* The Feeds page: kind tags, health, the source check and the empty state. */
 
+:where(.shell-page) .feed-row {
+  display: block;
+  padding: 0;
+  background: transparent;
+}
+:where(.shell-page) .feed-row > .settings-detail-row {
+  width: 100%;
+}
+:where(.shell-page) .feed-row .settings-detail-body:not(:has(.settings-detail-preview)) {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: start;
+}
+:where(.shell-page) .settings-detail-row .editor-form {
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  :where(.shell-page) .feed-row .settings-detail-body:not(:has(.settings-detail-preview)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .feed-row .tag-actions > *,
+  :where(.shell-page) .feed-row .feed-main .tag-name {
+    min-height: 44px;
+  }
+}
+
 .feed-kind {
   --kind: var(--panel-edge);
   flex: none;

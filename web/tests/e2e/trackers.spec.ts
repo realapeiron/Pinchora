@@ -15,12 +15,16 @@ test("tracker channels and Minecraft watch list work on desktop and phone", asyn
   await expect(page.getByRole("heading", { name: "Game trackers", exact: true })).toHaveCount(1);
   const save = page.getByRole("button", { name: "Save changes", exact: true });
   await expect(save).toBeDisabled();
-  await page.getByLabel("League of Legends").selectOption("7001");
+  await page.getByRole("button", { name: /^League of Legends/ }).click();
+  await page.getByRole("button", { name: /^Valorant/ }).click();
+  await page.getByRole("button", { name: /^MINECRAFT WATCH LIST/ }).click();
+  await page.getByRole("button", { name: /^MINECRAFT NEWS/ }).click();
+  await page.locator("#patch-lol").selectOption("7001");
   await expect(save).toBeEnabled();
-  await page.getByLabel("League of Legends").selectOption("");
+  await page.locator("#patch-lol").selectOption("");
   await expect(save).toBeDisabled();
-  await page.getByLabel("League of Legends").selectOption("7001");
-  await page.getByLabel("Valorant", { exact: true }).selectOption("7001");
+  await page.locator("#patch-lol").selectOption("7001");
+  await page.locator("#patch-valorant").selectOption("7001");
   await page.getByLabel("Server address").fill("8.8.8.8:25565");
   await page.getByLabel("Status channel").selectOption("7001");
   await page.getByRole("button", { name: "Add server" }).click();
@@ -29,10 +33,10 @@ test("tracker channels and Minecraft watch list work on desktop and phone", asyn
   await expect(page.getByRole("status").filter({ hasText: "Tracker settings saved" })).toBeVisible();
   await expect(save).toBeDisabled();
   // Removing and restoring a channel changes object insertion order, not settings.
-  await page.getByLabel("League of Legends").selectOption("");
-  await page.getByLabel("League of Legends").selectOption("7001");
+  await page.locator("#patch-lol").selectOption("");
+  await page.locator("#patch-lol").selectOption("7001");
   await expect(save).toBeDisabled();
-  await page.getByLabel("Release channel").selectOption("7001");
+  await page.locator("#mc-news").selectOption("7001");
   const request = page.waitForRequest(
     (request) => request.method() === "PUT" && request.url().endsWith(`/api/guilds/${guild}/trackers`),
   );

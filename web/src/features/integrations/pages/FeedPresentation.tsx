@@ -1,98 +1,15 @@
 import { Link } from "react-router";
 import { serverText } from "../../../i18n";
-import type { GuildInfo } from "../../../lib/api";
 import { useFeedWords } from "../api/feedsWords";
-import { CARD_LABEL, KIND_LINE, kindLabel } from "./feedLabels";
+import { CARD_LABEL, KIND_LINE } from "./feedLabels";
 
-import { ChannelTag, RoleTag } from "../../../components/Pickers";
-import { PixelButton, PixelLink } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
-import { KIND_TAG, ago, useDeleteFeed, useSaveFeed, type Feed, type FeedList } from "../api/feeds";
+import { PixelButton } from "../../../components/PixelButton";
+import { KIND_TAG, ago, useDeleteFeed, type Feed, type FeedList } from "../api/feeds";
 
 import { words, type Found } from "../api/feeds";
 
-interface FeedRowProps {
-  feed: Feed;
-  guild: string;
-  list: FeedList;
-  info: GuildInfo | undefined;
-  save: ReturnType<typeof useSaveFeed>;
-  testing: string | null;
-  runTest: (feed: Feed) => void;
-  setAsking: (feed: Feed) => void;
-}
-export function FeedRow({ feed, guild, list, info, save, testing, runTest, setAsking }: FeedRowProps) {
-  const t = useFeedWords();
-  return (
-    <li className="tag-row feed-row" data-feed={feed.account}>
-      <span className={`feed-kind feed-kind-${feed.kind}`} aria-hidden="true">
-        {KIND_TAG[feed.kind]}
-      </span>
-      <div className="tag-main feed-main">
-        <Link to={`/g/${guild}/feeds/${feed.id}`} className="tag-name">
-          {feed.account}
-        </Link>
-        <p className="tag-detail muted">
-          <span className="feed-kind-name">{kindLabel(list, feed.kind)}</span>
-          <span aria-hidden="true"> → </span>
-          <span className="visually-hidden"> {t("posting-in")} </span>
-          <ChannelTag info={info} id={feed.channel_id} />
-          {feed.ping_role_id && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="visually-hidden">{t("pinging")} </span>
-              <RoleTag info={info} id={feed.ping_role_id} />
-            </>
-          )}
-          {feed.live_role_id && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="visually-hidden">{t("live-now-role")} </span>
-              <RoleTag info={info} id={feed.live_role_id} />
-            </>
-          )}
-        </p>
-        <p className={`feed-health is-${feed.health.state}`}>
-          <span className="feed-dot" aria-hidden="true" />
-          {feed.health.text}
-        </p>
-        <p className="tag-facts muted">
-          {t("checked")} {ago(feed.health.last_checked_at, t)} {t("last-post")}{" "}
-          {ago(feed.health.last_sent_at, t)} {t("every")} {feed.health.interval_minutes} {t("min")}
-          {filterCount(feed) > 0 && t("count-filter-words", { count: filterCount(feed) })}
-        </p>
-      </div>
-      <div className="tag-actions">
-        <PixelToggle
-          label={t("feed-account", { account: feed.account })}
-          checked={feed.enabled}
-          disabled={save.isPending}
-          onChange={(enabled) => save.mutate({ id: feed.id, body: { enabled } })}
-        />
-        <PixelButton
-          variant="ghost"
-          className="button-small"
-          aria-label={t("send-a-test-post-of-account", { account: feed.account })}
-          disabled={testing !== null}
-          onClick={() => runTest(feed)}
-        >
-          {testing === feed.id ? t("posting") : t("test")}
-        </PixelButton>
-        <PixelLink variant="secondary" className="button-small" href={`/g/${guild}/feeds/${feed.id}`}>
-          {t("edit")}
-        </PixelLink>
-        <PixelButton
-          variant="ghost"
-          className="button-small"
-          aria-label={t("delete-account", { account: feed.account })}
-          onClick={() => setAsking(feed)}
-        >
-          {t("delete")}
-        </PixelButton>
-      </div>
-    </li>
-  );
-}
+export { FeedRow } from "./FeedRow";
+
 interface DeleteFeedProps {
   asking: Feed;
   remove: ReturnType<typeof useDeleteFeed>;
@@ -194,9 +111,6 @@ export function Empty({ guild, list }: { guild: string; list: FeedList }) {
   );
 }
 
-function filterCount(feed: Feed): number {
-  return feed.filter_include.length + feed.filter_exclude.length;
-}
 /** What a check found: the source's name, its link, and its latest post. */
 export function FoundCard({ found }: { found: Found }) {
   const t = useFeedWords();

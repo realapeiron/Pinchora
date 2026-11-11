@@ -4,6 +4,32 @@
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
 }
+:where(.shell-page) .temp-voice-page .settings-detail-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.shell-page) .temp-voice-page .creator {
+  padding: 0;
+  background: transparent;
+}
+:where(.shell-page) .temp-voice-page .creator-actions .pixel-button,
+:where(.shell-page) .temp-voice-page .creator-foot .pixel-button {
+  min-height: 44px;
+}
+:where(.shell-page) .temp-voice-page .room {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  padding: 0;
+  background: transparent;
+}
+@media (max-width: 1023px) {
+  :where(.shell-page) .temp-voice-page .room {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+@media (max-width: 767px) {
+  :where(.shell-page) .temp-voice-page .room {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 /* /Creators */
 

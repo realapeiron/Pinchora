@@ -107,6 +107,12 @@ async function tallShot(page: Page, name: string) {
 }
 
 const row = (page: Page, name: string) => page.locator(`[data-feed="${name}"]`);
+async function expandFeed(page: Page, name: string) {
+  const header = row(page, name).locator(".settings-detail-expand");
+  await expect(header).toHaveAttribute("aria-expanded", "false");
+  await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+}
 
 test("follow a YouTube channel by its handle, with the bot's own preview, then watch it on the list", async ({
   page,
@@ -157,6 +163,13 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
   await expect(page.locator(".toast")).toContainText("Following Reef Crew");
   await expect(row(page, "Reef Crew")).toContainText("announcements");
   await expect(row(page, "Reef Crew")).toContainText("Waiting for its first check");
+  const followed = await (await page.request.get(`/api/guilds/${guild}/feeds`)).json();
+  expect(
+    followed.items.some(
+      (item: { account: string; channel_id: string }) =>
+        item.account === "Reef Crew" && item.channel_id === "7011",
+    ),
+  ).toBeTruthy();
 
   // Two more, through the API: a podcast and a subreddit that will start failing.
   await write(page, `/api/guilds/${guild}/feeds`, {
@@ -191,10 +204,12 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
   await shot(page, "feeds-list");
 
   // A test post from the list, then the editor of an existing feed.
+  await expandFeed(page, "Tide Pool Radio");
   await row(page, "Tide Pool Radio")
     .getByRole("button", { name: /test post/i })
     .click();
   await expect(page.locator(".toast")).toContainText("Posted Tide Pool Radio's latest item in #general");
+  await expandFeed(page, "Reef Crew");
   await row(page, "Reef Crew").getByRole("link", { name: "Edit" }).click();
   await expect(page.getByRole("heading", { name: "EDIT FEED", exact: true })).toBeVisible();
   await expect(page.locator(".feed-source-read")).toContainText("Reef Crew");
@@ -208,6 +223,8 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".toast")).toContainText("Saved Reef Crew");
+  const edited = await (await page.request.get(`/api/guilds/${guild}/feeds`)).json();
+  expect(edited.items.find((item: { account: string }) => item.account === "Reef Crew")?.embed).toBe(true);
 
   // Phone: no sideways scroll on the list or the form.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -228,6 +245,27 @@ test("follow a YouTube channel by its handle, with the bot's own preview, then w
   // Back on a desktop: stop following the failing one.
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/g/${guild}/feeds`);
+
+  // The row switch pauses a feed and leaves the rest of its settings as they were; only its health follows.
+  type FeedItem = { account: string; enabled: boolean; health: unknown };
+  const reef = (list: { items: FeedItem[] }) => list.items.find((item) => item.account === "Reef Crew");
+  const settings = (list: { items: FeedItem[] }) =>
+    Object.fromEntries(
+      Object.entries(reef(list) ?? {}).filter(([key]) => key !== "enabled" && key !== "health"),
+    );
+  const reefSwitch = row(page, "Reef Crew").getByRole("switch", { name: "Feed Reef Crew" });
+  await reefSwitch.click();
+  await expect(reefSwitch).toHaveAttribute("aria-checked", "false");
+  const paused = await (await page.request.get(`/api/guilds/${guild}/feeds`)).json();
+  expect(reef(paused)?.enabled).toBe(false);
+  expect(settings(paused)).toEqual(settings(edited));
+  await reefSwitch.click();
+  await expect(reefSwitch).toHaveAttribute("aria-checked", "true");
+  const resumed = await (await page.request.get(`/api/guilds/${guild}/feeds`)).json();
+  expect(reef(resumed)?.enabled).toBe(true);
+  expect(settings(resumed)).toEqual(settings(edited));
+
+  await expandFeed(page, "r/" + subreddit);
   await row(page, "r/" + subreddit)
     .getByRole("button", { name: /^Delete/ })
     .click();
