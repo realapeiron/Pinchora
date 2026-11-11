@@ -18,11 +18,14 @@ import { GuildPageContext } from "../../../components/GuildPageContext";
 import { IconSprite } from "../../../components/icons/IconSprite";
 import { ShellNav } from "./ShellNav";
 import { NAV } from "./guildNav";
+import { headerModule } from "./navModules";
+import { ModuleMaster } from "./ModuleMaster";
 import { navIcons } from "./navIcons";
 import { CommandPalette } from "./CommandPalette";
 import { OverviewActions } from "./OverviewActions";
 import "../../../styles/dashboard-shell.css";
 import "../../../styles/dashboard-components.css";
+import "../../../styles/settings-pattern.css";
 import { NotFound } from "../../../components/NotFound";
 import { Loading, Problem } from "../../../components/States";
 
@@ -59,6 +62,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   })).filter((group) => group.pages.length);
   const currentGroup = groups.find((group) => group.pages.some((page) => page.to === openPage));
   const currentPage = currentGroup?.pages.find((page) => page.to === openPage);
+  const currentModule = headerModule(openPage, overview.data?.modules ?? []);
   const openDrawer = (servers = false) => {
     drawerReturn.current = document.activeElement as HTMLElement;
     setServerOpenRequested(servers);
@@ -136,6 +140,8 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
               value={{
                 group: currentGroup?.group ?? "SERVER",
                 icon: iconNames[(navIcons[openPage] ?? "blocks") as keyof typeof iconNames],
+                master: currentModule && <ModuleMaster guild={guildId} module={currentModule} />,
+                offNote: currentModule && !currentModule.enabled ? t("Module off note") : undefined,
               }}
             >
               {overview.isPending && <Loading label={t("Opening the server")} />}

@@ -27,7 +27,7 @@ function selectors(css: string): string[] {
 }
 
 test("dashboard styles stay inside the guild shell", () => {
-  for (const file of ["dashboard-components.css", "dashboard-shell.css"]) {
+  for (const file of ["dashboard-components.css", "dashboard-shell.css", "settings-pattern.css"]) {
     const css = readFileSync(new URL(file, import.meta.url), "utf8");
     const unscoped = selectors(css).filter((selector) => !selector.startsWith(":where(.shell-page)"));
     expect(unscoped, `${file} has unscoped selectors`).toEqual([]);

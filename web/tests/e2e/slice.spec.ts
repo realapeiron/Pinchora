@@ -49,11 +49,17 @@ test("login, pick a server, turn leveling off", async ({ page }) => {
   await shot(page, "overview-before");
 
   await page.goto(`/g/${reef}/leveling`);
-  const toggle = page.getByRole("switch", { name: "Leveling" });
+  const toggle = page.getByRole("switch", { name: "Module: Leveling" });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(
+    page.getByText(
+      "This module is off. Nothing is sent while it is off; your settings stay saved and editable.",
+    ),
+  ).toBeVisible();
+  await page.getByText("Direct message", { exact: true }).click();
   await expect(page.getByText("1 unsaved change")).toBeVisible();
   await shot(page, "overview-unsaved");
 
@@ -67,14 +73,19 @@ test("login, pick a server, turn leveling off", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   await page.goto(`/g/${reef}`);
-  await expect(page.getByText("turned leveling off")).toBeVisible();
+  await expect(page.getByText("turned Leveling off")).toBeVisible();
   await expect(page.locator(".save-bar")).not.toHaveClass(/is-open/);
   await shot(page, "overview-saved");
 
   const api = await page.request.get(`/api/guilds/${reef}`);
   const overview = await api.json();
   expect(overview.settings.leveling_enabled).toBe(false);
-  expect(overview.audit[0].after).toEqual({ leveling_enabled: false });
+  expect(
+    overview.audit.find(
+      (entry: { action: string; target: string }) =>
+        entry.action === "module.set" && entry.target === "leveling",
+    )?.after,
+  ).toEqual({ enabled: false });
 });
 
 test("a server without the bot offers the invite", async ({ page }) => {
@@ -92,8 +103,10 @@ test("the overview fits a phone", async ({ page }) => {
   await devLogin(page);
   await page.goto(`/g/${cafe}`);
   await page.goto(`/g/${cafe}/leveling`);
-  const toggle = page.getByRole("switch", { name: "Leveling" });
+  const toggle = page.getByRole("switch", { name: "Module: Leveling" });
   await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await page.getByText("Direct message", { exact: true }).click();
   await expect(page.getByText("1 unsaved change")).toBeVisible();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();

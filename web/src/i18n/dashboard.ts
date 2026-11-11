@@ -67,6 +67,21 @@ export const dashboardEn = {
   "Turn off": "Turn off",
   Module: "Module",
   On: "On",
+  "Module off note":
+    "This module is off. Nothing is sent while it is off; your settings stay saved and editable.",
+  "Welcome message": "Welcome message",
+  "Post a welcome message when someone joins.": "Post a welcome message when someone joins.",
+  "Join role": "Join role",
+  "Give a role to each new member.": "Give a role to each new member.",
+  "Goodbye message": "Goodbye message",
+  "Say goodbye in a channel when a member leaves.": "Say goodbye in a channel when a member leaves.",
+  Format: "Format",
+  "Change the delivery format in the image editor.": "Change the delivery format in the image editor.",
+  "Welcome preview": "Welcome preview",
+  "Goodbye preview": "Goodbye preview",
+  "Channel selected": "Channel selected",
+  "Role selected": "Role selected",
+  "Previous values restored.": "Previous values restored.",
 };
 
 export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
@@ -135,6 +150,21 @@ export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
   "Turn off": "Kapat",
   Module: "Modül",
   On: "Açık",
+  "Module off note":
+    "Bu modül kapalı. Kapalıyken hiçbir şey gönderilmez; ayarların kayıtlı ve düzenlenebilir kalır.",
+  "Welcome message": "Hoş geldin mesajı",
+  "Post a welcome message when someone joins.": "Biri katıldığında hoş geldin mesajı gönder.",
+  "Join role": "Katılma rolü",
+  "Give a role to each new member.": "Her yeni üyeye bir rol ver.",
+  "Goodbye message": "Veda mesajı",
+  "Say goodbye in a channel when a member leaves.": "Bir üye ayrıldığında kanalda veda et.",
+  Format: "Biçim",
+  "Change the delivery format in the image editor.": "Gönderim biçimini görsel düzenleyicide değiştir.",
+  "Welcome preview": "Hoş geldin önizlemesi",
+  "Goodbye preview": "Veda önizlemesi",
+  "Channel selected": "Kanal seçildi",
+  "Role selected": "Rol seçildi",
+  "Previous values restored.": "Önceki değerler geri yüklendi.",
 };
 
 /** Loaded with guild dashboard routes, outside the playable room cold path. */

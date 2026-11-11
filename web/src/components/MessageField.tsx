@@ -20,6 +20,7 @@ export function MessageField({
   value,
   onChange,
   error,
+  showPreview = true,
 }: {
   guild: string;
   kind: MessageKind;
@@ -27,6 +28,7 @@ export function MessageField({
   value: string | null;
   onChange: (next: string | null) => void;
   error?: string | null;
+  showPreview?: boolean;
 }) {
   const area = useRef<HTMLTextAreaElement>(null);
   const meta = MESSAGES[kind];
@@ -35,7 +37,7 @@ export function MessageField({
   const length = [...text].length;
   const settled = useDebounced(value, 350);
   const valid = settled === null || checkMessage(kind, settled).ok;
-  const preview = useMessagePreview(guild, kind, settled, valid);
+  const preview = useMessagePreview(guild, kind, settled, valid && showPreview);
 
   const insert = (placeholder: string) => {
     const el = area.current;
@@ -82,16 +84,18 @@ export function MessageField({
           </PixelButton>
         )}
       </div>
-      <div className="message-preview" aria-live="polite">
-        <span className="pixel-label muted">{spaTranslate("PREVIEW")}</span>
-        <p>
-          {preview.data !== undefined ? (
-            <RichText text={preview.data} />
-          ) : (
-            <span className="muted">{valid ? "…" : spaTranslate("Fix the message to see it.")}</span>
-          )}
-        </p>
-      </div>
+      {showPreview && (
+        <div className="message-preview" aria-live="polite">
+          <span className="pixel-label muted">{spaTranslate("PREVIEW")}</span>
+          <p>
+            {preview.data !== undefined ? (
+              <RichText text={preview.data} />
+            ) : (
+              <span className="muted">{valid ? "…" : spaTranslate("Fix the message to see it.")}</span>
+            )}
+          </p>
+        </div>
+      )}
     </Field>
   );
 }

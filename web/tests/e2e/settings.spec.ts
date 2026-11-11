@@ -120,6 +120,7 @@ test("level roles refuse what the bot cannot give, and the sync runs", async ({ 
 test("points and the store", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/points`);
+  await expect(page.getByRole("switch", { name: "Module: Chat points" })).toHaveCount(1);
   await page.getByLabel("Emoji").fill("coins");
   await expect(page.getByText("Use one emoji")).toBeVisible();
   await page.getByLabel("Emoji").fill("🐚");

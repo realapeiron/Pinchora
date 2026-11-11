@@ -1,3 +1,8 @@
-import { createContext } from "react";
+import { createContext, type ReactNode } from "react";
 
-export const GuildPageContext = createContext<{ group: string; icon: string } | null>(null);
+export const GuildPageContext = createContext<{
+  group: string;
+  icon: string;
+  master?: ReactNode;
+  offNote?: string;
+} | null>(null);

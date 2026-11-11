@@ -46,22 +46,32 @@ export function SettingsPage({
 export function PageHead({ title, lead, action, eyebrow }: PageHeadProps) {
   const route = useContext(GuildPageContext);
   return (
-    <div className="page-head">
-      {route && (
-        <span className="page-head-icon">
-          <svg className="pixel-icon" aria-hidden="true" focusable="false">
-            <use href={`#px-${route.icon}`} />
-          </svg>
-        </span>
-      )}
-      <div className="page-head-copy">
-        {(eyebrow || route) && <span className="page-eyebrow">{translate(eyebrow ?? route!.group)}</span>}
-        <h1 className="pixel-heading">
-          <DisplayText>{translate(title)}</DisplayText>
-        </h1>
-        <p className="muted">{typeof lead === "string" ? translate(lead) : lead}</p>
+    <>
+      <div className="page-head">
+        {route && (
+          <span className="page-head-icon">
+            <svg className="pixel-icon" aria-hidden="true" focusable="false">
+              <use href={`#px-${route.icon}`} />
+            </svg>
+          </span>
+        )}
+        <div className="page-head-copy">
+          {(eyebrow || route) && <span className="page-eyebrow">{translate(eyebrow ?? route!.group)}</span>}
+          <h1 className="pixel-heading">
+            <DisplayText>{translate(title)}</DisplayText>
+          </h1>
+          <p className="muted">{typeof lead === "string" ? translate(lead) : lead}</p>
+        </div>
+        {action}
+        {route?.master}
       </div>
-      {action}
-    </div>
+      <ModuleOffNote />
+    </>
   );
+}
+
+export function ModuleOffNote() {
+  const route = useContext(GuildPageContext);
+  if (!route?.offNote) return null;
+  return <p className="module-off-note">{route.offNote}</p>;
 }

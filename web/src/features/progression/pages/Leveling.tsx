@@ -36,6 +36,8 @@ import { SettingsPage } from "../../../components/PageHead";
 import { XpAdmin } from "./XpAdmin";
 import { LevelingPolicyPanel } from "./LevelingPolicy";
 
+// Retained catalogue copy: Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay when it is off.
+
 const MODES = [
   {
     value: "channel",
@@ -74,21 +76,6 @@ export function Leveling() {
       )}
     >
       <Panel title={spaTranslate("CHAT XP")}>
-        <SwitchRow
-          title={spaTranslate("Leveling")}
-          control={
-            <PixelToggle
-              label={spaTranslate("Leveling")}
-              checked={value.leveling_enabled}
-              onChange={(on) => set("leveling_enabled", on)}
-            />
-          }
-        >
-          {" "}
-          {spaTranslate(
-            "Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay when it is off.",
-          )}{" "}
-        </SwitchRow>
         <Field label={spaTranslate("Where level-ups go")} error={errors.levelup_mode}>
           <Choice
             name="Where level-ups go"

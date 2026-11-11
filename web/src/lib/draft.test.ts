@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { changedFields, patchOf, unsavedLabel } from "./draft";
+import { changedFields, patchOf, undoPatch, unsavedLabel } from "./draft";
 
 const saved = { leveling_enabled: true, voice_xp_enabled: false, levelup_mode: "channel" };
+
+it("save undo restores only the previous saved values", () => {
+  const patch = patchOf(saved, { leveling_enabled: false, levelup_mode: "dm" });
+  expect(patch).toEqual({ leveling_enabled: false, levelup_mode: "dm" });
+  expect(undoPatch(saved, patch)).toEqual({ leveling_enabled: true, levelup_mode: "channel" });
+});
 
 describe("draft", () => {
   it("counts only fields that really differ", () => {

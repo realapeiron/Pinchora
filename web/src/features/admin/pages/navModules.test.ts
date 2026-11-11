@@ -1,7 +1,18 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { NAV } from "./guildNav";
-import { modulePage, navModule } from "./navModules";
+import { headerModule, modulePage, navModule } from "./navModules";
+
+test("header master follows the route alias and its current module state", () => {
+  const modules = [
+    { key: "command_control", enabled: true },
+    { key: "welcome", enabled: false },
+  ] as Parameters<typeof headerModule>[1];
+  expect(headerModule("command-control", modules)).toBe(modules[0]);
+  expect(headerModule("welcome", modules)).toBe(modules[1]);
+  expect(headerModule("overview", modules)).toBeUndefined();
+  expect(headerModule("roles", modules)).toBeUndefined();
+});
 
 test("every sidebar route has a deliberate module mapping with a catalog key", () => {
   const source = readFileSync(

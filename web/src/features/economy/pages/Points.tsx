@@ -2,11 +2,10 @@ import { number as spaNumber, translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
-import { Field, SwitchRow } from "../../../components/Field";
+import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
 import { RolePicker, RoleTag } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
 import { RichText } from "../../../components/RichText";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
@@ -23,6 +22,8 @@ import {
 } from "../../../lib/rules";
 import { useSettingsForm } from "../../../lib/useSettingsForm";
 import { SettingsPage } from "../../../components/PageHead";
+
+// Retained catalogue copy: Off keeps balances and the store; chatting just stops earning more.
 
 function check(value: Settings): (FieldError | null)[] {
   const out = [checkPointsName(value.points_name), checkPointsEmoji(value.points_emoji)];
@@ -48,19 +49,6 @@ export function Points() {
       )}
     >
       <Panel title={spaTranslate("SERVER POINTS")}>
-        <SwitchRow
-          title={spaTranslate("Earn points for chatting")}
-          control={
-            <PixelToggle
-              label={spaTranslate("Earn points for chatting")}
-              checked={value.points_enabled}
-              onChange={(on) => set("points_enabled", on)}
-            />
-          }
-        >
-          {" "}
-          {spaTranslate("Off keeps balances and the store; chatting just stops earning more.")}{" "}
-        </SwitchRow>
         <div className="form-grid form-grid-2">
           <Field
             label={spaTranslate("Name")}

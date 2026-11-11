@@ -14,6 +14,13 @@ export function patchOf<T extends object>(saved: T, draft: Partial<T>): Partial<
   return patch;
 }
 
+/** Saved values for the exact fields in a patch, suitable for a second save call. */
+export function undoPatch<T extends object>(saved: T, patch: Partial<T>): Partial<T> {
+  const previous: Partial<T> = {};
+  for (const key of Object.keys(patch) as (keyof T)[]) previous[key] = saved[key];
+  return previous;
+}
+
 export function unsavedLabel(count: number): string {
   return count === 1 ? "1 unsaved change" : `${count} unsaved changes`;
 }

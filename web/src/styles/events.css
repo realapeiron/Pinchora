@@ -2,9 +2,6 @@
   --ev-coral: #ffbd82;
   --ev-muted: #a7b9be;
 }
-.events-page .panel {
-  margin-bottom: 20px;
-}
 .ev-clock {
   display: flex;
   align-items: baseline;

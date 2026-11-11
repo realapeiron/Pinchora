@@ -2,7 +2,6 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-12);
-  margin-bottom: var(--space-24);
 }
 .utility-summary > div {
   background: var(--panel, #fff);

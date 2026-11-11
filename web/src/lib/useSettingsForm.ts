@@ -5,7 +5,7 @@ import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 
 import { ApiError, type FieldError, type Settings } from "./api";
-import { changedFields, patchOf } from "./draft";
+import { changedFields, patchOf, undoPatch } from "./draft";
 import { useSaveSettings } from "./queries";
 
 export function useSettingsForm(
@@ -16,6 +16,7 @@ export function useSettingsForm(
   const [draft, setDraft] = useState<Partial<Settings>>({});
   const [serverErrors, setServerErrors] = useState<FieldError[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [previous, setPrevious] = useState<Partial<Settings> | null>(null);
   const save = useSaveSettings(guild);
   const value: Settings = { ...saved, ...draft };
   const changed = changedFields(saved, draft);
@@ -25,18 +26,33 @@ export function useSettingsForm(
 
   const set = useCallback(<K extends keyof Settings>(field: K, next: Settings[K]) => {
     setDraft((d) => ({ ...d, [field]: next }));
+    setPrevious(null);
     setServerErrors((list) => list.filter((e) => e.field !== field));
   }, []);
 
   const submit = () => {
     if (local.length > 0) return;
-    save.mutate(patchOf(saved, draft), {
+    const patch = patchOf(saved, draft);
+    const before = undoPatch(saved, patch);
+    save.mutate(patch, {
       onSuccess: () => {
         setDraft({});
         setServerErrors([]);
+        setPrevious(before);
         setToast("Saved. The bot uses it from the next message.");
       },
       onError: (error) => setServerErrors(error instanceof ApiError ? error.errors : []),
+    });
+  };
+
+  const undo = () => {
+    if (!previous) return;
+    save.mutate(previous, {
+      onSuccess: () => {
+        setPrevious(null);
+        setToast("Previous values restored.");
+      },
+      onError: (error) => setToast(error.message),
     });
   };
 
@@ -64,6 +80,7 @@ export function useSettingsForm(
     blocked: local.length > 0,
     barError,
     submit,
+    undo: previous ? undo : undefined,
     reset,
     toast,
     clearToast: useCallback(() => setToast(null), []),

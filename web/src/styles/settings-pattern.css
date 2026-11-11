@@ -1,0 +1,169 @@
+:where(.shell-page) .module-master {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 2px 8px 2px 16px;
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 2px var(--line-hi),
+    0 4px 0 var(--shade);
+  font-weight: 700;
+}
+:where(.shell-page) .module-off-note {
+  margin: 0;
+  padding: 13px 16px;
+  color: var(--gold);
+  background: var(--raised);
+  border-left: 3px solid var(--gold);
+  font-weight: 600;
+}
+:where(.shell-page) .settings-detail-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 0;
+}
+:where(.shell-page) .settings-detail-row {
+  min-width: 0;
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 2px var(--line),
+    0 4px 0 var(--shade);
+}
+:where(.shell-page) .settings-detail-row.is-open {
+  box-shadow:
+    inset 0 0 0 2px var(--line-hi),
+    0 4px 0 var(--shade);
+}
+:where(.shell-page) .settings-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+}
+:where(.shell-page) .settings-detail-expand {
+  flex: 1;
+  min-width: 0;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  text-align: left;
+}
+:where(.shell-page) .settings-detail-expand:hover {
+  background: var(--raised);
+}
+:where(.shell-page) .settings-detail-expand:focus-visible,
+:where(.shell-page) .module-master .pixel-toggle:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+:where(.shell-page) .settings-detail-chevron {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+:where(.shell-page) .is-open .settings-detail-chevron {
+  transform: rotate(90deg);
+}
+:where(.shell-page) .settings-detail-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+:where(.shell-page) .settings-detail-copy strong {
+  font-size: 15px;
+}
+:where(.shell-page) .settings-detail-description,
+:where(.shell-page) .settings-detail-summary {
+  color: var(--muted);
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:where(.shell-page) .settings-detail-summary {
+  color: var(--ink);
+}
+:where(.shell-page) .settings-detail-body {
+  border-top: 1px solid var(--line-2);
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  gap: 22px;
+}
+:where(.shell-page) .settings-detail-body[hidden] {
+  display: none;
+}
+:where(.shell-page) .settings-detail-fields {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+}
+:where(.shell-page) .settings-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+:where(.shell-page) .settings-preview {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+:where(.shell-page) .settings-detail-preview {
+  min-width: 0;
+}
+:where(.shell-page) .welcome-card-link {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+:where(.shell-page) .welcome-format-value {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-weight: 600;
+}
+:where(.shell-page) .welcome-card-link strong {
+  color: var(--ink);
+}
+:where(.shell-page) .settings-detail-preview .designer {
+  margin-top: 12px;
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.shell-page) .settings-detail-preview .designer-preview {
+  width: 100%;
+}
+@media (max-width: 1100px) {
+  :where(.shell-page) .settings-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  :where(.shell-page) .module-master {
+    width: 100%;
+    justify-content: space-between;
+  }
+  :where(.shell-page) .settings-detail-body {
+    padding: 14px;
+  }
+  :where(.shell-page) .settings-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .settings-detail-head {
+    padding-right: 10px;
+  }
+  :where(.shell-page) .settings-detail-expand {
+    min-height: 60px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.shell-page) .settings-detail-chevron {
+    transition: none;
+  }
+}

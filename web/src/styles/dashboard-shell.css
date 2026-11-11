@@ -37,6 +37,14 @@
   min-width: 0;
   margin: 0;
   padding: 28px clamp(20px, 4vw, 48px) 150px;
+  row-gap: var(--space-24);
+}
+:where(.shell-page) .shell-content > .settings-page {
+  row-gap: var(--space-24);
+}
+:where(.shell-page) .shell-content > *,
+:where(.shell-page) .shell-content > .settings-page > * {
+  margin-block: 0;
 }
 :where(.shell-page) .shell-content > *,
 :where(.shell-page) .shell-content .settings-page,

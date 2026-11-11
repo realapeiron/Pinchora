@@ -47,7 +47,6 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-top: 1.25rem;
 }
 @media (max-width: 850px) {
   .trackers-page .trackers-grid,

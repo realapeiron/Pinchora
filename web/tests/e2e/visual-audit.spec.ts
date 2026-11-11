@@ -27,6 +27,23 @@ async function defects(page: Page, phone: boolean) {
     };
     const name = (el: Element) =>
       `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${typeof el.className === "string" ? `.${el.className.trim().split(/\s+/).slice(0, 2).join(".")}` : ""}`;
+    const columns = document.querySelectorAll<HTMLElement>("main.shell-content > .settings-page");
+    for (const column of columns.length
+      ? columns
+      : document.querySelectorAll<HTMLElement>("main.shell-content")) {
+      const siblings = [...column.children].filter((child): child is HTMLElement => {
+        if (!(child instanceof HTMLElement) || !visible(child)) return false;
+        return !["absolute", "fixed"].includes(getComputedStyle(child).position);
+      });
+      for (let i = 1; i < siblings.length; i++) {
+        const previous = siblings[i - 1];
+        const next = siblings[i];
+        if (!previous || !next) continue;
+        const gap = next.getBoundingClientRect().top - previous.getBoundingClientRect().bottom;
+        if (gap > 32)
+          out.push(`empty main-column block ${name(previous)} → ${name(next)} ${gap.toFixed(0)}px`);
+      }
+    }
     for (const el of document.querySelectorAll<HTMLElement>(
       ".shell-main *, .shell-tabs *, .shell-sidebar.is-open *",
     )) {

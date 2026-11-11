@@ -1,3 +1,5 @@
+import type { ModuleEntry } from "../../../lib/api";
+
 const switchPages = new Set([
   "branding",
   "command-control",
@@ -38,6 +40,11 @@ const aliases: Record<string, string> = {
 
 export function navModule(path: string) {
   return switchPages.has(path) ? (aliases[path] ?? path) : undefined;
+}
+
+export function headerModule(path: string, modules: ModuleEntry[]) {
+  const key = navModule(path);
+  return key ? modules.find((item) => item.key === key) : undefined;
 }
 
 export function modulePage(key: string) {
