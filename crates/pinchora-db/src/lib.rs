@@ -24,7 +24,7 @@ pub fn timestamp(at: chrono::DateTime<chrono::Utc>) -> chrono::DateTime<chrono::
 
 use std::time::Duration;
 
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{Connection, PgPool, postgres::PgPoolOptions};
 
 pub use crate::admin::afk_sticky_schedule::AfkRow;
 pub use crate::admin::afk_sticky_schedule::ScheduledRow;
@@ -291,6 +291,15 @@ impl Db {
         let pool = PgPoolOptions::new()
             .max_connections(max_connections)
             .acquire_timeout(acquire_timeout)
+            .after_release(|conn, _| {
+                Box::pin(async move {
+                    // A cancelled BEGIN can leave the server in a transaction while SQLx's depth is zero.
+                    // Another BEGIN keeps that server transaction open; dropping its guard queues a ROLLBACK.
+                    let transaction = conn.begin().await?;
+                    drop(transaction);
+                    Ok(true)
+                })
+            })
             .connect(url)
             .await?;
         Ok(Self {
