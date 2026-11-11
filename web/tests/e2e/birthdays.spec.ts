@@ -33,7 +33,8 @@ test("birthdays settings, preview and phone layout", async ({ page }) => {
   const data = await (await page.request.get(`/api/guilds/${guild}/birthdays`)).json();
   expect(data.settings).toMatchObject({ enabled: true, channel_id: "7001", shells_gift: 100, badge: true });
   await page.goto(`/g/${guild}/community`);
-  await expect(page.getByRole("heading", { name: "BIRTHDAYS", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /BIRTHDAYS/ })).toBeVisible();
+  await page.getByRole("button", { name: /BIRTHDAYS/ }).click();
   await expect(page.getByText("Announcements on")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/g/${guild}/birthdays`);

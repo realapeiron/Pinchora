@@ -1,14 +1,14 @@
 /* The Tickets page: numbers, panel editor with its Discord preview, the tickets table and a transcript. */
 
 /* A quiet badge (closed, not posted) that still reads: light text on the panel edge. */
-.tk-badge-quiet {
+:where(.shell-page) .tk-badge-quiet {
   color: var(--ink);
   background: var(--panel-edge);
 }
 
 /* /Numbers */
 
-.tk-stats {
+:where(.shell-page) .tk-stats {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -17,7 +17,7 @@
   gap: var(--space-12);
 }
 
-.tk-stat {
+:where(.shell-page) .tk-stat {
   display: grid;
   align-content: start;
   gap: var(--space-8);
@@ -26,37 +26,37 @@
   box-shadow: inset 0 0 0 2px #232e5c;
 }
 
-.tk-stat-name {
+:where(.shell-page) .tk-stat-name {
   font: 700 12px/1.2 var(--font-pixel);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.tk-stat-value {
+:where(.shell-page) .tk-stat-value {
   font: 700 24px/1.1 var(--font-pixel);
   color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
 
-.tk-stat-detail {
+:where(.shell-page) .tk-stat-detail {
   font-size: 13px;
   color: var(--muted);
 }
 
 /* /Segmented choices (7 or 30 days, ticket states) */
 
-.tk-segment {
+:where(.shell-page) .tk-segment {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.tk-segment.is-tight {
+:where(.shell-page) .tk-segment.is-tight {
   flex-wrap: nowrap;
 }
 
-.tk-segment button {
+:where(.shell-page) .tk-segment button {
   min-height: 36px;
   padding: 6px var(--space-12) var(--space-8);
   border: 0;
@@ -69,27 +69,27 @@
   cursor: pointer;
 }
 
-.tk-segment button:hover {
+:where(.shell-page) .tk-segment button:hover {
   color: var(--ink);
 }
 
-.tk-segment button[aria-checked="true"],
-.tk-segment button[aria-pressed="true"] {
+:where(.shell-page) .tk-segment button[aria-checked="true"],
+:where(.shell-page) .tk-segment button[aria-pressed="true"] {
   color: var(--outline);
   background: var(--gold);
   box-shadow: none;
 }
 
-.tk-segment button:focus-visible,
-.tk-tab:focus-visible,
-.tk-row-link:focus-visible {
+:where(.shell-page) .tk-segment button:focus-visible,
+:where(.shell-page) .tk-tab:focus-visible,
+:where(.shell-page) .tk-row-link:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
 }
 
 /* /Panels */
 
-.tk-panel-list {
+:where(.shell-page) .tk-panel-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -97,7 +97,7 @@
   gap: 2px;
 }
 
-.tk-panel-row {
+:where(.shell-page) .tk-panel-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -107,18 +107,18 @@
   border-left: var(--px) solid var(--panel-edge);
 }
 
-.tk-panel-row.is-editing {
+:where(.shell-page) .tk-panel-row.is-editing {
   border-left-color: var(--accent);
   background: #131b44;
 }
 
-.tk-panel-main {
+:where(.shell-page) .tk-panel-main {
   min-width: 0;
   display: grid;
   gap: 4px;
 }
 
-.tk-panel-name {
+:where(.shell-page) .tk-panel-name {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -129,14 +129,14 @@
   overflow-wrap: anywhere;
 }
 
-.tk-panel-facts {
+:where(.shell-page) .tk-panel-facts {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
   overflow-wrap: anywhere;
 }
 
-.tk-panel-actions {
+:where(.shell-page) .tk-panel-actions {
   flex: none;
   display: flex;
   align-items: center;
@@ -147,7 +147,7 @@
 
 /* /Panel editor */
 
-.tk-editor {
+:where(.shell-page) .tk-editor {
   margin-top: 20px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
@@ -155,31 +155,31 @@
   align-items: start;
 }
 
-.tk-editor-foot {
+:where(.shell-page) .tk-editor-foot {
   grid-column: 1 / -1;
   margin-top: 0;
 }
 
 /* The preview sticks below the top bar, within its own column: never over the save buttons. */
-.tk-editor-side {
+:where(.shell-page) .tk-editor-side {
   align-self: stretch;
 }
 
-.tk-editor-preview {
+:where(.shell-page) .tk-editor-preview {
   position: sticky;
   top: 88px;
   display: grid;
   gap: var(--space-8);
 }
 
-.tk-tabs {
+:where(.shell-page) .tk-tabs {
   display: flex;
   gap: 4px;
   overflow-x: auto;
   border-bottom: 2px solid var(--surface-raised);
 }
 
-.tk-tab {
+:where(.shell-page) .tk-tab {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -196,29 +196,29 @@
   cursor: pointer;
 }
 
-.tk-tab:hover {
+:where(.shell-page) .tk-tab:hover {
   color: var(--ink);
 }
 
-.tk-tab[aria-selected="true"] {
+:where(.shell-page) .tk-tab[aria-selected="true"] {
   color: var(--ink);
   box-shadow: inset 0 calc(-1 * var(--px)) 0 var(--accent);
 }
 
-.tk-tab-dot {
+:where(.shell-page) .tk-tab-dot {
   width: 8px;
   height: 8px;
   background: var(--heart);
 }
 
-.tk-tabpanel {
+:where(.shell-page) .tk-tabpanel {
   padding-top: 20px;
   display: grid;
   gap: 20px;
 }
 
-.tk-topics,
-.tk-questions {
+:where(.shell-page) .tk-topics,
+:where(.shell-page) .tk-questions {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -226,7 +226,7 @@
   gap: var(--space-8);
 }
 
-.tk-topic {
+:where(.shell-page) .tk-topic {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) minmax(0, 150px) auto;
   gap: var(--space-8);
@@ -235,19 +235,19 @@
   background: var(--surface-inset);
 }
 
-.tk-topic.is-menu {
+:where(.shell-page) .tk-topic.is-menu {
   grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) auto;
 }
 
-.tk-topic .pixel-input {
+:where(.shell-page) .tk-topic .pixel-input {
   min-width: 0;
 }
 
-.tk-emoji {
+:where(.shell-page) .tk-emoji {
   text-align: center;
 }
 
-.tk-question {
+:where(.shell-page) .tk-question {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: var(--space-8) var(--space-12);
@@ -256,17 +256,17 @@
   background: var(--surface-inset);
 }
 
-.tk-question-switches {
+:where(.shell-page) .tk-question-switches {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-16);
 }
-.tk-question-choices {
+:where(.shell-page) .tk-question-choices {
   grid-column: 1 / -1;
 }
 
-.tk-check {
+:where(.shell-page) .tk-check {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
@@ -274,13 +274,13 @@
   cursor: pointer;
 }
 
-.tk-check input {
+:where(.shell-page) .tk-check input {
   width: 18px;
   height: 18px;
   accent-color: var(--mint);
 }
 
-.tk-icon-button {
+:where(.shell-page) .tk-icon-button {
   min-width: 42px;
   min-height: 42px;
   padding: 0;
@@ -292,27 +292,27 @@
   cursor: pointer;
 }
 
-.tk-icon-button:hover {
+:where(.shell-page) .tk-icon-button:hover {
   color: var(--ink);
   box-shadow: inset 0 0 0 2px var(--heart);
 }
 
-.tk-icon-button:focus-visible {
+:where(.shell-page) .tk-icon-button:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
 }
 
-.tk-add {
+:where(.shell-page) .tk-add {
   justify-self: start;
 }
 
-.tk-color {
+:where(.shell-page) .tk-color {
   display: flex;
   gap: var(--space-8);
   align-items: center;
 }
 
-.tk-color input[type="color"] {
+:where(.shell-page) .tk-color input[type="color"] {
   width: 42px;
   height: 42px;
   padding: 0;
@@ -321,25 +321,25 @@
   cursor: pointer;
 }
 
-.tk-sample {
+:where(.shell-page) .tk-sample {
   font: 400 13px/1.4 var(--font-body);
   color: var(--muted);
 }
 
-.tk-sample code {
+:where(.shell-page) .tk-sample code {
   color: var(--mint);
 }
 
 /* /The Discord preview of a panel */
 
-.dc-buttons {
+:where(.shell-page) .dc-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8);
   margin-top: 10px;
 }
 
-.dc-button {
+:where(.shell-page) .dc-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -351,22 +351,22 @@
   background: #5865f2;
 }
 
-.dc-button.is-secondary {
+:where(.shell-page) .dc-button.is-secondary {
   background: #4e5058;
 }
-.dc-button.is-success {
+:where(.shell-page) .dc-button.is-success {
   background: #248046;
 }
-.dc-button.is-danger {
+:where(.shell-page) .dc-button.is-danger {
   background: #c62e33;
 }
 
-.pixel-button.tk-close {
+:where(.shell-page) .pixel-button.tk-close {
   border-color: #a93f58;
   color: #ffe5eb;
 }
 
-.dc-select {
+:where(.shell-page) .dc-select {
   margin-top: 10px;
   display: flex;
   align-items: center;
@@ -379,7 +379,7 @@
   background: #1e1f22;
 }
 
-.dc-options {
+:where(.shell-page) .dc-options {
   list-style: none;
   margin: 4px 0 0;
   padding: 4px;
@@ -388,27 +388,27 @@
   font-size: 14px;
 }
 
-.dc-options li {
+:where(.shell-page) .dc-options li {
   display: grid;
   gap: 2px;
   padding: 6px var(--space-8);
 }
 
-.dc-options small {
+:where(.shell-page) .dc-options small {
   color: #b5bac1;
 }
 
-.dc-off {
+:where(.shell-page) .dc-off {
   opacity: 0.5;
 }
 
 /* /Tickets table */
 
-.tk-filters > .tk-segment {
+:where(.shell-page) .tk-filters > .tk-segment {
   grid-column: 1 / -1;
 }
 
-.tk-filters {
+:where(.shell-page) .tk-filters {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: var(--space-12);
@@ -416,14 +416,14 @@
   margin-bottom: var(--space-16);
 }
 
-.tk-table {
+:where(.shell-page) .tk-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 2px;
   font-size: 14px;
 }
 
-.tk-table th {
+:where(.shell-page) .tk-table th {
   padding: 6px var(--space-12);
   text-align: left;
   font: 700 11px/1.2 var(--font-pixel);
@@ -432,46 +432,46 @@
   color: var(--muted);
 }
 
-.tk-table td {
+:where(.shell-page) .tk-table td {
   padding: 10px var(--space-12);
   background: var(--surface-inset);
   vertical-align: middle;
   overflow-wrap: anywhere;
 }
 
-.tk-table tr:hover td {
+:where(.shell-page) .tk-table tr:hover td {
   background: #131b44;
 }
 
-.tk-number {
+:where(.shell-page) .tk-number {
   font: 700 14px/1 var(--font-pixel);
   color: var(--gold);
   text-decoration: none;
   white-space: nowrap;
 }
 
-.tk-row-link {
+:where(.shell-page) .tk-row-link {
   color: var(--ink);
   text-decoration: none;
 }
 
-.tk-row-link:hover .tk-number {
+:where(.shell-page) .tk-row-link:hover .tk-number {
   text-decoration: underline;
 }
 
-.tk-sub {
+:where(.shell-page) .tk-sub {
   display: block;
   font-size: 12px;
   color: var(--muted);
 }
 
-.tk-stars {
+:where(.shell-page) .tk-stars {
   color: var(--gold);
   letter-spacing: 1px;
   white-space: nowrap;
 }
 
-.tk-more {
+:where(.shell-page) .tk-more {
   display: flex;
   justify-content: center;
   margin-top: var(--space-12);
@@ -479,53 +479,53 @@
 
 /* /One ticket */
 
-.tk-back {
+:where(.shell-page) .tk-back {
   justify-self: start;
 }
 
-.tk-facts {
+:where(.shell-page) .tk-facts {
   margin: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: var(--space-12);
 }
 
-.tk-facts > div {
+:where(.shell-page) .tk-facts > div {
   display: grid;
   gap: 4px;
   padding: var(--space-12) 14px;
   background: var(--surface-inset);
 }
 
-.tk-facts dt {
+:where(.shell-page) .tk-facts dt {
   font: 700 11px/1.2 var(--font-pixel);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.tk-facts dd {
+:where(.shell-page) .tk-facts dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.tk-answers {
+:where(.shell-page) .tk-answers {
   margin: var(--space-16) 0 0;
   display: grid;
   gap: var(--space-8);
 }
 
-.tk-answers dt {
+:where(.shell-page) .tk-answers dt {
   font-weight: 700;
 }
 
-.tk-answers dd {
+:where(.shell-page) .tk-answers dd {
   margin: 0;
   white-space: pre-wrap;
   color: var(--muted);
 }
 
-.tk-transcript {
+:where(.shell-page) .tk-transcript {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -533,7 +533,7 @@
   gap: 2px;
 }
 
-.tk-line {
+:where(.shell-page) .tk-line {
   display: grid;
   grid-template-columns: minmax(0, 170px) minmax(0, 1fr);
   gap: var(--space-16);
@@ -541,111 +541,111 @@
   background: var(--surface-inset);
 }
 
-.tk-who {
+:where(.shell-page) .tk-who {
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
-.tk-who.is-bot {
+:where(.shell-page) .tk-who.is-bot {
   color: var(--mint);
 }
 
-.tk-who.is-gone {
+:where(.shell-page) .tk-who.is-gone {
   font-style: italic;
   font-weight: 400;
   color: var(--muted);
 }
 
-.tk-who time {
+:where(.shell-page) .tk-who time {
   display: block;
   font-size: 12px;
   font-weight: 400;
   color: var(--muted);
 }
 
-.tk-text {
+:where(.shell-page) .tk-text {
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.tk-files {
+:where(.shell-page) .tk-files {
   margin: 4px 0 0;
   font-size: 13px;
   color: var(--gold);
 }
 
 @media (max-width: 1199px) {
-  .tk-editor {
+  :where(.shell-page) .tk-editor {
     grid-template-columns: minmax(0, 1fr);
   }
-  .tk-editor-side {
+  :where(.shell-page) .tk-editor-side {
     order: -1;
   }
-  .tk-editor-preview {
+  :where(.shell-page) .tk-editor-preview {
     position: static;
   }
 }
 
 @media (max-width: 1023px) {
-  .tk-filters {
+  :where(.shell-page) .tk-filters {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .tk-search {
+  :where(.shell-page) .tk-search {
     justify-self: start;
   }
 }
 
 @media (max-width: 767px) {
-  .tk-panel-row {
+  :where(.shell-page) .tk-panel-row {
     flex-direction: column;
     align-items: stretch;
   }
-  .tk-panel-actions {
+  :where(.shell-page) .tk-panel-actions {
     justify-content: flex-start;
   }
-  .tk-topic,
-  .tk-topic.is-menu {
+  :where(.shell-page) .tk-topic,
+  :where(.shell-page) .tk-topic.is-menu {
     grid-template-columns: 56px minmax(0, 1fr) auto;
   }
-  .tk-topic > :nth-child(3) {
+  :where(.shell-page) .tk-topic > :nth-child(3) {
     grid-column: 1 / -1;
     grid-row: 2;
   }
-  .tk-question {
+  :where(.shell-page) .tk-question {
     grid-template-columns: minmax(0, 1fr) auto;
   }
-  .tk-question > :nth-child(2) {
+  :where(.shell-page) .tk-question > :nth-child(2) {
     grid-column: 1 / -1;
     grid-row: 2;
   }
-  .tk-filters {
+  :where(.shell-page) .tk-filters {
     grid-template-columns: minmax(0, 1fr);
   }
-  .tk-table thead {
+  :where(.shell-page) .tk-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
   }
-  .tk-table,
-  .tk-table tbody,
-  .tk-table tr,
-  .tk-table td {
+  :where(.shell-page) .tk-table,
+  :where(.shell-page) .tk-table tbody,
+  :where(.shell-page) .tk-table tr,
+  :where(.shell-page) .tk-table td {
     display: block;
   }
-  .tk-table tr {
+  :where(.shell-page) .tk-table tr {
     margin-bottom: var(--space-8);
     background: var(--surface-inset);
   }
-  .tk-table td {
+  :where(.shell-page) .tk-table td {
     display: flex;
     justify-content: space-between;
     gap: var(--space-12);
     padding: 6px var(--space-12);
   }
-  .tk-table td::before {
+  :where(.shell-page) .tk-table td::before {
     content: attr(data-label);
     flex: none;
     font: 700 11px/1.6 var(--font-pixel);
@@ -653,20 +653,20 @@
     text-transform: uppercase;
     color: var(--muted);
   }
-  .tk-table td:first-child {
+  :where(.shell-page) .tk-table td:first-child {
     padding-top: var(--space-12);
   }
-  .tk-table td:last-child {
+  :where(.shell-page) .tk-table td:last-child {
     padding-bottom: var(--space-12);
   }
-  .tk-line {
+  :where(.shell-page) .tk-line {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
 }
 
 /* Read by screen readers only. */
-.sr-only {
+:where(.shell-page) .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -675,81 +675,87 @@
   white-space: nowrap;
 }
 
-.tk-operations-form {
+:where(.shell-page) .tk-operations-form {
   display: grid;
   gap: var(--space-12);
   margin-block: 18px;
   min-width: 0;
 }
-.tk-operations-form label {
+:where(.shell-page) .tk-operations-form label {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
-.tk-operations-form textarea,
-.tk-operations-form input,
-.tk-operations-form select {
+:where(.shell-page) .tk-operations-form textarea,
+:where(.shell-page) .tk-operations-form input,
+:where(.shell-page) .tk-operations-form select {
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
-.tk-operations-form .pixel-button {
+:where(.shell-page) .tk-operations-form .pixel-button {
   justify-self: start;
 }
-.tk-operations-grid {
+:where(.shell-page) .tk-operations-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-12);
 }
-.tk-operations-window {
+:where(.shell-page) .tk-operations-window {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) auto;
   gap: var(--space-8);
   align-items: center;
 }
-.tk-operations-faq {
+:where(.shell-page) .tk-operations-faq {
   display: grid;
   gap: var(--space-8);
   padding: var(--space-12);
   border: 1px solid var(--panel-edge);
   min-width: 0;
 }
-.tk-operations-hours {
+:where(.shell-page) .tk-operations-hours {
   display: grid;
   gap: var(--space-8);
 }
-.tk-operations-state {
+:where(.shell-page) .tk-operations-state {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-12);
 }
-.tk-operations-actions {
+:where(.shell-page) .tk-operations-actions {
   display: flex;
   gap: var(--space-8);
   margin-block: var(--space-12);
 }
-.tk-operations-notes {
+:where(.shell-page) .tk-operations-notes {
   display: grid;
   gap: var(--space-8);
   padding-left: 20px;
   overflow-wrap: anywhere;
 }
-.tk-operations-notes li {
+:where(.shell-page) .tk-operations-notes li {
   border-bottom: 1px solid var(--panel-edge);
   padding-block: var(--space-8);
 }
-.tk-operations-notes p {
+:where(.shell-page) .tk-operations-notes p {
   white-space: pre-wrap;
 }
 @media (max-width: 600px) {
-  .tk-operations-grid {
+  :where(.shell-page) .tk-segment button,
+  :where(.shell-page) .tk-tab,
+  :where(.shell-page) .tk-icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  :where(.shell-page) .tk-operations-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .tk-operations-window {
+  :where(.shell-page) .tk-operations-window {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .tk-operations-window select {
+  :where(.shell-page) .tk-operations-window select {
     grid-column: 1 / -1;
   }
 }

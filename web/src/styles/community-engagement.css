@@ -1,98 +1,95 @@
-.community-pack-page {
+:where(.shell-page) .community-pack-page {
   max-width: 1380px;
 }
-.community-pack-grid {
+:where(.shell-page) .community-pack-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
 }
-.community-pack-grid .panel {
-  min-width: 0;
-}
-.community-pack-grid label {
+:where(.shell-page) .community-pack-grid label {
   display: grid;
   gap: 0.45rem;
   margin: 0.8rem 0;
   color: var(--text-muted);
 }
-.community-pack-grid .pixel-input {
+:where(.shell-page) .community-pack-grid .pixel-input {
   width: 100%;
   box-sizing: border-box;
 }
-.community-pack-inline {
+:where(.shell-page) .community-pack-inline {
   display: grid;
   grid-template-columns: 9rem minmax(0, 1fr);
   gap: 0.8rem;
 }
-.community-pack-grid .community-pack-check {
+:where(.shell-page) .community-pack-grid .community-pack-check {
   display: flex;
   align-items: center;
   gap: 0.7rem;
   color: var(--text);
 }
-.community-pack-check input {
+:where(.shell-page) .community-pack-check input {
   width: 1.1rem;
   height: 1.1rem;
   accent-color: var(--accent);
 }
-.community-pack-actions {
+:where(.shell-page) .community-pack-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.7rem;
   margin: 0.8rem 0;
 }
-.community-pack-actions button,
-.community-pack-list button,
-.community-pack-editor > button {
+:where(.shell-page) .community-pack-actions button,
+:where(.shell-page) .community-pack-list button,
+:where(.shell-page) .community-pack-editor > button {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
   padding: 0.55rem 0.8rem;
   cursor: pointer;
 }
-.community-pack-actions button:hover,
-.community-pack-list button:hover {
+:where(.shell-page) .community-pack-actions button:hover,
+:where(.shell-page) .community-pack-list button:hover {
   border-color: var(--accent);
 }
-.community-pack-grid button:focus-visible,
-.community-pack-grid a:focus-visible,
-.community-pack-grid input:focus-visible,
-.community-pack-grid select:focus-visible,
-.community-pack-grid textarea:focus-visible {
+:where(.shell-page) .community-pack-grid button:focus-visible,
+:where(.shell-page) .community-pack-grid a:focus-visible,
+:where(.shell-page) .community-pack-grid input:focus-visible,
+:where(.shell-page) .community-pack-grid select:focus-visible,
+:where(.shell-page) .community-pack-grid textarea:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
-.community-pack-grid button:disabled {
+:where(.shell-page) .community-pack-grid button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.community-pack-list {
+:where(.shell-page) .community-pack-list {
   display: grid;
   gap: 0.6rem;
   max-height: 23rem;
   overflow: auto;
   padding-right: 0.3rem;
 }
-.community-pack-list article {
+:where(.shell-page) .community-pack-list article {
   padding: 0.8rem;
   background: rgba(7, 21, 35, 0.35);
   border: 1px solid var(--line);
 }
-.community-pack-list p {
+:where(.shell-page) .community-pack-list p {
   margin: 0.5rem 0;
   overflow-wrap: anywhere;
 }
-.community-pack-list .muted {
+:where(.shell-page) .community-pack-list .muted {
   font-size: 0.83rem;
 }
-.community-pack-editor {
+:where(.shell-page) .community-pack-editor {
   padding: 1rem;
   margin: 1rem 0;
   border: 1px solid var(--accent);
 }
-.community-pack-roles {
+:where(.shell-page) .community-pack-roles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.1rem 0.8rem;
@@ -102,40 +99,58 @@
   margin: 1rem 0;
   padding: 0.6rem;
 }
-.community-pack-roles legend {
+:where(.shell-page) .community-pack-roles legend {
   padding: 0 0.4rem;
 }
-.community-pack-roles label {
+:where(.shell-page) .community-pack-roles label {
   margin: 0.2rem 0;
   font-size: 0.85rem;
 }
-.community-pack-answer {
+:where(.shell-page) .community-pack-answer {
   display: block;
   margin: 0.25rem 0;
 }
-.community-pack-metric {
+:where(.shell-page) .community-pack-metric {
   font-size: 2.5rem;
   line-height: 1;
   margin: 0.4rem 0;
 }
-.community-pack-metric small {
+:where(.shell-page) .community-pack-metric small {
   display: block;
   font-size: 0.8rem;
   margin-top: 0.45rem;
 }
 @media (max-width: 900px) {
-  .community-pack-grid {
+  :where(.shell-page) .community-pack-grid {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 480px) {
-  .community-pack-inline {
+  :where(.shell-page) .community-pack-inline {
     grid-template-columns: 1fr;
   }
-  .community-pack-actions {
+  :where(.shell-page) .community-pack-actions {
     align-items: stretch;
   }
-  .community-pack-actions button {
+  :where(.shell-page) .community-pack-actions button {
     flex: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  :where(.shell-page) .community-pack-grid .settings-detail-body,
+  :where(.shell-page) .community-pack-roles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.shell-page) .community-pack-grid button {
+    min-height: 44px;
+  }
+  :where(.shell-page) .community-pack-check {
+    min-height: 44px;
+  }
+  :where(.shell-page) .community-pack-list article a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }

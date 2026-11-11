@@ -31,6 +31,8 @@ test("community pack settings and forms work on desktop and phone", async ({ pag
   await refreshStarted;
   try {
     await expect(page.getByText("Question queue")).toBeVisible();
+    await page.getByRole("button", { name: /COUNTING/ }).click();
+    await expect(page.getByRole("button", { name: /COUNTING/ })).toHaveAttribute("aria-expanded", "true");
     await page.getByLabel("Counting channel").selectOption({ label: "#counting" });
   } finally {
     releaseRefresh();
@@ -46,11 +48,14 @@ test("community pack settings and forms work on desktop and phone", async ({ pag
   const saved = await (await page.request.get(packPath)).json();
   expect(saved.counting.channel_id).toBe(countingChannelId(guild));
   expect(saved.qotd.channel_id).toBe("7001");
+  await page.getByRole("button", { name: /APPLICATION FORMS/ }).click();
   await page.getByRole("button", { name: "New form" }).click();
   await page.getByLabel("Form name").fill("Helper");
   await page.getByLabel("Question 1").fill("Why would you like to help?");
   await page.getByLabel("Review channel").selectOption({ label: "#general" });
   await page.getByRole("button", { name: "Save form" }).click();
+  const formsSaved = await (await page.request.get(packPath)).json();
+  expect(formsSaved.forms.some((item: { name: string }) => item.name === "Helper")).toBe(true);
   await expect(page.getByText("Helper")).toBeVisible();
   await shot(page, "community-pack-desktop", true);
   await page.setViewportSize({ width: 390, height: 844 });

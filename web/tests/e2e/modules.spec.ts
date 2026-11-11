@@ -121,8 +121,9 @@ test("the modules page fits a phone", async ({ page }) => {
 test("timed storm surges are set on the community page", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/community`);
-  await expect(page.getByRole("heading", { name: "STORM SURGES" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /STORM SURGES/ })).toBeVisible();
   await page.getByRole("switch", { name: "Timed storms" }).click();
+  await page.getByRole("button", { name: /STORM SURGES/ }).click();
   await page.getByLabel("Storm channel").selectOption({ label: "#announcements" });
   await page.getByLabel("How often").selectOption({ label: "Every 12 hours" });
   await expect(page.getByText("3 unsaved changes")).toBeVisible();
@@ -132,6 +133,7 @@ test("timed storm surges are set on the community page", async ({ page }) => {
   expect(now.surge).toMatchObject({ enabled: true, channel_id: "7011", every_hours: 12 });
   expect(now.surge.next_at).toBeTruthy();
   await page.reload();
+  await page.getByRole("button", { name: /STORM SURGES/ }).click();
   await expect(page.getByText(/The next one comes/)).toBeVisible();
   await shot(page, "community-surge", true);
 });

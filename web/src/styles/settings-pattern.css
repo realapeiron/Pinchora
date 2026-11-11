@@ -120,6 +120,12 @@
 :where(.shell-page) .settings-detail-preview {
   min-width: 0;
 }
+:where(.shell-page) .birthday-settings-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-height: 44px;
+}
 :where(.shell-page) .settings-detail-body .form-grid,
 :where(.shell-page) .settings-detail-body .add-row,
 :where(.shell-page) .settings-detail-body .list-row {

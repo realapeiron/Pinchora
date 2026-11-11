@@ -296,6 +296,7 @@ test("the overview, the modules page and the community page tell one story", asy
   await expect(
     page.getByRole("note").filter({ hasText: "Suggestions is switched off in Modules" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: /STORM SURGES/ }).click();
   await expect(
     page.getByText(/The next one comes \w{3} \d+, \d{4}, \d{1,2}:\d{2}(\s?[AP]M)?\./),
   ).toBeVisible();
