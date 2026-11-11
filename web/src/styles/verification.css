@@ -135,3 +135,18 @@
     width: 100%;
   }
 }
+:where(.shell-page) .safety-page .safety-columns,
+:where(.shell-page) .safety-page .safety-side {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.shell-page) .safety-page .safety-main,
+:where(.shell-page) .safety-page .safety-side {
+  gap: 10px;
+}
+:where(.shell-page) .safety-page .settings-detail-row,
+:where(.shell-page) .safety-page .settings-detail-fields {
+  min-width: 0;
+}
+:where(.shell-page) .safety-page .settings-detail-preview {
+  min-width: 0;
+}

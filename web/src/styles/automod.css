@@ -273,3 +273,20 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+:where(.shell-page) .automod-page .automod-rules {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.shell-page) .automod-page .settings-detail-row .automod-rule {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+@media (max-width: 640px) {
+  :where(.shell-page) .automod-page .automod-details > summary,
+  :where(.shell-page) .automod-page .automod-action-tools button {
+    min-height: 44px;
+  }
+  :where(.shell-page) .automod-page .automod-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

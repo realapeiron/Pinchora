@@ -12,6 +12,11 @@ test("Safety settings, captcha preview, and desktop/phone layouts", async ({ pag
   await expect(page.locator(".save-bar")).not.toHaveClass(/is-open/);
   const saved = await page.request.get(`/api/guilds/${guild}/safety`);
   expect((await saved.json()).config.verification.min_account_age_hours).toBe(24);
+  const messageRow = page
+    .locator(".safety-page .settings-detail-row")
+    .filter({ has: page.locator(".safety-preview") });
+  await messageRow.locator(".settings-detail-expand").click();
+  await expect(messageRow.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: "Preview captcha", exact: true }).click();
   await expect(page.getByRole("img", { name: "Sample pixel captcha card" })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);

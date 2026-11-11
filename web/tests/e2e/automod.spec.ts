@@ -9,10 +9,16 @@ test("AutoMod profiles, rule editing, safe preview, and responsive layouts", asy
   await expect(page.getByRole("heading", { name: "AUTOMOD", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Standard Balanced/ }).click();
   await expect(page.getByText(/Observation ends/)).toBeVisible();
-  await expect(page.locator(".automod-rule")).toHaveCount(16);
-  const caps = page
-    .locator(".automod-rule")
-    .filter({ has: page.getByRole("heading", { name: "Excessive capitals" }) });
+  const rules = page.locator(".automod-page > .settings-detail-list > .settings-detail-row").nth(1);
+  const rulesHead = rules.locator(":scope > .settings-detail-head > .settings-detail-expand");
+  await rulesHead.click();
+  await expect(rulesHead).toHaveAttribute("aria-expanded", "true");
+  await expect(rules.locator(".automod-rules > .settings-detail-row")).toHaveCount(16);
+  const caps = rules
+    .locator(".automod-rules > .settings-detail-row")
+    .filter({ hasText: "Excessive capitals" });
+  await caps.locator(".settings-detail-expand").click();
+  await expect(caps.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await caps.getByText("Configure rule").click();
   await caps.getByLabel("Threshold", { exact: true }).fill("90");
   await caps.getByRole("switch", { name: "Log only", exact: true }).click();
@@ -30,6 +36,11 @@ test("AutoMod profiles, rule editing, safe preview, and responsive layouts", asy
   const saved = data.config.rules.find((r: { kind: string }) => r.kind === "caps");
   expect(saved.params.threshold).toBe(90);
   expect(saved.log_only).toBe(true);
+  const testRow = page
+    .locator(".automod-page .settings-detail-row")
+    .filter({ has: page.locator("#am-test") });
+  await testRow.locator(".settings-detail-expand").click();
+  await expect(testRow.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await page.getByLabel("Message text", { exact: true }).fill("THIS MESSAGE IS TOO LOUD");
   await page.getByRole("button", { name: "Run test", exact: true }).click();
   await expect(page.locator(".automod-test-result")).toContainText("Preview only");

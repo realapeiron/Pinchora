@@ -10,6 +10,11 @@ test("anti-nuke draft, limits, safe preview, incident confirmation and responsiv
   await page.goto(`/g/${guild}/anti-nuke`);
   await expect(page.getByRole("heading", { name: "Anti-nuke", exact: true })).toBeVisible();
   await page.getByLabel("Watch destructive actions").click();
+  const previewRow = page
+    .locator(".antinuke-page .settings-detail-row")
+    .filter({ has: page.locator(".antinuke-preview") });
+  await previewRow.locator(".settings-detail-expand").click();
+  await expect(previewRow.locator(".settings-detail-expand")).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: "Run preview" }).click();
   // Slider <output> elements also have the status role; select the preview announcement.
   await expect(page.getByRole("status").filter({ hasText: "Preview only" })).toBeVisible();
