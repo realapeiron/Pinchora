@@ -8113,6 +8113,12 @@
     "$.updated_at:string",
     "$:object"
   ],
+  "PATCH /api/guilds/{g}/cases/{case} 400": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
   "PATCH /api/guilds/{g}/cases/{case} 401": [
     "$.error.code:string",
     "$.error.message:string",
@@ -8813,6 +8819,12 @@
     "$.error.errors[].message:string",
     "$.error.errors[]:object",
     "$.error.field:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/cases/{case}/revoke 500": [
+    "$.error.code:string",
     "$.error.message:string",
     "$.error:object",
     "$:object"
