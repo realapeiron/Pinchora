@@ -405,7 +405,7 @@ export interface Case {
 export interface CasesPage {
   items: Case[];
   next: number | null;
-  kinds: { key: string; label: string }[];
+  kinds: { key: string; label: string; count: number }[];
 }
 
 export interface CaseDetail {

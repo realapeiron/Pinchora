@@ -465,6 +465,76 @@ async fn cases_are_found_by_member_kind_and_words_and_reasons_change() {
 }
 
 #[tokio::test]
+async fn case_kind_counts_ignore_kind_and_paging_but_follow_search_member_and_active() {
+    let _isolation = crate::support::shared().await;
+    let Some(db) = db().await else { return };
+    let [guild, other, mia, zed] = ids(7);
+    db.open_case(&case(guild, CaseKind::Warn, mia)).await.unwrap();
+    db.open_case(&case(guild, CaseKind::Kick, mia)).await.unwrap();
+    db.open_case(&NewCase {
+        reason: Some("raid"),
+        ..case(guild, CaseKind::Ban, zed)
+    })
+    .await
+    .unwrap();
+    db.open_case(&case(other, CaseKind::Warn, mia)).await.unwrap();
+    let counts = |filter: CaseFilter| {
+        let db = db.clone();
+        async move { db.case_kind_counts(guild, &filter).await.unwrap() }
+    };
+    let all = counts(CaseFilter::default()).await;
+    assert_eq!(all.iter().map(|(_, count)| count).sum::<i64>(), 3);
+    assert_eq!(
+        counts(CaseFilter {
+            kind: Some(CaseKind::Warn),
+            before: Some(2),
+            ..CaseFilter::default()
+        })
+        .await,
+        all
+    );
+    assert_eq!(
+        counts(CaseFilter {
+            target: Some(mia),
+            ..CaseFilter::default()
+        })
+        .await
+        .iter()
+        .map(|(_, count)| count)
+        .sum::<i64>(),
+        2
+    );
+    assert_eq!(
+        counts(CaseFilter {
+            query: Some("raid".into()),
+            ..CaseFilter::default()
+        })
+        .await,
+        vec![("ban".into(), 1)]
+    );
+    assert_eq!(
+        counts(CaseFilter {
+            active_only: true,
+            ..CaseFilter::default()
+        })
+        .await
+        .iter()
+        .map(|(_, count)| count)
+        .sum::<i64>(),
+        2
+    );
+    assert_eq!(
+        counts(CaseFilter {
+            target: Some(mia),
+            active_only: true,
+            ..CaseFilter::default()
+        })
+        .await,
+        vec![("warn".into(), 1)]
+    );
+}
+
+#[tokio::test]
 async fn the_staff_log_reads_commands_discord_and_the_dashboard_together() {
     let _isolation = crate::support::shared().await;
     let Some(db) = db().await else { return };

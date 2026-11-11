@@ -2513,6 +2513,7 @@
     "$.items[].updated_at:null",
     "$.items[]:object",
     "$.kinds:array",
+    "$.kinds[].count:number",
     "$.kinds[].key:string",
     "$.kinds[].label:string",
     "$.kinds[]:object",

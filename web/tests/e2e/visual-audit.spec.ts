@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 import { openRow, devLogin } from "./helpers";
 
@@ -11,6 +12,24 @@ const paths = [...source.slice(source.indexOf("export const NAV")).matchAll(/to:
 // Reads are limited per user per minute, so each width signs in as its own user.
 const login = (page: Page, as = user) =>
   devLogin(page, as, [{ id: guild, name: "Pinchora Reef", owner: true, permissions: "8" }]);
+
+function seedCase() {
+  const database = process.env.PINCHORA_TEST_DATABASE_URL;
+  if (!database?.endsWith("/pinchora_test_db")) throw new Error("Visual audit needs the test database");
+  execFileSync(
+    process.env.PSQL ?? "/opt/homebrew/opt/postgresql@16/bin/psql",
+    [
+      database,
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      `INSERT INTO mod_cases (guild_id, number, kind, target_id, target_name, moderator_id, moderator_name, reason, active)
+     VALUES (${guild}, 1, 'warn', 81001, 'Mia', 91001, 'Captain', 'spam links', true)
+     ON CONFLICT (guild_id, number) DO NOTHING`,
+    ],
+    { stdio: "ignore" },
+  );
+}
 
 async function defects(page: Page, phone: boolean) {
   return page.evaluate((phone) => {
@@ -45,7 +64,7 @@ async function defects(page: Page, phone: boolean) {
       }
     }
     for (const el of document.querySelectorAll<HTMLElement>(
-      ".shell-main *, .shell-tabs *, .shell-sidebar.is-open *",
+      ".shell-main *, .shell-tabs *, .shell-sidebar.is-open *, .cases-sheet *",
     )) {
       if (!visible(el) || el.closest(".icon-sprite")) continue;
       const r = el.getBoundingClientRect();
@@ -95,7 +114,7 @@ async function defects(page: Page, phone: boolean) {
         out.push(`main gutter ${cs.paddingLeft}, ${cs.paddingRight}`);
       const controls = [
         ...document.querySelectorAll<HTMLElement>(
-          ".shell-content button, .shell-content a[href], .shell-content input, .shell-content select, .shell-content textarea, .shell-content [role='button'], .shell-content [role='switch'], .shell-content [role='tab'], .shell-tabs a, .shell-tabs button, .shell-top button",
+          ".shell-content button, .shell-content a[href], .shell-content input, .shell-content select, .shell-content textarea, .shell-content [role='button'], .shell-content [role='switch'], .shell-content [role='tab'], .shell-tabs a, .shell-tabs button, .shell-top button, .cases-sheet button, .cases-sheet input, .cases-sheet textarea",
         ),
       ].filter(
         (el) =>
@@ -139,6 +158,7 @@ for (const [width, height] of [
     const failures: string[] = [],
       visited: string[] = [];
     for (const path of paths) {
+      if (path === "cases") seedCase();
       await page.goto(path ? `/g/${guild}/${path}` : `/g/${guild}`);
       await expect(page.locator("main.shell-content")).toBeVisible();
       await page.waitForLoadState("networkidle");
@@ -163,6 +183,17 @@ for (const [width, height] of [
         fullPage: true,
         animations: "disabled",
       });
+      if (path === "cases") {
+        await page.getByRole(width === 390 ? "button" : "row", { name: "Open case 1" }).click();
+        await expect(page.getByRole("dialog", { name: "Case #1" })).toBeVisible();
+        for (const defect of await defects(page, width === 390)) failures.push(`${label} sheet: ${defect}`);
+        await page.screenshot({
+          path: `test-results/visual/${width}/${label}-sheet.png`,
+          fullPage: true,
+          animations: "disabled",
+        });
+        await page.getByRole("button", { name: "Close case" }).click();
+      }
     }
     console.log(`${width}px visited: ${visited.join(", ")}`);
     expect(failures, failures.join("\n")).toEqual([]);

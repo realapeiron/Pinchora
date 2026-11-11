@@ -396,13 +396,14 @@ pub async fn cases(
         limit: PAGE + 1,
     };
     let rows = state.app.db.cases(managed.id, &filter).await?;
+    let counts = state.app.db.case_kind_counts(managed.id, &filter).await?;
     let more = rows.len() as i64 > PAGE;
     let items: Vec<Value> = rows.iter().take(PAGE as usize).map(case_json).collect();
     let next = more.then(|| rows.get(PAGE as usize - 1).map(|c| c.number)).flatten();
     Ok(Json(json!({
         "items": items,
         "next": next,
-        "kinds": CaseKind::ALL.iter().map(|k| json!({ "key": k.key(), "label": k.label() })).collect::<Vec<_>>(),
+        "kinds": CaseKind::ALL.iter().map(|k| json!({ "key": k.key(), "label": k.label(), "count": counts.iter().find(|(kind, _)| kind == k.key()).map(|(_, count)| *count).unwrap_or(0) })).collect::<Vec<_>>(),
     })))
 }
 

@@ -8,7 +8,7 @@ import { canOpenPage, type AccessOverview } from "../../moderation";
 import { Icon } from "../../../components/icons/Icon";
 import { Toast } from "../../../components/Toast";
 import { navModule } from "./navModules";
-import { trapTab } from "./overlayFocus";
+import { trapTab } from "../../../components/overlayFocus";
 import { useModuleToggle } from "./useModuleToggle";
 
 interface Item {

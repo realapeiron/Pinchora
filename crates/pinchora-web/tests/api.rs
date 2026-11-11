@@ -3608,7 +3608,6 @@ async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
         .write(Method::PUT, &format!("{g}/moderation"), json!({ "colour": 1 }))
         .await;
     assert_eq!(unknown.status, StatusCode::BAD_REQUEST);
-
     // The server log: a channel per category, single events, the ignore lists.
     let logs = browser.get(&format!("{g}/logs")).await.json();
     assert_eq!(logs["categories"].as_array().unwrap().len(), 9);
@@ -3668,7 +3667,6 @@ async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
         .json();
     assert_eq!(back["categories"][5]["key"], "moderation");
     assert_eq!(back["categories"][5]["channel_id"], Value::Null);
-
     // Cases: found by member and words, a new reason, the member's other cases.
     let db = &h.state.app.db;
     let target = unique();
@@ -3691,11 +3689,14 @@ async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
     let list = browser.get(&format!("{g}/cases")).await.json();
     assert_eq!(list["items"].as_array().unwrap().len(), 2);
     assert_eq!(list["items"][0]["label"], "Ban");
+    assert_eq!(list["kinds"][15]["count"], 1);
     let found = browser
         .get(&format!("{g}/cases?q=spam&kind=warn&member={target}"))
         .await
         .json();
     assert_eq!(found["items"].as_array().unwrap().len(), 1);
+    assert_eq!(found["kinds"][15]["count"], 1);
+    assert_eq!(found["kinds"][10]["count"], 0);
     assert_eq!(
         browser.get(&format!("{g}/cases?kind=mute")).await.status,
         StatusCode::OK
@@ -3725,7 +3726,6 @@ async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
         )
         .await;
     assert_eq!(long.status, StatusCode::UNPROCESSABLE_ENTITY);
-
     // The staff log: the commands' cases, the new reason from here, and the dashboard's own changes.
     let staff = browser.get(&format!("{g}/staff-log")).await.json();
     let sources: Vec<&str> = staff["items"]

@@ -69,6 +69,35 @@ macro_rules! case_columns {
     };
 }
 
+fn push_case_filters(sql: &mut QueryBuilder<Postgres>, filter: &CaseFilter, include_kind: bool) {
+    if let Some(target) = filter.target {
+        sql.push(" AND target_id = ").push_bind(sql_id(target));
+    }
+    if let Some(moderator) = filter.moderator {
+        sql.push(" AND moderator_id = ").push_bind(sql_id(moderator));
+    }
+    if let Some(kind) = filter.kind.filter(|_| include_kind) {
+        sql.push(" AND kind = ").push_bind(kind.key());
+    }
+    if filter.active_only {
+        sql.push(" AND active AND kind IN ('ban', 'warn', 'timeout')");
+    }
+    if let Some(query) = filter.query.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
+        let like = format!("%{}%", escape_like(query));
+        sql.push(" AND (target_name ILIKE ")
+            .push_bind(like.clone())
+            .push(" OR moderator_name ILIKE ")
+            .push_bind(like.clone())
+            .push(" OR reason ILIKE ")
+            .push_bind(like.clone())
+            .push(" OR details ILIKE ")
+            .push_bind(like)
+            .push(" OR target_id::TEXT = ")
+            .push_bind(query.to_owned())
+            .push(")");
+    }
+}
+
 /// A case to open.
 #[derive(Debug, Clone)]
 pub struct NewCase<'a> {
@@ -424,38 +453,23 @@ impl Db {
         let mut sql: QueryBuilder<Postgres> =
             QueryBuilder::new(concat!("SELECT ", case_columns!(), " FROM mod_cases WHERE guild_id = "));
         sql.push_bind(sql_id(guild));
-        if let Some(target) = filter.target {
-            sql.push(" AND target_id = ").push_bind(sql_id(target));
-        }
-        if let Some(moderator) = filter.moderator {
-            sql.push(" AND moderator_id = ").push_bind(sql_id(moderator));
-        }
-        if let Some(kind) = filter.kind {
-            sql.push(" AND kind = ").push_bind(kind.key());
-        }
-        if filter.active_only {
-            sql.push(" AND active AND kind IN ('ban', 'warn', 'timeout')");
-        }
-        if let Some(query) = filter.query.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
-            let like = format!("%{}%", escape_like(query));
-            sql.push(" AND (target_name ILIKE ")
-                .push_bind(like.clone())
-                .push(" OR moderator_name ILIKE ")
-                .push_bind(like.clone())
-                .push(" OR reason ILIKE ")
-                .push_bind(like.clone())
-                .push(" OR details ILIKE ")
-                .push_bind(like)
-                .push(" OR target_id::TEXT = ")
-                .push_bind(query.to_owned())
-                .push(")");
-        }
+        push_case_filters(&mut sql, filter, true);
         if let Some(before) = filter.before {
             sql.push(" AND number < ").push_bind(before);
         }
         sql.push(" ORDER BY number DESC LIMIT ")
             .push_bind(filter.limit.clamp(1, 100));
         Ok(sql.build_query_as::<CaseRow>().fetch_all(self.pool()).await?)
+    }
+
+    /// Counts for every kind under the list's search, member and active filters.
+    pub async fn case_kind_counts(&self, guild: u64, filter: &CaseFilter) -> anyhow::Result<Vec<(String, i64)>> {
+        let mut sql: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT kind, count(*) AS count FROM mod_cases WHERE guild_id = ");
+        sql.push_bind(sql_id(guild));
+        push_case_filters(&mut sql, filter, false);
+        sql.push(" GROUP BY kind");
+        Ok(sql.build_query_as::<(String, i64)>().fetch_all(self.pool()).await?)
     }
 
     /// Serializes Discord ban changes for a member across pods. Hold through the HTTP call and case write.

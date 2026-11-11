@@ -1,0 +1,285 @@
+:where(.shell-page) .cases-filters {
+  display: grid;
+  gap: 16px;
+}
+:where(.shell-page) .cases-search {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+:where(.shell-page) .cases-search input {
+  width: 100%;
+  min-height: 44px;
+}
+:where(.shell-page) .cases-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+:where(.shell-page) .cases-tabs button {
+  min-height: 44px;
+  padding: 8px 12px;
+  color: var(--text);
+  border: 1px solid var(--line-hi);
+  background: var(--raised);
+  cursor: pointer;
+}
+:where(.shell-page) .cases-tabs button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+:where(.shell-page) .cases-tabs button span {
+  margin-left: 5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+:where(.shell-page) .cases-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+:where(.shell-page) .cases-empty {
+  padding: 20px;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+:where(.shell-page) .cases-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+:where(.shell-page) .cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+:where(.shell-page) .cases-table th,
+:where(.shell-page) .cases-table td {
+  padding: 11px 9px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+:where(.shell-page) .cases-table th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+:where(.shell-page) .cases-table tbody tr {
+  cursor: pointer;
+}
+:where(.shell-page) .cases-table tbody tr:hover,
+:where(.shell-page) .cases-table tbody tr:focus-visible {
+  background: var(--raised);
+}
+:where(.shell-page) .cases-number {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+:where(.shell-page) .cases-reason {
+  display: block;
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:where(.shell-page) .cases-kind,
+:where(.shell-page) .cases-state {
+  display: inline-block;
+  padding: 5px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--raised);
+  color: var(--text);
+}
+:where(.shell-page) .cases-kind.is-danger {
+  color: var(--heart);
+}
+:where(.shell-page) .cases-kind.is-warn {
+  color: var(--gold);
+}
+:where(.shell-page) .cases-kind.is-good,
+:where(.shell-page) .cases-state.is-active {
+  color: var(--mint);
+}
+:where(.shell-page) .cases-cards {
+  display: none;
+}
+:where(.shell-page) .cases-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(3, 7, 24, 0.75);
+}
+:where(.shell-page) .cases-underlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: default;
+}
+:where(.shell-page) .cases-sheet {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(470px, 100%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.4);
+  animation: case-enter 0.22s ease-out;
+}
+:where(.shell-page) .cases-sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+:where(.shell-page) .cases-sheet-head h2 {
+  margin: 8px 0 0;
+  font-family: var(--font-pixel);
+  font-size: 22px;
+}
+:where(.shell-page) .cases-sheet-pills {
+  display: flex;
+  gap: 8px;
+}
+:where(.shell-page) .cases-sheet-close {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+:where(.shell-page) .cases-facts {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 13px 10px;
+  margin: 0 0 18px;
+  padding: 16px;
+  background: var(--panel);
+}
+:where(.shell-page) .cases-facts dt {
+  color: var(--muted);
+}
+:where(.shell-page) .cases-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:where(.shell-page) .cases-facts small {
+  color: var(--muted);
+}
+:where(.shell-page) .cases-ladder-hint {
+  padding: 12px;
+  color: var(--gold);
+  background: var(--panel);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+:where(.shell-page) .cases-reason-editor {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+:where(.shell-page) .cases-reason-editor .field {
+  width: 100%;
+}
+:where(.shell-page) .cases-reason-editor textarea {
+  width: 100%;
+}
+:where(.shell-page) .cases-history {
+  margin-top: 24px;
+}
+:where(.shell-page) .cases-history h3 {
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+:where(.shell-page) .cases-history ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+:where(.shell-page) .cases-history li button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px;
+  text-align: left;
+  background: var(--panel);
+  cursor: pointer;
+}
+:where(.shell-page) .cases-history li button:hover {
+  background: var(--line);
+}
+:where(.shell-page) .cases-history time {
+  color: var(--muted);
+  font-size: 12px;
+}
+:where(.shell-page) .cases-sheet :focus-visible,
+:where(.shell-page) .cases-page :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@keyframes case-enter {
+  from {
+    transform: translateX(16px);
+    opacity: 0.8;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.shell-page) .cases-sheet {
+    animation: none;
+  }
+}
+@media (max-width: 819px) {
+  :where(.shell-page) .cases-table-wrap {
+    display: none;
+  }
+  :where(.shell-page) .cases-cards {
+    display: grid;
+    gap: 10px;
+  }
+  :where(.shell-page) .cases-card {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    min-height: 100px;
+    padding: 14px;
+    text-align: left;
+    background: var(--raised);
+    border: 1px solid var(--line-hi);
+    cursor: pointer;
+  }
+  :where(.shell-page) .cases-card-top {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  :where(.shell-page) .cases-card-top time {
+    margin-left: auto;
+    color: var(--muted);
+  }
+  :where(.shell-page) .cases-card-reason {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  :where(.shell-page) .cases-card-meta {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  :where(.shell-page) .cases-sheet {
+    width: 100%;
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+}

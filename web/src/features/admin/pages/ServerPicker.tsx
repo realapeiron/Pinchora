@@ -4,7 +4,7 @@ import { Icon } from "../../../components/icons/Icon";
 import { ServerIcon } from "../../../components/ServerIcon";
 import { t } from "../../../i18n/dashboard";
 import type { GuildEntry } from "../../../lib/api";
-import { trapTab } from "./overlayFocus";
+import { trapTab } from "../../../components/overlayFocus";
 
 export function ServerPicker({
   guildId,

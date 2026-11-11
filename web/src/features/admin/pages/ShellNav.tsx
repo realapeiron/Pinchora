@@ -8,7 +8,7 @@ import { Icon } from "../../../components/icons/Icon";
 import { navIcons } from "./navIcons";
 import { GuildLanguageMenu } from "./GuildLanguageMenu";
 import { navModule } from "./navModules";
-import { trapTab } from "./overlayFocus";
+import { trapTab } from "../../../components/overlayFocus";
 import { ServerPicker } from "./ServerPicker";
 
 function storedSet(key: string) {

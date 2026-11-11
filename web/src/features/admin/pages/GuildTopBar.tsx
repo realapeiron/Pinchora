@@ -7,7 +7,7 @@ import { useLogout } from "../../../lib/queries";
 import { Icon } from "../../../components/icons/Icon";
 
 import { GuildLanguageMenu } from "./GuildLanguageMenu";
-import { trapTab } from "./overlayFocus";
+import { trapTab } from "../../../components/overlayFocus";
 
 export function GuildTopBar({
   me,

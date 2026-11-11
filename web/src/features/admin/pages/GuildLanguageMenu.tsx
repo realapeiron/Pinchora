@@ -3,7 +3,7 @@ import { api, type Me } from "../../../lib/api";
 import { Icon } from "../../../components/icons/Icon";
 import { setLocale, useLocale, type Locale } from "../../../i18n";
 import { t } from "../../../i18n/dashboard";
-import { trapTab } from "./overlayFocus";
+import { trapTab } from "../../../components/overlayFocus";
 
 const choices = [
   { code: "tr", name: "Türkçe", description: "Panel and bot replies in Turkish" },
