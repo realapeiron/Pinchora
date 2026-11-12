@@ -57,7 +57,7 @@ const UPLOADS_PER_HOUR: i64 = 20;
 const SAMPLE_MEMBERS: u64 = 1234;
 
 /// What a preview that was not drawn tells the dashboard: when to ask again.
-fn preview_error(error: PreviewError) -> ApiError {
+pub(crate) fn preview_error(error: PreviewError) -> ApiError {
     match error {
         PreviewError::Busy => ApiError {
             retry_after: Some(2),
@@ -298,7 +298,7 @@ fn avatar(session: &Session) -> Option<ImageHash> {
 }
 
 /// The requester as the member a preview or test shows, in the real server.
-fn sample_subject(session: &Session, server: &str) -> CardSubject {
+pub(crate) fn sample_subject(session: &Session, server: &str) -> CardSubject {
     CardSubject {
         user: Id::new(session.user_id.max(1)),
         avatar: avatar(session),

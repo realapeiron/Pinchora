@@ -109,6 +109,7 @@ pub fn router() -> Router<WebState> {
         .nest("/safety", crate::routes::moderation::verification::router())
         .route("/preview/card", post(cards::preview))
         .route("/preview/message", post(preview::message))
+        .route("/messages/{kind}/test", post(preview::test_message))
         .route("/cards", get(cards::cards))
         .route(
             "/cards/uploads",

@@ -1,4 +1,4 @@
-import type { ModuleEntry, Settings } from "../../../lib/api";
+import type { GuildInfo, ModuleEntry, Settings } from "../../../lib/api";
 import { change, dayLabel, niceMax, type GuildStats } from "../api/stats";
 
 export type CardKey = "messages" | "members" | "commands" | "active";
@@ -35,16 +35,27 @@ export function statCards(stats: GuildStats | undefined): StatCard[] | null {
 export interface Signal {
   key: string;
   page: string;
+  channel?: string;
+  features?: string[];
+  missing?: string[];
 }
 export function attention(
   settings: Settings,
   modules: ModuleEntry[],
   roles: number | null,
   statsOn?: boolean,
+  discord?: GuildInfo,
+  welcomeDelivery?: string,
 ): Signal[] {
   const on = (key: string) => modules.find((module) => module.key === key)?.enabled === true;
   const signals: Signal[] = [];
-  if (on("welcome") && !settings.welcome_channel_id) signals.push({ key: "welcome", page: "welcome" });
+  if (
+    on("welcome") &&
+    welcomeDelivery !== undefined &&
+    welcomeDelivery !== "dm" &&
+    !settings.welcome_channel_id
+  )
+    signals.push({ key: "welcome", page: "welcome" });
   if (on("goodbye") && !settings.goodbye_channel_id) signals.push({ key: "goodbye", page: "welcome" });
   if (on("log") && !settings.log_channel_id) signals.push({ key: "log", page: "log" });
   if (
@@ -54,6 +65,43 @@ export function attention(
     signals.push({ key: "stats", page: "modules" });
   if (on("leveling") && settings.leveling_enabled && roles === 0)
     signals.push({ key: "roles", page: "leveling" });
+  const postChannels: [string, string | null, string, boolean][] = [
+    [
+      "Welcome",
+      settings.welcome_channel_id,
+      "welcome",
+      on("welcome") && settings.welcome_enabled && welcomeDelivery !== undefined && welcomeDelivery !== "dm",
+    ],
+    ["Goodbye", settings.goodbye_channel_id, "welcome", on("goodbye")],
+    [
+      "Level-up",
+      settings.levelup_channel_id,
+      "leveling",
+      on("leveling") && settings.leveling_enabled && settings.levelup_mode === "channel",
+    ],
+    [
+      "Server log",
+      settings.log_channel_id,
+      "log",
+      on("log") && (settings.log_members || settings.log_names || settings.log_bans || settings.log_voice),
+    ],
+  ];
+  for (const [feature, id, page, active] of postChannels) {
+    if (!active || !id) continue;
+    const channel = discord?.channels.find((item) => item.id === id);
+    if (!channel?.missing_permissions?.length) continue;
+    const key = `post:${id}`;
+    const existing = signals.find((item) => item.key === key);
+    if (existing) existing.features?.push(feature);
+    else
+      signals.push({
+        key,
+        page,
+        channel: channel.name,
+        features: [feature],
+        missing: channel.missing_permissions,
+      });
+  }
   return signals;
 }
 

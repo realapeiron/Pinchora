@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { translate as t } from "../../../i18n";
 import { Field } from "../../../components/Field";
-import { RolePicker, ChannelPicker } from "../../../components/Pickers";
+import { RolePicker, ChannelPicker } from "../../../components/DashboardPickers";
 import { SaveBar } from "../../../components/SaveBar";
 import { useDiscord } from "../../../lib/queries";
 import { type Overview } from "../../../lib/api";
@@ -96,6 +96,7 @@ function RobloxEditor({
             </Field>
             <Field label={t("Verification channel")} htmlFor="rb-channel">
               <ChannelPicker
+                posting
                 id="rb-channel"
                 info={discord}
                 value={draft.verify_channel_id}

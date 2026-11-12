@@ -1,6 +1,6 @@
 import { Field, SwitchRow } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { PlaceholderChips } from "../../../components/PlaceholderChips";
@@ -29,6 +29,7 @@ export function FeedEditorFields({ model }: { model: ReturnType<typeof useFeedEd
         <div className="form-grid form-grid-2">
           <Field label={t("discord-channel")} htmlFor="feed-channel" error={problem("channel_id")}>
             <ChannelPicker
+              posting
               id="feed-channel"
               info={info}
               value={draft.channel_id}

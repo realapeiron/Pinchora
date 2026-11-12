@@ -4,7 +4,7 @@ import { SettingsPage } from "../../../components/PageHead";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
 import { anniversarySummary } from "./communitySummary";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { State, useTools, useWrite, type Data } from "./communityToolsShared";
 import { useDiscord } from "../../../lib/queries";
 
@@ -72,7 +72,7 @@ function AnniversaryForm({
         <div className="community-v2-controls">
           <label>
             {t("Channel")}
-            <ChannelPicker info={discord} value={channel} onChange={setChannel} />
+            <ChannelPicker posting info={discord} value={channel} onChange={setChannel} />
           </label>
           <button
             className="pixel-button"

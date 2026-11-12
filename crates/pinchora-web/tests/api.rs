@@ -65,6 +65,11 @@ mod server_tools_review;
 #[path = "api/web_i18n.rs"]
 mod web_i18n;
 
+#[path = "api/mock_messages.rs"]
+mod mock_messages;
+use mock_messages::message_json;
+#[path = "api/message_tests.rs"]
+mod message_tests;
 #[path = "api/roles.rs"]
 mod roles;
 #[path = "api/stats.rs"]
@@ -115,6 +120,7 @@ const PUBLIC_URL: &str = "http://dash.test";
 const MANAGE_GUILD: u64 = 1 << 5;
 const ADMINISTRATOR: u64 = 1 << 3;
 const SEND_MESSAGES: u64 = 1 << 11;
+const POST_PERMISSIONS: u64 = (1 << 10) | SEND_MESSAGES | (1 << 14) | (1 << 15);
 const MANAGE_ROLES: u64 = 1 << 28;
 
 // The server every mocked guild looks like: a category with a text channel, an announcement and a
@@ -150,6 +156,7 @@ type Account = (Value, Vec<Value>);
 struct Mock {
     workflow_http_writes: Arc<AtomicUsize>,
     dm_opens: Arc<AtomicUsize>,
+    dm_open_failure: Arc<AtomicUsize>,
     absent_leveling_members: Arc<Mutex<HashSet<(u64, u64)>>>,
     /// Access token → the account.
     users: Arc<Mutex<HashMap<String, Account>>>,
@@ -195,10 +202,15 @@ struct Mock {
     guild_delay_ms: Arc<AtomicU64>,
     /// Give @everyone View Channel but deny it on GENERAL for public-stats tests.
     stats_public_channels: Arc<AtomicBool>,
+    no_image_permissions: Arc<AtomicBool>,
+    channel_overwrites_unknown: Arc<AtomicBool>,
+    hidden_from_fan: Arc<AtomicBool>,
+    foreign_channel: Arc<Mutex<Option<(u64, u64)>>>,
     /// Where the bot's own role sits, so a test can move it between two saves.
     bot_position: Arc<AtomicI64>,
     /// Messages the bot posted: the channel and the request body as text (JSON, or multipart with files).
     posts: Arc<Mutex<Vec<(u64, String)>>>,
+    refuse_post: Arc<AtomicBool>,
 }
 
 fn user_json(id: u64, name: &str) -> Value {
@@ -240,7 +252,7 @@ fn role_json(id: u64, name: &str, position: i64, managed: bool, permissions: u64
 /// `GET /guilds/{id}/roles`: `@everyone` (the server's id) and the fixed roles.
 fn roles_json(guild: u64, bot_position: i64) -> Value {
     json!([
-        role_json(guild, "@everyone", 0, false, SEND_MESSAGES),
+        role_json(guild, "@everyone", 0, false, POST_PERMISSIONS),
         role_json(BOT_ROLE, "Pinchora", bot_position, true, MANAGE_ROLES),
         role_json(FAN, "Fan", 3, false, 0),
         role_json(REGULAR, "Regular", 5, false, 0),
@@ -315,26 +327,6 @@ fn guild_json(id: u64) -> Value {
         "system_channel_id": null,
         "vanity_url_code": null,
         "verification_level": 0,
-    })
-}
-
-fn message_json(channel: u64, id: u64) -> Value {
-    json!({
-        "id": id.to_string(),
-        "channel_id": channel.to_string(),
-        "type": 0,
-        "author": user_json(APPLICATION_ID, "pinchora"),
-        "content": "",
-        "timestamp": "2024-01-01T00:00:00.000000+00:00",
-        "edited_timestamp": null,
-        "tts": false,
-        "mention_everyone": false,
-        "mentions": [],
-        "mention_roles": [],
-        "pinned": false,
-        "attachments": [],
-        "embeds": [],
-        "flags": 0,
     })
 }
 
@@ -472,22 +464,11 @@ async fn discord(
         (&Method::GET, [.., "guilds", guild, "channels"]) => {
             mock.channel_lookups.fetch_add(1, Ordering::SeqCst);
             let id = guild.parse::<u64>().unwrap_or(0);
-            let mut channels = channels_json(id);
-            if mock.stats_public_channels.load(Ordering::SeqCst) {
-                channels[1]["permission_overwrites"] = json!([{
-                    "id": id.to_string(), "type": 0, "allow": "0", "deny": (1u64 << 10).to_string()
-                }]);
-            }
-            (StatusCode::OK, channels.to_string())
+            (StatusCode::OK, mock_messages::guild_channels(&mock, id).to_string())
         }
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let id = guild.parse::<u64>().unwrap_or(0);
-            let mut roles = roles_json(id, mock.bot_position.load(Ordering::SeqCst));
-            if mock.stats_public_channels.load(Ordering::SeqCst) {
-                roles[0]["permissions"] = json!((SEND_MESSAGES | (1u64 << 10)).to_string());
-            }
-            apply_role_permissions(&mock, &mut roles);
-            (StatusCode::OK, roles.to_string())
+            (StatusCode::OK, mock_messages::guild_roles(&mock, id).to_string())
         }
         (&Method::GET, [.., "guilds", guild, "members", user]) => {
             let user = user.parse::<u64>().unwrap_or(0);
@@ -545,21 +526,8 @@ async fn discord(
         (&Method::PATCH, [.., "channels", channel, "messages", message]) => {
             server_tools::updated_message(channel, message)
         }
-        (&Method::POST, [.., "users", "@me", "channels"]) => {
-            mock.dm_opens.fetch_add(1, Ordering::SeqCst);
-            let request: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
-            let recipient = request["recipient_id"].as_str().unwrap_or("0");
-            (
-                StatusCode::OK,
-                json!({"id":recipient,"type":1,"recipients":[]}).to_string(),
-            )
-        }
-        (&Method::POST, [.., "channels", channel, "messages"]) => {
-            let channel = channel.parse::<u64>().unwrap_or(1);
-            let text = String::from_utf8_lossy(&body).into_owned();
-            mock.posts.lock().unwrap().push((channel, text));
-            (StatusCode::OK, message_json(channel, unique()).to_string())
-        }
+        (&Method::POST, [.., "users", "@me", "channels"]) => mock_messages::dm_channel(&mock, &body),
+        (&Method::POST, [.., "channels", channel, "messages"]) => mock_messages::post_message(&mock, channel, &body),
         _ => (
             StatusCode::NOT_FOUND,
             json!({ "message": "404: Not Found", "code": 0 }).to_string(),
@@ -2550,6 +2518,7 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
     assert!(posts[0].1.contains("filename=\"welcome.png\""));
 }
 
+/// A design with nothing on it, as small as a card goes, which draws in no time.
 /// A design with nothing on it, as small as a card goes, which draws in no time.
 fn blank_design() -> Value {
     json!({

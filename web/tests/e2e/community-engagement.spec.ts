@@ -53,7 +53,11 @@ test("community pack settings and forms work on desktop and phone", async ({ pag
   await page.getByLabel("Form name").fill("Helper");
   await page.getByLabel("Question 1").fill("Why would you like to help?");
   await page.getByLabel("Review channel").selectOption({ label: "#general" });
+  const formSaved = page.waitForResponse(
+    (response) => response.url().endsWith(`${packPath}/forms`) && response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Save form" }).click();
+  expect((await formSaved).ok()).toBeTruthy();
   const formsSaved = await (await page.request.get(packPath)).json();
   expect(formsSaved.forms.some((item: { name: string }) => item.name === "Helper")).toBe(true);
   await expect(page.getByText("Helper")).toBeVisible();

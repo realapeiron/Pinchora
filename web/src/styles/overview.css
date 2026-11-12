@@ -315,6 +315,15 @@
 :where(.shell-page) .overview-attention-row:last-child {
   border-bottom: 0;
 }
+:where(.shell-page) .overview-attention-row strong,
+:where(.shell-page) .overview-attention-row small {
+  display: block;
+}
+:where(.shell-page) .overview-attention-row small {
+  color: var(--text-2);
+  line-height: 1.4;
+  margin-top: 4px;
+}
 :where(.shell-page) .overview-attention-row a {
   color: var(--ink);
   border: 2px solid var(--line-hi);

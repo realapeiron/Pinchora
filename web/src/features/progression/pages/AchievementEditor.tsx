@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { number } from "../../../i18n";
 import { Field } from "../../../components/Field";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { AtlasThumb } from "../../../components/card/CardProperties";
@@ -160,6 +160,7 @@ export function AchievementEditor({
           </div>
           <Field label={text("Announce in")} htmlFor="ach-channel" error={fieldError("announce_channel_id")}>
             <ChannelPicker
+              posting
               id="ach-channel"
               info={discord}
               value={draft.announce_channel_id}

@@ -1,6 +1,6 @@
 import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import type { TabProps } from "./TicketPanelTabProps";
 
 export function LogTab({ draft, set, info, errors, base }: TabProps) {
@@ -15,6 +15,7 @@ export function LogTab({ draft, set, info, errors, base }: TabProps) {
         )}
       >
         <ChannelPicker
+          posting
           id={`${base}-log`}
           info={info}
           value={draft.log_channel_id}

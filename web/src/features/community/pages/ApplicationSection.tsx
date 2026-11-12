@@ -1,7 +1,7 @@
 import { translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { useEngagementContext } from "./engagementContext";
 import { type ApplicationForm, applicationSettings } from "../api/communityEngagement";
 const emptyForm: ApplicationForm = {
@@ -74,6 +74,7 @@ export function ApplicationSection() {
           <label>
             {t("Review channel")}
             <ChannelPicker
+              posting
               info={info}
               value={form.submit_channel_id}
               onChange={(value) => setForm({ ...form, submit_channel_id: value })}
@@ -158,6 +159,7 @@ export function ApplicationSection() {
         <label>
           {t("Post form in")}
           <ChannelPicker
+            posting
             info={info}
             value={postChannel}
             onChange={setPostChannel}

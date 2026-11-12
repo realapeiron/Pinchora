@@ -1,7 +1,7 @@
 import { translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { useEngagementContext } from "./engagementContext";
 import { countingSettings } from "../api/communityEngagement";
 
@@ -29,6 +29,7 @@ export function CountingSection() {
       <label>
         {t("Counting channel")}
         <ChannelPicker
+          posting
           info={info}
           value={counting.channel_id || null}
           onChange={(value) => setCounting({ ...counting, channel_id: value ?? "" })}

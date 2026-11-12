@@ -3,7 +3,7 @@ import { translate as t, dateTime } from "../../../i18n";
 import { SettingsPage } from "../../../components/PageHead";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { State, useTools, useWrite, type Data } from "./communityToolsShared";
 import { useDiscord } from "../../../lib/queries";
 import { communitySummary, confessionSettingsSummary } from "./communitySummary";
@@ -77,11 +77,11 @@ function ConfessionForm({
           <div className="community-v2-controls">
             <label>
               {t("Staff review channel")}
-              <ChannelPicker info={discord} value={review} onChange={setReview} />
+              <ChannelPicker posting info={discord} value={review} onChange={setReview} />
             </label>
             <label>
               {t("Public channel")}
-              <ChannelPicker info={discord} value={publish} onChange={setPublish} />
+              <ChannelPicker posting info={discord} value={publish} onChange={setPublish} />
             </label>
             <button
               className="pixel-button"

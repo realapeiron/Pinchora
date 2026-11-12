@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Field } from "../../../components/Field";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import type { GuildInfo } from "../../../lib/api";
 import { catalogWords } from "../../admin";
 import { zonedInput } from "../api/events";
@@ -84,6 +84,7 @@ export function EventFormFields({
       </Field>
       <Field label={t("Post RSVP card in")} htmlFor="ev-channel">
         <ChannelPicker
+          posting
           id="ev-channel"
           info={info}
           value={editing.body.channel_id}

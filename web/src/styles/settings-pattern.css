@@ -268,3 +268,16 @@
     transition: none;
   }
 }
+:where(.shell-page) .channel-post-warning {
+  color: var(--coral, #cf533d);
+}
+:where(.shell-page) .settings-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+:where(.shell-page) .message-preview-test {
+  min-height: 44px;
+  min-width: 44px;
+}

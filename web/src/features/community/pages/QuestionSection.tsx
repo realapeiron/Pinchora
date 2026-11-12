@@ -1,7 +1,7 @@
 import { locale, translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { useEngagementContext } from "./engagementContext";
 import { questionText } from "../api/communityEngagement";
 
@@ -23,6 +23,7 @@ export function QuestionSection() {
       <label>
         {t("Post channel")}
         <ChannelPicker
+          posting
           info={info}
           value={qotd.channel_id}
           onChange={(value) => setQotd({ ...qotd, channel_id: value })}

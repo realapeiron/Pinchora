@@ -13,7 +13,7 @@ import {
 import { type AtlasIndex, CardSvg } from "../../../components/card/CardSvg";
 import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PreviewFrame } from "../components/PreviewFrame";
 import { SaveBar } from "../../../components/SaveBar";
@@ -201,7 +201,6 @@ function Editor({
   const local = problems(design);
   const scale = zoom === "fit" ? fitZoom : zoom;
   const share = costShare(design.layers);
-
   // /Edits
 
   /** Applies a change to the draft; edits under the same `merge` key within a second are one undo step. */
@@ -822,6 +821,7 @@ function Editor({
             hint={spaTranslate("With you as the member, pinging nobody.")}
           >
             <ChannelPicker
+              posting
               id="card-test-channel"
               info={discord.data}
               value={testChannel}

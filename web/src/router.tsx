@@ -20,6 +20,8 @@ import { SiteNotFound } from "./site/SiteNotFound";
 // The public site (landing, commands, features, legal) sits under one layout, and the landing page is
 // the front door for everyone; the dashboard keeps its own paths. The rarer pages load on demand.
 // Admin pages live under /g/:guildId, one per sidebar entry (GuildLayout's NAV).
+const communityTools = () => import("./features/community/pages/CommunityTools");
+
 const localizedRoutes: RouteObject[] = [
   {
     element: <SiteLayout />,
@@ -172,49 +174,49 @@ const localizedRoutes: RouteObject[] = [
       {
         path: "giveaways",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityGiveaways,
+          Component: (await communityTools()).CommunityGiveaways,
         }),
       },
       {
         path: "polls",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityPolls,
+          Component: (await communityTools()).CommunityPolls,
         }),
       },
       {
         path: "suggestions",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunitySuggestions,
+          Component: (await communityTools()).CommunitySuggestions,
         }),
       },
       {
         path: "reminders",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityReminders,
+          Component: (await communityTools()).CommunityReminders,
         }),
       },
       {
         path: "highlights",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityHighlights,
+          Component: (await communityTools()).CommunityHighlights,
         }),
       },
       {
         path: "auto-channels",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityAutoChannels,
+          Component: (await communityTools()).CommunityAutoChannels,
         }),
       },
       {
         path: "anniversaries",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityAnniversaries,
+          Component: (await communityTools()).CommunityAnniversaries,
         }),
       },
       {
         path: "confessions",
         lazy: async () => ({
-          Component: (await import("./features/community/pages/CommunityTools")).CommunityConfessions,
+          Component: (await communityTools()).CommunityConfessions,
         }),
       },
       { path: "community-pack", element: <LegacyGuildRedirect target="community-engagement" /> },

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SaveBar } from "../../../components/SaveBar";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dashboardT } from "../../../i18n/dashboard";
@@ -62,6 +62,7 @@ export function InviteSettingsForm({
               error={problem("log_channel_id")}
             >
               <ChannelPicker
+                posting
                 id="inv-log"
                 info={discord.data}
                 value={draft.log_channel_id}
@@ -110,6 +111,7 @@ export function InviteSettingsForm({
               error={problem("temp_channel_id")}
             >
               <ChannelPicker
+                posting
                 id="inv-temp-channel"
                 info={discord.data}
                 value={draft.temp_channel_id}

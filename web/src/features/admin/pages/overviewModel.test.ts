@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ModuleEntry, Settings } from "../../../lib/api";
+import type { GuildInfo, ModuleEntry, Settings } from "../../../lib/api";
 import type { GuildStats } from "../api/stats";
 import { attention, catalogFilter, chartModel, setupSteps, statCards } from "./overviewModel";
 
@@ -73,6 +73,43 @@ describe("overview data model", () => {
         1,
       ),
     ).toEqual([]);
+  });
+  it("reports one posting warning per channel and names every affected feature", () => {
+    const discord = {
+      channels: [
+        {
+          id: "42",
+          name: "announcements",
+          type: 5,
+          parent_id: null,
+          position: 0,
+          missing_permissions: ["send_messages"],
+        },
+        { id: "43", name: "welcome", type: 0, parent_id: null, position: 1, missing_permissions: [] },
+      ],
+    } as GuildInfo;
+    const signals = attention(
+      { ...settings, welcome_enabled: true, goodbye_channel_id: "42", log_channel_id: "43" },
+      modules,
+      1,
+      true,
+      discord,
+      "with_message",
+    );
+    expect(signals.filter((signal) => signal.key.startsWith("post:"))).toEqual([
+      {
+        key: "post:42",
+        page: "welcome",
+        channel: "announcements",
+        features: ["Welcome", "Goodbye"],
+        missing: ["send_messages"],
+      },
+    ]);
+    expect(
+      attention({ ...settings, welcome_enabled: true }, modules, 1, true, discord, "dm").some(
+        (signal) => signal.key === "post:42",
+      ),
+    ).toBe(false);
   });
   it("derives setup progress and remaining steps from settings and modules", () => {
     const steps = setupSteps(settings, modules);

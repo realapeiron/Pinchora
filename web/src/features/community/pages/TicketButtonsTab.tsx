@@ -1,7 +1,7 @@
 import { translate as spaTranslate } from "../../../i18n";
 import { Choice } from "../../../components/Choice";
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import type { Tone } from "../api/tickets";
 import type { TabProps } from "./TicketPanelTabProps";
@@ -39,6 +39,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
           hint={spaTranslate("Private threads open off this channel in thread mode.")}
         >
           <ChannelPicker
+            posting
             id={`${base}-channel`}
             info={info}
             value={draft.channel_id}

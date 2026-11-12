@@ -8,7 +8,7 @@ import { levelingSummary } from "./levelingSummary";
 import { LevelingPolicyExtras } from "./LevelingPolicyExtras";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import type { GuildInfo } from "../../../lib/api";
 import { useMe } from "../../../lib/queries";
 import { type Curve, type LevelingPolicy, useLevelingPolicy } from "../api/levelingPolicy";
@@ -281,6 +281,7 @@ function Editor({
           <div className="form-grid">
             <Field label={tr("Highlights channel ID")} htmlFor="parity-highlights">
               <ChannelPicker
+                posting
                 id="parity-highlights"
                 info={info}
                 value={draft.highlights_channel_id}

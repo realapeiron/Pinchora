@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useOutletContext } from "react-router";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { Field } from "../../../components/Field";
 import { PixelButton } from "../../../components/PixelButton";
 import { Toast } from "../../../components/Toast";
@@ -82,6 +82,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
           >
             <Field label={text("Release channel")} htmlFor={`patch-${game}`}>
               <ChannelPicker
+                posting
                 id={`patch-${game}`}
                 info={discord.data}
                 value={draft.patch_channels[game] ?? null}
@@ -148,6 +149,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
             </Field>
             <Field label={text("Status channel")} htmlFor="mc-channel">
               <ChannelPicker
+                posting
                 id="mc-channel"
                 info={discord.data}
                 value={newChannel}
@@ -172,6 +174,7 @@ function TrackersBody({ guild, data, enabled }: { guild: string; data: TrackersD
         >
           <Field label={text("Release channel")} htmlFor="mc-news">
             <ChannelPicker
+              posting
               id="mc-news"
               info={discord.data}
               value={draft.mc_news_channel_id}

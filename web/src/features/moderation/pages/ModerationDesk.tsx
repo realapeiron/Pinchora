@@ -8,7 +8,7 @@ import { useDiscord } from "../../../lib/queries";
 import { useModerationDesk, policyChanged, type ModPolicy, type QueueRow } from "../api/moderationDesk";
 import { Panel } from "../../../components/Panel";
 import { Field } from "../../../components/Field";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PageHead, SettingsPage } from "../../../components/PageHead";
 import { RequireLogin } from "../../../components/RequireLogin";
@@ -60,6 +60,7 @@ function Desk({
       <Panel title={t("Staff inbox")}>
         <Field label={t("Report channel")} htmlFor="report-inbox">
           <ChannelPicker
+            posting
             id="report-inbox"
             info={discord.data}
             value={draft.report_channel}

@@ -392,6 +392,7 @@
   "POST /api/guilds/{g}/message-studio/send",
   "POST /api/guilds/{g}/message-studio/validate",
   "POST /api/guilds/{g}/message-studio/{key}/rollback/{version}",
+  "POST /api/guilds/{g}/messages/{kind}/test",
   "POST /api/guilds/{g}/mod-parity/preview",
   "POST /api/guilds/{g}/mod-parity/{queue}/{id}",
   "POST /api/guilds/{g}/preview/card",

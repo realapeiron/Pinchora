@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useOutletContext } from "react-router";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { Field } from "../../../components/Field";
 import { SaveBar } from "../../../components/SaveBar";
 import { SettingsRow } from "../../../components/SettingsRow";
@@ -116,6 +116,7 @@ function BirthdayBody({
               hint={t("A text or announcement channel the bot can post in.")}
             >
               <ChannelPicker
+                posting
                 id="bd-channel"
                 info={discord.data}
                 value={draft.channel_id}

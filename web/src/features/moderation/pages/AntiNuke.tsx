@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { Field } from "../../../components/Field";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { SaveBar } from "../../../components/SaveBar";
 import type { Overview } from "../../../lib/api";
 import { useDiscord } from "../../../lib/queries";
@@ -72,6 +72,7 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
               </Field>
               <Field label={t("ui.alert_channel")} htmlFor="an-alert">
                 <ChannelPicker
+                  posting
                   id="an-alert"
                   info={discord.data}
                   value={config.log_channel_id}

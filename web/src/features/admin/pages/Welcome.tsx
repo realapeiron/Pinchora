@@ -2,7 +2,7 @@ import { translate as spaTranslate } from "../../../i18n";
 import { useOutletContext } from "react-router";
 import { Field } from "../../../components/Field";
 import { MessageField } from "../../../components/MessageField";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { PixelLink } from "../../../components/PixelButton";
 import { SaveBar } from "../../../components/SaveBar";
 import { SettingsRow, FieldGrid } from "../../../components/SettingsRow";
@@ -76,6 +76,8 @@ export function Welcome() {
                 }
               >
                 <ChannelPicker
+                  posting={cards.data?.welcome.delivery !== "dm"}
+                  delivery={cards.data?.welcome.delivery === "text_only" ? "text" : "image"}
                   id="welcome-channel"
                   info={discord.data}
                   value={value.welcome_channel_id}
@@ -112,7 +114,23 @@ export function Welcome() {
             </div>
           </div>
           <div className="settings-detail-preview">
-            <WelcomePreview guild={guild} kind="welcome" message={value.welcome_message} />
+            <WelcomePreview
+              guild={guild}
+              kind="welcome"
+              message={value.welcome_message}
+              channel={value.welcome_channel_id}
+              channelName={discord.data?.channels.find((c) => c.id === value.welcome_channel_id)?.name}
+              showTest={cards.data?.welcome.delivery !== "dm"}
+            />
+            {cards.data?.welcome.delivery === "dm" && (
+              <WelcomePreview
+                guild={guild}
+                kind="welcome"
+                message={value.welcome_message}
+                channel={null}
+                dm
+              />
+            )}
             {cards.data && (
               <div className="designer">
                 <div className="designer-preview">
@@ -174,6 +192,8 @@ export function Welcome() {
                 error={errors.goodbye_channel_id}
               >
                 <ChannelPicker
+                  posting
+                  delivery={cards.data?.goodbye.delivery === "text_only" ? "text" : "image"}
                   id="goodbye-channel"
                   info={discord.data}
                   value={value.goodbye_channel_id}
@@ -194,7 +214,13 @@ export function Welcome() {
             />
           </div>
           <div className="settings-detail-preview">
-            <WelcomePreview guild={guild} kind="goodbye" message={value.goodbye_message} />
+            <WelcomePreview
+              guild={guild}
+              kind="goodbye"
+              message={value.goodbye_message}
+              channel={value.goodbye_channel_id}
+              channelName={discord.data?.channels.find((c) => c.id === value.goodbye_channel_id)?.name}
+            />
           </div>
         </SettingsRow>
       </div>

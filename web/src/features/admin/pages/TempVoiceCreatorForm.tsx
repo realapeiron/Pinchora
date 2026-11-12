@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
-import { ChannelPicker, channelLabel } from "../../../components/Pickers";
+import { ChannelPicker, channelLabel } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { ApiError, type Channel, type GuildInfo } from "../../../lib/api";
 import {
@@ -197,6 +197,7 @@ export function CreatorForm({
         )}
       >
         <ChannelPicker
+          posting
           id={`${id}-thread`}
           info={info}
           value={value.panel_channel_id}

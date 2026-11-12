@@ -504,6 +504,8 @@ mod tests {
                 kind: 0,
                 parent_id: None,
                 position: 0,
+                missing_permissions: vec![],
+                posting_permissions_known: true,
             }],
             roles: vec![role("10", "Regular", 0), role("12", "Mod", 1 << 13)],
             bot: BotInfo {

@@ -87,7 +87,7 @@ function role(id: string, name: string, position: number, color: number, managed
 /** The roles of every mock server: some below the bot's, one above it, one an integration owns. */
 function rolesJson(guild: string) {
   return [
-    role(guild, "@everyone", 0, 0, false, "2048"),
+    role(guild, "@everyone", 0, 0, false, String((1 << 10) | (1 << 11) | (1 << 14) | (1 << 15))),
     role(BOT_ROLE, "Pinchora", 10, 0xff6b4a, true, String(1 << 28)),
     role("9001", "Fan", 3, 0x06d6a0),
     role("9002", "Regular", 5, 0x8fd3ff),
@@ -113,13 +113,13 @@ function channel(
     name,
     position,
     parent_id: parent,
-    permission_overwrites: [],
+    permission_overwrites: [] as { id: string; type: number; allow: string; deny: string }[],
     nsfw: false,
   };
 }
 
 function channelsJson(guild: string) {
-  return [
+  const channels = [
     channel(guild, "7000", "Info", 4, 0, null),
     channel(guild, "7010", "welcome", 0, 1, "7000"),
     channel(guild, "7011", "announcements", 5, 2, "7000"),
@@ -134,6 +134,8 @@ function channelsJson(guild: string) {
     channel(guild, "7020", "Staff", 4, 7, null),
     channel(guild, "7021", "mod-log", 0, 8, "7020"),
   ];
+  channels[2]!.permission_overwrites = [{ id: guild, type: 0, allow: "0", deny: String(1 << 11) }];
+  return channels;
 }
 
 function memberJson(user: string, roles: string[]) {
@@ -171,18 +173,21 @@ function userJson(id: string) {
 /** Roles members were given, by user id. */
 const held = new Map<string, Set<string>>();
 const reversals: string[] = [];
+const posts: { channel: string; body: string }[] = [];
 
 function send(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
 }
 
-createServer((req, res) => {
-  req.resume();
+createServer(async (req, res) => {
+  let body = "";
+  for await (const chunk of req) body += chunk.toString();
   const url = new URL(req.url ?? "/", "http://mock");
   const parts = url.pathname.split("/").filter(Boolean);
   if (url.pathname === "/health") return send(res, 200, { ok: true });
   if (url.pathname === "/mock/reversals" && req.method === "GET") return send(res, 200, { items: reversals });
+  if (url.pathname === "/mock/posts" && req.method === "GET") return send(res, 200, { items: posts });
   const [api, , resource, id, sub, member, extra, roleId] = parts;
   if (api === "api" && resource === "guilds" && id && sub === "channels" && req.method === "GET") {
     return send(res, 200, channelsJson(id));
@@ -232,6 +237,8 @@ createServer((req, res) => {
       : send(res, 404, { message: "Unknown Guild", code: 10004 });
   }
   if (api === "api" && resource === "channels" && id && sub === "messages" && req.method === "POST") {
+    posts.push({ channel: id, body });
+    if (id === "7002") return send(res, 403, { message: "Missing Permissions", code: 50013 });
     return send(res, 200, messageJson(id));
   }
   if (api === "api" && resource === "users" && id && id !== "@me" && !sub && req.method === "GET") {

@@ -3,6 +3,10 @@
 
 use std::time::Duration;
 
+mod permissions;
+
+use permissions::missing_post_permissions;
+
 use axum::http::StatusCode;
 use pinchora_core::admin::settings;
 use pinchora_core::admin::settings::FieldError;
@@ -36,6 +40,10 @@ pub struct ChannelInfo {
     pub kind: u8,
     pub parent_id: Option<String>,
     pub position: i32,
+    #[serde(default)]
+    pub missing_permissions: Vec<String>,
+    #[serde(default)]
+    pub posting_permissions_known: bool,
 }
 
 impl ChannelInfo {
@@ -146,9 +154,16 @@ fn discord_down(error: impl std::fmt::Display) -> ApiError {
 
 async fn fetch(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
     let (channels, roles) = tokio::join!(fetch_channels(state, guild), fetch_roles(state, guild));
-    let (roles, bot) = roles?;
+    let (roles, bot, held) = roles?;
+    let channels = channel_infos(
+        channels?,
+        guild,
+        state.app.application_id.get(),
+        &roles,
+        held.as_deref(),
+    );
     Ok(GuildInfo {
-        channels: channels?,
+        channels,
         roles,
         bot,
         you: None,
@@ -160,7 +175,7 @@ async fn fetch(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
 /// to a minute old. The channels are the cached ones (asked for only when nothing is cached), and the
 /// cached copy is left as it is.
 pub async fn live(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
-    let (roles, bot) = fetch_roles(state, guild).await?;
+    let (roles, bot, _) = fetch_roles(state, guild).await?;
     let channels = match state.app.cache.get(&key(guild)).await? {
         Some(raw) => serde_json::from_str::<GuildInfo>(&raw)
             .map(|info| info.channels)
@@ -175,8 +190,8 @@ pub async fn live(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
     })
 }
 
-async fn fetch_channels(state: &WebState, guild: u64) -> ApiResult<Vec<ChannelInfo>> {
-    let channels: Vec<Channel> = state
+async fn fetch_channels(state: &WebState, guild: u64) -> ApiResult<Vec<Channel>> {
+    state
         .app
         .http
         .guild_channels(Id::new(guild.max(1)))
@@ -184,7 +199,16 @@ async fn fetch_channels(state: &WebState, guild: u64) -> ApiResult<Vec<ChannelIn
         .map_err(discord_down)?
         .models()
         .await
-        .map_err(discord_down)?;
+        .map_err(discord_down)
+}
+
+fn channel_infos(
+    channels: Vec<Channel>,
+    guild: u64,
+    bot: u64,
+    roles: &[RoleInfo],
+    held: Option<&[u64]>,
+) -> Vec<ChannelInfo> {
     let mut channels: Vec<ChannelInfo> = channels
         .into_iter()
         .filter(|c| !c.kind.is_thread())
@@ -194,14 +218,29 @@ async fn fetch_channels(state: &WebState, guild: u64) -> ApiResult<Vec<ChannelIn
             kind: c.kind.into(),
             parent_id: c.parent_id.map(|p| p.to_string()),
             position: c.position.unwrap_or(0),
+            posting_permissions_known: c.permission_overwrites.is_some() && held.is_some(),
+            missing_permissions: if matches!(c.kind, ChannelType::GuildText | ChannelType::GuildAnnouncement)
+                && c.permission_overwrites.is_some()
+                && held.is_some()
+            {
+                missing_post_permissions(
+                    guild,
+                    bot,
+                    roles,
+                    held,
+                    c.permission_overwrites.as_deref().unwrap_or_default(),
+                )
+            } else {
+                Vec::new()
+            },
         })
         .collect();
     channels.sort_by_key(|c| (c.position, c.id.parse::<u64>().unwrap_or(0)));
-    Ok(channels)
+    channels
 }
 
 /// The roles and where the bot's own highest role sits, as Discord has them now.
-async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, BotInfo)> {
+async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, BotInfo, Option<Vec<u64>>)> {
     let http = &state.app.http;
     let id = Id::new(guild.max(1));
     let bot = Id::new(state.app.application_id.get());
@@ -209,7 +248,7 @@ async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, 
     let roles: Vec<Role> = roles.map_err(discord_down)?.models().await.map_err(discord_down)?;
     let held = match me {
         Ok(response) => match response.model().await {
-            Ok(member) => Some(member.roles),
+            Ok(member) => Some(member.roles.into_iter().map(|id| id.get()).collect::<Vec<_>>()),
             Err(error) => {
                 tracing::warn!(%error, guild, "could not read the bot's member");
                 None
@@ -223,7 +262,7 @@ async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, 
     let top = held.as_ref().map(|held| {
         roles
             .iter()
-            .filter(|r| held.contains(&r.id))
+            .filter(|r| held.contains(&r.id.get()))
             .map(|r| r.position)
             .max()
             .unwrap_or(0)
@@ -231,7 +270,7 @@ async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, 
     let manage_roles = held.as_ref().is_some_and(|held| {
         roles
             .iter()
-            .filter(|r| r.id.get() == guild || held.contains(&r.id))
+            .filter(|r| r.id.get() == guild || held.contains(&r.id.get()))
             .any(|r| {
                 r.permissions
                     .intersects(Permissions::ADMINISTRATOR | Permissions::MANAGE_ROLES)
@@ -280,6 +319,7 @@ async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, 
             top_role_position: top,
             manage_roles,
         },
+        held,
     ))
 }
 
@@ -378,6 +418,38 @@ impl GuildInfo {
         });
         self
     }
+}
+
+/// Fresh channel and member roles decide whether a delegate can see a test destination.
+pub async fn manager_can_view(
+    state: &WebState,
+    managed: &ManagedGuild,
+    channel: u64,
+    roles: &[RoleInfo],
+) -> ApiResult<bool> {
+    let bits: u64 = managed.guild.permissions.parse().unwrap_or(0);
+    if managed.guild.owner || bits & ADMINISTRATOR != 0 {
+        return Ok(true);
+    }
+    let held = member_roles(state, managed.id, managed.current.session.user_id, true).await?;
+    let Some(held) = held else { return Ok(false) };
+    let held: Vec<u64> = held.iter().filter_map(|id| id.parse().ok()).collect();
+    let channels = fetch_channels(state, managed.id).await?;
+    let Some(overwrites) = channels
+        .iter()
+        .find(|c| c.id.get() == channel)
+        .and_then(|c| c.permission_overwrites.as_deref())
+    else {
+        return Ok(false);
+    };
+    let missing = missing_post_permissions(
+        managed.id,
+        managed.current.session.user_id,
+        roles,
+        Some(&held),
+        overwrites,
+    );
+    Ok(!missing.iter().any(|key| key == "view_channel"))
 }
 
 fn member_roles_key(guild: u64, user: u64) -> String {

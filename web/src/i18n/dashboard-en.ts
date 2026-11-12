@@ -1,4 +1,20 @@
 export const dashboardEn = {
+  "Welcome DM preview": "Welcome DM preview",
+  "Test message sent to your DMs; it shows you as a new member.":
+    "Test message sent to your DMs; it shows you as a new member.",
+  "Test message sent to #{channel}; it shows you as a new member.":
+    "Test message sent to #{channel}; it shows you as a new member.",
+  "Test message could not be sent.": "Test message could not be sent.",
+  "Pinchora can't post in #{channel}": "Pinchora can't post in #{channel}",
+  "Level-up": "Level-up",
+  "{feature}: {permissions}. Give Pinchora's role the permissions in the channel settings.":
+    "{feature}: {permissions}. Give Pinchora's role the permissions in the channel settings.",
+  "Pinchora can't post in this channel: {permissions}. Give Pinchora's role the permissions in the channel settings.":
+    "Pinchora can't post in this channel: {permissions}. Give Pinchora's role the permissions in the channel settings.",
+  "View Channel": "View Channel",
+  "Send Messages": "Send Messages",
+  "Embed Links": "Embed Links",
+  "Attach Files": "Attach Files",
   "Only in: no channels": "Only in: no channels",
   "Except: no channels": "Except: no channels",
   "Only in": "Only in",

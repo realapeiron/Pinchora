@@ -5,7 +5,7 @@ import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
 import { MessagePreview } from "../../../components/MessagePreview";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { api, type EmbedSpec, type Overview } from "../../../lib/api";
 import { blankEmbed } from "../../../lib/tags";
@@ -640,7 +640,13 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
       </Panel>
       <Panel title={t("POST OR EDIT IN DISCORD")}>
         <div className="studio-actions">
-          <ChannelPicker label={t("Channel")} info={discord.data} value={channel} onChange={setChannel} />
+          <ChannelPicker
+            posting
+            label={t("Channel")}
+            info={discord.data}
+            value={channel}
+            onChange={setChannel}
+          />
           <input
             className="pixel-input"
             aria-label={t("Existing message ID to edit (optional)")}

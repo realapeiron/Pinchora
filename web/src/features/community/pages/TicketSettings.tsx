@@ -5,7 +5,7 @@ import { Field } from "../../../components/Field";
 import { SettingsRow, FieldGrid } from "../../../components/SettingsRow";
 import { t } from "../../../i18n/dashboard";
 import { ticketSettingsSummary } from "./ticketsSummary";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SaveBar } from "../../../components/SaveBar";
 import { ApiError, type GuildInfo } from "../../../lib/api";
 import { type Limits, type TicketSettings, exampleName, useSaveTicketSettings } from "../api/tickets";
@@ -164,6 +164,7 @@ export function SettingsForm({
             hint={spaTranslate("Opened, claimed and closed tickets, with each transcript.")}
           >
             <ChannelPicker
+              posting
               id={`${base}-log`}
               info={info}
               value={value.log_channel_id}

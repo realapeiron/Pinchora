@@ -1,7 +1,7 @@
 import { dateTime } from "../../../i18n";
 import { Field } from "../../../components/Field";
 import { PixelButton } from "../../../components/PixelButton";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { dashboardText } from "./safetySummary";
 import type { GuildInfo } from "../../../lib/api";
@@ -150,6 +150,7 @@ export function SafetyExemptions({
         </Field>
         <Field label={t("alert_channel")} htmlFor="safety-alert">
           <ChannelPicker
+            posting
             id="safety-alert"
             info={discord}
             value={r.alert_channel_id}
@@ -159,6 +160,7 @@ export function SafetyExemptions({
         </Field>
         <Field label={t("log_channel")} htmlFor="safety-log">
           <ChannelPicker
+            posting
             id="safety-log"
             info={discord}
             value={v.log_channel_id}

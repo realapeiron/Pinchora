@@ -1,5 +1,5 @@
 import { Field } from "../../../components/Field";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { SafetyFlagRow } from "./SafetyFlagRow";
 import { dashboardText, type safetySummary } from "./safetySummary";
@@ -101,6 +101,7 @@ export function SafetyChecks({
           <div className="safety-fields">
             <Field label={t("channel")} htmlFor="safety-channel">
               <ChannelPicker
+                posting
                 id="safety-channel"
                 info={info}
                 value={v.channel_id}

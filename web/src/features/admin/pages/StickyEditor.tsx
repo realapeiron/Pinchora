@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import type { GuildInfo } from "../../../lib/api";
@@ -47,6 +47,7 @@ export function StickyEditor({
         </div>
         <Field label={t("Channel")} htmlFor="sticky-channel">
           <ChannelPicker
+            posting
             id="sticky-channel"
             info={info}
             value={draft.channel_id}

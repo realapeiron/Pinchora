@@ -4,7 +4,7 @@ import { useOutletContext } from "react-router";
 
 import { Field, SwitchRow } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, ChannelTag, RolePicker, RoleTag } from "../../../components/Pickers";
+import { ChannelPicker, ChannelTag, RolePicker, RoleTag } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { SaveBar } from "../../../components/SaveBar";
@@ -70,6 +70,7 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
           )}
         >
           <ChannelPicker
+            posting
             id="log-channel"
             info={discord.data}
             value={draft.channel_id}
@@ -100,6 +101,7 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
               <header className="log-category-head">
                 <h3 className="setting-name">{spaTranslate(category.label)}</h3>
                 <ChannelPicker
+                  posting
                   label={spaTranslate("Channel for {arg1}", { arg1: spaTranslate(category.label) })}
                   info={discord.data}
                   value={draft.category_channels[category.key] ?? null}

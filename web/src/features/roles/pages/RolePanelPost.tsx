@@ -1,7 +1,7 @@
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
-import { ChannelPicker, ChannelTag } from "../../../components/Pickers";
+import { ChannelPicker, ChannelTag } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { RichText } from "../../../components/RichText";
 import { ApiError, type GuildInfo } from "../../../lib/api";
@@ -40,6 +40,7 @@ export function PostRow({
           }
         >
           <ChannelPicker
+            posting
             id="panel-channel"
             info={info}
             value={channel}

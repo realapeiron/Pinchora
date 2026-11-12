@@ -8,7 +8,7 @@ import { EmbedEditor } from "../components/EmbedEditor";
 import { Field, SwitchRow } from "../../../components/Field";
 import { IdList } from "../components/IdList";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, RolePicker } from "../../../components/Pickers";
+import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
 import { PixelLink } from "../../../components/PixelButton";
 import { PixelToggle } from "../../../components/PixelToggle";
 import { PreviewPanel } from "../components/PreviewPanel";
@@ -329,6 +329,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                 error={editor.problem("channel_id")}
               >
                 <ChannelPicker
+                  posting
                   id="responder-channel"
                   info={info}
                   value={draft.channel_id}

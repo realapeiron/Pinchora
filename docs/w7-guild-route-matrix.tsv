@@ -136,6 +136,7 @@ POST	/safety/post	safety
 POST	/safety/raid	safety
 POST	/preview/card	configuration
 POST	/preview/message	configuration
+POST	/messages/{kind}/test	configuration
 GET	/cards	configuration
 POST	/cards/uploads	configuration
 GET	/cards/uploads/{id}	configuration

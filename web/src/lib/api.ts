@@ -228,6 +228,8 @@ export interface Channel {
   type: number;
   parent_id: string | null;
   position: number;
+  missing_permissions?: string[];
+  posting_permissions_known?: boolean;
 }
 
 export interface Role {

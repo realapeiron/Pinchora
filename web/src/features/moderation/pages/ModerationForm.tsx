@@ -2,7 +2,7 @@ import { translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { Field } from "../../../components/Field";
 import { SettingsRow } from "../../../components/SettingsRow";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
@@ -80,6 +80,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
               )}
             >
               <ChannelPicker
+                posting
                 id="modlog-channel"
                 info={discord.data}
                 value={channel}

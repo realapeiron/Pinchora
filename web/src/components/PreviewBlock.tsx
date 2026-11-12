@@ -6,15 +6,20 @@ export function PreviewBlock({
   text,
   status,
   children,
+  action,
 }: {
   label: string;
   text?: string;
   status?: string;
   children?: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="settings-preview">
-      <span className="field-label">{label}</span>
+      <div className="settings-preview-head">
+        <span className="field-label">{label}</span>
+        {action}
+      </div>
       {status ? (
         <p className="muted" role="status">
           {status}

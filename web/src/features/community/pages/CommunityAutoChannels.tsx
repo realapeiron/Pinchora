@@ -3,7 +3,7 @@ import { translate as t } from "../../../i18n";
 import { SettingsPage } from "../../../components/PageHead";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { State, useTools, useWrite } from "./communityToolsShared";
 import { communitySummary } from "./communitySummary";
 
@@ -63,7 +63,7 @@ export function CommunityAutoChannels() {
             <div className="community-v2-controls">
               <label>
                 {t("Channel")}
-                <ChannelPicker info={discord.data} value={channel} onChange={setChannel} />
+                <ChannelPicker posting info={discord.data} value={channel} onChange={setChannel} />
               </label>
               <label>
                 <input type="checkbox" checked={thread} onChange={(e) => setThread(e.target.checked)} />{" "}

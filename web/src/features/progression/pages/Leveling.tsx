@@ -4,7 +4,7 @@ import { useOutletContext } from "react-router";
 import { Choice } from "../../../components/Choice";
 import { Field } from "../../../components/Field";
 import { MessageField } from "../../../components/MessageField";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
 import type { FieldError, Overview, Settings } from "../../../lib/api";
@@ -92,6 +92,7 @@ export function Leveling() {
                   hint={spaTranslate("Empty posts where the member chatted.")}
                 >
                   <ChannelPicker
+                    posting
                     id="levelup-channel"
                     info={discord.data}
                     value={value.levelup_channel_id}

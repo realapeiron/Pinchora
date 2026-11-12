@@ -4,7 +4,7 @@ import { Icon } from "../../../components/icons/Icon";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
 import { t } from "../../../i18n/dashboard";
 import type { Overview as OverviewData } from "../../../lib/api";
-import { useLevelRoles } from "../../../lib/queries";
+import { useCards, useDiscord, useLevelRoles } from "../../../lib/queries";
 import { compact, type Days, useGuildStats } from "../api/stats";
 import { useOverviewActions } from "./OverviewActions";
 import { OverviewCatalog } from "./OverviewCatalog";
@@ -46,6 +46,8 @@ export function Overview() {
   const [days, setDays] = useState<Days>(7);
   const stats = useGuildStats(guild, days);
   const roles = useLevelRoles(guild);
+  const discord = useDiscord(guild);
+  const cardSettings = useCards(guild);
   const cards = statCards(stats.data);
   const shownDays = stats.data?.days ?? days;
   const statsOff = stats.data?.module_on === false;
@@ -55,6 +57,8 @@ export function Overview() {
     data.modules,
     roles.query.data?.items.length ?? null,
     stats.data?.module_on,
+    discord.data,
+    cardSettings.data?.welcome.delivery,
   );
   const steps = setupSteps(data.settings, data.modules);
   const done = steps.filter((step) => step.done);
@@ -193,7 +197,38 @@ export function Overview() {
                       }
                     />
                   </span>
-                  <span>{t(attentionWords[signal.key]!)}</span>
+                  <span>
+                    {signal.channel ? (
+                      <>
+                        <strong>{t("Pinchora can't post in #{channel}", { channel: signal.channel })}</strong>
+                        <small>
+                          {t(
+                            "{feature}: {permissions}. Give Pinchora's role the permissions in the channel settings.",
+                            {
+                              feature: signal.features?.map((feature) => t(feature)).join(", ") ?? "",
+                              permissions:
+                                signal.missing
+                                  ?.map((key) =>
+                                    t(
+                                      (
+                                        {
+                                          view_channel: "View Channel",
+                                          send_messages: "Send Messages",
+                                          embed_links: "Embed Links",
+                                          attach_files: "Attach Files",
+                                        } as Record<string, string>
+                                      )[key] ?? key,
+                                    ),
+                                  )
+                                  .join(", ") ?? "",
+                            },
+                          )}
+                        </small>
+                      </>
+                    ) : (
+                      t(attentionWords[signal.key]!)
+                    )}
+                  </span>
                   <Link to={`/g/${guild}/${signal.page}`}>{t("Open settings")}</Link>
                 </div>
               ))

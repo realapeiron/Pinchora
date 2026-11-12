@@ -2965,10 +2965,13 @@
     "$.bot:object",
     "$.channels:array",
     "$.channels[].id:string",
+    "$.channels[].missing_permissions:array",
+    "$.channels[].missing_permissions[]:string",
     "$.channels[].name:string",
     "$.channels[].parent_id:null",
     "$.channels[].parent_id:string",
     "$.channels[].position:number",
+    "$.channels[].posting_permissions_known:boolean",
     "$.channels[].type:number",
     "$.channels[]:object",
     "$.roles:array",
@@ -9641,6 +9644,51 @@
     "$.error.errors[].message:string",
     "$.error.errors[]:object",
     "$.error.field:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 200": [
+    "$.posted:boolean",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 400": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 401": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 403": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 422": [
+    "$.error.code:string",
+    "$.error.errors:array",
+    "$.error.errors[].field:string",
+    "$.error.errors[].message:string",
+    "$.error.errors[]:object",
+    "$.error.field:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 429": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/messages/{kind}/test 502": [
+    "$.error.code:string",
     "$.error.message:string",
     "$.error:object",
     "$:object"

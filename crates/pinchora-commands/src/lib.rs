@@ -18,6 +18,7 @@ pub use crate::admin::afk_sticky_sender::creator_may_ping as utility_creator_may
 pub use crate::admin::afk_sticky_sender::spawn_ticker as spawn_utility_ticker;
 pub use crate::admin::afk_sticky_sender::tick as utility_tick;
 pub use crate::commands::community::suggest::refresh_suggestion_message;
+pub use crate::community::events::default_message;
 pub use crate::community::trackers::spawn_ticker as spawn_trackers_ticker;
 pub use crate::community::trackers::tick as trackers_tick;
 pub use crate::progression::leveling_policy::post_weekly_highlights as leveling_highlights_tick;

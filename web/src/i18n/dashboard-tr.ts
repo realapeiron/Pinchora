@@ -1,6 +1,22 @@
 import type { dashboardEn } from "./dashboard-en";
 
 export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
+  "Welcome DM preview": "Hoş geldin özel mesajı önizlemesi",
+  "Test message sent to your DMs; it shows you as a new member.":
+    "Test mesajı sana özelden gönderildi; seni yeni üye gibi gösterir.",
+  "Test message sent to #{channel}; it shows you as a new member.":
+    "Test mesajı #{channel} kanalına gönderildi; seni yeni üye gibi gösterir.",
+  "Test message could not be sent.": "Test mesajı gönderilemedi.",
+  "Pinchora can't post in #{channel}": "Pinchora #{channel} kanalına yazamıyor",
+  "Level-up": "Seviye atlama",
+  "{feature}: {permissions}. Give Pinchora's role the permissions in the channel settings.":
+    "{feature}: {permissions}. Kanal ayarlarında Pinchora rolüne bu izinleri ver.",
+  "Pinchora can't post in this channel: {permissions}. Give Pinchora's role the permissions in the channel settings.":
+    "Pinchora bu kanala yazamıyor: {permissions}. Kanal ayarlarında Pinchora rolüne bu izinleri ver.",
+  "View Channel": "Kanalı Görüntüle",
+  "Send Messages": "Mesaj Gönder",
+  "Embed Links": "Bağlantı Göm",
+  "Attach Files": "Dosya Ekle",
   "Only in: no channels": "Yalnızca şurada: kanal yok",
   "Except: no channels": "Şunlar dışında: kanal yok",
   "Only in": "Yalnızca şurada",

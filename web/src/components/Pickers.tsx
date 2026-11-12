@@ -1,5 +1,5 @@
 import type { Channel, GuildInfo, Role } from "../lib/api";
-import { t } from "../i18n";
+import { translate as t } from "../i18n";
 
 /** Channel types the bot posts into: text and announcement. */
 const POSTABLE = new Set([0, 5]);
@@ -43,6 +43,7 @@ export function ChannelPicker({
   any = false,
   disabled,
   invalid,
+  describedBy,
 }: {
   id?: string;
   /** The picker's name for screen readers, when no `<label>` points at it. */
@@ -54,6 +55,7 @@ export function ChannelPicker({
   any?: boolean;
   disabled?: boolean;
   invalid?: boolean;
+  describedBy?: string;
 }) {
   const keep = (c: Channel) => any || POSTABLE.has(c.type);
   const { loose, groups } = grouped(info?.channels ?? [], keep);
@@ -67,6 +69,7 @@ export function ChannelPicker({
       onChange={(event) => onChange(event.target.value || null)}
       disabled={disabled || !info}
       aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
     >
       {none !== undefined && <option value="">{none}</option>}
       {none === undefined && !value && (

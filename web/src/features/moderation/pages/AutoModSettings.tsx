@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { dateTime } from "../../../i18n";
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { dashboardText } from "./automodSummary";
@@ -34,6 +34,7 @@ export function AutoModSettings({
       <div className="settings-detail-fields">
         <Field label={t("ui.alert_channel")} htmlFor="am-alert">
           <ChannelPicker
+            posting
             id="am-alert"
             info={info}
             value={config.alert_channel_id}

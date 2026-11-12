@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { PixelButton } from "../../../components/PixelButton";
 import type { GuildInfo } from "../../../lib/api";
 import {
@@ -61,6 +61,7 @@ export function ScheduleEditor({
         </div>
         <Field label={t("Channel")} htmlFor="schedule-channel">
           <ChannelPicker
+            posting
             id="schedule-channel"
             info={info}
             value={draft.channel_id}

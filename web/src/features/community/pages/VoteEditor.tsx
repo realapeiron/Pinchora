@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
 import { voteSummary } from "./starboardSummary";
@@ -40,6 +40,7 @@ export function VoteEditor({
             <label>
               {spaTranslate("Channel")}
               <ChannelPicker
+                posting
                 info={info}
                 value={vote.channel_id || null}
                 onChange={(v) => change({ channel_id: v ?? "" })}

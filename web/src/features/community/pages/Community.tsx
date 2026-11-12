@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
 import { Field } from "../../../components/Field";
-import { ChannelPicker } from "../../../components/Pickers";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
 import { communitySettingsSummary } from "./communitySettingsSummary";
@@ -153,6 +153,7 @@ function CommunityForm({
             )}
           >
             <ChannelPicker
+              posting
               id="suggestion-channel"
               info={discord.data}
               value={suggestions}
@@ -184,6 +185,7 @@ function CommunityForm({
             hint={spaTranslate("Only chat in a set channel counts towards a drop.")}
           >
             <ChannelPicker
+              posting
               id="critter-channel"
               info={discord.data}
               value={critterChannel}
@@ -216,6 +218,7 @@ function CommunityForm({
               hint={surgeOn && !surgeChannel ? spaTranslate("Pick the channel storms come to.") : undefined}
             >
               <ChannelPicker
+                posting
                 id="surge-channel"
                 info={discord.data}
                 value={surgeChannel}

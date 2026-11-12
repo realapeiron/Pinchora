@@ -54,7 +54,7 @@ async fn all_guild_routes_require_sessions_csrf_and_their_management_areas() {
     };
     let (guild, owner_id, mut owner) = h.managed_server().await;
     let routes = inventory();
-    assert_eq!(routes.len(), 258);
+    assert_eq!(routes.len(), 259);
     for (method, path, _) in &routes {
         let path = api_path(guild, path);
         let result = h.browser().write(method.parse().unwrap(), &path, json!({})).await;
