@@ -8,6 +8,17 @@ use pinchora_core::admin::modules::ModuleRule;
 
 use crate::{Db, sql_id};
 
+#[derive(Debug)]
+pub struct ModuleConflict;
+
+impl std::fmt::Display for ModuleConflict {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("The module changed since this save. Refresh and try again.")
+    }
+}
+
+impl std::error::Error for ModuleConflict {}
+
 #[derive(sqlx::FromRow)]
 struct ModuleRow {
     module: String,
@@ -99,12 +110,24 @@ impl Db {
         enabled: Option<bool>,
         channels: Option<(ChannelMode, &[u64])>,
     ) -> anyhow::Result<ModuleRule> {
-        if module == Module::CommandControl {
-            return Ok(ModuleRule::default());
-        }
+        self.set_module_if(guild, module, enabled, channels, None).await
+    }
+
+    pub async fn set_module_if(
+        &self,
+        guild: u64,
+        module: Module,
+        enabled: Option<bool>,
+        channels: Option<(ChannelMode, &[u64])>,
+        expect_enabled: Option<bool>,
+    ) -> anyhow::Result<ModuleRule> {
         let id = sql_id(guild);
         let mut tx = self.pool().begin().await?;
         sqlx::query("INSERT INTO guilds (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("SELECT id FROM guilds WHERE id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
             .await?;
@@ -117,11 +140,17 @@ impl Db {
         .fetch_optional(&mut *tx)
         .await?;
         let mut rule = row.and_then(ModuleRow::rule).map(|(_, rule)| rule).unwrap_or_default();
+        let column = setting_sql(module);
+        if let Some((_, get)) = column {
+            rule.enabled = sqlx::query_scalar(get).bind(id).fetch_one(&mut *tx).await?;
+        }
+        if expect_enabled.is_some_and(|expected| expected != rule.enabled) {
+            return Err(ModuleConflict.into());
+        }
         if let Some((mode, list)) = channels {
             rule.mode = mode;
             rule.channels = list.to_vec();
         }
-        let column = setting_sql(module);
         match (column, enabled) {
             (Some((set, _)), Some(on)) => {
                 sqlx::query(set).bind(id).bind(on).execute(&mut *tx).await?;

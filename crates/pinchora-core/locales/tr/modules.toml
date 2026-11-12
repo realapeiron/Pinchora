@@ -17,6 +17,8 @@ only = { other = "yalnızca {count} kanalda" }
 except = { other = "{count} kanalda kapalı" }
 
 [modules]
+conflict = "Bu kayıttan sonra modül değişti. Sayfayı yenileyip tekrar deneyin."
+access = "Bu modülü değiştirmek için ilgili panel alanına erişim yetkin gerekiyor."
 not-a-module = "Bu bir bölüm değil. Bir ad yazmaya başla ve listeden seç, ya da hepsini `/setup server modules-show` ile gör."
 more = " ve {count} tane daha"
 limit = "En fazla {max} kanal; bir kategori altındaki kanalları ve alt başlıkları da kapsar."

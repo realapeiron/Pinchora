@@ -21,6 +21,7 @@ import { moduleSummary } from "./moduleSummary";
 import { ModuleChannels } from "./ModuleChannels";
 import { ModuleSaveError, useDiscord, useModules, useSaveModules } from "../../../lib/queries";
 import { SettingsPage } from "../../../components/PageHead";
+import { ModuleOffConfirm } from "./ModuleOffConfirm";
 import { Loading, Problem } from "../../../components/States";
 
 const MODES: { value: ChannelMode; title: string; detail: string }[] = [
@@ -57,6 +58,7 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
   const save = useSaveModules(guild);
   const [drafts, setDrafts] = useState<Record<string, ModuleDraft>>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmOff, setConfirmOff] = useState(false);
   const clearToast = useCallback(() => setToast(null), []);
 
   const changes = changeCount(data.items, drafts);
@@ -67,11 +69,15 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
     setDrafts((all) => ({ ...all, [key]: next }));
   };
 
-  const submit = () => {
+  const submit = (approved = false) => {
     const todo = data.items.flatMap((saved) => {
       const patch = patchFor(saved, drafts[saved.key]);
       return patch ? [{ key: saved.key, patch }] : [];
     });
+    if (!approved && todo.some(({ key, patch }) => key === "command_control" && patch.enabled === false)) {
+      setConfirmOff(true);
+      return;
+    }
     save.mutate(todo, {
       onSuccess: () => {
         setDrafts({});
@@ -112,13 +118,21 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
         saving={save.isPending}
         blocked={blocked}
         error={save.isError && !refused ? save.error.message : null}
-        onSave={submit}
+        onSave={() => submit()}
         onReset={() => {
           setDrafts({});
           save.reset();
         }}
       />
       <Toast message={toast} onDone={clearToast} />
+      <ModuleOffConfirm
+        open={confirmOff}
+        onCancel={() => setConfirmOff(false)}
+        onConfirm={() => {
+          setConfirmOff(false);
+          submit(true);
+        }}
+      />
     </>
   );
 }

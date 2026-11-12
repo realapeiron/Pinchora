@@ -1,5 +1,6 @@
 [command_control]
 "disabled" = "This command is disabled on this server."
+"module_off" = "Command permissions are off on this server. Turn them on in /config modules or the dashboard."
 "denied_role" = "One of your roles is denied access to this command."
 "required_role" = "You need one of the allowed roles to use this command."
 "denied_channel" = "This channel or its category is denied access to this command."
@@ -64,4 +65,4 @@
 [module]
 command_control = "Command control"
 [module-blurb]
-command_control = "Command permissions, aliases and configuration backups."
+command_control = "Pinchora command rules and aliases. Discord server permissions still apply."

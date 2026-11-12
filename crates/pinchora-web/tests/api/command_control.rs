@@ -1,4 +1,65 @@
 use crate::*;
+
+#[tokio::test]
+async fn backup_round_trips_command_control_off_without_losing_rules() {
+    let Some(h) = Harness::new("command_control_off_backup").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}");
+    let mut config = pinchora_core::admin::command_control::Config::default();
+    config.aliases.insert("w".into(), "play wordle".into());
+    let save = browser
+        .write(Method::PUT, &format!("{path}/command-control"), json!(config))
+        .await;
+    assert_eq!(save.status, StatusCode::OK, "{}", save.text());
+    let off = browser
+        .write(
+            Method::PUT,
+            &format!("{path}/modules/command_control"),
+            json!({"enabled":false}),
+        )
+        .await;
+    assert_eq!(off.status, StatusCode::OK, "{}", off.text());
+    let backup = browser.get(&format!("{path}/backup/export")).await.json();
+    let row = backup["sections"]["guild_modules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["module"] == "command_control")
+        .unwrap();
+    assert_eq!(row["enabled"], false);
+    assert_eq!(row["channel_mode"], "all");
+    let on = browser
+        .write(
+            Method::PUT,
+            &format!("{path}/modules/command_control"),
+            json!({"enabled":true}),
+        )
+        .await;
+    assert_eq!(on.status, StatusCode::OK);
+    let body = json!({"backup":backup,"policy":"replace"});
+    let preview = browser
+        .write(Method::POST, &format!("{path}/backup/preview"), body.clone())
+        .await;
+    assert_eq!(preview.status, StatusCode::OK, "{}", preview.text());
+    assert_eq!(preview.json()["can_import"], true);
+    let imported = browser
+        .write(Method::POST, &format!("{path}/backup/import"), body)
+        .await;
+    assert_eq!(imported.status, StatusCode::OK, "{}", imported.text());
+    let modules = browser.get(&format!("{path}/modules")).await.json();
+    assert_eq!(
+        modules["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["key"] == "command_control")
+            .unwrap()["enabled"],
+        false
+    );
+    assert_eq!(h.state.app.db.command_control(guild).await.unwrap(), config);
+}
 #[tokio::test]
 async fn command_control_backup_preview_import_restore_and_permissions() {
     let Some(h) = Harness::new("command_control_backup").await else {

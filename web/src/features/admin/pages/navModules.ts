@@ -10,6 +10,7 @@ const switchPages = new Set([
   "points",
   "economy",
   "commands",
+  "command-control",
   "workflows",
   "moderation",
   "automod",

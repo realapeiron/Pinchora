@@ -10,6 +10,7 @@ import { Toast } from "../../../components/Toast";
 import { navModule } from "./navModules";
 import { trapTab } from "../../../components/overlayFocus";
 import { useModuleToggle } from "./useModuleToggle";
+import { ModuleOffConfirm } from "./ModuleOffConfirm";
 
 interface Item {
   label: string;
@@ -84,6 +85,11 @@ export function CommandPalette({
   };
   return (
     <>
+      <ModuleOffConfirm
+        open={moduleToggle.confirm !== null}
+        onCancel={moduleToggle.cancel}
+        onConfirm={moduleToggle.approve}
+      />
       <Toast
         message={moduleToggle.notice}
         onDone={moduleToggle.clear}

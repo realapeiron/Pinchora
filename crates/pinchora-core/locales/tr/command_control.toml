@@ -1,5 +1,6 @@
 [command_control]
 "disabled" = "Bu komut bu sunucuda kapalı."
+"module_off" = "Bu sunucuda komut izinleri kapalı. /config modules veya panelden yeniden açın."
 "denied_role" = "Rollerinizden birinin bu komutu kullanması engellenmiş."
 "required_role" = "Bu komut için izin verilen rollerden birine sahip olmalısınız."
 "denied_channel" = "Bu kanalda veya kategoride bu komutun kullanımı engellenmiş."
@@ -64,4 +65,4 @@
 [module]
 command_control = "Komut denetimi"
 [module-blurb]
-command_control = "Komut izinleri, kısayollar ve ayar yedekleri."
+command_control = "Pinchora komut kuralları ve kısayolları. Discord sunucu izinleri geçerliliğini korur."

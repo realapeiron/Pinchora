@@ -4,8 +4,8 @@ import { translate as spaTranslate } from "../i18n";
 
 import { useCallback, useState } from "react";
 
-import { ApiError, api, type FieldError, type Overview, type Settings } from "./api";
-import { changedFields, patchOf, safeUndoPatch, undoPatch } from "./draft";
+import { ApiError, type FieldError, type Settings } from "./api";
+import { changedFields, patchOf, undoPatch, undoRequest } from "./draft";
 import { useSaveSettings } from "./queries";
 
 export function useSettingsForm(
@@ -38,10 +38,10 @@ export function useSettingsForm(
     const patch = patchOf(saved, draft);
     const before = undoPatch(saved, patch);
     save.mutate(patch, {
-      onSuccess: () => {
+      onSuccess: (updated) => {
         setDraft({});
         setServerErrors([]);
-        setPrevious({ before, written: patch });
+        setPrevious({ before, written: undoPatch(updated, patch) });
         setToast("Saved. The bot uses it from the next message.");
       },
       onError: (error) => setServerErrors(error instanceof ApiError ? error.errors : []),
@@ -51,12 +51,10 @@ export function useSettingsForm(
   const undo = async () => {
     if (!previous) return;
     try {
-      const current = (await api<Overview>(`/api/guilds/${guild}`)).settings;
-      const result = safeUndoPatch(current, previous.written, previous.before);
-      if (Object.keys(result.patch).length) await save.mutateAsync(result.patch);
+      const result = await save.mutateAsync(undoRequest(previous.written, previous.before));
       setPrevious(null);
       setToast(
-        result.changedElsewhere
+        result.skipped.length > 0
           ? "Some values changed since this save and were left alone."
           : "Previous values restored.",
       );

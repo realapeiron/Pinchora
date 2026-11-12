@@ -463,9 +463,19 @@ pub struct GuildSettingsPatch {
 /// Checks every field of `patch` with the rules above and returns it cleaned (names and titles
 /// trimmed), or every problem found. `points_now` is the stored `(min, max)`, so a patch that moves
 /// only one end is checked against the other.
-pub fn check_patch(
+pub fn check_patch(patch: GuildSettingsPatch, points_now: (i64, i64)) -> Result<GuildSettingsPatch, Vec<FieldError>> {
+    check_patch_inner(patch, Some(points_now))
+}
+
+/// Validate and normalize each requested value before a conditional write; the resulting points
+/// pair is checked against the locked row by the database writer.
+pub fn check_patch_fields(patch: GuildSettingsPatch) -> Result<GuildSettingsPatch, Vec<FieldError>> {
+    check_patch_inner(patch, None)
+}
+
+fn check_patch_inner(
     mut patch: GuildSettingsPatch,
-    points_now: (i64, i64),
+    points_now: Option<(i64, i64)>,
 ) -> Result<GuildSettingsPatch, Vec<FieldError>> {
     let mut errors = Vec::new();
     let mut note = |result: Result<(), FieldError>| {
@@ -513,10 +523,34 @@ pub fn check_patch(
             Err(error) => note(Err(error)),
         }
     }
-    if patch.points_min.is_some() || patch.points_max.is_some() {
+    if let Some(points_now) = points_now
+        && (patch.points_min.is_some() || patch.points_max.is_some())
+    {
         let min = patch.points_min.unwrap_or(points_now.0);
         let max = patch.points_max.unwrap_or(points_now.1);
         note(check_points(min, max));
+    } else if points_now.is_none() {
+        for (field, value) in [("points_min", patch.points_min), ("points_max", patch.points_max)] {
+            if let Some(value) = value
+                && !POINTS_RANGE.contains(&value)
+            {
+                note(Err(FieldError::new(
+                    field,
+                    format!(
+                        "Points per message go from {} to {}.",
+                        POINTS_RANGE.start(),
+                        POINTS_RANGE.end()
+                    ),
+                )
+                .keyed(
+                    "points-range",
+                    [
+                        ("low", POINTS_RANGE.start().to_string()),
+                        ("high", POINTS_RANGE.end().to_string()),
+                    ],
+                )));
+            }
+        }
     }
     if errors.is_empty() { Ok(patch) } else { Err(errors) }
 }

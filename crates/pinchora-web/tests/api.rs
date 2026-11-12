@@ -3985,6 +3985,8 @@ mod case_revoke;
 
 #[path = "api/command_control.rs"]
 mod command_control;
+#[path = "api/conditional_save.rs"]
+mod conditional_save;
 
 #[tokio::test]
 async fn public_bot_status_has_safe_cached_numbers() {

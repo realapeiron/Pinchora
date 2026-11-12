@@ -3196,7 +3196,8 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Join detection and reversible raid lockdown.": "Katılım tespiti ve geri alınabilir baskın koruması.",
   "Server achievements and their rewards.": "Sunucu başarımları ve ödülleri.",
   "/event: scheduled server events and RSVPs.": "Sunucu etkinlikleri ve katılım yanıtları.",
-  "Command permissions, aliases and configuration backups.": "Komut izinleri, kısayollar ve ayar yedekleri.",
+  "Pinchora command rules and aliases. Discord server permissions still apply.":
+    "Pinchora komut kuralları ve kısayolları. Discord sunucu izinleri geçerliliğini korur.",
   "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel.":
     "/integrations feeds: yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin.",
   "Creator channels that make a voice room for whoever joins, and /voice to run it.":

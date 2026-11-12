@@ -535,7 +535,11 @@ async fn prepare(
         metrics::counter!("pinchora_text_commands_refused_total", "reason" => "channel_permission").increment(1);
         return Ok(Prepared::Notice(t!(lang, "text.no-commands-here")));
     }
-    let verdict = if server.contains(Permissions::ADMINISTRATOR) {
+    let command_control_off = app
+        .module_access(guild, None, pinchora_core::admin::modules::Module::CommandControl)
+        .await?
+        != pinchora_core::admin::modules::Access::Allowed;
+    let verdict = if server.contains(Permissions::ADMINISTRATOR) || command_control_off {
         Verdict::Silent
     } else {
         let overrides = app.command_overrides(guild).await?;

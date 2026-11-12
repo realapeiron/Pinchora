@@ -212,6 +212,13 @@ export const dashboardTr: { [K in keyof typeof dashboardEn]: string } = {
   "Module enabled": "Modül açıldı",
   "Module disabled": "Modül kapatıldı",
   "Could not change the module. Try again.": "Modül değiştirilemedi. Yeniden dene.",
+  "The module changed since this save and was left alone.":
+    "Bu kayıttan sonra modül değişti; olduğu gibi bırakıldı.",
+  "Previous value restored.": "Önceki değer geri yüklendi.",
+  "Turn off command permissions?": "Komut izinleri kapatılsın mı?",
+  "Pinchora stops applying command permissions and aliases until you switch this back on. Discord may still enforce permissions set in Server Settings. Nothing is deleted.":
+    "Yeniden açana kadar Pinchora komut izinlerini ve kısayolları uygulamaz. Discord, Sunucu Ayarları'nda belirlenen izinleri uygulamaya devam edebilir. Hiçbir şey silinmez.",
+  "Keep on": "Açık tut",
   "Turn on": "Aç",
   "Turn off": "Kapat",
   Module: "Modül",

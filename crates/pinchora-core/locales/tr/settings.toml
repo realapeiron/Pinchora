@@ -1,6 +1,7 @@
 # Settings errors, role refusals, permission names and module blurbs: the core's own words.
 
 [settings-error]
+expect = "Beklenen değerler ayar alanlarını adlandırmalıdır."
 accent = "Renkler `#ff6b4a` gibi yazılır."
 message-empty = "Bir mesaj yaz ya da varsayılanı kullanmak için sıfırla."
 message-long = "Bir mesaj en fazla {max} karakter olabilir; bunda {length} var."

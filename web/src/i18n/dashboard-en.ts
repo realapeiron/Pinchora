@@ -210,6 +210,13 @@ export const dashboardEn = {
   "Module enabled": "Module enabled",
   "Module disabled": "Module disabled",
   "Could not change the module. Try again.": "Could not change the module. Try again.",
+  "The module changed since this save and was left alone.":
+    "The module changed since this save and was left alone.",
+  "Previous value restored.": "Previous value restored.",
+  "Turn off command permissions?": "Turn off command permissions?",
+  "Pinchora stops applying command permissions and aliases until you switch this back on. Discord may still enforce permissions set in Server Settings. Nothing is deleted.":
+    "Pinchora stops applying command permissions and aliases until you switch this back on. Discord may still enforce permissions set in Server Settings. Nothing is deleted.",
+  "Keep on": "Keep on",
   "Turn on": "Turn on",
   "Turn off": "Turn off",
   Module: "Module",

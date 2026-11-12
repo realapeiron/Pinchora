@@ -9,7 +9,7 @@ use pinchora_commands::{PermissionChange, on_permissions_changed, on_text_comman
 use crate::*;
 
 /// What a server overrides for one command: (target id, 1 role / 2 user / 3 channel, allowed).
-type Overrides<'a> = &'a [(u64, u8, bool)];
+pub(super) type Overrides<'a> = &'a [(u64, u8, bool)];
 
 /// What `@Pinchora` looks like in a message.
 const BOT_MENTION: &str = "<@1>";
@@ -53,7 +53,7 @@ impl Sim {
     }
 
     /// Tells the mock which commands the bot has, as (id, name).
-    fn registered(&self, commands: &[(u64, &str)]) {
+    pub(super) fn registered(&self, commands: &[(u64, &str)]) {
         *self.mock.global_commands.lock().unwrap() = commands
             .iter()
             .map(|(id, name)| {
@@ -72,7 +72,7 @@ impl Sim {
 
     /// Sets what the server says under Integrations: the entries are (command id or the application's,
     /// then each override as (target id, 1 role / 2 user / 3 channel, allowed)).
-    fn integrations(&self, entries: &[(u64, Overrides)]) {
+    pub(super) fn integrations(&self, entries: &[(u64, Overrides)]) {
         let list: Vec<Value> = entries
             .iter()
             .map(|(id, overrides)| {
@@ -241,7 +241,7 @@ impl Sim {
     }
 
     /// [`Sim::text`] for a command that answers with exactly one reply.
-    async fn text_one(&mut self, user: u64, roles: &[u64], content: &str, mentions: &[u64]) -> Reply {
+    pub(super) async fn text_one(&mut self, user: u64, roles: &[u64], content: &str, mentions: &[u64]) -> Reply {
         let (ran, mut replies) = self.text(user, roles, content, mentions).await;
         assert!(ran, "{content:?} was not taken as a command");
         assert_eq!(replies.len(), 1, "{content:?} answered {} times", replies.len());

@@ -1,0 +1,15 @@
+:where(.shell-page) .module-off-confirm {
+  margin: auto;
+  max-width: calc(100vw - 32px);
+  color: var(--ink);
+}
+
+:where(.shell-page) .module-off-confirm::backdrop {
+  background: rgb(15 22 49 / 0.78);
+}
+
+@media (max-width: 600px) {
+  :where(.shell-page) .module-off-confirm .pixel-button {
+    min-height: 44px;
+  }
+}

@@ -13,6 +13,7 @@ use pinchora_core::admin::modules::Module;
 use pinchora_core::admin::modules::ModuleRule;
 use pinchora_core::admin::modules::Scope;
 use pinchora_core::admin::modules::check_channels;
+use pinchora_core::t;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -71,8 +72,78 @@ pub async fn modules(State(state): State<WebState>, managed: ManagedGuild) -> Ap
 #[serde(deny_unknown_fields)]
 pub struct ModuleBody {
     enabled: Option<bool>,
+    expect_enabled: Option<bool>,
     channel_mode: Option<String>,
     channels: Option<Vec<String>>,
+}
+
+async fn authorize_module(state: &WebState, managed: &ManagedGuild, module: Module) -> ApiResult<()> {
+    let area = match module {
+        Module::CommandControl => None,
+        Module::Moderation
+        | Module::AutoMod
+        | Module::Verification
+        | Module::AntiRaid
+        | Module::AntiNuke
+        | Module::Log => Some("safety"),
+        Module::RolePanels | Module::AutoRoles | Module::ColorRoles => Some("roles"),
+        Module::Tickets
+        | Module::TempVoice
+        | Module::Starboard
+        | Module::Birthdays
+        | Module::Events
+        | Module::Suggestions
+        | Module::Polls
+        | Module::Giveaways
+        | Module::Achievements
+        | Module::Utility
+        | Module::Qotd
+        | Module::Counting
+        | Module::Forms
+        | Module::Modmail => Some("community"),
+        Module::Feeds | Module::Roblox | Module::GameTrackers => Some("feeds"),
+        Module::Stats | Module::Invites => Some("stats"),
+        Module::Economy | Module::Shop => Some("economy"),
+        Module::Leveling
+        | Module::Points
+        | Module::Welcome
+        | Module::Goodbye
+        | Module::Store
+        | Module::CustomCommands
+        | Module::Profile
+        | Module::Quests
+        | Module::Social
+        | Module::House
+        | Module::Plaza
+        | Module::Pets
+        | Module::Fishing
+        | Module::Duels
+        | Module::BoardGames
+        | Module::Puzzles
+        | Module::Party
+        | Module::PartyGames
+        | Module::Collection
+        | Module::Gambling
+        | Module::TextCommands
+        | Module::Info
+        | Module::Branding
+        | Module::Workflows => Some("configuration"),
+    };
+    if let Some(areas) = &managed.areas
+        && !area.is_some_and(|area| areas.iter().any(|held| held == area))
+    {
+        return Err(ApiError::new(
+            axum::http::StatusCode::FORBIDDEN,
+            "not_manager",
+            t!(state.app.guild_lang(managed.id).await, "modules.access"),
+        ));
+    }
+    if module == Module::AntiNuke {
+        pinchora_commands::authorize_antinuke_module(&state.app, managed.id, managed.current.session.user_id)
+            .await
+            .map_err(|e| ApiError::blocked(e.to_string()))?;
+    }
+    Ok(())
 }
 
 /// `PUT /modules/{module}`: switch it, and say where it works.
@@ -87,12 +158,9 @@ pub async fn put_module(
         .get("module")
         .and_then(|key| Module::parse(key))
         .ok_or_else(ApiError::not_found)?;
-    if module == Module::AntiNuke {
-        pinchora_commands::authorize_antinuke_module(&state.app, guild, managed.current.session.user_id)
-            .await
-            .map_err(|e| ApiError::blocked(e.to_string()))?;
-    }
+    authorize_module(&state, &managed, module).await?;
     let db = &state.app.db;
+    let lang = state.app.guild_lang(guild).await;
     let before = db
         .module_states(guild)
         .await?
@@ -141,7 +209,7 @@ pub async fn put_module(
 
     let enabled = body.enabled.filter(|&on| on != before.enabled);
     let channels = channels.filter(|(mode, list)| *mode != before.mode || *list != before.channels);
-    if enabled.is_none() && channels.is_none() {
+    if enabled.is_none() && channels.is_none() && body.expect_enabled.is_none() {
         return Ok(Json(module_json(module, &before)));
     }
     if enabled == Some(true) || before.enabled && channels.is_some() {
@@ -155,13 +223,18 @@ pub async fn put_module(
             .await?;
     }
     let after = db
-        .set_module(
+        .set_module_if(
             guild,
             module,
             enabled,
             channels.as_ref().map(|(mode, list)| (*mode, list.as_slice())),
+            body.expect_enabled,
         )
-        .await?;
+        .await
+        .map_err(|error| match error.downcast_ref::<pinchora_db::ModuleConflict>() {
+            Some(_) => ApiError::conflict(t!(lang, "modules.conflict")),
+            None => error.into(),
+        })?;
     let (old, new) = pinchora_commands::module_diff(&before, &after);
     audit::finish(
         &state,

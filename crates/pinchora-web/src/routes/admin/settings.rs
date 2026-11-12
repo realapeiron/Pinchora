@@ -6,8 +6,9 @@ use pinchora_cache::Invalidation;
 use pinchora_core::admin::settings;
 use pinchora_core::admin::settings::FieldError;
 use pinchora_core::admin::settings::GuildSettingsPatch;
+use pinchora_core::t;
 use pinchora_db::{GuildSettings, PatchRefused};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 
 use crate::audit;
@@ -31,6 +32,7 @@ pub fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<O
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SettingsBody {
+    expect: Option<Map<String, Value>>,
     leveling_enabled: Option<bool>,
     #[serde(default, deserialize_with = "present")]
     levelup_channel_id: Option<Option<String>>,
@@ -71,6 +73,13 @@ pub struct SettingsBody {
     /// `null` goes back to the default prefix.
     #[serde(default, deserialize_with = "present")]
     prefix: Option<Option<String>>,
+}
+
+#[derive(Serialize)]
+pub struct SettingsResponse {
+    #[serde(flatten)]
+    settings: SettingsView,
+    skipped: Vec<&'static str>,
 }
 
 /// A Discord id from a form: digits, not zero.
@@ -161,35 +170,21 @@ fn diff(before: &GuildSettings, after: &GuildSettings) -> (Map<String, Value>, M
     changed
 }
 
-/// The channels and the join role the patch moves to must be ones the bot can use. Unchanged
-/// fields are not checked, so a channel deleted in Discord never blocks saving something else.
-async fn check_discord(
-    state: &WebState,
-    managed: &ManagedGuild,
-    before: &GuildSettings,
-    after: &GuildSettings,
-) -> ApiResult<()> {
+/// Validate every non-null Discord target in the patch, including a value equal to the first
+/// snapshot: a concurrent writer can change that field before the locked write.
+async fn check_discord(state: &WebState, managed: &ManagedGuild, patch: &GuildSettingsPatch) -> ApiResult<()> {
     let guild = managed.id;
-    let moved = |old: Option<i64>, new: Option<i64>| new.filter(|_| new != old).map(|id| id as u64);
+    let target = |value: Option<Option<u64>>| value.flatten();
     let channels: Vec<(&'static str, u64)> = [
-        (
-            "levelup_channel_id",
-            moved(before.levelup_channel_id, after.levelup_channel_id),
-        ),
-        (
-            "welcome_channel_id",
-            moved(before.welcome_channel_id, after.welcome_channel_id),
-        ),
-        (
-            "goodbye_channel_id",
-            moved(before.goodbye_channel_id, after.goodbye_channel_id),
-        ),
-        ("log_channel_id", moved(before.log_channel_id, after.log_channel_id)),
+        ("levelup_channel_id", target(patch.levelup_channel_id)),
+        ("welcome_channel_id", target(patch.welcome_channel_id)),
+        ("goodbye_channel_id", target(patch.goodbye_channel_id)),
+        ("log_channel_id", target(patch.log_channel_id)),
     ]
     .into_iter()
     .filter_map(|(field, id)| Some((field, id?)))
     .collect();
-    let role = moved(before.join_role_id, after.join_role_id);
+    let role = target(patch.join_role_id);
     if channels.is_empty() && role.is_none() {
         return Ok(());
     }
@@ -224,30 +219,60 @@ pub async fn patch(
     State(state): State<WebState>,
     managed: ManagedGuild,
     ApiJson(body): ApiJson<SettingsBody>,
-) -> ApiResult<Json<SettingsView>> {
+) -> ApiResult<Json<SettingsResponse>> {
     let db = &state.app.db;
     let guild = managed.id;
     let current = db.guild_settings(guild).await?;
-    let patch = body.into_patch().map_err(ApiError::invalid)?;
-    let patch = settings::check_patch(patch, (current.points_min.into(), current.points_max.into()))?;
-    let next = current.apply(&patch);
-    let (before, after) = diff(&current, &next);
-    if after.is_empty() {
-        return Ok(Json(current.into()));
+    let lang = state.app.guild_lang(guild).await;
+    if body.expect.as_ref().is_some_and(|map| map.contains_key("expect")) {
+        return Err(ApiError::malformed(t!(lang, "settings-error.expect")));
     }
-    check_discord(&state, &managed, &current, &next).await?;
+    let expect = body
+        .expect
+        .clone()
+        .map(|map| serde_json::from_value::<SettingsBody>(Value::Object(map)))
+        .transpose()
+        .map_err(|_| ApiError::malformed(t!(lang, "settings-error.expect")))?
+        .map(SettingsBody::into_patch)
+        .transpose()
+        .map_err(ApiError::invalid)?;
+    let patch = body.into_patch().map_err(ApiError::invalid)?;
+    let patch = if expect.is_some() {
+        settings::check_patch_fields(patch)?
+    } else {
+        settings::check_patch(patch, (current.points_min.into(), current.points_max.into()))?
+    };
+    // This snapshot only selects the targets to validate. The original patch is compared again
+    // under the row lock; a newly eligible Discord target is skipped by the checked-row guard.
+    let (candidate, _) = pinchora_db::patch_if_current(&current, &patch, expect.as_ref());
+    let next = current.apply(&patch);
+    let (_, after) = diff(&current, &next);
+    if after.is_empty() && expect.is_none() {
+        return Ok(Json(SettingsResponse {
+            settings: current.into(),
+            skipped: Vec::new(),
+        }));
+    }
+    check_discord(&state, &managed, &candidate).await?;
     if next.leveling_enabled && !current.leveling_enabled
         || next.voice_xp_enabled && !current.voice_xp_enabled
         || next.level_roles_stack != current.level_roles_stack
+        || expect.is_some()
+            && (patch.leveling_enabled == Some(true)
+                || patch.voice_xp_enabled == Some(true)
+                || patch.level_roles_stack.is_some())
     {
         crate::dashboard_access::check_module_roles(&state, &managed, pinchora_core::admin::modules::Module::Leveling)
             .await?;
     }
-    if next.welcome_enabled && !current.welcome_enabled {
+    if next.welcome_enabled && !current.welcome_enabled || expect.is_some() && patch.welcome_enabled == Some(true) {
         crate::dashboard_access::check_module_roles(&state, &managed, pinchora_core::admin::modules::Module::Welcome)
             .await?;
     }
-    let updated = match db.patch_guild_settings(guild, &patch).await {
+    let (locked_before, updated, skipped) = match db
+        .patch_guild_settings_checked(guild, &patch, expect.as_ref(), Some(&current))
+        .await
+    {
         Ok(updated) => updated,
         // Another save moved the other end of the points range between the check and the write.
         Err(error) => match error.downcast_ref::<PatchRefused>() {
@@ -255,15 +280,22 @@ pub async fn patch(
             None => return Err(error.into()),
         },
     };
+    let (before, after) = diff(&locked_before, &updated);
+    if after.is_empty() {
+        return Ok(Json(SettingsResponse {
+            settings: updated.into(),
+            skipped,
+        }));
+    }
     // Like `/config xp voice enabled:false`: with nobody remembered in voice, and writes refused until it is
     // switched on again, no pod pays anyone, even one whose cached settings still say voice XP is on.
-    if current.voice_xp_enabled
+    if locked_before.voice_xp_enabled
         && !updated.voice_xp_enabled
         && let Err(error) = pinchora_commands::voice_switched_off(&state.app, guild).await
     {
         tracing::warn!(guild, %error, "voice presence not forgotten");
     }
-    if !current.voice_xp_enabled
+    if !locked_before.voice_xp_enabled
         && updated.voice_xp_enabled
         && let Err(error) = pinchora_commands::voice_switched_on(&state.app, guild).await
     {
@@ -282,7 +314,10 @@ pub async fn patch(
         Some(Invalidation::Guild(guild)),
     )
     .await;
-    Ok(Json(updated.into()))
+    Ok(Json(SettingsResponse {
+        settings: updated.into(),
+        skipped,
+    }))
 }
 
 #[cfg(test)]

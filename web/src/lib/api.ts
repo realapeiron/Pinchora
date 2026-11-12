@@ -215,11 +215,13 @@ export interface Modules {
 /** What `PUT /modules/{key}` takes: any subset. */
 export interface ModulePatch {
   enabled?: boolean;
+  expect_enabled?: boolean;
   channel_mode?: ChannelMode;
   channels?: string[];
 }
 
-export type SettingsPatch = Partial<Settings>;
+export type SettingsPatch = Partial<Settings> & { expect?: Partial<Settings> };
+export type SettingsSave = Settings & { skipped: string[] };
 
 /** A channel as the bot sees it; `type` is Discord's number (0 text, 2 voice, 4 category, 5 news). */
 export interface Channel {

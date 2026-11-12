@@ -115,6 +115,8 @@ mod utility;
 #[path = "simulate/command_integrity.rs"]
 mod command_integrity;
 // Text commands with a server's prefix, through the same handlers.
+#[path = "simulate/command_control_switch.rs"]
+mod command_control_switch;
 #[path = "simulate/text.rs"]
 mod text;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).

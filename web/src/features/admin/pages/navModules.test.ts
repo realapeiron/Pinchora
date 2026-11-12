@@ -7,9 +7,10 @@ test("header master follows the route alias and its current module state", () =>
   const modules = [
     { key: "custom_commands", enabled: true },
     { key: "welcome", enabled: false },
+    { key: "command_control", enabled: true },
   ] as Parameters<typeof headerModule>[1];
   expect(headerModule("commands", modules)).toBe(modules[0]);
-  expect(headerModule("command-control", modules)).toBeUndefined();
+  expect(headerModule("command-control", modules)).toBe(modules[2]);
   expect(headerModule("welcome", modules)).toBe(modules[1]);
   expect(headerModule("overview", modules)).toBeUndefined();
   expect(headerModule("roles", modules)).toBeUndefined();
@@ -31,7 +32,7 @@ test("every sidebar route has a deliberate module mapping with a catalog key", (
   }
   expect(navModule("commands")).toBe("custom_commands");
   expect(navModule("temp-voice")).toBe("temp_voice");
-  expect(navModule("command-control")).toBeUndefined();
+  expect(navModule("command-control")).toBe("command_control");
   expect(navModule("roles")).toBeUndefined();
 });
 
@@ -47,7 +48,7 @@ test("header switches match the backend's persisted module settings", () => {
   const noop = [
     ...db.matchAll(/if module == Module::(\w+)\s*\{\s*return Ok\(ModuleRule::default\(\)\)/g),
   ].map((match) => match[1]);
-  expect(noop).toEqual(["CommandControl"]);
+  expect(noop).toEqual([]);
   const keys = new Map(
     [...catalog.matchAll(/Self::(\w+) => "([^"]+)"/g)].map((match) => [match[1], match[2]]),
   );
@@ -55,6 +56,7 @@ test("header switches match the backend's persisted module settings", () => {
   const switchable = routes.filter((route) => navModule(route));
   expect(switchable).toEqual([
     "branding",
+    "command-control",
     "stats",
     "invites",
     "utility",

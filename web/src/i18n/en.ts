@@ -3169,8 +3169,8 @@ export const en = {
   "Join detection and reversible raid lockdown.": "Join detection and reversible raid lockdown.",
   "Server achievements and their rewards.": "Server achievements and their rewards.",
   "/event: scheduled server events and RSVPs.": "/event: scheduled server events and RSVPs.",
-  "Command permissions, aliases and configuration backups.":
-    "Command permissions, aliases and configuration backups.",
+  "Pinchora command rules and aliases. Discord server permissions still apply.":
+    "Pinchora command rules and aliases. Discord server permissions still apply.",
   "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel.":
     "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel.",
   "Creator channels that make a voice room for whoever joins, and /voice to run it.":

@@ -1,6 +1,7 @@
 # Settings errors, role refusals, permission names and module blurbs: the core's own words.
 
 [settings-error]
+expect = "Expected values must name settings fields."
 accent = "Colours look like `#ff6b4a`."
 message-empty = "Write a message, or reset it to use the default."
 message-long = "A message is at most {max} characters; this one has {length}."

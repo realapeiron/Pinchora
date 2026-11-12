@@ -10,6 +10,7 @@ import { moduleIcons } from "./moduleIcons";
 import { modulePage } from "./navModules";
 import { catalogFilter } from "./overviewModel";
 import { useModuleToggle } from "./useModuleToggle";
+import { ModuleOffConfirm } from "./ModuleOffConfirm";
 
 const groupWords: Record<string, string> = {
   server: "Server tools",
@@ -106,6 +107,11 @@ export function OverviewCatalog({ guild, modules }: { guild: string; modules: Mo
         message={switcher.notice}
         onDone={switcher.clear}
         action={switcher.undo ? { label: t("Undo"), onClick: switcher.undo } : undefined}
+      />
+      <ModuleOffConfirm
+        open={switcher.confirm !== null}
+        onCancel={switcher.cancel}
+        onConfirm={switcher.approve}
       />
     </section>
   );

@@ -2,6 +2,43 @@
 use sqlx::{Connection, PgConnection, migrate::Migrator};
 
 #[tokio::test]
+async fn command_control_switch_upgrade_keeps_existing_servers_on() {
+    let _isolation = crate::support::shared().await;
+    let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let mut conn = PgConnection::connect(&url).await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    sqlx::query("CREATE SCHEMA command_switch_regression")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("SET LOCAL search_path TO command_switch_regression")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let all = sqlx::migrate!("../../migrations");
+    Migrator::with_migrations(all.iter().filter(|m| m.version <= 87).cloned().collect())
+        .run(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO guilds(id) VALUES(1)")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO guild_modules(guild_id,module,enabled,channel_mode,channels) VALUES(1,'command_control',false,'all','{}')")
+        .execute(&mut *tx).await.unwrap();
+    all.run(&mut *tx).await.unwrap();
+    let enabled: bool =
+        sqlx::query_scalar("SELECT enabled FROM guild_modules WHERE guild_id=1 AND module='command_control'")
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert!(enabled);
+    tx.rollback().await.unwrap();
+}
+
+#[tokio::test]
 async fn automod_migrates_after_newer_versions() {
     let _isolation = crate::support::shared().await;
     let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {

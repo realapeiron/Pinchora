@@ -21,19 +21,8 @@ export function undoPatch<T extends object>(saved: T, patch: Partial<T>): Partia
   return previous;
 }
 
-/** Restore only fields that still contain the values written by this save. */
-export function safeUndoPatch<T extends object>(
-  current: T,
-  written: Partial<T>,
-  previous: Partial<T>,
-): { patch: Partial<T>; changedElsewhere: boolean } {
-  const patch: Partial<T> = {};
-  let changedElsewhere = false;
-  for (const key of Object.keys(written) as (keyof T)[]) {
-    if (Object.is(current[key], written[key])) patch[key] = previous[key];
-    else changedElsewhere = true;
-  }
-  return { patch, changedElsewhere };
+export function undoRequest<T extends object>(written: Partial<T>, previous: Partial<T>) {
+  return { ...previous, expect: written };
 }
 
 export function unsavedLabel(count: number): string {

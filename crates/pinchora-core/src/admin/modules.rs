@@ -135,9 +135,6 @@ impl GuildModules {
     /// `enabled` means nothing, so it reads as on.
     pub fn rule(&self, module: Module) -> ModuleRule {
         let mut rule = self.rules.get(&module).cloned().unwrap_or_default();
-        if module == Module::CommandControl {
-            return ModuleRule::default();
-        }
         if module.setting().is_some() {
             rule.enabled = true;
         }
@@ -317,7 +314,7 @@ impl Module {
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
             Self::Achievements => "Server achievements and their rewards.",
             Self::Events => "/event: scheduled server events and RSVPs.",
-            Self::CommandControl => "Command permissions, aliases and configuration backups.",
+            Self::CommandControl => "Pinchora command rules and aliases. Discord server permissions still apply.",
             Self::Qotd => "Daily server questions and suggestions.",
             Self::Counting => "A channel for sequential counting.",
             Self::Forms => "Application forms and reviews.",

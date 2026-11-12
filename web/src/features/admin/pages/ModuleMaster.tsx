@@ -4,6 +4,7 @@ import { PixelToggle } from "../../../components/PixelToggle";
 import { Toast } from "../../../components/Toast";
 import type { ModuleEntry } from "../../../lib/api";
 import { useModuleToggle } from "./useModuleToggle";
+import { ModuleOffConfirm } from "./ModuleOffConfirm";
 
 export function ModuleMaster({ guild, module }: { guild: string; module: ModuleEntry }) {
   const switcher = useModuleToggle(guild);
@@ -22,6 +23,11 @@ export function ModuleMaster({ guild, module }: { guild: string; module: ModuleE
         message={switcher.notice}
         onDone={switcher.clear}
         action={switcher.undo ? { label: translate("Undo"), onClick: switcher.undo } : undefined}
+      />
+      <ModuleOffConfirm
+        open={switcher.confirm !== null}
+        onCancel={switcher.cancel}
+        onConfirm={switcher.approve}
       />
     </>
   );

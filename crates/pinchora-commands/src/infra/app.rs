@@ -713,20 +713,20 @@ impl App {
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
-    /// Command policies share the guild invalidation bus and a bounded fallback TTL.
     pub async fn command_control(
         &self,
         guild: u64,
     ) -> anyhow::Result<Arc<pinchora_core::admin::command_control::Config>> {
+        if !self.guild_modules(guild).await?.rule(Module::CommandControl).enabled {
+            return Ok(Arc::new(Default::default()));
+        }
         self.command_control
             .try_get_with(guild, async { self.db.command_control(guild).await.map(Arc::new) })
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
-    /// Whether `module` may act in `channel` of a server, and if not, why. A thread follows its
-    /// channel and a channel its category, like XP multipliers; a place that cannot be found (`None`,
-    /// or a lookup that failed) is not on any list.
+    /// Whether `module` may act in a server channel, following threads and categories.
     pub async fn module_access(&self, guild_id: u64, channel: Option<u64>, module: Module) -> anyhow::Result<Access> {
         let rule = self.guild_modules(guild_id).await?.rule(module);
         if !rule.needs_lineage() {

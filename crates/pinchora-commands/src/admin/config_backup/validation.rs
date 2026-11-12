@@ -193,7 +193,7 @@ impl Validation<'_> {
             use pinchora_core::admin::modules::Module;
             let module = Module::parse(&self.string(row, "module")?).ok_or_else(|| self.invalid())?;
             let mode = ChannelMode::parse(&self.string(row, "channel_mode")?).ok_or_else(|| self.invalid())?;
-            if module == Module::CommandControl && (row["enabled"] != true || mode != ChannelMode::All) {
+            if module == Module::CommandControl && mode != ChannelMode::All {
                 return Err(t!(lang, "command_control.protected"));
             }
             let ids = self

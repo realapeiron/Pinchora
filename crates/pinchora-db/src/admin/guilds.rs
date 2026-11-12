@@ -152,8 +152,67 @@ macro_rules! columns {
     };
 }
 
+pub fn patch_if_current(
+    current: &GuildSettings,
+    patch: &GuildSettingsPatch,
+    expect: Option<&GuildSettingsPatch>,
+) -> (GuildSettingsPatch, Vec<&'static str>) {
+    let mut patch = patch.clone();
+    let mut skipped = Vec::new();
+    if let Some(expect) = expect {
+        let expected = current.apply(expect);
+        macro_rules! compare {
+            ($field:ident) => {
+                if patch.$field.is_some() && expect.$field.is_some() && current.$field != expected.$field {
+                    patch.$field = None;
+                    skipped.push(stringify!($field));
+                }
+            };
+        }
+        compare!(leveling_enabled);
+        compare!(levelup_channel_id);
+        compare!(levelup_message);
+        compare!(levelup_mode);
+        compare!(level_roles_stack);
+        compare!(voice_xp_enabled);
+        compare!(voice_xp_amount);
+        compare!(welcome_enabled);
+        compare!(welcome_channel_id);
+        compare!(welcome_message);
+        compare!(welcome_theme);
+        compare!(welcome_title);
+        compare!(welcome_accent);
+        compare!(join_role_id);
+        compare!(goodbye_channel_id);
+        compare!(goodbye_message);
+        compare!(points_enabled);
+        compare!(points_name);
+        compare!(points_emoji);
+        compare!(points_min);
+        compare!(points_max);
+        compare!(log_channel_id);
+        compare!(log_members);
+        compare!(log_names);
+        compare!(log_bans);
+        compare!(log_voice);
+        if patch.prefix.is_some() && expect.prefix.is_some() && current.prefix() != expected.prefix() {
+            patch.prefix = None;
+            skipped.push("prefix");
+        }
+    }
+    (patch, skipped)
+}
+
 impl Db {
     pub async fn guild_settings(&self, guild_id: u64) -> anyhow::Result<GuildSettings> {
+        if let Some(settings) =
+            sqlx::query_as::<_, GuildSettings>(concat!("SELECT ", columns!(), " FROM guilds WHERE id = $1"))
+                .bind(sql_id(guild_id))
+                .fetch_optional(self.pool())
+                .await?
+        {
+            return Ok(settings);
+        }
         let sql = concat!(
             "WITH ins AS (INSERT INTO guilds (id) VALUES ($1) ON CONFLICT (id) DO NOTHING RETURNING ",
             columns!(),
@@ -187,22 +246,59 @@ impl Db {
         guild_id: u64,
         patch: &GuildSettingsPatch,
     ) -> anyhow::Result<GuildSettings> {
+        Ok(self.patch_guild_settings_if(guild_id, patch, None).await?.1)
+    }
+
+    pub async fn patch_guild_settings_if(
+        &self,
+        guild_id: u64,
+        patch: &GuildSettingsPatch,
+        expect: Option<&GuildSettingsPatch>,
+    ) -> anyhow::Result<(GuildSettings, GuildSettings, Vec<&'static str>)> {
+        self.patch_guild_settings_checked(guild_id, patch, expect, None).await
+    }
+
+    /// `checked` is the row used for Discord validation. A changed channel or join role is left
+    /// alone if another writer moves it between that validation and the locked write.
+    pub async fn patch_guild_settings_checked(
+        &self,
+        guild_id: u64,
+        patch: &GuildSettingsPatch,
+        expect: Option<&GuildSettingsPatch>,
+        checked: Option<&GuildSettings>,
+    ) -> anyhow::Result<(GuildSettings, GuildSettings, Vec<&'static str>)> {
         self.guild_settings(guild_id).await?;
         let mut tx = self.pool().begin().await?;
-        let (min, max): (i32, i32) =
-            sqlx::query_as("SELECT points_min, points_max FROM guilds WHERE id = $1 FOR UPDATE")
+        let before: GuildSettings =
+            sqlx::query_as(concat!("SELECT ", columns!(), " FROM guilds WHERE id = $1 FOR UPDATE"))
                 .bind(sql_id(guild_id))
                 .fetch_one(&mut *tx)
                 .await?;
+        let (mut patch, mut skipped) = patch_if_current(&before, patch, expect);
+        if let Some(checked) = checked {
+            macro_rules! guard_discord {
+                ($field:ident) => {
+                    if patch.$field.is_some() && before.$field != checked.$field {
+                        patch.$field = None;
+                        skipped.push(stringify!($field));
+                    }
+                };
+            }
+            guard_discord!(levelup_channel_id);
+            guard_discord!(welcome_channel_id);
+            guard_discord!(goodbye_channel_id);
+            guard_discord!(log_channel_id);
+            guard_discord!(join_role_id);
+        }
         if patch.points_min.is_some() || patch.points_max.is_some() {
-            let min = patch.points_min.unwrap_or(min.into());
-            let max = patch.points_max.unwrap_or(max.into());
+            let min = patch.points_min.unwrap_or(before.points_min.into());
+            let max = patch.points_max.unwrap_or(before.points_max.into());
             if let Err(error) = settings::check_points(min, max) {
                 return Err(PatchRefused(error).into());
             }
         }
         let mut sql: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE guilds SET id = id");
-        let p = patch;
+        let p = &patch;
         let id = |v: Option<u64>| v.map(sql_id);
         macro_rules! bind {
             ($field:ident) => {
@@ -251,7 +347,7 @@ impl Db {
             .push(concat!(" RETURNING ", columns!()));
         let row = sql.build_query_as::<GuildSettings>().fetch_one(&mut *tx).await?;
         tx.commit().await?;
-        Ok(row)
+        Ok((before, row, skipped))
     }
 
     pub async fn update_welcome(

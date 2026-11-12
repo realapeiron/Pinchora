@@ -8,6 +8,14 @@ pub(crate) async fn saved_permissions_denied(cx: &Cx, path: &str) -> anyhow::Res
         return Ok(false);
     };
     let Some(guild) = cx.guild_id() else { return Ok(false) };
+    if cx
+        .app
+        .module_access(guild, None, pinchora_core::admin::modules::Module::CommandControl)
+        .await?
+        != pinchora_core::admin::modules::Access::Allowed
+    {
+        return Ok(false);
+    }
     let permissions = cx
         .interaction
         .member

@@ -67,6 +67,10 @@ impl ApiError {
         Self::new(StatusCode::BAD_REQUEST, "malformed", message)
     }
 
+    pub fn conflict(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::CONFLICT, "conflict", message)
+    }
+
     pub fn unauthorized() -> Self {
         Self::new(StatusCode::UNAUTHORIZED, "unauthorized", "Log in to continue.")
     }

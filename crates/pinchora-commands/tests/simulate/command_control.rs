@@ -3,6 +3,114 @@ use pinchora_core::admin::command_control::Config;
 use pinchora_core::admin::command_control::Rule;
 use std::collections::BTreeMap;
 
+fn alias_message(guild: u64, channel: u64, user: u64) -> twilight_model::channel::Message {
+    serde_json::from_value(json!({
+        "id":unique().to_string(), "channel_id":channel.to_string(), "guild_id":guild.to_string(),
+        "type":0, "author":user_json(user), "member":{"roles":[],"joined_at":"2024-01-01T00:00:00+00:00","deaf":false,"mute":false,"flags":0},
+        "content":"p!cashnow", "timestamp":"2024-01-01T00:00:00+00:00", "edited_timestamp":null,
+        "tts":false,"mention_everyone":false,"mention_roles":[],"mentions":[],"pinned":false,"attachments":[],"embeds":[],"flags":0
+    })).unwrap()
+}
+
+#[tokio::test]
+async fn command_control_off_suspends_rules_and_aliases_and_can_be_restored() {
+    use pinchora_core::admin::modules::Module;
+    let Some(mut sim) = Sim::new("command_control_switch").await else {
+        return;
+    };
+    let user = unique();
+    sim.own_server(user);
+    sim.permissions = 1 << 5;
+    sim.channel_is(sim.channel, 0, None);
+    let config = Config {
+        rules: BTreeMap::from([(
+            "balance".into(),
+            Rule {
+                enabled: false,
+                ..Rule::default()
+            },
+        )]),
+        aliases: BTreeMap::from([("cashnow".into(), "balance".into())]),
+    };
+    sim.app.db.set_command_control(sim.guild, &config).await.unwrap();
+    sim.app.announce_guild_change(sim.guild).await;
+    assert!(
+        sim.command(user, "balance", json!([]))
+            .await
+            .content()
+            .contains("disabled")
+    );
+    assert_eq!(
+        sim.app.command_control(sim.guild).await.unwrap().expand("cashnow"),
+        "balance"
+    );
+    sim.app
+        .db
+        .set_module(sim.guild, Module::CommandControl, Some(false), None)
+        .await
+        .unwrap();
+    sim.app.announce_guild_change(sim.guild).await;
+    assert!(
+        !sim.command(user, "balance", json!([]))
+            .await
+            .content()
+            .contains("disabled")
+    );
+    assert_eq!(
+        sim.app.command_control(sim.guild).await.unwrap().expand("cashnow"),
+        "cashnow"
+    );
+    let message = alias_message(sim.guild, sim.channel, user);
+    assert!(!pinchora_commands::on_text_command(sim.app.clone(), &message).await);
+    let off = sim.command(user, "commandcontrol", json!([sub("show", vec![])])).await;
+    assert!(off.content().contains("Command permissions are off"));
+    let modules = sim
+        .command(user, "config", json!([group("modules", sub("show", vec![]))]))
+        .await;
+    assert!(!modules.content().contains("Command permissions are off"));
+    let restored = sim
+        .command(
+            user,
+            "config",
+            json!([group(
+                "modules",
+                sub(
+                    "toggle",
+                    vec![text_option("module", "command_control"), bool_option("enabled", true)]
+                )
+            )]),
+        )
+        .await;
+    assert!(restored.content().contains("on"), "{}", restored.content());
+    assert!(
+        sim.app
+            .db
+            .guild_modules(sim.guild)
+            .await
+            .unwrap()
+            .rule(Module::CommandControl)
+            .enabled
+    );
+    assert!(
+        sim.command(user, "balance", json!([]))
+            .await
+            .content()
+            .contains("disabled")
+    );
+    assert_eq!(
+        sim.app.command_control(sim.guild).await.unwrap().expand("cashnow"),
+        "balance"
+    );
+    sim.posts();
+    assert!(pinchora_commands::on_text_command(sim.app.clone(), &message).await);
+    assert!(sim.posts().iter().any(|post| {
+        post.body["content"]
+            .as_str()
+            .is_some_and(|text| text.contains("disabled"))
+    }));
+    assert_eq!(sim.app.db.command_control(sim.guild).await.unwrap(), config);
+}
+
 #[tokio::test]
 async fn private_response_after_a_public_timeout_never_edits_private_content_into_public() {
     let Some(sim) = Sim::new("command_control_private_timeout").await else {

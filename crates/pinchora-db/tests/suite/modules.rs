@@ -6,7 +6,7 @@ use pinchora_core::admin::modules::ChannelMode;
 use pinchora_core::admin::modules::Module;
 use pinchora_core::admin::modules::ModuleRule;
 use pinchora_core::admin::settings::GuildSettingsPatch;
-use pinchora_db::{Db, PatchRefused};
+use pinchora_db::{Db, ModuleConflict, PatchRefused};
 
 use crate::support::db;
 
@@ -195,4 +195,105 @@ async fn a_patch_that_would_put_the_least_points_above_the_most_is_refused_as_th
         db.patch_guild_settings(guild, &name).await.unwrap().points_name,
         "coins"
     );
+}
+
+#[tokio::test]
+async fn settings_expect_filters_each_field_inside_the_row_lock() {
+    let _isolation = crate::support::shared().await;
+    let Some(db) = db(5).await else { return };
+    let [guild] = ids();
+    let patch = |name: &str, emoji: &str| GuildSettingsPatch {
+        points_name: Some(name.into()),
+        points_emoji: Some(emoji.into()),
+        ..Default::default()
+    };
+    let start = db.guild_settings(guild).await.unwrap();
+    let expected = patch(&start.points_name, &start.points_emoji);
+    let (_, first, skipped) = db
+        .patch_guild_settings_if(guild, &patch("coins", "C"), Some(&expected))
+        .await
+        .unwrap();
+    assert_eq!(
+        (first.points_name.as_str(), first.points_emoji.as_str()),
+        ("coins", "C")
+    );
+    assert!(skipped.is_empty());
+    let (_, second, skipped) = db
+        .patch_guild_settings_if(guild, &patch("stars", "S"), Some(&patch("coins", "wrong")))
+        .await
+        .unwrap();
+    assert_eq!(
+        (second.points_name.as_str(), second.points_emoji.as_str()),
+        ("stars", "C")
+    );
+    assert_eq!(skipped, ["points_emoji"]);
+    let (_, third, skipped) = db
+        .patch_guild_settings_if(guild, &patch("bad", "bad"), Some(&expected))
+        .await
+        .unwrap();
+    assert_eq!(
+        (third.points_name.as_str(), third.points_emoji.as_str()),
+        ("stars", "C")
+    );
+    assert_eq!(skipped, ["points_name", "points_emoji"]);
+    let (_, fourth, skipped) = db
+        .patch_guild_settings_if(guild, &patch("plain", "P"), None)
+        .await
+        .unwrap();
+    assert_eq!(
+        (fourth.points_name.as_str(), fourth.points_emoji.as_str()),
+        ("plain", "P")
+    );
+    assert!(skipped.is_empty());
+    let first = patch("one", "1");
+    let second = patch("two", "2");
+    let expected = patch("plain", "P");
+    let a = db.patch_guild_settings_if(guild, &first, Some(&expected));
+    let b = db.patch_guild_settings_if(guild, &second, Some(&expected));
+    let (a, b) = tokio::join!(a, b);
+    let (_, _, a_skipped) = a.unwrap();
+    let (_, _, b_skipped) = b.unwrap();
+    assert_eq!([a_skipped.len(), b_skipped.len()].iter().sum::<usize>(), 2);
+    let stored = db.guild_settings(guild).await.unwrap();
+    assert!(matches!(
+        (stored.points_name.as_str(), stored.points_emoji.as_str()),
+        ("one", "1") | ("two", "2")
+    ));
+}
+
+#[tokio::test]
+async fn module_expect_and_command_control_switch_are_stored() {
+    let _isolation = crate::support::shared().await;
+    let Some(db) = db(5).await else { return };
+    let [guild] = ids();
+    let off = db
+        .set_module_if(guild, Module::CommandControl, Some(false), None, Some(true))
+        .await
+        .unwrap();
+    assert!(!off.enabled);
+    assert!(
+        !db.guild_modules(guild)
+            .await
+            .unwrap()
+            .rule(Module::CommandControl)
+            .enabled
+    );
+    let error = db
+        .set_module_if(guild, Module::CommandControl, Some(true), None, Some(true))
+        .await
+        .unwrap_err();
+    assert!(error.downcast_ref::<ModuleConflict>().is_some());
+    assert!(
+        !db.guild_modules(guild)
+            .await
+            .unwrap()
+            .rule(Module::CommandControl)
+            .enabled
+    );
+    let on = db
+        .set_module_if(guild, Module::CommandControl, Some(true), None, Some(false))
+        .await
+        .unwrap();
+    assert!(on.enabled);
+    assert_eq!(rows(&db, guild).await, 0);
 }

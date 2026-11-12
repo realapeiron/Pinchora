@@ -83,9 +83,17 @@ async fn managed(cx: &Cx) -> anyhow::Result<Option<u64>> {
     }
     Ok(cx.guild_id())
 }
+async fn managed_control(cx: &Cx) -> anyhow::Result<Option<u64>> {
+    let Some(guild) = managed(cx).await? else { return Ok(None) };
+    if !cx.app.guild_modules(guild).await?.rule(pinchora_core::admin::modules::Module::CommandControl).enabled {
+        cx.reply_ephemeral(t!(cx.lang(), "command_control.module_off")).await?;
+        return Ok(None);
+    }
+    Ok(Some(guild))
+}
 impl CommandControl {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = managed(cx).await? else {
+        let Some(guild) = managed_control(cx).await? else {
             return Ok(());
         };
         let mut config = cx.app.db.command_control(guild).await?;

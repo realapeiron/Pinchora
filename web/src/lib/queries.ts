@@ -31,8 +31,8 @@ import {
   type Preview,
   type RepRoles,
   type ResponderDef,
-  type Settings,
   type SettingsPatch,
+  type SettingsSave,
   type StaffPage,
   type Store,
   type TagList,
@@ -88,8 +88,8 @@ export function useOverview(guild: string) {
 export function useSaveSettings(guild: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (patch: SettingsPatch) => api<Settings>(`/api/guilds/${guild}/settings`, "PATCH", patch),
-    onSuccess: async (settings) => {
+    mutationFn: (patch: SettingsPatch) => api<SettingsSave>(`/api/guilds/${guild}/settings`, "PATCH", patch),
+    onSuccess: async ({ skipped: _skipped, ...settings }) => {
       client.setQueryData<Overview>(overviewKey(guild), (old) => (old ? { ...old, settings } : old));
       await client.invalidateQueries({ queryKey: overviewKey(guild) });
       await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
