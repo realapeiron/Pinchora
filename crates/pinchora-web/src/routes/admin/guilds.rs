@@ -35,6 +35,7 @@ pub fn router() -> Router<WebState> {
         .nest("/mod-parity", crate::routes::moderation::policy::router())
         .route("/", get(overview::overview))
         .route("/discord", get(discord_info::discord))
+        .nest("/notifications", crate::routes::admin::notifications::router())
         .route("/settings", patch(settings::patch))
         .route("/audit", get(audit_log::audit))
         .route("/xp-rules", get(leveling::xp_rules).delete(leveling::clear_xp_rules))

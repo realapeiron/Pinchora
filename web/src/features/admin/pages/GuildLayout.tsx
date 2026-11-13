@@ -136,6 +136,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
           <GuildTopBar
             me={me}
             guild={{
+              id: guildId,
               name: overview.data?.guild.name ?? "…",
               group: currentGroup?.group ?? "SERVER",
               page: currentPage?.label ?? "",

@@ -3826,6 +3826,42 @@
     "$.error:object",
     "$:object"
   ],
+  "GET /api/guilds/{g}/notifications/ 200": [
+    "$.items:array",
+    "$.items[].at:string",
+    "$.items[].data.action:string",
+    "$.items[].data.actor_name:string",
+    "$.items[].data.channel_id:null",
+    "$.items[].data.channel_id:string",
+    "$.items[].data.count:number",
+    "$.items[].data.number:number",
+    "$.items[].data.opener_id:string",
+    "$.items[].data.opener_name:string",
+    "$.items[].data.rule_name:string",
+    "$.items[].data.user_id:string",
+    "$.items[].data.user_name:string",
+    "$.items[].data:object",
+    "$.items[].id:string",
+    "$.items[].kind:string",
+    "$.items[].link:string",
+    "$.items[]:object",
+    "$.read_at:null",
+    "$.read_at:string",
+    "$.unread:number",
+    "$:object"
+  ],
+  "GET /api/guilds/{g}/notifications/ 401": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "GET /api/guilds/{g}/notifications/ 403": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
   "GET /api/guilds/{g}/rep-roles 401": [
     "$.error.code:string",
     "$.error.message:string",
@@ -4488,7 +4524,7 @@
     "$.items:array",
     "$.items[].claimed:number",
     "$.items[].closed:number",
-    "$.items[].name:null",
+    "$.items[].name:string",
     "$.items[].user_id:string",
     "$.items[]:object",
     "$:object"
@@ -4591,6 +4627,7 @@
     "$.ticket.channel_id:string",
     "$.ticket.claimed_by.id:string",
     "$.ticket.claimed_by.name:null",
+    "$.ticket.claimed_by.name:string",
     "$.ticket.claimed_by:null",
     "$.ticket.claimed_by:object",
     "$.ticket.close_reason:null",
@@ -4599,6 +4636,7 @@
     "$.ticket.closed_at:string",
     "$.ticket.closed_by.id:string",
     "$.ticket.closed_by.name:null",
+    "$.ticket.closed_by.name:string",
     "$.ticket.closed_by:null",
     "$.ticket.closed_by:object",
     "$.ticket.first_reply_at:null",
@@ -4609,6 +4647,7 @@
     "$.ticket.opened_at:string",
     "$.ticket.opener.id:string",
     "$.ticket.opener.name:null",
+    "$.ticket.opener.name:string",
     "$.ticket.opener:object",
     "$.ticket.panel:null",
     "$.ticket.panel:string",
@@ -9732,6 +9771,28 @@
     "$:object"
   ],
   "POST /api/guilds/{g}/mod-parity/{queue}/{id} 422": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/notifications/read 200": [
+    "$.read_at:string",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/notifications/read 400": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/notifications/read 401": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
+  "POST /api/guilds/{g}/notifications/read 403": [
     "$.error.code:string",
     "$.error.message:string",
     "$.error:object",

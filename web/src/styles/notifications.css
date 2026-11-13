@@ -1,0 +1,120 @@
+:where(.shell-page) .notification-wrap {
+  position: relative;
+}
+:where(.shell-page) .notification-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--ink);
+  cursor: pointer;
+}
+:where(.shell-page) .notification-trigger .pixel-icon {
+  width: 20px;
+}
+:where(.shell-page) .notification-badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  background: #a93658;
+  color: white;
+  font: 700 10px/1 sans-serif;
+  border: 2px solid white;
+}
+:where(.shell-page) .notification-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+  z-index: 30;
+  padding: 8px;
+}
+:where(.shell-page) .notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+:where(.shell-page) .notification-head button {
+  min-height: 44px;
+  color: var(--accent);
+  cursor: pointer;
+}
+:where(.shell-page) .notification-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+:where(.shell-page) .notification-item:hover,
+:where(.shell-page) .notification-item:focus-visible {
+  background: #f4f0e8;
+}
+:where(.shell-page) .notification-item.is-unread {
+  border-left: 3px solid var(--accent);
+  font-weight: 600;
+}
+:where(.shell-page) .notification-tile {
+  flex: 0 0 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+}
+:where(.shell-page) .notification-tile.t-gold {
+  background: #ffe2a2;
+  color: #805717;
+}
+:where(.shell-page) .notification-tile.t-heart {
+  background: #ffd8e1;
+  color: #a93658;
+}
+:where(.shell-page) .notification-tile.t-mint {
+  background: #c7f3de;
+  color: #267658;
+}
+:where(.shell-page) .notification-copy {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+:where(.shell-page) .notification-copy small {
+  color: var(--muted);
+  font-weight: 400;
+}
+:where(.shell-page) .notification-new {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+:where(.shell-page) .notification-empty,
+:where(.shell-page) .notification-pop p[role] {
+  margin: 16px 8px;
+}
+@media (max-width: 640px) {
+  :where(.shell-page) .notification-pop.shell-pop {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    max-height: calc(100dvh - 60px);
+  }
+  :where(.shell-page) .notification-item {
+    min-height: 44px;
+  }
+}

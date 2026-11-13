@@ -10,6 +10,8 @@
 mod contracts;
 #[path = "api/infrastructure.rs"]
 mod infrastructure;
+#[path = "api/notifications.rs"]
+mod notifications;
 #[path = "api/contracts.rs"]
 mod read_contracts;
 
@@ -459,6 +461,16 @@ async fn discord(
             match bearer.and_then(|t| users.get(&t).cloned()) {
                 Some((_, guilds)) => (StatusCode::OK, Value::Array(guilds).to_string()),
                 None => unauthorized,
+            }
+        }
+        (&Method::GET, [.., "users", id]) => {
+            let users = mock.users.lock().unwrap();
+            match users.values().find(|(user, _)| user["id"] == *id) {
+                Some((user, _)) => (StatusCode::OK, user.to_string()),
+                None => (
+                    StatusCode::NOT_FOUND,
+                    json!({"message":"Unknown User","code":10013}).to_string(),
+                ),
             }
         }
         (&Method::GET, [.., "guilds", guild, "channels"]) => {

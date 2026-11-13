@@ -7,6 +7,7 @@ import { useLogout } from "../../../lib/queries";
 import { Icon } from "../../../components/icons/Icon";
 
 import { GuildLanguageMenu } from "./GuildLanguageMenu";
+import { NotificationBell } from "./NotificationBell";
 import { trapTab } from "../../../components/overlayFocus";
 
 export function GuildTopBar({
@@ -14,7 +15,7 @@ export function GuildTopBar({
   guild,
 }: {
   me: Me;
-  guild: { name: string; group: string; page: string; openDrawer: () => void };
+  guild: { id: string; name: string; group: string; page: string; openDrawer: () => void };
 }) {
   const logout = useLogout();
   const [accountOpen, setAccountOpen] = useState(false);
@@ -71,6 +72,7 @@ export function GuildTopBar({
       </nav>
       <div className="top-bar-user">
         <GuildLanguageMenu me={me} />
+        <NotificationBell guild={guild.id} />
         <div ref={account} className="shell-account">
           <button
             ref={trigger}

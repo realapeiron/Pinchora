@@ -31,7 +31,8 @@ pub fn permitted(path: &str, safe: bool, areas: &[String]) -> bool {
         return false;
     }
     let path = path.trim_matches('/');
-    (safe && matches!(path, "" | "discord")) || route_area(path).is_some_and(|area| areas.iter().any(|a| a == area))
+    ((safe && matches!(path, "" | "discord")) || matches!(path, "notifications" | "notifications/read"))
+        || route_area(path).is_some_and(|area| areas.iter().any(|a| a == area))
 }
 
 /// No membership cache: removed roles and grants stop working on the next request, including reads.
@@ -340,7 +341,7 @@ mod route_inventory_tests {
             for grant in pinchora_db::DASHBOARD_AREAS {
                 assert_eq!(
                     permitted(area_path, method == "GET", &[(*grant).into()]),
-                    area == *grant || area == "shell" && method == "GET",
+                    area == *grant || area == "shell" && (method == "GET" || path == "/notifications/read"),
                     "{method} {path} with {grant}"
                 );
             }

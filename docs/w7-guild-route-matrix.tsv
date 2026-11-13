@@ -9,6 +9,8 @@ POST	/mod-parity/preview	safety
 POST	/mod-parity/{queue}/{id}	safety
 GET	/	shell
 GET	/discord	shell
+GET	/notifications	shell
+POST	/notifications/read	shell
 PATCH	/settings	configuration
 GET	/audit	audit
 GET	/xp-rules	configuration

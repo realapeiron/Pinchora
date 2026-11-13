@@ -461,7 +461,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO message_kit_history(guild_id,key,name,payload,version,actor_id) VALUES($2,'privacy','Privacy','{}',1,$1)",
         "INSERT INTO card_boost_state(guild_id,user_id) VALUES($2,$1)",
         "INSERT INTO card_member_visits(guild_id,user_id,visits) VALUES($2,$1,1)",
-
+        "INSERT INTO dashboard_notification_reads(guild_id,manager_id,read_at) VALUES($2,$1,now())",
     ];
     for sql in [
         "INSERT INTO reef_room_leases(namespace,owner_id,room_idx,expires_at) VALUES('privacy-fixture',$1,0,now()+interval '3 seconds')",

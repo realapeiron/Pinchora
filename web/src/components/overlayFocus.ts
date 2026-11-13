@@ -15,7 +15,11 @@ export function trapTab(
   );
   const first = items[0];
   const last = items.at(-1);
-  if (!first || !last) return;
+  if (!first || !last) {
+    event.preventDefault();
+    container.focus();
+    return;
+  }
   if (event.shiftKey && (document.activeElement === first || !container.contains(document.activeElement))) {
     event.preventDefault();
     last.focus();

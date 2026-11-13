@@ -9,6 +9,7 @@ pub(in crate::routes) mod discord_info;
 pub(in crate::routes) mod guilds;
 pub(in crate::routes) mod message_studio;
 pub(in crate::routes) mod modules;
+pub(in crate::routes) mod notifications;
 pub(in crate::routes) mod overview;
 pub(in crate::routes) mod preview;
 pub(in crate::routes) mod responders;

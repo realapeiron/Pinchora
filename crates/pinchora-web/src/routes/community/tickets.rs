@@ -606,7 +606,7 @@ pub struct ListQuery {
 }
 
 /// Names for the people a page of tickets mentions, as Discord has them; unknown ones are left out.
-async fn names(state: &WebState, ids: impl IntoIterator<Item = u64>) -> HashMap<u64, String> {
+pub(in crate::routes) async fn names(state: &WebState, ids: impl IntoIterator<Item = u64>) -> HashMap<u64, String> {
     let mut wanted: Vec<u64> = ids.into_iter().collect();
     wanted.sort_unstable();
     wanted.dedup();

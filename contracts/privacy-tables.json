@@ -62,6 +62,7 @@
   "custom_responders",
   "dashboard_audit",
   "dashboard_managers",
+  "dashboard_notification_reads",
   "delayed_roles",
   "deleted_users",
   "dex_entries",

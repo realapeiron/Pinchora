@@ -25,6 +25,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("dashboard_notification_reads", "manager_id"),
     ("reef_game_actions", "user_id"),
     ("reef_game_players", "user_id"),
     ("reef_games", "host_id"),
