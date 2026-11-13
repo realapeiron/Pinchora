@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as t } from "../../../i18n";
 import { SettingsPage } from "../../../components/PageHead";
@@ -15,8 +16,8 @@ export function CommunityAnniversaries() {
     return (
       <SettingsPage
         className="settings-page community-tools-page"
-        title={t("MEMBER ANNIVERSARIES")}
-        lead={t("Celebrate when a member reaches another year in your server.")}
+        title={deferredText("MEMBER ANNIVERSARIES")}
+        lead={deferredText("Celebrate when a member reaches another year in your server.")}
       >
         <State query={query} />
       </SettingsPage>
@@ -51,8 +52,8 @@ function AnniversaryForm({
   return (
     <SettingsPage
       className="settings-page community-tools-page"
-      title={t("MEMBER ANNIVERSARIES")}
-      lead={t("Celebrate when a member reaches another year in your server.")}
+      title={deferredText("MEMBER ANNIVERSARIES")}
+      lead={deferredText("Celebrate when a member reaches another year in your server.")}
     >
       {notice && (
         <p className="notice" role="status">

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
@@ -48,7 +49,7 @@ function HoursAndSnippets({ guild, info }: { guild: string; info?: GuildInfo }) 
     !!query.data &&
     JSON.stringify(operationSettingsBody(draft)) !== JSON.stringify(operationSettingsBody(query.data));
   return (
-    <Panel title={spaTranslate("SUPPORT HOURS & SAVED REPLIES")}>
+    <Panel title={deferredText("SUPPORT HOURS & SAVED REPLIES")}>
       {(query.error || save.error) && <Problem error={query.error ?? save.error} />}
       {draft && (
         <SupportHoursForm draft={draft} setDraft={setDraft} info={info} save={save} changed={changed} />
@@ -56,7 +57,7 @@ function HoursAndSnippets({ guild, info }: { guild: string; info?: GuildInfo }) 
       <SavedReplies guild={guild} />
       {leaderboard.data && leaderboard.data.items.length > 0 && (
         <div className="tk-operations-form">
-          <h3>{spaTranslate("Staff leaderboard")}</h3>
+          <h3>{deferredText("Staff leaderboard")}</h3>
           <ol className="tk-operations-notes">
             {leaderboard.data.items.map((staff) => (
               <li key={staff.user_id}>
@@ -82,7 +83,7 @@ function PanelControls({ guild, panels, info }: { guild: string; panels: TicketP
   }, [query.data]);
   const changed = !!draft && !!query.data && JSON.stringify(draft) !== JSON.stringify(query.data);
   return (
-    <Panel title={spaTranslate("PANEL OPERATIONS")}>
+    <Panel title={deferredText("PANEL OPERATIONS")}>
       <label>
         {spaTranslate("Panel")}
         <select
@@ -112,7 +113,7 @@ function PanelControls({ guild, panels, info }: { guild: string; panels: TicketP
           <PanelFields draft={draft} setDraft={setDraft} info={info} />
           <PanelFaq draft={draft} setDraft={setDraft} />
           <PixelButton type="submit" disabled={!changed || save.isPending}>
-            {spaTranslate("Save panel operations")}
+            {deferredText("Save panel operations")}
           </PixelButton>
         </form>
       )}

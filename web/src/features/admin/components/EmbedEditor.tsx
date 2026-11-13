@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { ACCENTS } from "../../../lib/rules";
 import type { EmbedField, EmbedSpec } from "../../../lib/api";
@@ -22,10 +23,10 @@ export function EmbedEditor({
       <div className="embed-off">
         <PixelButton variant="secondary" onClick={() => onChange(blankEmbed())}>
           {" "}
-          {spaTranslate("Add an embed")}{" "}
+          {deferredText("Add an embed")}{" "}
         </PixelButton>
         <p className="muted">
-          {spaTranslate("A card under the text, with a coloured edge, a title, fields and pictures.")}
+          {deferredText("A card under the text, with a coloured edge, a title, fields and pictures.")}
         </p>
       </div>
     );
@@ -46,7 +47,7 @@ export function EmbedEditor({
         </span>
         <PixelButton variant="ghost" className="button-small" onClick={() => onChange(null)}>
           {" "}
-          {spaTranslate("Remove the embed")}{" "}
+          {deferredText("Remove the embed")}{" "}
         </PixelButton>
       </div>
       {error && (
@@ -67,7 +68,7 @@ export function EmbedEditor({
         <Field
           label={spaTranslate("Colour")}
           htmlFor="embed-color"
-          hint={spaTranslate("The edge of the card.")}
+          hint={deferredText("The edge of the card.")}
         >
           <div className="colour-row">
             <span
@@ -86,7 +87,7 @@ export function EmbedEditor({
               onChange={(event) => set("color", event.target.value)}
             />
           </div>
-          <div className="palette" role="group" aria-label={spaTranslate("Colour presets")}>
+          <div className="palette" role="group" aria-label={deferredText("Colour presets")}>
             {ACCENTS.map((accent) => (
               <button
                 key={accent.hex}
@@ -112,7 +113,7 @@ export function EmbedEditor({
         />
       </Field>
       <div className="form-grid form-grid-2">
-        <Field label={spaTranslate("Author line")} htmlFor="embed-author">
+        <Field label={deferredText("Author line")} htmlFor="embed-author">
           <input
             id="embed-author"
             className="pixel-input"
@@ -121,7 +122,7 @@ export function EmbedEditor({
             onChange={(event) => set("author", event.target.value)}
           />
         </Field>
-        <Field label={spaTranslate("Footer")} htmlFor="embed-footer">
+        <Field label={deferredText("Footer")} htmlFor="embed-footer">
           <input
             id="embed-footer"
             className="pixel-input"
@@ -131,9 +132,9 @@ export function EmbedEditor({
           />
         </Field>
         <Field
-          label={spaTranslate("Picture address")}
+          label={deferredText("Picture address")}
           htmlFor="embed-image"
-          hint={spaTranslate("A web address starting with https://.")}
+          hint={deferredText("A web address starting with https://.")}
         >
           <input
             id="embed-image"
@@ -143,7 +144,7 @@ export function EmbedEditor({
             onChange={(event) => set("image", event.target.value)}
           />
         </Field>
-        <Field label={spaTranslate("Small picture address")} htmlFor="embed-thumbnail">
+        <Field label={deferredText("Small picture address")} htmlFor="embed-thumbnail">
           <input
             id="embed-thumbnail"
             className="pixel-input"
@@ -153,9 +154,9 @@ export function EmbedEditor({
           />
         </Field>
         <Field
-          label={spaTranslate("Title link")}
+          label={deferredText("Title link")}
           htmlFor="embed-url"
-          hint={spaTranslate("Makes the title a link. Needs a title.")}
+          hint={deferredText("Makes the title a link. Needs a title.")}
         >
           <input
             id="embed-url"
@@ -169,14 +170,14 @@ export function EmbedEditor({
       <div className="embed-fields-editor">
         <span className="field-label">
           {" "}
-          {spaTranslate("Fields (")}
+          {deferredText("Fields (")}
           {embed.fields.length}/{LIMITS.embed_fields_max})
         </span>
         {embed.fields.map((field, index) => (
           <div key={index} className="embed-field-row">
             <input
               className="pixel-input"
-              aria-label={spaTranslate("Field {arg1} name", { arg1: index + 1 })}
+              aria-label={deferredText("Field {arg1} name", { arg1: index + 1 })}
               placeholder={spaTranslate("Name")}
               value={field.name}
               maxLength={LIMITS.embed_field_name_max}
@@ -184,7 +185,7 @@ export function EmbedEditor({
             />
             <textarea
               className="pixel-input pixel-textarea"
-              aria-label={spaTranslate("Field {arg1} value", { arg1: index + 1 })}
+              aria-label={deferredText("Field {arg1} value", { arg1: index + 1 })}
               placeholder={spaTranslate("Value")}
               rows={2}
               value={field.value}
@@ -197,12 +198,12 @@ export function EmbedEditor({
                 checked={field.inline}
                 onChange={(event) => editField(index, { inline: event.target.checked })}
               />{" "}
-              {spaTranslate("Side by side")}{" "}
+              {deferredText("Side by side")}{" "}
             </label>
             <PixelButton
               variant="ghost"
               className="button-small"
-              aria-label={spaTranslate("Remove field {arg1}", { arg1: index + 1 })}
+              aria-label={deferredText("Remove field {arg1}", { arg1: index + 1 })}
               onClick={() =>
                 set(
                   "fields",
@@ -222,7 +223,7 @@ export function EmbedEditor({
               onClick={() => set("fields", [...embed.fields, { name: "", value: "", inline: false }])}
             >
               {" "}
-              {spaTranslate("Add a field")}{" "}
+              {deferredText("Add a field")}{" "}
             </PixelButton>
           </div>
         )}

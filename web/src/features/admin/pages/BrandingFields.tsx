@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { t as translate } from "../../../i18n";
 import { t } from "../../../i18n/dashboard";
 import { SettingsRow } from "../../../components/SettingsRow";
@@ -27,17 +28,17 @@ export function BrandingFields({
 }) {
   const summary = brandingSummary(draft);
   return (
-    <div className="settings-detail-list branding-rows" aria-label={translate("Branding settings")}>
+    <div className="settings-detail-list branding-rows" aria-label={deferredText("Branding settings")}>
       <SettingsRow
         rowId="branding-fields-server-nickname"
-        title={translate("Server nickname")}
+        title={deferredText("Server nickname")}
         description={t("Set the bot name shown in this server.")}
         summary={summary.nickname}
         initialOpen
       >
         <div className="settings-detail-fields branding-editor">
           <label>
-            {translate("Server nickname")}
+            {deferredText("Server nickname")}
             <input
               maxLength={32}
               value={draft.nickname ?? ""}
@@ -48,7 +49,7 @@ export function BrandingFields({
         </div>
         <div className="settings-detail-preview branding-preview" aria-label={translate("Live preview")}>
           <h2>{translate("Live preview")}</h2>
-          <p>{translate("Last accepted nickname: {name}", { name: activeNickname ?? "Pinchora" })}</p>
+          <p>{deferredText("Last accepted nickname: {name}", { name: activeNickname ?? "Pinchora" })}</p>
           <div className="branding-profile-body">
             <strong>{draft.nickname || "Pinchora"}</strong>
             <span>{translate("Bot")}</span>
@@ -69,14 +70,14 @@ export function BrandingFields({
               rows={3}
               value={draft.bio ?? ""}
               onChange={(event) => setField("bio", event.target.value || null)}
-              placeholder={translate("A little about this bot in your server")}
+              placeholder={deferredText("A little about this bot in your server")}
             />
           </label>
         </div>
         <div className="settings-detail-preview branding-preview" aria-label={translate("Live preview")}>
           <h2>{translate("Live preview")}</h2>
-          <p>{translate("Last accepted bio: {bio}", { bio: activeBio ?? "—" })}</p>
-          <p>{draft.bio || translate("A little about this bot in your server")}</p>
+          <p>{deferredText("Last accepted bio: {bio}", { bio: activeBio ?? "—" })}</p>
+          <p>{draft.bio || deferredText("A little about this bot in your server")}</p>
         </div>
       </SettingsRow>
       <SettingsRow
@@ -105,7 +106,7 @@ export function BrandingFields({
             </label>
           </div>
           <p className="branding-hint">
-            {translate("Images use the welcome card upload limits and are converted to PNG.")}
+            {deferredText("Images use the welcome card upload limits and are converted to PNG.")}
           </p>
         </div>
         <div className="settings-detail-preview branding-preview" aria-label={translate("Live preview")}>
@@ -125,20 +126,20 @@ export function BrandingFields({
             <div className="branding-profile-body">
               <strong>{draft.nickname || "Pinchora"}</strong>
               <span>{translate("Bot")}</span>
-              <p>{draft.bio || translate("A little about this bot in your server")}</p>
+              <p>{draft.bio || deferredText("A little about this bot in your server")}</p>
             </div>
           </div>
         </div>
       </SettingsRow>
       <SettingsRow
         rowId="branding-fields-embed-colour"
-        title={translate("Embed colour")}
+        title={deferredText("Embed colour")}
         description={t("Set the colour used on server messages.")}
         summary={summary.colour}
       >
         <div className="settings-detail-fields branding-editor">
           <label>
-            {translate("Embed colour")}
+            {deferredText("Embed colour")}
             <span className="branding-color-row">
               <input
                 type="color"
@@ -155,14 +156,14 @@ export function BrandingFields({
             </span>
           </label>
           <p className="branding-hint">
-            {translate("This colour is used on Pinchora embeds throughout this server.")}
+            {deferredText("This colour is used on Pinchora embeds throughout this server.")}
           </p>
         </div>
         <div className="settings-detail-preview branding-preview" aria-label={translate("Live preview")}>
           <h2>{translate("Live preview")}</h2>
           <div className="branding-embed" style={{ borderLeftColor: color }}>
-            <strong>{translate("Welcome to {server}", { server: guildName })}</strong>
-            <p>{translate("Your server's colour appears on every Pinchora embed.")}</p>
+            <strong>{deferredText("Welcome to {server}", { server: guildName })}</strong>
+            <p>{deferredText("Your server's colour appears on every Pinchora embed.")}</p>
           </div>
         </div>
       </SettingsRow>

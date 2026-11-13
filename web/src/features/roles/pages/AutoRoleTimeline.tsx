@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { RoleTag } from "../../../components/Pickers";
 import type { GuildInfo } from "../../../lib/api";
@@ -14,7 +15,7 @@ export const kindName = (kind: AutoKind) => spaTranslate(KINDS.find((k) => k.val
 export function Timeline({ items, info }: { items: AutoRole[]; info: GuildInfo | undefined }) {
   const kinds = KINDS.filter((k) => items.some((r) => r.kind === k.value && r.enabled));
   if (kinds.length === 0)
-    return <p className="empty-row muted">{spaTranslate("Nobody gets a role on their own yet.")}</p>;
+    return <p className="empty-row muted">{deferredText("Nobody gets a role on their own yet.")}</p>;
   return (
     <div className="stack">
       {kinds.map((k) => (
@@ -27,7 +28,7 @@ export function Timeline({ items, info }: { items: AutoRole[]; info: GuildInfo |
               .map((r) => (
                 <li key={r.role_id}>
                   <span className="timeline-when pixel-label">
-                    {r.delay_secs > 0 ? `+ ${spanText(r.delay_secs)}` : spaTranslate("AT ONCE")}
+                    {r.delay_secs > 0 ? `+ ${spanText(r.delay_secs)}` : deferredText("AT ONCE")}
                   </span>
                   <RoleTag info={info} id={r.role_id} />
                   {r.remove_after_secs > 0 && (

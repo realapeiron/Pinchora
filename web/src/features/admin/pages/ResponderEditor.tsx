@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
@@ -53,7 +54,7 @@ export function ResponderEditor() {
   const { responderId } = useParams();
   const query = useTag(guild, "responders", responderId ?? null);
   if (responderId !== undefined && query.isPending)
-    return <Loading label={spaTranslate("Opening the responder")} />;
+    return <Loading label={deferredText("Opening the responder")} />;
   if (responderId !== undefined && query.isError) return <Problem error={query.error} />;
   return (
     <ResponderForm
@@ -114,7 +115,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
     void editor.save(() =>
       navigate(`/g/${guild}/responders`, {
         state: {
-          toast: spaTranslate("Saved “{arg1}”. The bot uses it from the next event.", {
+          toast: deferredText("Saved “{arg1}”. The bot uses it from the next event.", {
             arg1: draft.name.trim(),
           }),
         },
@@ -126,22 +127,22 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
   return (
     <SettingsPage
       className="settings-page"
-      title={id ? spaTranslate("EDIT RESPONDER") : spaTranslate("NEW RESPONDER")}
-      lead={spaTranslate("Sent by the bot by itself when the trigger happens.")}
+      title={id ? deferredText("EDIT RESPONDER") : deferredText("NEW RESPONDER")}
+      lead={deferredText("Sent by the bot by itself when the trigger happens.")}
       action={
         <PixelLink variant="secondary" href={`/g/${guild}/responders`}>
-          {spaTranslate("Back to the list")}
+          {deferredText("Back to the list")}
         </PixelLink>
       }
     >
       <div className="editor">
         <div className="editor-form">
-          <Panel title={spaTranslate("BASICS")}>
+          <Panel title={deferredText("BASICS")}>
             <Field
               label={spaTranslate("Name")}
               htmlFor="responder-name"
               error={editor.problem("name")}
-              hint={spaTranslate("Only for you, to tell responders apart.")}
+              hint={deferredText("Only for you, to tell responders apart.")}
             >
               <input
                 id="responder-name"
@@ -153,10 +154,10 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               />
             </Field>
             <SwitchRow
-              title={spaTranslate("Switched on")}
+              title={deferredText("Switched on")}
               control={
                 <PixelToggle
-                  label={spaTranslate("Switched on")}
+                  label={deferredText("Switched on")}
                   checked={draft.enabled}
                   disabled={kind === "keyword" && keywordLocked && !draft.enabled}
                   onChange={(next) => set("enabled", next)}
@@ -164,12 +165,12 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               }
             >
               {kind === "keyword" && keywordLocked
-                ? spaTranslate("Keyword triggers can't be switched on while the bot can't read chat.")
-                : spaTranslate("Off, it stays written but the bot never sends it.")}
+                ? deferredText("Keyword triggers can't be switched on while the bot can't read chat.")
+                : deferredText("Off, it stays written but the bot never sends it.")}
             </SwitchRow>
           </Panel>
 
-          <Panel title={spaTranslate("WHEN IT FIRES")}>
+          <Panel title={deferredText("WHEN IT FIRES")}>
             <div className="choice choice-triggers" role="radiogroup" aria-label={spaTranslate("Trigger")}>
               {TRIGGERS.map((t) => {
                 const locked = t.needs_message_content && keywordLocked && kind !== t.key;
@@ -195,7 +196,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     {t.needs_message_content && keywordLocked && (
                       <span className="choice-detail muted" data-testid="keyword-reason">
                         {" "}
-                        {spaTranslate("Needs the Message Content intent, which this bot runs without.")}{" "}
+                        {deferredText("Needs the Message Content intent, which this bot runs without.")}{" "}
                       </span>
                     )}
                   </label>
@@ -204,7 +205,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             </div>
             {(kind === "role_added" || kind === "role_removed") && (
               <Field
-                label={spaTranslate("Which role")}
+                label={deferredText("Which role")}
                 htmlFor="responder-role"
                 error={editor.problem("trigger_value")}
               >
@@ -219,10 +220,10 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             )}
             {kind === "level_up" && (
               <Field
-                label={spaTranslate("From level")}
+                label={deferredText("From level")}
                 htmlFor="responder-level"
                 error={editor.problem("trigger_value")}
-                hint={spaTranslate("Fires for every level-up from this level on. Empty: every level-up.")}
+                hint={deferredText("Fires for every level-up from this level on. Empty: every level-up.")}
               >
                 <input
                   id="responder-level"
@@ -241,10 +242,10 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               <>
                 <div className="form-grid form-grid-2">
                   <Field
-                    label={spaTranslate("Word or phrase")}
+                    label={deferredText("Word or phrase")}
                     htmlFor="responder-keyword"
                     error={editor.problem("trigger_value")}
-                    hint={spaTranslate("Capital letters don't matter.")}
+                    hint={deferredText("Capital letters don't matter.")}
                   >
                     <input
                       id="responder-keyword"
@@ -255,7 +256,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     />
                   </Field>
                   <Field
-                    label={spaTranslate("How it matches")}
+                    label={deferredText("How it matches")}
                     htmlFor="responder-match"
                     error={editor.problem("match_kind")}
                   >
@@ -277,7 +278,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                 </div>
                 <p className="field-hint muted">
                   {" "}
-                  {spaTranslate(
+                  {deferredText(
                     "One answer per message at most: if several responders match, the first that is ready answers.",
                   )}{" "}
                 </p>
@@ -299,23 +300,23 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               error={editor.problem("embed")}
             />
             <SwitchRow
-              title={spaTranslate("Allow mentions")}
+              title={deferredText("Allow mentions")}
               control={
                 <PixelToggle
-                  label={spaTranslate("Allow mentions")}
+                  label={deferredText("Allow mentions")}
                   checked={draft.allow_mentions}
                   onChange={(next) => set("allow_mentions", next)}
                 />
               }
             >
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "Off, people and roles you write in the text show as plain words and only the member it is about is pinged. @everyone and @here never are.",
               )}{" "}
             </SwitchRow>
           </Panel>
 
-          <Panel title={spaTranslate("WHERE IT ANSWERS")}>
+          <Panel title={deferredText("WHERE IT ANSWERS")}>
             <Choice
               name="Where it answers"
               value={draft.destination}
@@ -356,13 +357,13 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             />
           </Panel>
 
-          <Panel title={spaTranslate("HOW OFTEN")}>
+          <Panel title={deferredText("HOW OFTEN")}>
             <div className="form-grid form-grid-2">
               <Field
                 label={spaTranslate("Chance")}
                 htmlFor="responder-chance"
                 error={editor.problem("chance")}
-                hint={spaTranslate("Percent of the times it fires that it answers.")}
+                hint={deferredText("Percent of the times it fires that it answers.")}
               >
                 <input
                   id="responder-chance"
@@ -378,7 +379,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                 label={spaTranslate("Cooldown")}
                 htmlFor="responder-cooldown"
                 error={editor.problem("cooldown_secs")}
-                hint={spaTranslate(
+                hint={deferredText(
                   "Seconds before it can answer the same member again, up to {arg1}. With actions, at least {arg2}.",
                   { arg1: LIMITS.responder_cooldown_max, arg2: LIMITS.action_cooldown_min },
                 )}
@@ -397,9 +398,9 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             {hearsChat && (
               <div className="form-grid form-grid-2">
                 <Field
-                  label={spaTranslate("Only in these channels")}
+                  label={deferredText("Only in these channels")}
                   error={editor.problem("allow_channels")}
-                  hint={spaTranslate(
+                  hint={deferredText(
                     "Where the message was sent, or the member levelled up. A category covers the channels under it.",
                   )}
                 >
@@ -410,11 +411,11 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     onChange={(next) => set("allow_channels", next)}
                     max={LIMITS.max_list}
                     name="Allowed channels"
-                    none={spaTranslate("Every channel.")}
+                    none={deferredText("Every channel.")}
                   />
                 </Field>
                 <Field
-                  label={spaTranslate("Never in these channels")}
+                  label={deferredText("Never in these channels")}
                   error={editor.problem("deny_channels")}
                 >
                   <IdList
@@ -424,7 +425,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     onChange={(next) => set("deny_channels", next)}
                     max={LIMITS.max_list}
                     name="Denied channels"
-                    none={spaTranslate("No channel is off limits.")}
+                    none={deferredText("No channel is off limits.")}
                   />
                 </Field>
               </div>
@@ -443,9 +444,9 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
         error={
           editor.failure ??
           (nameMissing
-            ? spaTranslate("Give it a name first")
+            ? deferredText("Give it a name first")
             : unfinished
-              ? spaTranslate("Finish the action first")
+              ? deferredText("Finish the action first")
               : null)
         }
         onSave={onSave}

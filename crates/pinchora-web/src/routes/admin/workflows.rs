@@ -68,7 +68,7 @@ fn refs(actions: &[StepAction]) -> Vec<Refs> {
     refs
 }
 async fn validate(state: &WebState, managed: &ManagedGuild, def: &Definition) -> ApiResult<()> {
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     if let Err(field) = def.validate() {
         return Err(ApiError::invalid(vec![FieldError::new(
             field,
@@ -94,7 +94,7 @@ async fn validate(state: &WebState, managed: &ManagedGuild, def: &Definition) ->
 }
 async fn save(state: &WebState, managed: &ManagedGuild, id: Option<i64>, def: Definition) -> ApiResult<Json<Value>> {
     validate(state, managed, &def).await?;
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     let before = if let Some(id) = id {
         state
             .app
@@ -141,14 +141,16 @@ async fn update(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(def): ApiJson<Definition>,
 ) -> ApiResult<Json<Value>> {
-    save(&state, &managed, Some(row_id(&params)?), def).await
+    let lang = managed.panel_lang;
+    save(&state, &managed, Some(row_id(&params, lang)?), def).await
 }
 async fn remove(
     State(state): State<WebState>,
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let id = row_id(&params)?;
+    let lang = managed.panel_lang;
+    let id = row_id(&params, lang)?;
     let old = state
         .app
         .db
@@ -183,7 +185,7 @@ async fn test(
     ApiJson(body): ApiJson<Test>,
 ) -> ApiResult<Json<Value>> {
     // No Discord requests, writes, cooldowns, point claims or history inserts.
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     body.definition
         .validate()
         .map_err(|field| ApiError::invalid(vec![FieldError::new(field, t!(lang, "workflows.invalid"))]))?;
@@ -196,7 +198,8 @@ async fn runs(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let id = row_id(&params)?;
+    let lang = managed.panel_lang;
+    let id = row_id(&params, lang)?;
     state
         .app
         .db
@@ -213,7 +216,7 @@ async fn variables(
     managed: ManagedGuild,
     Query(params): Query<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     let user = match params.get("subject").filter(|s| !s.is_empty()) {
         Some(s) if workflows::id(s) => s.parse::<u64>().map_err(anyhow::Error::from)?,
         Some(_) => {
@@ -241,7 +244,7 @@ async fn variable(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<Variable>,
 ) -> ApiResult<Json<Value>> {
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     let user = match body.subject_id.as_deref() {
         Some(s) if workflows::id(s) => s.parse::<u64>().map_err(anyhow::Error::from)?,
         Some(_) => {
@@ -287,6 +290,7 @@ async fn post_button(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<PostButton>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     use twilight_model::{
         channel::message::{
             AllowedMentions, Component,
@@ -294,14 +298,14 @@ async fn post_button(
         },
         id::Id,
     };
-    let id = row_id(&params)?;
+    let id = row_id(&params, lang)?;
     let row = state
         .app
         .db
         .workflow(managed.id, id)
         .await?
         .ok_or_else(ApiError::not_found)?;
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     if row.definition()?.trigger != (Trigger::Button {})
         || !workflows::id(&body.channel_id)
         || body.text.trim().is_empty()

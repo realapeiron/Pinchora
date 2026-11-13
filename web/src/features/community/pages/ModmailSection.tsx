@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
@@ -13,21 +14,21 @@ export function ModmailSection() {
       summary={summary.modmail ?? dt("Off")}
       enabled={mail.enabled}
       onToggle={(enabled) => setMail({ ...mail, enabled })}
-      toggleLabel={t("Enable modmail")}
+      toggleLabel={deferredText("Enable modmail")}
     >
       <p className="panel-lead muted">
-        {t(
+        {deferredText(
           "Members DM Pinchora; staff answer in a private forum thread. Use /modmail for snippets, blocks and closing from Discord.",
         )}
       </p>
       <label>
-        {t("Staff forum")}
+        {deferredText("Staff forum")}
         <select
           className="pixel-input pixel-select"
           value={mail.forum_channel_id ?? ""}
           onChange={(e) => setMail({ ...mail, forum_channel_id: e.target.value || null })}
         >
-          <option value="">{t("Choose a forum")}</option>
+          <option value="">{deferredText("Choose a forum")}</option>
           {info?.channels
             .filter((c) => c.type === 15)
             .map((c) => (
@@ -38,7 +39,7 @@ export function ModmailSection() {
         </select>
       </label>
       <label>
-        {t("Greeting")}
+        {deferredText("Greeting")}
         <textarea
           className="pixel-input"
           maxLength={500}
@@ -47,7 +48,7 @@ export function ModmailSection() {
         />
       </label>
       <label>
-        {t("Close after hours")}
+        {deferredText("Close after hours")}
         <input
           className="pixel-input"
           type="number"
@@ -63,10 +64,10 @@ export function ModmailSection() {
           checked={mail.anonymous_staff}
           onChange={(e) => setMail({ ...mail, anonymous_staff: e.target.checked })}
         />
-        {t("Hide staff names")}
+        {deferredText("Hide staff names")}
       </label>
       <fieldset className="community-pack-roles">
-        <legend>{t("Staff roles")}</legend>
+        <legend>{deferredText("Staff roles")}</legend>
         {info?.roles.map((role) => (
           <label key={role.id} className="community-pack-check">
             <input
@@ -86,9 +87,9 @@ export function ModmailSection() {
         ))}
       </fieldset>
       <button className="pixel-button" disabled={busy} onClick={() => void write("/modmail", "PUT", mail)}>
-        {t("Save modmail")}
+        {deferredText("Save modmail")}
       </button>
-      <h3>{t("Open threads")}</h3>
+      <h3>{deferredText("Open threads")}</h3>
       <div className="community-pack-list">
         {data.threads.map((thread) => (
           <article key={thread.id}>

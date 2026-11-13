@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
 import { ChannelPicker } from "../../../components/DashboardPickers";
@@ -7,10 +8,10 @@ export function LogTab({ draft, set, info, errors, base }: TabProps) {
   return (
     <>
       <Field
-        label={spaTranslate("Log channel")}
+        label={deferredText("Log channel")}
         htmlFor={`${base}-log`}
         error={errors.log_channel_id}
-        hint={spaTranslate(
+        hint={deferredText(
           "Opened, claimed, reopened and closed tickets of this panel, with the transcript, if not the server's log channel.",
         )}
       >
@@ -20,13 +21,13 @@ export function LogTab({ draft, set, info, errors, base }: TabProps) {
           info={info}
           value={draft.log_channel_id}
           onChange={(id) => set("log_channel_id", id)}
-          none={spaTranslate("The server's log channel")}
+          none={deferredText("The server's log channel")}
           invalid={!!errors.log_channel_id}
         />
       </Field>
       <p className="notice" role="note">
         {" "}
-        {spaTranslate("Transcripts by direct message and ratings are server settings, above in")}{" "}
+        {deferredText("Transcripts by direct message and ratings are server settings, above in")}{" "}
         <strong>{spaTranslate("Settings")}</strong>.
       </p>
     </>

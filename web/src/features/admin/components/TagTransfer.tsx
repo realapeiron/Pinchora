@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useRef, useState } from "react";
 
@@ -29,7 +30,7 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
       URL.revokeObjectURL(url);
     } catch (error) {
       setProblem(
-        error instanceof ApiError ? error.message : spaTranslate("The export did not work. Try again."),
+        error instanceof ApiError ? error.message : deferredText("The export did not work. Try again."),
       );
     }
   };
@@ -42,13 +43,13 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
     try {
       parsed = JSON.parse(await file.text());
     } catch {
-      setProblem(spaTranslate("That file isn't JSON. Choose a file you exported from Pinchora."));
+      setProblem(deferredText("That file isn't JSON. Choose a file you exported from Pinchora."));
       return;
     }
     const body = parsed as { version?: unknown; items?: unknown };
     if (!body || typeof body !== "object" || !Array.isArray(body.items)) {
       setProblem(
-        spaTranslate("That file doesn't hold a list of ") +
+        deferredText("That file doesn't hold a list of ") +
           noun +
           ". Choose a file you exported from Pinchora.",
       );
@@ -68,11 +69,11 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
   };
 
   return (
-    <Panel title={spaTranslate("IMPORT AND EXPORT")}>
+    <Panel title={deferredText("IMPORT AND EXPORT")}>
       <p className="panel-lead muted">
         {" "}
-        {spaTranslate("Export your")} {noun}{" "}
-        {spaTranslate(
+        {deferredText("Export your")} {noun}{" "}
+        {deferredText(
           "to a file, and import a file into this or another server. Roles and channels the other server lacks are left out.",
         )}{" "}
       </p>
@@ -86,12 +87,12 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
           onClick={() => input.current?.click()}
           disabled={importing.isPending}
         >
-          {importing.isPending ? spaTranslate("Importing…") : spaTranslate("Import from a file")}
+          {importing.isPending ? deferredText("Importing…") : deferredText("Import from a file")}
         </PixelButton>
         {kind === "commands" && (
           <label className="check">
             <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />{" "}
-            {spaTranslate("Replace commands that have the same name")}{" "}
+            {deferredText("Replace commands that have the same name")}{" "}
           </label>
         )}
         <input
@@ -99,7 +100,7 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
           type="file"
           accept="application/json,.json"
           hidden
-          aria-label={spaTranslate("Import {arg1} file", { arg1: noun })}
+          aria-label={deferredText("Import {arg1} file", { arg1: noun })}
           onChange={(event) => {
             void upload(event.target.files?.[0]);
             event.target.value = "";
@@ -126,7 +127,7 @@ function ImportResult({ report }: { report: ImportReport }) {
   return (
     <div className="import-result" role="status">
       <p>
-        <strong>{parts.length > 0 ? parts.join(", ") : spaTranslate("Nothing to import")}.</strong>
+        <strong>{parts.length > 0 ? parts.join(", ") : deferredText("Nothing to import")}.</strong>
       </p>
       <ul className="preview-notes">
         {[...report.created, ...report.replaced].map((line) => (
@@ -134,7 +135,7 @@ function ImportResult({ report }: { report: ImportReport }) {
         ))}
         {report.failed.map((f) => (
           <li key={f.index} className="import-failed">
-            {f.name ? `${f.name}: ` : spaTranslate("Entry {arg1}: ", { arg1: f.index + 1 })}
+            {f.name ? `${f.name}: ` : deferredText("Entry {arg1}: ", { arg1: f.index + 1 })}
             {f.message}
           </li>
         ))}

@@ -30,3 +30,7 @@ ready = "hazır"
 days = "{n}g"
 hours = "{n}sa"
 minutes = "{n}dk"
+
+[economy.web.errors]
+role-ids-are-numbers = "Rol kimlikleri sayı olmalı."
+store-roles-limit = "Mağazada en fazla {max} rol olabilir. Önce birini kaldırın."

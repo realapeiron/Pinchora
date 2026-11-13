@@ -14,6 +14,7 @@ mod client_ip;
 mod commands_catalog;
 mod config;
 mod dashboard_access;
+mod dashboard_language;
 mod discord;
 mod error;
 mod extract;

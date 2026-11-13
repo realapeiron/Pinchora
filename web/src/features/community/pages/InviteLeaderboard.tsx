@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { date } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
@@ -20,23 +21,23 @@ export function Leaderboard({ guild }: { guild: string }) {
   };
   return (
     <Panel
-      title={t("LEADERBOARD")}
+      title={deferredText("LEADERBOARD")}
       aside={
-        <div className="inv-tabs" role="group" aria-label={t("Leaderboard period")}>
+        <div className="inv-tabs" role="group" aria-label={deferredText("Leaderboard period")}>
           {(["all", "week", "month"] as const).map((key) => (
             <button type="button" key={key} aria-pressed={period === key} onClick={() => choose(key)}>
-              {key === "all" ? t("All time") : key === "week" ? t("7 days") : t("30 days")}
+              {key === "all" ? deferredText("All time") : key === "week" ? t("7 days") : t("30 days")}
             </button>
           ))}
         </div>
       }
     >
-      {leaders.isPending && <Loading label={t("Reading leaderboard")} />}
+      {leaders.isPending && <Loading label={deferredText("Reading leaderboard")} />}
       {leaders.isError && <Problem error={leaders.error} />}
       {leaders.data && (
         <>
           {leaders.data.rows.length === 0 ? (
-            <p className="empty-row muted">{t("No counted invitations in this period yet.")}</p>
+            <p className="empty-row muted">{deferredText("No counted invitations in this period yet.")}</p>
           ) : (
             <div className="inv-table-wrap">
               <table className="inv-table">
@@ -44,9 +45,9 @@ export function Leaderboard({ guild }: { guild: string }) {
                   <tr>
                     <th>{t("Rank")}</th>
                     <th>{t("Member")}</th>
-                    <th>{t("Regular")}</th>
+                    <th>{deferredText("Regular")}</th>
                     <th>{t("Left")}</th>
-                    <th>{t("Too new")}</th>
+                    <th>{deferredText("Too new")}</th>
                     <th>{t("Bonus")}</th>
                     <th>{t("Counted")}</th>
                   </tr>
@@ -81,7 +82,7 @@ export function Leaderboard({ guild }: { guild: string }) {
             <PixelButton variant="secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>
               {t("Previous")}
             </PixelButton>
-            <span>{t("Page {page}", { page: page + 1 })}</span>
+            <span>{deferredText("Page {page}", { page: page + 1 })}</span>
             <PixelButton
               variant="secondary"
               disabled={leaders.data.rows.length < 25}
@@ -93,7 +94,7 @@ export function Leaderboard({ guild }: { guild: string }) {
         </>
       )}
       <div className="inv-detail">
-        <h3>{t("Member detail")}</h3>
+        <h3>{deferredText("Member detail")}</h3>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -107,14 +108,14 @@ export function Leaderboard({ guild }: { guild: string }) {
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
           />
-          <PixelButton type="submit">{t("Look up")}</PixelButton>
+          <PixelButton type="submit">{deferredText("Look up")}</PixelButton>
         </form>
-        {detail.isPending && member && <Loading label={t("Reading member invites")} />}
+        {detail.isPending && member && <Loading label={deferredText("Reading member invites")} />}
         {detail.isError && <Problem error={detail.error} />}
         {detail.data && (
           <>
             <p className="inv-detail-total">
-              {t("{count} counted invites for {member}", {
+              {deferredText("{count} counted invites for {member}", {
                 count: detail.data.score.total,
                 member: member ?? "",
               })}
@@ -125,15 +126,15 @@ export function Leaderboard({ guild }: { guild: string }) {
                   <span>{j.user_id}</span>
                   <span>{date(j.joined_at)}</span>
                   <span className={`inv-source ${j.source}`}>
-                    {j.source === "temporary" ? t("possible used-up link") : t(j.source)}
-                    {j.fake ? t(" · new account") : ""}
-                    {j.left_at ? t(" · left") : ""}
+                    {j.source === "temporary" ? deferredText("possible used-up link") : t(j.source)}
+                    {j.fake ? deferredText(" · new account") : ""}
+                    {j.left_at ? deferredText(" · left") : ""}
                   </span>
                 </li>
               ))}
             </ul>
             {detail.data.joins.length === 0 && (
-              <p className="muted">{t("No joins credited to this member.")}</p>
+              <p className="muted">{deferredText("No joins credited to this member.")}</p>
             )}
           </>
         )}

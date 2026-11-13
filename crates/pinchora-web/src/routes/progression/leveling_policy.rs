@@ -8,8 +8,10 @@ use axum::{
     routing::{get, post, put},
 };
 use pinchora_core::admin::settings as level_rules;
+use pinchora_core::infra::i18n::Lang;
 use pinchora_core::progression::leveling::week_start;
 use pinchora_core::progression::leveling_policy::LevelingPolicy;
+use pinchora_core::t;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -55,11 +57,12 @@ async fn put_voice_role(
     Path(params): Path<BTreeMap<String, String>>,
     ApiJson(body): ApiJson<VoiceRoleBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let role = params
         .get("role")
         .and_then(|role| role.parse::<u64>().ok())
         .filter(|id| *id > 0 && *id <= i64::MAX as u64)
-        .ok_or_else(|| ApiError::malformed("Invalid role ID."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.invalid-role-id")))?;
     let level = level_rules::check_level(body.level)?;
     let info = guild_info::live(&state, managed.id).await?;
     let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
@@ -76,7 +79,10 @@ async fn put_voice_role(
         return voice_roles_view(&state, managed.id).await;
     }
     if !state.app.db.add_voice_level_role(managed.id, role, level).await? {
-        return Err(ApiError::limit("A server can have 25 voice level roles."));
+        return Err(ApiError::limit(t!(
+            lang,
+            "xp.web.errors.a-server-can-have-25-voice-level-roles"
+        )));
     }
     audit::finish(
         &state,
@@ -99,11 +105,12 @@ async fn delete_voice_role(
     managed: ManagedGuild,
     Path(params): Path<BTreeMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let role = params
         .get("role")
         .and_then(|role| role.parse::<u64>().ok())
         .filter(|id| *id > 0 && *id <= i64::MAX as u64)
-        .ok_or_else(|| ApiError::malformed("Invalid role ID."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.invalid-role-id")))?;
     let old = state
         .app
         .db
@@ -139,11 +146,12 @@ async fn save_settings(
     managed: ManagedGuild,
     ApiJson(config): ApiJson<LevelingPolicy>,
 ) -> ApiResult<Json<LevelingPolicy>> {
+    let lang = managed.panel_lang;
     config.validate().map_err(ApiError::malformed)?;
     if let Some(raw) = &config.highlights_channel_id {
         let channel = raw
             .parse::<u64>()
-            .map_err(|_| ApiError::malformed("Invalid highlights channel."))?;
+            .map_err(|_| ApiError::malformed(t!(lang, "xp.web.errors.invalid-highlights-channel")))?;
         let info = guild_info::get_with(&state, managed.id, |info| info.channel(channel).is_some()).await?;
         info.check_post_channel("highlights_channel_id", channel)?;
     }
@@ -155,7 +163,10 @@ async fn save_settings(
             .await?
             .is_some_and(|other| other != managed.id)
     {
-        return Err(ApiError::limit("This leaderboard URL name is already in use."));
+        return Err(ApiError::limit(t!(
+            lang,
+            "xp.web.errors.this-leaderboard-url-name-is-already-in-use"
+        )));
     }
     let old = state.app.db.leveling_policy(managed.id).await?;
     if config.curve != old.curve {
@@ -230,15 +241,21 @@ fn read_id(value: &Value) -> Option<u64> {
         .filter(|id| *id > 0 && *id <= i64::MAX as u64)
 }
 
-fn parse_json(data: &str) -> ApiResult<Vec<(u64, i64)>> {
-    let value: Value = serde_json::from_str(data).map_err(|_| ApiError::malformed("Invalid JSON import."))?;
+fn parse_json(data: &str, lang: Lang) -> ApiResult<Vec<(u64, i64)>> {
+    let value: Value =
+        serde_json::from_str(data).map_err(|_| ApiError::malformed(t!(lang, "xp.web.errors.invalid-json-import")))?;
     let rows = if let Some(rows) = value.as_array() {
         rows
     } else {
         ["players", "members", "leaderboard", "users"]
             .iter()
             .find_map(|key| value.get(key).and_then(Value::as_array))
-            .ok_or_else(|| ApiError::malformed("JSON must contain a players, members, leaderboard or users array."))?
+            .ok_or_else(|| {
+                ApiError::malformed(t!(
+                    lang,
+                    "xp.web.errors.json-must-contain-a-players-members-leaderboard-or-users-array"
+                ))
+            })?
     };
     let mut out = Vec::new();
     for row in rows {
@@ -246,7 +263,7 @@ fn parse_json(data: &str) -> ApiResult<Vec<(u64, i64)>> {
             .iter()
             .find_map(|key| row.get(key).and_then(read_id))
             .or_else(|| row.get("user").and_then(|user| user.get("id")).and_then(read_id))
-            .ok_or_else(|| ApiError::malformed("A row has no valid Discord user ID."))?;
+            .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.a-row-has-no-valid-discord-user-id")))?;
         let xp = [
             "xp",
             "total_xp",
@@ -260,13 +277,13 @@ fn parse_json(data: &str) -> ApiResult<Vec<(u64, i64)>> {
             row.get(key)
                 .and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
         })
-        .ok_or_else(|| ApiError::malformed("A row has no XP total."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.a-row-has-no-xp-total")))?;
         out.push((id, xp));
     }
     Ok(out)
 }
 
-fn csv_fields(line: &str) -> ApiResult<Vec<String>> {
+fn csv_fields(line: &str, lang: Lang) -> ApiResult<Vec<String>> {
     let mut fields = Vec::new();
     let mut field = String::new();
     let mut quoted = false;
@@ -287,20 +304,27 @@ fn csv_fields(line: &str) -> ApiResult<Vec<String>> {
                 fields.push(std::mem::take(&mut field));
                 closed = false;
             }
-            _ if !quoted && (closed || ch == '"') => return Err(ApiError::malformed("Malformed CSV row.")),
+            _ if !quoted && (closed || ch == '"') => {
+                return Err(ApiError::malformed(t!(lang, "xp.web.errors.malformed-csv-row")));
+            }
             _ => field.push(ch),
         }
     }
     if quoted {
-        return Err(ApiError::malformed("Unclosed CSV quote."));
+        return Err(ApiError::malformed(t!(lang, "xp.web.errors.unclosed-csv-quote")));
     }
     fields.push(field);
     Ok(fields)
 }
 
-fn parse_csv(data: &str) -> ApiResult<Vec<(u64, i64)>> {
+fn parse_csv(data: &str, lang: Lang) -> ApiResult<Vec<(u64, i64)>> {
     let mut lines = data.lines().filter(|line| !line.trim().is_empty());
-    let headers = csv_fields(lines.next().ok_or_else(|| ApiError::malformed("CSV is empty."))?)?;
+    let headers = csv_fields(
+        lines
+            .next()
+            .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.csv-is-empty")))?,
+        lang,
+    )?;
     let names: Vec<_> = headers
         .iter()
         .map(|s| {
@@ -312,45 +336,51 @@ fn parse_csv(data: &str) -> ApiResult<Vec<(u64, i64)>> {
         .collect();
     let find = |keys: &[&str]| names.iter().position(|name| keys.contains(&name.as_str()));
     let id_at = find(&["id", "user_id", "userid", "discord_id", "discordid", "discord_user_id"])
-        .ok_or_else(|| ApiError::malformed("CSV needs an ID column."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.csv-needs-an-id-column")))?;
     let xp_at = find(&["xp", "total_xp", "totalxp", "experience", "total_experience"])
-        .ok_or_else(|| ApiError::malformed("CSV needs an XP column."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.csv-needs-an-xp-column")))?;
     let mut out = Vec::new();
     for line in lines {
-        let row = csv_fields(line)?;
+        let row = csv_fields(line, lang)?;
         if row.len() != headers.len() {
-            return Err(ApiError::malformed("Malformed CSV row."));
+            return Err(ApiError::malformed(t!(lang, "xp.web.errors.malformed-csv-row")));
         }
         let id = row
             .get(id_at)
             .and_then(|v| v.trim().parse::<u64>().ok())
             .filter(|id| *id > 0 && *id <= i64::MAX as u64)
-            .ok_or_else(|| ApiError::malformed("A CSV row has an invalid Discord user ID."))?;
+            .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.a-csv-row-has-an-invalid-discord-user-id")))?;
         let xp = row
             .get(xp_at)
             .and_then(|v| v.trim().parse::<i64>().ok())
-            .ok_or_else(|| ApiError::malformed("A CSV row has invalid XP."))?;
+            .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.a-csv-row-has-invalid-xp")))?;
         out.push((id, xp));
     }
     Ok(out)
 }
 
-fn parse_import(format: &str, data: &str) -> ApiResult<Vec<(u64, i64)>> {
+fn parse_import(format: &str, data: &str, lang: Lang) -> ApiResult<Vec<(u64, i64)>> {
     if data.len() > 2_000_000 {
-        return Err(ApiError::limit("Import file exceeds 2 MB."));
+        return Err(ApiError::limit(t!(lang, "xp.web.errors.import-file-exceeds-2-mb")));
     }
     let rows = match format {
-        "json" => parse_json(data)?,
-        "csv" => parse_csv(data)?,
-        _ => return Err(ApiError::malformed("Choose JSON or CSV.")),
+        "json" => parse_json(data, lang)?,
+        "csv" => parse_csv(data, lang)?,
+        _ => return Err(ApiError::malformed(t!(lang, "xp.web.errors.choose-json-or-csv"))),
     };
     if rows.is_empty() || rows.len() > 10_000 {
-        return Err(ApiError::limit("Import must contain 1 to 10,000 members."));
+        return Err(ApiError::limit(t!(
+            lang,
+            "xp.web.errors.import-must-contain-1-to-10-000-members"
+        )));
     }
     let mut unique = BTreeMap::new();
     for (id, xp) in rows {
         if !(0..=1_000_000_000).contains(&xp) {
-            return Err(ApiError::malformed("XP must be 0 to 1,000,000,000."));
+            return Err(ApiError::malformed(t!(
+                lang,
+                "xp.web.errors.xp-must-be-0-to-1-000-000-000"
+            )));
         }
         unique
             .entry(id)
@@ -360,7 +390,7 @@ fn parse_import(format: &str, data: &str) -> ApiResult<Vec<(u64, i64)>> {
     Ok(unique.into_iter().collect())
 }
 
-async fn check_import_members(state: &WebState, guild: u64, rows: &[(u64, i64)]) -> ApiResult<()> {
+async fn check_import_members(state: &WebState, guild: u64, rows: &[(u64, i64)], lang: Lang) -> ApiResult<()> {
     use futures_util::{StreamExt, TryStreamExt};
     use twilight_model::id::Id;
     futures_util::stream::iter(rows.iter().copied().map(|(user, _)| async move {
@@ -369,13 +399,16 @@ async fn check_import_members(state: &WebState, guild: u64, rows: &[(u64, i64)])
             .http
             .guild_member(Id::new(guild), Id::new(user))
             .await
-            .map_err(|_| ApiError::blocked("Import members must be verified in this server."))?;
+            .map_err(|_| ApiError::blocked(t!(lang, "xp.web.errors.import-members-must-be-verified-in-this-server")))?;
         let member = response
             .model()
             .await
-            .map_err(|_| ApiError::blocked("Import members must be verified in this server."))?;
+            .map_err(|_| ApiError::blocked(t!(lang, "xp.web.errors.import-members-must-be-verified-in-this-server")))?;
         if member.user.bot {
-            return Err(ApiError::blocked("Import members must be verified in this server."));
+            return Err(ApiError::blocked(t!(
+                lang,
+                "xp.web.errors.import-members-must-be-verified-in-this-server"
+            )));
         }
         Ok(())
     }))
@@ -390,11 +423,12 @@ async fn preview(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<PreviewBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     if !["merge", "replace"].contains(&body.mode.as_str()) {
-        return Err(ApiError::malformed("Choose merge or replace."));
+        return Err(ApiError::malformed(t!(lang, "xp.web.errors.choose-merge-or-replace")));
     }
-    let rows = parse_import(&body.format, &body.data)?;
-    check_import_members(&state, managed.id, &rows).await?;
+    let rows = parse_import(&body.format, &body.data, lang)?;
+    check_import_members(&state, managed.id, &rows, lang).await?;
     let comparison = state
         .app
         .db
@@ -408,7 +442,8 @@ async fn preview(
         .cache
         .put(
             &key,
-            &serde_json::to_string(&(body.mode, &rows)).map_err(|_| ApiError::malformed("Import cannot be saved."))?,
+            &serde_json::to_string(&(body.mode, &rows))
+                .map_err(|_| ApiError::malformed(t!(lang, "xp.web.errors.import-cannot-be-saved")))?,
             Duration::from_secs(600),
         )
         .await?;
@@ -421,9 +456,10 @@ async fn apply(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<ApplyBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     crate::dashboard_access::check_level_rewards(&state, &managed).await?;
     if body.preview_id.len() != 32 || !body.preview_id.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(ApiError::malformed("Invalid preview ID."));
+        return Err(ApiError::malformed(t!(lang, "xp.web.errors.invalid-preview-id")));
     }
     let key = format!(
         "xp:offline-preview:{}:{}:{}",
@@ -434,10 +470,10 @@ async fn apply(
         .cache
         .get(&key)
         .await?
-        .ok_or_else(|| ApiError::blocked("Preview expired. Preview the file again."))?;
+        .ok_or_else(|| ApiError::blocked(t!(lang, "xp.web.errors.preview-expired-preview-the-file-again")))?;
     let (mode, rows): (String, Vec<(u64, i64)>) =
-        serde_json::from_str(&raw).map_err(|_| ApiError::malformed("Invalid preview."))?;
-    check_import_members(&state, managed.id, &rows).await?;
+        serde_json::from_str(&raw).map_err(|_| ApiError::malformed(t!(lang, "xp.web.errors.invalid-preview")))?;
+    check_import_members(&state, managed.id, &rows, lang).await?;
     let (updated, fresh) = state
         .app
         .db
@@ -476,7 +512,7 @@ mod tests {
     use crate::routes::progression::leveling_policy::*;
     #[test]
     fn rejects_oversized_and_malformed_imports() {
-        assert!(parse_import("json", &" ".repeat(2_000_001)).is_err());
+        assert!(parse_import("json", &" ".repeat(2_000_001), Lang::En).is_err());
         for csv in [
             "id,xp\n123,4,5",
             "id,xp\n123",
@@ -486,7 +522,7 @@ mod tests {
             "id,xp\n0,3",
             "id,xp\n123,1000000001",
         ] {
-            assert!(parse_import("csv", csv).is_err(), "{csv}");
+            assert!(parse_import("csv", csv, Lang::En).is_err(), "{csv}");
         }
         for json in [
             "[]",
@@ -495,7 +531,7 @@ mod tests {
             "[{\"id\":\"123\",\"xp\":1.5}]",
             "[{\"id\":\"123\",\"xp\":-1}]",
         ] {
-            assert!(parse_import("json", json).is_err(), "{json}");
+            assert!(parse_import("json", json, Lang::En).is_err(), "{json}");
         }
     }
 
@@ -504,23 +540,29 @@ mod tests {
         assert_eq!(
             parse_import(
                 "json",
-                r#"{"players":[{"id":"123","xp":50},{"user_id":"123","total_xp":70}]}"#
+                r#"{"players":[{"id":"123","xp":50},{"user_id":"123","total_xp":70}]}"#,
+                Lang::En
             )
             .unwrap(),
             vec![(123, 70)]
         );
         assert_eq!(
-            parse_import("csv", "user_id,total_xp\n123,80\n").unwrap(),
+            parse_import("csv", "user_id,total_xp\n123,80\n", Lang::En).unwrap(),
             vec![(123, 80)]
         );
         assert_eq!(
-            parse_import("csv", "Discord ID,Total XP\n123,80\n").unwrap(),
+            parse_import("csv", "Discord ID,Total XP\n123,80\n", Lang::En).unwrap(),
             vec![(123, 80)]
         );
         assert_eq!(
-            parse_import("json", r#"{"members":[{"user":{"id":"123"},"totalExperience":"90"}]}"#).unwrap(),
+            parse_import(
+                "json",
+                r#"{"members":[{"user":{"id":"123"},"totalExperience":"90"}]}"#,
+                Lang::En
+            )
+            .unwrap(),
             vec![(123, 90)]
         );
-        assert!(parse_import("csv", "id,xp\n123,-1").is_err());
+        assert!(parse_import("csv", "id,xp\n123,-1", Lang::En).is_err());
     }
 }

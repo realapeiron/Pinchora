@@ -1,6 +1,6 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type EmbedSpec } from "../../../lib/api";
-import { translate as spaTranslate } from "../../../i18n";
 
 export type Recurrence =
   | { kind: "once" }
@@ -107,13 +107,13 @@ export function newRecurrence(kind: Recurrence["kind"], first: string, offset: s
 export function pauseReason(reason: string | null | undefined) {
   switch (reason) {
     case "permissions_lost":
-      return spaTranslate("Paused: Pinchora no longer has the required channel permissions.");
+      return deferredText("Paused: Pinchora no longer has the required channel permissions.");
     case "channel_deleted":
-      return spaTranslate("Paused: the channel was deleted.");
+      return deferredText("Paused: the channel was deleted.");
     case "invalid_schedule":
-      return spaTranslate("Paused: edit the invalid recurrence.");
+      return deferredText("Paused: edit the invalid recurrence.");
     case "delivery_uncertain":
-      return spaTranslate(
+      return deferredText(
         "Paused: delivery could not be confirmed. Check the channel before resuming to avoid a duplicate.",
       );
     default:

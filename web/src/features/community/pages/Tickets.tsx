@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import "../../../styles/tickets.css";
 
@@ -38,7 +39,7 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
     <SettingsPage
       className="settings-page"
       title={spaTranslate("TICKETS")}
-      lead={spaTranslate(
+      lead={deferredText(
         "Members open a private ticket from a panel: a channel or thread just for them and your staff, closed with a transcript.",
       )}
     >
@@ -46,17 +47,17 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
         <p className="notice" role="note">
           <strong>{spaTranslate(module.label)}</strong> {spaTranslate("is switched off in")}{" "}
           <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
-          {spaTranslate(", so panels don't open tickets until you switch it on.")}{" "}
+          {deferredText(", so panels don't open tickets until you switch it on.")}{" "}
         </p>
       )}
-      {query.isPending && <Loading label={spaTranslate("Reading the tickets")} />}
+      {query.isPending && <Loading label={deferredText("Reading the tickets")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && (
         <>
           {!query.data.message_content && (
             <p className="notice" role="note" data-testid="content-lock">
-              <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
-              {spaTranslate(
+              <span className="badge badge-gold">{deferredText("NEEDS MESSAGE CONTENT")}</span>{" "}
+              {deferredText(
                 "Transcripts keep who wrote, when, and the file names, but not the words: reading message text needs Discord's privileged Message Content intent, which this bot runs without.",
               )}{" "}
             </p>

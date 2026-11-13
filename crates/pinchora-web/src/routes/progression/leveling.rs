@@ -1,6 +1,7 @@
 //! Leveling lists: XP multipliers, level roles (with the member sync job) and reputation roles.
 //! Same rules and limits as `/config xp`, `/config level-roles` and `/config rep-roles`.
 
+use pinchora_core::infra::i18n::Lang;
 use std::{collections::HashMap, time::Duration};
 
 use axum::{
@@ -12,6 +13,7 @@ use axum::{
 use pinchora_cache::Invalidation;
 use pinchora_commands::SyncOutcome;
 use pinchora_core::admin::settings;
+use pinchora_core::t;
 use pinchora_db::{MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_XP_RULES, XpTarget};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -28,11 +30,11 @@ use crate::routes::admin::settings::parse_id;
 use crate::state::WebState;
 
 /// A path segment that must be a Discord id.
-fn path_id(params: &HashMap<String, String>, name: &str) -> ApiResult<u64> {
+fn path_id(params: &HashMap<String, String>, name: &str, lang: Lang) -> ApiResult<u64> {
     params
         .get(name)
         .and_then(|raw| parse_id(raw))
-        .ok_or_else(|| ApiError::malformed("Discord ids are numbers."))
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.discord-ids-are-numbers")))
 }
 
 fn target_of(params: &HashMap<String, String>) -> ApiResult<XpTarget> {
@@ -94,7 +96,8 @@ pub async fn put_xp_rule(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<MultiplierBody>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, target, id) = (managed.id, target_of(&params)?, path_id(&params, "target")?);
+    let lang = managed.panel_lang;
+    let (guild, target, id) = (managed.id, target_of(&params)?, path_id(&params, "target", lang)?);
     let value = settings::check_multiplier(body.multiplier)?;
     let info = guild_info::get_with(&state, guild, |info| match target {
         XpTarget::Channel => info.channel(id).is_some(),
@@ -118,8 +121,10 @@ pub async fn put_xp_rule(
     if value == 1.0 {
         db.remove_xp_rule(guild, target, id).await?;
     } else if !db.set_xp_rule(guild, target, id, value).await? {
-        return Err(ApiError::limit(format!(
-            "A server can have {MAX_XP_RULES} XP rules. Remove one first."
+        return Err(ApiError::limit(t!(
+            lang,
+            "xp.web.errors.xp-rules-limit",
+            max = MAX_XP_RULES
         )));
     }
     let what = format!("{}:{id}", kind_key(target));
@@ -145,7 +150,8 @@ pub async fn delete_xp_rule(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, target, id) = (managed.id, target_of(&params)?, path_id(&params, "target")?);
+    let lang = managed.panel_lang;
+    let (guild, target, id) = (managed.id, target_of(&params)?, path_id(&params, "target", lang)?);
     let db = &state.app.db;
     let rules = db.xp_rules(guild).await?;
     let was = match target {
@@ -309,7 +315,8 @@ async fn put_reward(
     list: Rewards,
     threshold: i32,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, path_id(params, "role")?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, path_id(params, "role", lang)?);
     let info = guild_info::live(&state, guild).await?;
     let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
     info.check_grant("role_id", role, grantor)?;
@@ -329,11 +336,14 @@ async fn put_reward(
     };
     if !added {
         let (max, what) = match list {
-            Rewards::Level => (MAX_LEVEL_ROLES, "level roles"),
-            Rewards::Rep => (MAX_REP_ROLES, "reputation roles"),
+            Rewards::Level => (MAX_LEVEL_ROLES, t!(lang, "xp.web.errors.level-roles")),
+            Rewards::Rep => (MAX_REP_ROLES, t!(lang, "xp.web.errors.reputation-roles")),
         };
-        return Err(ApiError::limit(format!(
-            "A server can have {max} {what}. Remove one first."
+        return Err(ApiError::limit(t!(
+            lang,
+            "xp.web.errors.roles-limit",
+            max = max,
+            what = what
         )));
     }
     let field = list.field();
@@ -376,7 +386,8 @@ async fn delete_reward(
     params: &HashMap<String, String>,
     list: Rewards,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, path_id(params, "role")?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, path_id(params, "role", lang)?);
     let was = list
         .rows(&state, guild)
         .await?

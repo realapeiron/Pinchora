@@ -74,3 +74,6 @@ limit-allow-channels = "{count} kanalda çalışır"
 limit-deny-channels = "{count} kanalda çalışmaz"
 capped = "Özel komutlar günde en fazla {max} {name} verir; bugünkü sınıra ulaştın."
 unchecked = "{role} rolünü şu an kontrol edemedim. Birazdan tekrar dene."
+
+[tags.web.errors]
+command-ids-are-numbers = "Komut kimlikleri sayı olmalı."

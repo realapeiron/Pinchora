@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { Link, Outlet, useLocation } from "react-router";
 import { Panel } from "../../../components/Panel";
 import { translate as t } from "../../../i18n";
@@ -12,16 +13,16 @@ export function ServerToolsOutlet({ data, nav }: { data: AccessOverview; nav: Na
   if (!canOpenPage(data, path))
     return (
       <SettingsPage
-        title={t("Area not granted")}
-        lead={t("Ask a server manager to grant your role access to this area.")}
+        title={deferredText("Area not granted")}
+        lead={deferredText("Ask a server manager to grant your role access to this area.")}
       >
         <Link to={`/g/${data.guild.id}`}>{t("Overview")}</Link>
       </SettingsPage>
     );
   if (!path && data.access && !data.access.full) {
     return (
-      <SettingsPage title={t("Overview")} lead={t("Your dashboard areas for this server.")}>
-        <Panel title={t("Allowed areas")}>
+      <SettingsPage title={t("Overview")} lead={deferredText("Your dashboard areas for this server.")}>
+        <Panel title={deferredText("Allowed areas")}>
           <ul className="list">
             {nav
               .flatMap((g) => g.pages)

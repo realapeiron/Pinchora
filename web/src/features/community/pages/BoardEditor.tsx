@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { ChannelPicker } from "../../../components/DashboardPickers";
@@ -50,7 +51,7 @@ export function BoardEditor({
             </label>
             <label>
               {" "}
-              {spaTranslate("Board channel")}{" "}
+              {deferredText("Board channel")}{" "}
               <ChannelPicker
                 posting
                 info={info}
@@ -61,7 +62,7 @@ export function BoardEditor({
             </label>
             <label>
               {" "}
-              {spaTranslate("Star emoji")}{" "}
+              {deferredText("Star emoji")}{" "}
               <input
                 className="pixel-input"
                 value={board.emoji}
@@ -71,7 +72,7 @@ export function BoardEditor({
             </label>
             <label>
               {" "}
-              {spaTranslate("Threshold ·")} {board.threshold}/50
+              {deferredText("Threshold ·")} {board.threshold}/50
               <input
                 className="pixel-input"
                 type="number"
@@ -94,7 +95,7 @@ export function BoardEditor({
         </div>
         <div className="settings-detail-preview">
           <PixelButton variant="secondary" onClick={() => setPreview((v) => !v)}>
-            {preview ? spaTranslate("Hide preview") : spaTranslate("Preview board")}
+            {preview ? deferredText("Hide preview") : deferredText("Preview board")}
           </PixelButton>
           {preview && (
             <div
@@ -102,14 +103,14 @@ export function BoardEditor({
               style={{ "--star-accent": board.color } as React.CSSProperties}
             >
               <span>
-                {board.emoji} {board.threshold} {spaTranslate("· #source")}{" "}
+                {board.emoji} {board.threshold} {deferredText("· #source")}{" "}
               </span>
               <strong>{board.name}</strong>
               <small>
                 {" "}
-                {spaTranslate("Author · jump link")}
-                {messageContent ? spaTranslate(" · attachments") : ""}
-                {board.require_image ? spaTranslate(" · image") : ""}
+                {deferredText("Author · jump link")}
+                {messageContent ? deferredText(" · attachments") : ""}
+                {board.require_image ? deferredText(" · image") : ""}
               </small>
             </div>
           )}
@@ -133,7 +134,7 @@ export function BoardEditor({
           }
         >
           {" "}
-          {spaTranslate("Save board")}{" "}
+          {deferredText("Save board")}{" "}
         </PixelButton>
       </div>
     </div>

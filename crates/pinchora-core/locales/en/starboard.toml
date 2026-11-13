@@ -43,3 +43,6 @@ embed = "Pinchora needs Embed Links in that channel."
 history = "Pinchora needs Read Message History in that channel."
 react = "Pinchora needs Add Reactions in that channel."
 thread = "Pinchora needs Create Public Threads in that channel."
+
+[starboard.web.errors]
+this-server-already-has-3-3-starboards = "This server already has 3/3 starboards."

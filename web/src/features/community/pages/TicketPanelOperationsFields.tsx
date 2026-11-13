@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { Dispatch, SetStateAction } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { PixelButton } from "../../../components/PixelButton";
@@ -22,7 +23,7 @@ export function PanelFields({ draft, setDraft, info }: PanelEdit & { info?: Guil
   return (
     <>
       <label>
-        {spaTranslate("Claim mode")}
+        {deferredText("Claim mode")}
         <select
           className="pixel-input pixel-select"
           value={draft.claim_mode}
@@ -32,7 +33,7 @@ export function PanelFields({ draft, setDraft, info }: PanelEdit & { info?: Guil
         >
           <option value="optional">{spaTranslate("Optional")}</option>
           <option value="required">{spaTranslate("Required")}</option>
-          <option value="exclusive">{spaTranslate("Exclusive")}</option>
+          <option value="exclusive">{deferredText("Exclusive")}</option>
         </select>
       </label>
       <div className="tk-operations-grid">
@@ -44,7 +45,7 @@ export function PanelFields({ draft, setDraft, info }: PanelEdit & { info?: Guil
         {numberField("Open claims per staff member (0 = unlimited)", "staff_open_limit", 100)}
       </div>
       <label>
-        {spaTranslate("Overflow message")}
+        {deferredText("Overflow message")}
         <textarea
           className="pixel-input"
           rows={2}
@@ -54,7 +55,7 @@ export function PanelFields({ draft, setDraft, info }: PanelEdit & { info?: Guil
         />
       </label>
       <label>
-        {spaTranslate("Bypass roles")}
+        {deferredText("Bypass roles")}
         <select
           className="pixel-input pixel-select"
           multiple
@@ -80,7 +81,7 @@ export function PanelFields({ draft, setDraft, info }: PanelEdit & { info?: Guil
 export function PanelFaq({ draft, setDraft }: PanelEdit) {
   return (
     <div className="tk-operations-form">
-      <strong>{spaTranslate("FAQ before opening")}</strong>
+      <strong>{deferredText("FAQ before opening")}</strong>
       {draft.faq.map((faq, index) => (
         <div className="tk-operations-faq" key={index}>
           <input
@@ -123,7 +124,7 @@ export function PanelFaq({ draft, setDraft }: PanelEdit) {
         disabled={draft.faq.length >= 10}
         onClick={() => setDraft({ ...draft, faq: [...draft.faq, { question: "", answer: "" }] })}
       >
-        {spaTranslate("Add FAQ answer")}
+        {deferredText("Add FAQ answer")}
       </PixelButton>
     </div>
   );

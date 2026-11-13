@@ -68,7 +68,7 @@ export default defineConfig({
         onlyExplicitManualChunks: true,
         manualChunks(id) {
           if (
-            /\/src\/i18n\/dashboard(-en|-tr)?\.ts$/.test(id) ||
+            /\/src\/i18n\/dashboard(?:-[^/]+)?\.ts$/.test(id) ||
             /\/src\/components\/(DashboardPickers|PostingPermissionWarning)\.tsx$/.test(id)
           )
             return "dashboard";

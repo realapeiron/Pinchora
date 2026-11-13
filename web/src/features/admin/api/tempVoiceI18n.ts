@@ -1,4 +1,4 @@
-import { translate } from "../../../i18n";
+import { t as translate } from "../../../i18n/dashboard";
 
 export function t(english: string): string {
   const leading = english.startsWith(" ") ? " " : "";

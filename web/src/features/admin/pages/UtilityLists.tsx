@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { PixelButton } from "../../../components/PixelButton";
 import { SettingsRow } from "../../../components/SettingsRow";
@@ -73,7 +74,7 @@ export function UtilityLists({
       >
         <div className="settings-detail-fields">
           <p className="panel-lead muted">
-            {t(
+            {deferredText(
               "After both the chosen number of member messages and the minimum time interval, Pinchora posts a fresh copy and removes the old one. Counts are batched to prevent bursts. It needs Manage Messages.",
             )}
           </p>
@@ -83,16 +84,19 @@ export function UtilityLists({
                 <div className="utility-item-main">
                   <strong>{name(info, item.channel_id)}</strong>
                   <span className="badge">{item.enabled ? t("ON") : t("OFF")}</span>
-                  <p>{item.content || t("Embed only")}</p>
+                  <p>{item.content || deferredText("Embed only")}</p>
                   {pauseReason(item.pause_reason) && (
                     <p role="status">{item.pause_reason_text ?? t(pauseReason(item.pause_reason) ?? "")}</p>
                   )}
                   <small>
-                    {t("Every {messages} messages and at least {seconds} seconds · {count} counted", {
-                      messages: item.min_messages,
-                      seconds: item.min_gap_secs,
-                      count: item.message_count,
-                    })}
+                    {deferredText(
+                      "Every {messages} messages and at least {seconds} seconds · {count} counted",
+                      {
+                        messages: item.min_messages,
+                        seconds: item.min_gap_secs,
+                        count: item.message_count,
+                      },
+                    )}
                   </small>
                 </div>
                 <div className="utility-actions">
@@ -113,7 +117,7 @@ export function UtilityLists({
                     variant="ghost"
                     onClick={() =>
                       removeSticky.mutate(item.channel_id, {
-                        onSuccess: () => setNotice(t("Sticky message removed.")),
+                        onSuccess: () => setNotice(deferredText("Sticky message removed.")),
                         onError: (e) => setNotice(e.message),
                       })
                     }
@@ -123,9 +127,11 @@ export function UtilityLists({
                 </div>
               </article>
             ))}
-            {data.sticky.length === 0 && <p className="empty-row muted">{t("No sticky messages yet.")}</p>}
+            {data.sticky.length === 0 && (
+              <p className="empty-row muted">{deferredText("No sticky messages yet.")}</p>
+            )}
           </div>
-          <PixelButton onClick={() => setSticky(newSticky())}>{t("＋ New sticky")}</PixelButton>
+          <PixelButton onClick={() => setSticky(newSticky())}>{deferredText("＋ New sticky")}</PixelButton>
         </div>
         {previewKind === "sticky" && previewItem && (
           <UtilityInlinePreview item={previewItem} runs={runs} t={t} onClose={() => setPreviewItem(null)} />
@@ -146,7 +152,7 @@ export function UtilityLists({
       >
         <div className="settings-detail-fields">
           <p className="panel-lead muted">
-            {t(
+            {deferredText(
               "Send once, every few minutes, daily, weekly, or with a five-field cron pattern. Choose an IANA time zone for the server's local time.",
             )}{" "}
             {data.timezone_notice ?? t(TIMEZONE_NOTICE)}
@@ -186,13 +192,15 @@ export function UtilityLists({
                 }
                 onRemove={() =>
                   removeScheduled.mutate(item.id, {
-                    onSuccess: () => setNotice(t("Scheduled message removed.")),
+                    onSuccess: () => setNotice(deferredText("Scheduled message removed.")),
                     onError: (e) => setNotice(e.message),
                   })
                 }
               />
             ))}
-            {data.scheduled.length === 0 && <p className="empty-row muted">{t("Nothing scheduled yet.")}</p>}
+            {data.scheduled.length === 0 && (
+              <p className="empty-row muted">{deferredText("Nothing scheduled yet.")}</p>
+            )}
           </div>
           <PixelButton
             disabled={data.scheduled.length >= data.max_scheduled}
@@ -201,7 +209,7 @@ export function UtilityLists({
               setScheduled(newScheduled(data.timezone));
             }}
           >
-            {t("＋ Schedule a message")}
+            {deferredText("＋ Schedule a message")}
           </PixelButton>
         </div>
         {previewKind === "scheduled" && previewItem && (

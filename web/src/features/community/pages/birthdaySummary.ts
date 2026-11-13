@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { GuildInfo } from "../../../lib/api";
 import { channelLabel } from "../../../components/Pickers";
 import { t } from "../../../i18n/dashboard";
@@ -22,6 +23,6 @@ export function birthdaySummary(settings: BirthdaySettings, info: GuildInfo | un
     badge: t(settings.badge ? "On" : "Off"),
     upcoming: upcoming
       ? t("{count} shared birthdays", { count: upcoming })
-      : t("No shared birthdays in the next 30 days."),
+      : deferredText("No shared birthdays in the next 30 days."),
   };
 }

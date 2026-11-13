@@ -2,6 +2,7 @@
 //! a role, or says a keyword. Keywords need the Message Content intent; without it they can be written but
 //! not switched on.
 
+use pinchora_core::t;
 use std::collections::HashMap;
 
 use axum::{
@@ -42,9 +43,11 @@ const IMPORT_MAX: usize = 100;
 
 const LOCKED: &str = "Keyword triggers need the Message Content intent, which this bot runs without. Ask whoever runs the bot to turn it on (PINCHORA_GATEWAY__MESSAGE_CONTENT), or save this one switched off.";
 
-fn full() -> ApiError {
-    ApiError::limit(format!(
-        "A server has at most {MAX_RESPONDERS} auto-responders. Remove one first."
+fn full(lang: pinchora_core::infra::i18n::Lang) -> ApiError {
+    ApiError::limit(t!(
+        lang,
+        "command_control_web.errors.auto-responders-limit",
+        max = MAX_RESPONDERS
     ))
 }
 
@@ -81,7 +84,10 @@ pub async fn get(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    Ok(Json(responder_json(&load(&state, managed.id, row_id(&params)?).await?)))
+    let lang = managed.panel_lang;
+    Ok(Json(responder_json(
+        &load(&state, managed.id, row_id(&params, lang)?).await?,
+    )))
 }
 
 /// `POST /responders`.
@@ -90,6 +96,7 @@ pub async fn create(
     managed: ManagedGuild,
     ApiJson(def): ApiJson<ResponderDef>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let def = def.clean()?;
     check_listening(&state, &def)?;
@@ -112,7 +119,7 @@ pub async fn create(
             .await;
             Ok(Json(responder_json(&row)))
         }
-        TagWrite::Full => Err(full()),
+        TagWrite::Full => Err(full(lang)),
         TagWrite::NameTaken | TagWrite::Gone => Err(ApiError::not_found()),
     }
 }
@@ -124,8 +131,9 @@ pub async fn replace(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(def): ApiJson<ResponderDef>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
-    let old = load(&state, guild, row_id(&params)?).await?;
+    let old = load(&state, guild, row_id(&params, lang)?).await?;
     let def = def.clean()?;
     if def == old.def {
         return Ok(Json(responder_json(&old)));
@@ -174,8 +182,9 @@ pub async fn set_enabled(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<EnabledBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
-    let old = load(&state, guild, row_id(&params)?).await?;
+    let old = load(&state, guild, row_id(&params, lang)?).await?;
     let wanted = body.enabled;
     if old.def.enabled == wanted {
         return Ok(Json(responder_json(&old)));
@@ -219,11 +228,12 @@ pub async fn delete(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let removed = state
         .app
         .db
-        .delete_custom_responder(guild, row_id(&params)?)
+        .delete_custom_responder(guild, row_id(&params, lang)?)
         .await?
         .ok_or_else(ApiError::not_found)?;
     audit::finish(
@@ -297,7 +307,8 @@ pub async fn test(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let row = load(&state, managed.id, row_id(&params)?).await?;
+    let lang = managed.panel_lang;
+    let row = load(&state, managed.id, row_id(&params, lang)?).await?;
     preview_of(&state, &managed, &row.def).await
 }
 
@@ -326,6 +337,7 @@ pub async fn import(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<ImportBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     if body.version.is_some_and(|v| v != Export::<ResponderDef>::VERSION) {
         return Err(ApiError::malformed(
@@ -333,8 +345,10 @@ pub async fn import(
         ));
     }
     if body.items.len() > IMPORT_MAX {
-        return Err(ApiError::limit(format!(
-            "An import carries at most {IMPORT_MAX} responders."
+        return Err(ApiError::limit(t!(
+            lang,
+            "command_control_web.errors.responders-import-limit",
+            max = IMPORT_MAX
         )));
     }
     let db = &state.app.db;
@@ -387,7 +401,7 @@ pub async fn import(
                 }
                 created.push(name);
             }
-            TagWrite::Full => failed.push(fail(&label, full().message)),
+            TagWrite::Full => failed.push(fail(&label, full(lang).message)),
             TagWrite::NameTaken | TagWrite::Gone => failed.push(fail(&label, "It could not be saved.".to_owned())),
         }
     }

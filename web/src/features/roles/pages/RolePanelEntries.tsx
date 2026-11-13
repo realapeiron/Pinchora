@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { DurationInput } from "../components/DurationInput";
 import { Field } from "../../../components/Field";
@@ -53,9 +54,9 @@ export function RolePanelEntries({
         </PixelButton>
       </div>
       {draft.roles.length === 0 && (
-        <p className="empty-row muted">{spaTranslate("No roles on this panel yet.")}</p>
+        <p className="empty-row muted">{deferredText("No roles on this panel yet.")}</p>
       )}
-      <ol className="entry-list" aria-label={spaTranslate("Roles on the panel")}>
+      <ol className="entry-list" aria-label={deferredText("Roles on the panel")}>
         {draft.roles.map((row, index) => {
           const picked = info?.roles.find((r) => r.id === row.role_id);
           const kept = saved.roles.some((r) => r.role_id === row.role_id);
@@ -92,22 +93,22 @@ export function RolePanelEntries({
                 <Field
                   label={spaTranslate("Emoji")}
                   htmlFor={`${id}-emoji`}
-                  hint={draft.style === "reactions" ? spaTranslate("Needed: it is the reaction.") : undefined}
+                  hint={draft.style === "reactions" ? deferredText("Needed: it is the reaction.") : undefined}
                 >
                   <input
                     id={`${id}-emoji`}
                     className="pixel-input"
                     value={row.emoji ?? ""}
                     maxLength={64}
-                    placeholder={spaTranslate("🎮 or <:name:id>")}
+                    placeholder={deferredText("🎮 or <:name:id>")}
                     onChange={(event) => setRow(row.key, { emoji: event.target.value || null })}
                   />
                 </Field>
                 <div>
                   <Field
-                    label={spaTranslate("Line under the label")}
+                    label={deferredText("Line under the label")}
                     htmlFor={`${id}-line`}
-                    hint={draft.style === "select" ? spaTranslate("Shown in the menu.") : undefined}
+                    hint={draft.style === "select" ? deferredText("Shown in the menu.") : undefined}
                   >
                     <input
                       id={`${id}-line`}
@@ -119,9 +120,9 @@ export function RolePanelEntries({
                   </Field>
                 </div>
                 <Field
-                  label={spaTranslate("Lasts")}
+                  label={deferredText("Lasts")}
                   htmlFor={`${id}-lasts`}
-                  hint={spaTranslate("After a member takes it; 0 keeps it.")}
+                  hint={deferredText("After a member takes it; 0 keeps it.")}
                 >
                   <DurationInput
                     id={`${id}-lasts`}
@@ -134,7 +135,7 @@ export function RolePanelEntries({
               <div className="entry-tools">
                 <PixelButton
                   variant="secondary"
-                  aria-label={spaTranslate("Move {arg1} up", { arg1: row.label || "this role" })}
+                  aria-label={deferredText("Move {arg1} up", { arg1: row.label || "this role" })}
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
                 >
@@ -142,7 +143,7 @@ export function RolePanelEntries({
                 </PixelButton>
                 <PixelButton
                   variant="secondary"
-                  aria-label={spaTranslate("Move {arg1} down", { arg1: row.label || "this role" })}
+                  aria-label={deferredText("Move {arg1} down", { arg1: row.label || "this role" })}
                   disabled={index === draft.roles.length - 1}
                   onClick={() => move(index, 1)}
                 >
@@ -168,7 +169,7 @@ export function RolePanelEntries({
       {warnings.length > 0 && (
         <p className="notice">
           {" "}
-          {spaTranslate("A reactions panel needs its own emoji on every role:")} {warnings.join(" ")}
+          {deferredText("A reactions panel needs its own emoji on every role:")} {warnings.join(" ")}
         </p>
       )}
     </div>

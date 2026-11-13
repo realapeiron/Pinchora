@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
 import { Icon } from "../../../components/icons/Icon";
@@ -71,7 +72,7 @@ export function ServerPicker({
         <ServerIcon id={guildId} name={guildName} url={guildIcon} size={36} />
         <span>
           <strong>{guildName}</strong>
-          <small>{t("Switch server")}</small>
+          <small>{deferredText("Switch server")}</small>
         </span>
         <Icon name="chevrons-up-down" />
       </button>
@@ -119,7 +120,7 @@ export function ServerPicker({
               trigger.current?.focus();
             }}
           >
-            {t("Switch server")}
+            {deferredText("Switch server")}
           </NavLink>
         </div>
       )}

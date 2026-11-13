@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { translate } from "../../../i18n";
@@ -168,7 +169,7 @@ export function CommandPalette({
                   <small>{item.hint}</small>
                 </button>
               ))}
-              {!items.length && <div className="command-empty">{t("No page matches.")}</div>}
+              {!items.length && <div className="command-empty">{deferredText("No page matches.")}</div>}
             </div>
           </div>
         </div>

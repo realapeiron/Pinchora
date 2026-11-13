@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { roomName, type Creator } from "../api/tempVoice";
 import { t, tf } from "../api/tempVoiceI18n";
@@ -23,7 +24,7 @@ export function RoomPreview({
           : roomName(value.name_template, SAMPLE_OWNER, rooms + 1)}
       </strong>
       <span>
-        {t(value.default_locked ? spaTranslate("Starts locked") : spaTranslate("Starts open"))} ·{" "}
+        {t(value.default_locked ? deferredText("Starts locked") : deferredText("Starts open"))} ·{" "}
         {value.default_limit
           ? tf(spaTranslate("{count} people"), { count: value.default_limit })
           : t("No people limit")}

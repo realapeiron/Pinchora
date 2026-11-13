@@ -160,7 +160,7 @@ pub async fn put_module(
         .ok_or_else(ApiError::not_found)?;
     authorize_module(&state, &managed, module).await?;
     let db = &state.app.db;
-    let lang = state.app.guild_lang(guild).await;
+    let lang = managed.panel_lang;
     let before = db
         .module_states(guild)
         .await?
@@ -183,7 +183,7 @@ pub async fn put_module(
         let list: Vec<u64> = match &body.channels {
             Some(raw) => raw
                 .iter()
-                .map(|id| parse_id(id).ok_or_else(|| ApiError::malformed("Channel ids are numbers.")))
+                .map(|id| parse_id(id).ok_or_else(|| ApiError::malformed(t!(lang, "common.web.errors.channel-ids"))))
                 .collect::<ApiResult<_>>()?,
             None if mode == before.mode => before.channels.clone(),
             None => Vec::new(),

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useRef, useState, type ChangeEvent } from "react";
 import { translate as tr } from "../../../i18n";
 import { Field } from "../../../components/Field";
@@ -42,7 +43,8 @@ export function LevelingPolicyExtras({
       setFile(loaded.data);
       setFormat(loaded.format);
     } catch {
-      if (version === fileVersion.current) setFileError(tr("File must be readable and at most 2 MB."));
+      if (version === fileVersion.current)
+        setFileError(deferredText("File must be readable and at most 2 MB."));
     }
   };
   return (
@@ -56,7 +58,7 @@ export function LevelingPolicyExtras({
         <div className="settings-detail-fields">
           <span className="pixel-label muted">{data.voiceRoles.data?.items.length ?? 0}/25</span>
           <p className="muted panel-lead">
-            {tr("When separate voice levels are on, members earn these roles from voice time.")}
+            {deferredText("When separate voice levels are on, members earn these roles from voice time.")}
           </p>
           {data.voiceRoles.data?.items.length ? (
             <ul className="list">
@@ -79,7 +81,7 @@ export function LevelingPolicyExtras({
               ))}
             </ul>
           ) : (
-            <p className="muted">{tr("No voice level roles yet.")}</p>
+            <p className="muted">{deferredText("No voice level roles yet.")}</p>
           )}
           <div className="add-row">
             <Field label={tr("Voice level")} htmlFor="voice-role-level">
@@ -136,7 +138,9 @@ export function LevelingPolicyExtras({
       >
         <div className="settings-detail-fields">
           <p className="muted panel-lead">
-            {tr("The current UTC week starts Monday. Members with the most new server XP appear here.")}
+            {deferredText(
+              "The current UTC week starts Monday. Members with the most new server XP appear here.",
+            )}
           </p>
           {data.highlights.data?.items.length ? (
             <ol>
@@ -163,12 +167,12 @@ export function LevelingPolicyExtras({
       >
         <div className="settings-detail-fields">
           <p className="muted panel-lead">
-            {tr(
+            {deferredText(
               "Upload an Arcane, Lurkr or Amari style JSON or CSV export. Preview the rows before applying them. Files stay private to this session for ten minutes.",
             )}
           </p>
           <div className="form-grid">
-            <Field label={tr("Export file")} htmlFor="parity-file">
+            <Field label={deferredText("Export file")} htmlFor="parity-file">
               <input
                 id="parity-file"
                 type="file"
@@ -176,7 +180,7 @@ export function LevelingPolicyExtras({
                 onChange={readFile}
               />
             </Field>
-            <Field label={tr("How to combine XP")} htmlFor="parity-mode">
+            <Field label={deferredText("How to combine XP")} htmlFor="parity-mode">
               <select
                 id="parity-mode"
                 className="pixel-input pixel-select"
@@ -187,8 +191,8 @@ export function LevelingPolicyExtras({
                   setPreviewId(null);
                 }}
               >
-                <option value="merge">{tr("Keep higher XP")}</option>
-                <option value="replace">{tr("Use imported XP")}</option>
+                <option value="merge">{deferredText("Keep higher XP")}</option>
+                <option value="replace">{deferredText("Use imported XP")}</option>
               </select>
             </Field>
           </div>
@@ -211,7 +215,7 @@ export function LevelingPolicyExtras({
               );
             }}
           >
-            {tr("Preview import")}
+            {deferredText("Preview import")}
           </PixelButton>
           {data.preview.isError && (
             <p role="alert" className="field-error">
@@ -221,8 +225,8 @@ export function LevelingPolicyExtras({
           {previewId && data.preview.data && (
             <div>
               <p>
-                {tr("Members in file")}: {data.preview.data.count} · {tr("Members changing")}:{" "}
-                {data.preview.data.changed}
+                {deferredText("Members in file")}: {data.preview.data.count} ·{" "}
+                {deferredText("Members changing")}: {data.preview.data.changed}
               </p>
               <ol>
                 {data.preview.data.sample.map((row) => (
@@ -235,13 +239,13 @@ export function LevelingPolicyExtras({
                 disabled={data.apply.isPending}
                 onClick={() => data.apply.mutate(previewId, { onSuccess: () => setPreviewId(null) })}
               >
-                {tr("Apply import")}
+                {deferredText("Apply import")}
               </PixelButton>
             </div>
           )}
           {data.apply.isSuccess && (
             <p role="status">
-              {tr("Import complete")}: {data.apply.data.updated}/{data.apply.data.checked}
+              {deferredText("Import complete")}: {data.apply.data.updated}/{data.apply.data.checked}
             </p>
           )}
           {data.apply.isError && (

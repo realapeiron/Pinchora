@@ -1,6 +1,6 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
-import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
 import { channelLabel } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
@@ -115,7 +115,7 @@ export function TempVoiceBody({ guild, data }: { guild: string; data: TempVoiceD
             error={refused ? refused.message : null}
             hint={
               data.creators.length >= data.limits.max_creators
-                ? tf(spaTranslate("A server can have {count} creators. Remove one to add another."), {
+                ? tf(deferredText("A server can have {count} creators. Remove one to add another."), {
                     count: data.limits.max_creators,
                   })
                 : voices.length === 0 && discord.data
@@ -158,7 +158,7 @@ export function TempVoiceBody({ guild, data }: { guild: string; data: TempVoiceD
             {dt("{count} of {max} live rooms open", { count: data.rooms.length, max: data.limits.max_rooms })}
           </span>
           <span className="visually-hidden">
-            {tf(spaTranslate("{open} of {max} rooms open"), {
+            {tf(deferredText("{open} of {max} rooms open"), {
               open: data.rooms.length,
               max: data.limits.max_rooms,
             })}

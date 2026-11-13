@@ -49,3 +49,6 @@ modmail-denied = "Burada destek görüşmesi başlatamazsın."
 admin-only = "Sunucuyu Yönet yetkisi gerekiyor."
 
 form-decided = "Başvuru güncellendi."
+
+[community_engagement.web.errors]
+this-server-already-has-10-forms = "Bu sunucuda zaten 10 form var."

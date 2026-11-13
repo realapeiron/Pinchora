@@ -343,6 +343,14 @@ mod tests {
     }
 
     #[test]
+    fn voice_level_role_limit_uses_correct_turkish_noun() {
+        assert_eq!(
+            t!(Lang::Tr, "xp.web.errors.a-server-can-have-25-voice-level-roles"),
+            "Bir sunucuda en fazla 25 ses seviyesi rolü olabilir."
+        );
+    }
+
+    #[test]
     fn missing_keys_fall_back_to_english_then_the_key() {
         let catalogs = load(&[
             ("en", "a", "[x]\nonly = \"English {n}\"\nboth = \"Hello\""),

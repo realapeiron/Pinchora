@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { GuildInfo } from "../../../lib/api";
 import { t } from "../../../i18n/dashboard";
 import type { Board, StarboardData, VoteChannel } from "../api/starboard";
@@ -12,7 +13,7 @@ export function starboardSummary(data: StarboardData) {
       ? t(data.votes.length === 1 ? "{count} vote channel" : "{count} vote channels", {
           count: data.votes.length,
         })
-      : t("No vote channels yet."),
+      : deferredText("No vote channels yet."),
   };
 }
 export function boardSummary(board: Board, info: GuildInfo | undefined) {

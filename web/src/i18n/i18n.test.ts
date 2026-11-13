@@ -1,10 +1,29 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 
-import { date, number, plural, serverText, setLocale, translate } from ".";
+import {
+  clearUser,
+  configureGuild,
+  configureUser,
+  date,
+  locale,
+  number,
+  plural,
+  serverText,
+  setLocale,
+  translate,
+} from ".";
 import { t as dashboardText, dashboardEn, dashboardTr } from "./dashboard";
+import { adminEn } from "./dashboard-admin-en";
+import { adminTr } from "./dashboard-admin-tr";
+import { communityEn } from "./dashboard-community-en";
+import { communityTr } from "./dashboard-community-tr";
+import { dashboardEn as baseDashboardEn } from "./dashboard-en";
+import { dashboardTr as baseDashboardTr } from "./dashboard-tr";
+import { settingsEn } from "./dashboard-settings-en";
+import { settingsTr } from "./dashboard-settings-tr";
 import { en } from "./en";
 import { tr } from "./tr";
 import { t as workflowText, workflowEn, workflowTr } from "./workflows";
@@ -29,6 +48,42 @@ function rustFiles(directory: string): string[] {
 }
 
 describe("SPA message catalogs", () => {
+  it("uses the manager's browser language before the guild language when no choice is saved", () => {
+    vi.stubGlobal("navigator", { language: "en-US" });
+    configureUser("unsaved-panel-language", null);
+    configureGuild("tr");
+    expect(locale()).toBe("en");
+    clearUser();
+    vi.unstubAllGlobals();
+  });
+  it("ignores an old local choice when the account has no saved panel choice", () => {
+    vi.stubGlobal("navigator", { language: "en-US" });
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => (key === "pinchora.language.stale-panel-choice" ? "tr" : null),
+    });
+    configureUser("stale-panel-choice", null);
+    expect(locale()).toBe("en");
+    clearUser();
+    vi.unstubAllGlobals();
+  });
+  it("keeps dashboard areas disjoint and complete in Turkish", () => {
+    const areas: [Record<string, string>, Record<string, string>][] = [
+      [baseDashboardEn, baseDashboardTr],
+      [adminEn, adminTr],
+      [communityEn, communityTr],
+      [settingsEn, settingsTr],
+    ];
+    const seen = new Set<string>();
+    for (const [english, turkish] of areas) {
+      expect(Object.keys(turkish).sort()).toEqual(Object.keys(english).sort());
+      for (const key of Object.keys(english)) {
+        expect(seen.has(key), key).toBe(false);
+        expect(key in en || key in tr, key).toBe(false);
+        expect((turkish[key] ?? "").trim().length, key).toBeGreaterThan(0);
+        seen.add(key);
+      }
+    }
+  });
   it("uses singular and plural warning hints in both languages", async () => {
     await setLocale("en");
     expect(
@@ -140,17 +195,31 @@ describe("SPA message catalogs", () => {
     const missing: string[] = [];
     for (const file of sourceFiles(join(process.cwd(), "src"))) {
       const code = readFileSync(file, "utf8");
-      const dashboardCall = code.includes('from "../../../i18n/dashboard"');
+      const dashboardNames = new Set<string>();
       const tree = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
+      for (const statement of tree.statements) {
+        if (
+          ts.isImportDeclaration(statement) &&
+          ts.isStringLiteral(statement.moduleSpecifier) &&
+          statement.moduleSpecifier.text.endsWith("/i18n/dashboard") &&
+          statement.importClause?.namedBindings &&
+          ts.isNamedImports(statement.importClause.namedBindings)
+        ) {
+          for (const element of statement.importClause.namedBindings.elements) {
+            if ((element.propertyName?.text ?? element.name.text) === "t")
+              dashboardNames.add(element.name.text);
+          }
+        }
+      }
       const visit = (node: ts.Node): void => {
         const callee = ts.isCallExpression(node) ? node.expression.getText(tree) : "";
         if (
           ts.isCallExpression(node) &&
-          (["translate", "spaTranslate"].includes(callee) || (dashboardCall && callee === "t")) &&
+          (["translate", "spaTranslate"].includes(callee) || dashboardNames.has(callee)) &&
           node.arguments[0] &&
           ts.isStringLiteral(node.arguments[0]) &&
           !(node.arguments[0].text in en) &&
-          !(dashboardCall && callee === "t" && node.arguments[0].text in dashboardEn)
+          !(dashboardNames.has(callee) && node.arguments[0].text in dashboardEn)
         ) {
           missing.push(`${file}: ${node.arguments[0].text}`);
         }

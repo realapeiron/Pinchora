@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -47,10 +48,10 @@ export function ResponsesEditor({
       error={error}
       hint={
         responses.length > 1
-          ? spaTranslate("One of these is picked at random each time.")
+          ? deferredText("One of these is picked at random each time.")
           : optional
-            ? spaTranslate("Optional text above the embed.")
-            : spaTranslate("What the bot says. Add more replies to have it pick one at random.")
+            ? deferredText("Optional text above the embed.")
+            : deferredText("What the bot says. Add more replies to have it pick one at random.")
       }
     >
       <div className="variants">
@@ -60,7 +61,7 @@ export function ResponsesEditor({
             <div key={index} className="variant">
               <div className="variant-head">
                 <span className="pixel-label muted">
-                  {responses.length > 1 ? spaTranslate("REPLY {arg1}", { arg1: index + 1 }) : "TEXT"}
+                  {responses.length > 1 ? deferredText("REPLY {arg1}", { arg1: index + 1 }) : "TEXT"}
                 </span>
                 <span className={`counter ${length > LIMITS.response_max ? "is-over" : ""}`}>
                   {length}/{LIMITS.response_max}
@@ -69,7 +70,7 @@ export function ResponsesEditor({
                   <PixelButton
                     variant="ghost"
                     className="button-small"
-                    aria-label={spaTranslate("Remove reply {arg1}", { arg1: index + 1 })}
+                    aria-label={deferredText("Remove reply {arg1}", { arg1: index + 1 })}
                     onClick={() => {
                       onChange(responses.filter((_, i) => i !== index));
                       setLast(0);
@@ -81,7 +82,7 @@ export function ResponsesEditor({
               </div>
               <textarea
                 id={`reply-${index}`}
-                aria-label={spaTranslate("Reply {arg1}", { arg1: index + 1 })}
+                aria-label={deferredText("Reply {arg1}", { arg1: index + 1 })}
                 ref={(el) => {
                   areas.current[index] = el;
                 }}
@@ -108,7 +109,7 @@ export function ResponsesEditor({
             }}
           >
             {" "}
-            {spaTranslate("Add another reply (")}
+            {deferredText("Add another reply (")}
             {responses.length}/{LIMITS.max_responses})
           </PixelButton>
         </div>

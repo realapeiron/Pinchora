@@ -50,3 +50,5 @@ confession-report-alert = "Confession #{id} was reported. Review it with /confes
 action-thread = "Thread"
 action-crosspost = "Crosspost"
 thread-name = "Discussion"
+
+[community_tools.web.errors]

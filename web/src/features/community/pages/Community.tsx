@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { dateTime } from "../../../i18n";
 import { translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
@@ -39,7 +40,7 @@ export function Community() {
         "Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations.",
       )}
     >
-      {query.isPending && <Loading label={spaTranslate("Reading the settings")} />}
+      {query.isPending && <Loading label={deferredText("Reading the settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <CommunityForm guild={guild} saved={query.data} modules={data.modules} />}
     </SettingsPage>
@@ -54,7 +55,7 @@ function ModuleOff({ guild, modules, module }: { guild: string; modules: ModuleE
     <p className="notice" role="note">
       <strong>{spaTranslate(found.label)}</strong> {spaTranslate("is switched off in")}{" "}
       <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
-      {spaTranslate(", so nothing here does anything until you switch it on.")}{" "}
+      {deferredText(", so nothing here does anything until you switch it on.")}{" "}
     </p>
   );
 }
@@ -145,10 +146,10 @@ function CommunityForm({
         >
           <ModuleOff guild={guild} modules={modules} module="suggestions" />
           <Field
-            label={spaTranslate("Suggestion channel")}
+            label={deferredText("Suggestion channel")}
             htmlFor="suggestion-channel"
             error={suggestionsChanged ? fieldError("suggestions", "channel_id") : null}
-            hint={spaTranslate(
+            hint={deferredText(
               "Members post ideas with /suggest; everyone votes with buttons, managers approve or deny.",
             )}
           >
@@ -158,7 +159,7 @@ function CommunityForm({
               info={discord.data}
               value={suggestions}
               onChange={setSuggestions}
-              none={spaTranslate("No channel yet: /suggest asks for one")}
+              none={deferredText("No channel yet: /suggest asks for one")}
             />
           </Field>
         </SettingsRow>
@@ -170,19 +171,19 @@ function CommunityForm({
           summary={summary.critters}
           enabled={enabled}
           onToggle={setEnabled}
-          toggleLabel={spaTranslate("Chat drops")}
+          toggleLabel={deferredText("Chat drops")}
         >
           <ModuleOff guild={guild} modules={modules} module="collection" />
           <p className="panel-lead muted">
-            {spaTranslate(
+            {deferredText(
               "While people chat, critters and message bottles now and then wash up for the quickest to grab. Off until a server turns it on.",
             )}
           </p>
           <Field
-            label={spaTranslate("Where they land")}
+            label={deferredText("Where they land")}
             htmlFor="critter-channel"
             error={crittersChanged ? fieldError("critters", "channel_id") : null}
-            hint={spaTranslate("Only chat in a set channel counts towards a drop.")}
+            hint={deferredText("Only chat in a set channel counts towards a drop.")}
           >
             <ChannelPicker
               posting
@@ -190,7 +191,7 @@ function CommunityForm({
               info={discord.data}
               value={critterChannel}
               onChange={setCritterChannel}
-              none={spaTranslate("Anywhere busy")}
+              none={deferredText("Anywhere busy")}
             />
           </Field>
         </SettingsRow>
@@ -202,20 +203,20 @@ function CommunityForm({
           summary={summary.surge}
           enabled={surgeOn}
           onToggle={setSurgeOn}
-          toggleLabel={spaTranslate("Timed storms")}
+          toggleLabel={deferredText("Timed storms")}
         >
           <ModuleOff guild={guild} modules={modules} module="party" />
           <p className="panel-lead muted">
-            {spaTranslate(
+            {deferredText(
               "A storm surge comes to a channel on a schedule: everyone stacks sandbags to hold the wall. Off until a server turns it on; managers can always call one with /surge.",
             )}
           </p>
           <div className="form-grid form-grid-2">
             <Field
-              label={spaTranslate("Storm channel")}
+              label={deferredText("Storm channel")}
               htmlFor="surge-channel"
               error={surgeChanged ? fieldError("surge", "channel_id") : null}
-              hint={surgeOn && !surgeChannel ? spaTranslate("Pick the channel storms come to.") : undefined}
+              hint={surgeOn && !surgeChannel ? deferredText("Pick the channel storms come to.") : undefined}
             >
               <ChannelPicker
                 posting
@@ -226,12 +227,12 @@ function CommunityForm({
               />
             </Field>
             <Field
-              label={spaTranslate("How often")}
+              label={deferredText("How often")}
               htmlFor="surge-every"
               error={surgeChanged ? fieldError("surge", "every_hours") : null}
               hint={
                 saved.surge.next_at
-                  ? spaTranslate("The next one comes {arg1}.", { arg1: dateTime(saved.surge.next_at) })
+                  ? deferredText("The next one comes {arg1}.", { arg1: dateTime(saved.surge.next_at) })
                   : undefined
               }
             >
@@ -245,7 +246,7 @@ function CommunityForm({
                   <option key={hours} value={hours}>
                     {EVERY[hours]
                       ? spaTranslate(EVERY[hours])
-                      : spaTranslate("Every {arg1} hours", { arg1: hours })}
+                      : deferredText("Every {arg1} hours", { arg1: hours })}
                   </option>
                 ))}
               </select>

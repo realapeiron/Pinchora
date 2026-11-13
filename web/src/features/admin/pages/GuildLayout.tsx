@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { ServerToolsOutlet } from "../../moderation";
 import { canOpenPage } from "../../moderation";
 import { translate as spaTranslate } from "../../../i18n";
@@ -152,7 +153,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
                 offNote: currentModule && !currentModule.enabled ? t("Module off note") : undefined,
               }}
             >
-              {overview.isPending && <Loading label={t("Opening the server")} />}
+              {overview.isPending && <Loading label={deferredText("Opening the server")} />}
               {overview.isError && <GuildProblem error={overview.error} />}
               {overview.isSuccess && (
                 <OverviewActions.Provider value={{ openPalette: () => openPalette() }}>
@@ -205,8 +206,8 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
 function GuildProblem({ error }: { error: Error }) {
   if (error instanceof ApiError && error.code === "bot_missing") {
     return (
-      <Panel title={t("Pinchora is not here yet")} tone="gold">
-        <p>{t("Add the bot to this server first, then come back to set it up.")}</p>
+      <Panel title={deferredText("Pinchora is not here yet")} tone="gold">
+        <p>{deferredText("Add the bot to this server first, then come back to set it up.")}</p>
         {error.inviteUrl && (
           <PixelLink href={error.inviteUrl} target="_blank" rel="noopener noreferrer">
             {t("Add Pinchora")}
@@ -217,7 +218,7 @@ function GuildProblem({ error }: { error: Error }) {
   }
   if (error instanceof ApiError && error.code === "not_manager") {
     return (
-      <Panel title={spaTranslate("Not your server")} tone="accent">
+      <Panel title={deferredText("Not your server")} tone="accent">
         <p>{error.message}</p>
         <PixelLink variant="secondary" href="/servers">
           {" "}

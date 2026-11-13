@@ -31,3 +31,8 @@ empty = "NOTHING HERE YET"
 [card.days]
 one = "{count} DAY"
 other = "{count} DAYS"
+
+[cards.web.errors]
+the-kind-is-welcome-goodbye-boost-or-level-up = "The kind is welcome, goodbye, boost or level_up."
+that-saved-version-no-longer-exists = "That saved version no longer exists."
+dm-unavailable = "Discord could not open your direct messages."

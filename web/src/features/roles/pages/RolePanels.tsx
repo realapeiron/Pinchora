@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { plural as spaPlural, translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Panel } from "../../../components/Panel";
@@ -71,7 +72,7 @@ export function RolePanels({
             setDraft(draftOf(panel));
             setEditing(panel.id);
           }
-          setToast(spaTranslate("Panel saved."));
+          setToast(deferredText("Panel saved."));
         },
       },
     );
@@ -81,7 +82,7 @@ export function RolePanels({
   return (
     <>
       <Panel
-        title={spaTranslate("ROLE PANELS")}
+        title={deferredText("ROLE PANELS")}
         aside={
           <span className="pixel-label muted">
             {spaPlural(panels.length, { one: "{count} panel", other: "{count} panels" })}
@@ -90,7 +91,7 @@ export function RolePanels({
       >
         <p className="muted panel-lead">
           {" "}
-          {spaTranslate(
+          {deferredText(
             "A message where members pick their own roles: with buttons, a menu or reactions. The bot posts it, and edits the same message when you change the panel.",
           )}{" "}
         </p>
@@ -98,7 +99,7 @@ export function RolePanels({
         {panels.length === 0 ? (
           <p className="empty-row muted">{spaTranslate("No panels yet.")}</p>
         ) : (
-          <div className="settings-detail-list role-panel-settings" aria-label={spaTranslate("Role panels")}>
+          <div className="settings-detail-list role-panel-settings" aria-label={deferredText("Role panels")}>
             {panels.map((panel) => (
               <div key={panel.id} data-panel={panel.id}>
                 <SettingsRow
@@ -118,14 +119,14 @@ export function RolePanels({
                       {panel.channel_id ? (
                         <ChannelTag info={info} id={panel.channel_id} />
                       ) : (
-                        <span className="badge badge-gold">{spaTranslate("DRAFT")}</span>
+                        <span className="badge badge-gold">{deferredText("DRAFT")}</span>
                       )}
                     </p>
                     <div className="panel-card-actions">
                       <PixelButton
                         variant="secondary"
                         className="button-small"
-                        aria-label={spaTranslate("Edit {arg1}", { arg1: panel.title })}
+                        aria-label={deferredText("Edit {arg1}", { arg1: panel.title })}
                         onClick={() => open(panel)}
                       >
                         {spaTranslate("Edit")}
@@ -162,7 +163,7 @@ export function RolePanels({
                         <PixelButton
                           variant="ghost"
                           className="button-small"
-                          aria-label={spaTranslate("Delete {arg1}", { arg1: panel.title })}
+                          aria-label={deferredText("Delete {arg1}", { arg1: panel.title })}
                           onClick={() => setConfirmDelete(panel.id)}
                         >
                           {spaTranslate("Delete")}
@@ -231,7 +232,7 @@ export function RolePanels({
           serverProblem && serverProblem.field !== "channel_id"
             ? serverProblem.message
             : local
-              ? spaTranslate("Fix first: {arg1}", { arg1: local.message })
+              ? deferredText("Fix first: {arg1}", { arg1: local.message })
               : null
         }
         onSave={save}

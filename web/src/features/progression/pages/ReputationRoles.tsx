@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
@@ -22,7 +23,7 @@ export function RepRoles({ guild, info }: { guild: string; info: GuildInfo | und
   const [role, setRole] = useState<string | null>(null);
   const picked = info?.roles.find((r) => r.id === role);
   const local =
-    reputation === "" ? spaTranslate("Write a count.") : problem(checkReputation(Number(reputation)));
+    reputation === "" ? deferredText("Write a count.") : problem(checkReputation(Number(reputation)));
   const items = query.data?.items ?? [];
   return (
     <SettingsRow
@@ -40,12 +41,12 @@ export function RepRoles({ guild, info }: { guild: string; info: GuildInfo | und
         </span>
         <p className="muted panel-lead">
           {" "}
-          {spaTranslate(
+          {deferredText(
             "Roles members get the moment their reputation reaches a count. They keep every one.",
           )}{" "}
         </p>
         {items.length === 0 ? (
-          <p className="empty-row muted">{spaTranslate("No reputation roles yet.")}</p>
+          <p className="empty-row muted">{deferredText("No reputation roles yet.")}</p>
         ) : (
           <ul className="list" aria-label={spaTranslate("Reputation roles")}>
             {items.map((row) => (
@@ -59,7 +60,7 @@ export function RepRoles({ guild, info }: { guild: string; info: GuildInfo | und
                 <PixelButton
                   variant="ghost"
                   className="button-small"
-                  aria-label={spaTranslate("Remove reputation role")}
+                  aria-label={deferredText("Remove reputation role")}
                   disabled={write.isPending}
                   onClick={() => write.mutate({ method: "DELETE", sub: `/${row.role_id}` })}
                 >

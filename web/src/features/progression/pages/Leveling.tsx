@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useOutletContext } from "react-router";
 
@@ -57,8 +58,8 @@ export function Leveling() {
   return (
     <SettingsPage
       className="settings-page"
-      title={spaTranslate("LEVELING")}
-      lead={spaTranslate(
+      title={deferredText("LEVELING")}
+      lead={deferredText(
         "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.",
       )}
     >
@@ -89,7 +90,7 @@ export function Leveling() {
                   label={spaTranslate("Level-up channel")}
                   htmlFor="levelup-channel"
                   error={errors.levelup_channel_id}
-                  hint={spaTranslate("Empty posts where the member chatted.")}
+                  hint={deferredText("Empty posts where the member chatted.")}
                 >
                   <ChannelPicker
                     posting
@@ -126,7 +127,7 @@ export function Leveling() {
         >
           <div className="settings-detail-fields">
             <p className="muted">
-              {spaTranslate(
+              {deferredText(
                 "Members in a voice channel with someone else earn XP every minute; not while muted or deafened, and not in the AFK channel.",
               )}
             </p>
@@ -149,7 +150,7 @@ export function Leveling() {
             </Field>
             {value.voice_xp_enabled && !value.leveling_enabled && (
               <p className="notice">
-                {spaTranslate("Leveling is off, so nobody earns XP. Turn it on above.")}
+                {deferredText("Leveling is off, so nobody earns XP. Turn it on above.")}
               </p>
             )}
           </div>

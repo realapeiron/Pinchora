@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
@@ -27,7 +28,7 @@ export function ApplicationSection() {
       summary={summary.forms ?? dt("No application forms yet")}
     >
       <p className="panel-lead muted">
-        {t(
+        {deferredText(
           "Build up to ten forms with five questions each. Applicants answer in a private Discord modal; staff review submissions here.",
         )}
       </p>
@@ -36,12 +37,12 @@ export function ApplicationSection() {
         disabled={data.forms.length >= 10}
         onClick={() => setForm({ ...emptyForm, questions: [""] })}
       >
-        {t("New form")}
+        {deferredText("New form")}
       </button>
       {form && (
         <div className="community-pack-editor">
           <label>
-            {t("Form name")}
+            {deferredText("Form name")}
             <input
               className="pixel-input"
               maxLength={45}
@@ -51,7 +52,7 @@ export function ApplicationSection() {
           </label>
           {form.questions.map((question, index) => (
             <label key={index}>
-              {t("Question {number}", { number: index + 1 })}
+              {deferredText("Question {number}", { number: index + 1 })}
               <input
                 className="pixel-input"
                 maxLength={45}
@@ -69,7 +70,7 @@ export function ApplicationSection() {
             disabled={form.questions.length >= 5}
             onClick={() => setForm({ ...form, questions: [...form.questions, ""] })}
           >
-            {t("Add question")}
+            {deferredText("Add question")}
           </button>
           <label>
             {t("Review channel")}
@@ -82,7 +83,7 @@ export function ApplicationSection() {
             />
           </label>
           <label>
-            {t("Acceptance role")}
+            {deferredText("Acceptance role")}
             <select
               className="pixel-input pixel-select"
               value={form.accept_role_id ?? ""}
@@ -104,10 +105,10 @@ export function ApplicationSection() {
               checked={form.dm_result}
               onChange={(e) => setForm({ ...form, dm_result: e.target.checked })}
             />
-            {t("DM the decision")}
+            {deferredText("DM the decision")}
           </label>
           <fieldset className="community-pack-roles">
-            <legend>{t("Review roles")}</legend>
+            <legend>{deferredText("Review roles")}</legend>
             {info?.roles.map((role) => (
               <label key={role.id} className="community-pack-check">
                 <input
@@ -132,7 +133,7 @@ export function ApplicationSection() {
               checked={form.open}
               onChange={(e) => setForm({ ...form, open: e.target.checked })}
             />
-            {t("Accept applications")}
+            {deferredText("Accept applications")}
           </label>
           <div className="community-pack-actions">
             <button
@@ -149,7 +150,7 @@ export function ApplicationSection() {
                   setForm(null);
               }}
             >
-              {t("Save form")}
+              {deferredText("Save form")}
             </button>
             <button onClick={() => setForm(null)}>{t("Cancel")}</button>
           </div>
@@ -157,7 +158,7 @@ export function ApplicationSection() {
       )}
       <div className="community-pack-list">
         <label>
-          {t("Post form in")}
+          {deferredText("Post form in")}
           <ChannelPicker
             posting
             info={info}
@@ -181,12 +182,12 @@ export function ApplicationSection() {
               disabled={busy || !postChannel || !item.open}
               onClick={() => void write(`/forms/${item.id}/post`, "POST", { channel_id: postChannel })}
             >
-              {t("Post button")}
+              {deferredText("Post button")}
             </button>
           </article>
         ))}
       </div>
-      <h3>{t("Recent submissions")}</h3>
+      <h3>{deferredText("Recent submissions")}</h3>
       <div className="community-pack-list">
         {data.submissions.map((item) => (
           <article key={item.id}>
@@ -196,7 +197,7 @@ export function ApplicationSection() {
               {item.status === "pending"
                 ? t("Pending")
                 : item.status === "accepted"
-                  ? t("Approved")
+                  ? deferredText("Approved")
                   : t("Declined")}
             </span>
             <p>
@@ -226,7 +227,7 @@ export function ApplicationSection() {
                     })
                   }
                 >
-                  {t("Deny")}
+                  {deferredText("Deny")}
                 </button>
               </div>
             )}

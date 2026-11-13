@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { ChannelPicker, ChannelTag } from "../../../components/Pickers";
@@ -20,7 +21,7 @@ export function ModuleChannels({
   return (
     <div className="module-channels">
       {channels.length === 0 ? (
-        <p className="muted">{spaTranslate("No channels yet.")}</p>
+        <p className="muted">{deferredText("No channels yet.")}</p>
       ) : (
         <ul className="channel-chips" aria-label={spaTranslate("Channels")}>
           {channels.map((id) => (
@@ -42,12 +43,12 @@ export function ModuleChannels({
       )}
       <div className="module-add">
         <ChannelPicker
-          label={spaTranslate("Add a channel")}
+          label={deferredText("Add a channel")}
           info={info}
           value={pick}
           onChange={setPick}
           any
-          none={full ? `Up to ${max} channels` : spaTranslate("Pick a channel or category")}
+          none={full ? `Up to ${max} channels` : deferredText("Pick a channel or category")}
           disabled={full}
         />
         <PixelButton
@@ -65,7 +66,7 @@ export function ModuleChannels({
       </div>
       <p className="field-hint muted">
         {" "}
-        {spaTranslate("A category covers the channels and threads under it.")} {channels.length}{" "}
+        {deferredText("A category covers the channels and threads under it.")} {channels.length}{" "}
         {spaTranslate("of")} {max}.
       </p>
     </div>

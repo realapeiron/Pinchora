@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../i18n";
+import { t as deferredText } from "../i18n/dashboard";
 // One settings page's form: a draft over the saved settings, the problems with it (the browser's
 // instant checks, then what the server said), and saving the changed fields as one PATCH.
 
@@ -73,7 +73,7 @@ export function useSettingsForm(
     local.length > 0
       ? local.length === 1
         ? "Fix the marked field first"
-        : spaTranslate("Fix the {arg1} marked fields first", { arg1: local.length })
+        : deferredText("Fix the {arg1} marked fields first", { arg1: local.length })
       : save.isError && !(save.error instanceof ApiError && save.error.errors.length > 0)
         ? save.error.message
         : null;

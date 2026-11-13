@@ -23,3 +23,6 @@ test-missing-permissions = "Pinchora cannot post in this channel: {permissions}.
 permission-view_channel = "View Channel"
 permission-send_messages = "Send Messages"
 permission-attach_files = "Attach Files"
+
+[studio.web.errors]
+that-kit-version-is-no-longer-available = "That kit version is no longer available."

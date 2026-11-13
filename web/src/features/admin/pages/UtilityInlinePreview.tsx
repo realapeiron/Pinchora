@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { dateTime } from "../../../i18n";
 import { MessagePreview } from "../../../components/MessagePreview";
 import { PixelButton } from "../../../components/PixelButton";
@@ -20,13 +21,13 @@ export function UtilityInlinePreview({
       <div className="utility-inline-preview-head">
         <strong>{t("PREVIEW")}</strong>
         <PixelButton variant="ghost" onClick={onClose}>
-          {t("Close preview")}
+          {deferredText("Close preview")}
         </PixelButton>
       </div>
       <MessagePreview preview={{ text: item.content, embed: item.embed, ephemeral: false, notes: [] }} />
       {runs.length > 0 && (
         <div className="utility-runs">
-          <strong>{t("NEXT RUNS")}</strong>
+          <strong>{deferredText("NEXT RUNS")}</strong>
           <ol>
             {runs.map((run) => (
               <li key={run}>{dateTime(run)}</li>

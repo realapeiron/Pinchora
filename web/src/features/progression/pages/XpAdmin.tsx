@@ -1,5 +1,5 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { number as spaNumber } from "../../../i18n";
-import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 
 import { Field } from "../../../components/Field";
@@ -212,7 +212,7 @@ export function XpAdmin({ guild }: { guild: string }) {
               </div>
               <p>
                 {job.data?.message ??
-                  tf(spaTranslate("Checked {count} members. Import {status}."), {
+                  tf(deferredText("Checked {count} members. Import {status}."), {
                     count: job.data?.checked ?? 0,
                     status: t(job.data?.status ?? "starting"),
                   })}

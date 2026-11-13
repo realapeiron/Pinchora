@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import "../../../styles/starboard.css";
 
@@ -32,26 +33,26 @@ export function Starboard() {
   return (
     <SettingsPage
       className="settings-page starboard-page"
-      title={spaTranslate("STARBOARD")}
-      lead={spaTranslate(
+      title={deferredText("STARBOARD")}
+      lead={deferredText(
         "Give the best posts a place of their own. Stars move a post onto a board; vote channels add reactions to every new message.",
       )}
     >
       {module && !module.enabled && (
         <p className="notice">
-          <strong>{spaTranslate("Starboard is off.")}</strong> {spaTranslate("Turn it on in")}{" "}
+          <strong>{deferredText("Starboard is off.")}</strong> {deferredText("Turn it on in")}{" "}
           <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>{" "}
-          {spaTranslate("to count reactions.")}{" "}
+          {deferredText("to count reactions.")}{" "}
         </p>
       )}
-      {query.isPending && <Loading label={spaTranslate("Reading starboards")} />}
+      {query.isPending && <Loading label={deferredText("Reading starboards")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && (
         <div className="settings-detail-list">
           {!query.data.message_content && (
             <p className="notice" data-testid="content-lock">
-              <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
-              {spaTranslate(
+              <span className="badge badge-gold">{deferredText("NEEDS MESSAGE CONTENT")}</span>{" "}
+              {deferredText(
                 "Board posts show the jump link, author, and source link. To copy message text and attachments, enable Discord's privileged Message Content intent for Pinchora. Media-only voting needs this intent too.",
               )}{" "}
             </p>
@@ -72,7 +73,7 @@ export function Starboard() {
           >
             <p className="panel-lead muted">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "Each board has its own emoji and threshold. A message can appear on more than one board.",
               )}{" "}
             </p>
@@ -87,7 +88,7 @@ export function Starboard() {
                   onRemove={() => {
                     if (!board.id) return;
                     removeBoard.mutate(board.id, {
-                      onSuccess: () => setNotice(spaTranslate("Board removed.")),
+                      onSuccess: () => setNotice(deferredText("Board removed.")),
                       onError: (error) => setNotice(error.message),
                     });
                   }}
@@ -97,7 +98,7 @@ export function Starboard() {
                 <button className="star-add" type="button" onClick={() => setEditing(newBoard())}>
                   <span>＋</span>
                   <strong>{spaTranslate("New board")}</strong>
-                  <small>{spaTranslate("Choose a channel and an emoji")}</small>
+                  <small>{deferredText("Choose a channel and an emoji")}</small>
                 </button>
               )}
             </div>
@@ -115,7 +116,7 @@ export function Starboard() {
                 saveBoard.mutate(next, {
                   onSuccess: () => {
                     setEditing(null);
-                    setNotice(spaTranslate("Board saved."));
+                    setNotice(deferredText("Board saved."));
                   },
                 })
               }
@@ -133,7 +134,7 @@ export function Starboard() {
           >
             <p className="panel-lead muted">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "Pinchora adds the up reaction first, then the down reaction. A thread can open under each post.",
               )}{" "}
             </p>
@@ -145,8 +146,8 @@ export function Starboard() {
                   </span>
                   <strong>{channelName(discord.data, item.channel_id)}</strong>
                   <small>
-                    {item.only_media ? spaTranslate("Media only") : spaTranslate("All posts")}
-                    {item.create_thread ? spaTranslate(" · Threads") : ""}
+                    {item.only_media ? deferredText("Media only") : deferredText("All posts")}
+                    {item.create_thread ? deferredText(" · Threads") : ""}
                   </small>
                   <button type="button" onClick={() => setVote({ ...item })}>
                     {spaTranslate("Edit")}
@@ -155,7 +156,7 @@ export function Starboard() {
                     type="button"
                     onClick={() =>
                       removeVote.mutate(item.channel_id, {
-                        onSuccess: () => setNotice(spaTranslate("Vote channel removed.")),
+                        onSuccess: () => setNotice(deferredText("Vote channel removed.")),
                         onError: (error) => setNotice(error.message),
                       })
                     }
@@ -165,12 +166,12 @@ export function Starboard() {
                 </div>
               ))}
               {query.data.votes.length === 0 && (
-                <p className="empty-row muted">{spaTranslate("No vote channels yet.")}</p>
+                <p className="empty-row muted">{deferredText("No vote channels yet.")}</p>
               )}
             </div>
             <PixelButton variant="secondary" onClick={() => setVote(newVote())}>
               {" "}
-              {spaTranslate("Add vote channel")}{" "}
+              {deferredText("Add vote channel")}{" "}
             </PixelButton>
           </SettingsRow>
           {vote && (
@@ -186,7 +187,7 @@ export function Starboard() {
                 saveVote.mutate(next, {
                   onSuccess: () => {
                     setVote(null);
-                    setNotice(spaTranslate("Vote channel saved."));
+                    setNotice(deferredText("Vote channel saved."));
                   },
                 })
               }

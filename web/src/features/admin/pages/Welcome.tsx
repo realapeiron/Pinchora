@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useOutletContext } from "react-router";
 import { Field } from "../../../components/Field";
@@ -51,7 +52,7 @@ export function Welcome() {
     <SettingsPage
       className="settings-page welcome-settings"
       title={spaTranslate("WELCOME")}
-      lead={spaTranslate(
+      lead={deferredText(
         "Greet new members with a card, give them a role, and say goodbye when someone leaves.",
       )}
     >
@@ -71,8 +72,8 @@ export function Welcome() {
                 error={errors.welcome_channel_id}
                 hint={
                   value.welcome_enabled && !value.welcome_channel_id
-                    ? spaTranslate("Pick a channel, or no card is posted.")
-                    : spaTranslate("Text or announcement channels the bot can see.")
+                    ? deferredText("Pick a channel, or no card is posted.")
+                    : deferredText("Text or announcement channels the bot can see.")
                 }
               >
                 <ChannelPicker
@@ -82,7 +83,7 @@ export function Welcome() {
                   info={discord.data}
                   value={value.welcome_channel_id}
                   onChange={(id) => set("welcome_channel_id", id)}
-                  none={spaTranslate("Not set")}
+                  none={deferredText("Not set")}
                   invalid={!!errors.welcome_channel_id}
                 />
               </Field>
@@ -91,14 +92,14 @@ export function Welcome() {
                   {cards.data ? spaTranslate(DELIVERY_LABELS[cards.data.welcome.delivery]) : "…"}
                 </span>
                 <PixelLink href={`/g/${guild}/welcome-image`} variant="ghost" className="button-small">
-                  {spaTranslate("Open the editor")}
+                  {deferredText("Open the editor")}
                 </PixelLink>
               </Field>
             </FieldGrid>
             <MessageField
               guild={guild}
               kind="welcome"
-              label={spaTranslate("Text above the card")}
+              label={deferredText("Text above the card")}
               value={value.welcome_message}
               onChange={(text) => set("welcome_message", text)}
               error={errors.welcome_message}
@@ -108,7 +109,7 @@ export function Welcome() {
               <strong>{t("Welcome card")}</strong>
               <span>
                 {cards.data
-                  ? `${cards.data.welcome.custom ? spaTranslate("Your own design") : spaTranslate("The classic card")}, ${spaTranslate(DELIVERY_LABELS[cards.data.welcome.delivery]).toLowerCase()}.`
+                  ? `${cards.data.welcome.custom ? deferredText("Your own design") : deferredText("The classic card")}, ${spaTranslate(DELIVERY_LABELS[cards.data.welcome.delivery]).toLowerCase()}.`
                   : "…"}
               </span>
             </div>
@@ -137,7 +138,7 @@ export function Welcome() {
                   <PreviewFrame
                     path={`/api/guilds/${guild}/preview/card`}
                     body={{ design: cards.data.welcome.design }}
-                    alt={spaTranslate("The welcome image a new member gets")}
+                    alt={deferredText("The welcome image a new member gets")}
                     width={cards.data.welcome.design.width}
                     height={cards.data.welcome.design.height}
                   />
@@ -155,10 +156,10 @@ export function Welcome() {
         >
           <div className="settings-detail-fields">
             <Field
-              label={spaTranslate("Role new members get")}
+              label={deferredText("Role new members get")}
               htmlFor="join-role"
               error={errors.join_role_id ?? (joinRole && !joinRole.assignable ? joinRole.why_not : null)}
-              hint={spaTranslate("Bots are skipped. The bot's role must sit above it.")}
+              hint={deferredText("Bots are skipped. The bot's role must sit above it.")}
             >
               <RolePicker
                 id="join-role"
@@ -198,7 +199,7 @@ export function Welcome() {
                   info={discord.data}
                   value={value.goodbye_channel_id}
                   onChange={(id) => set("goodbye_channel_id", id)}
-                  none={spaTranslate("Off: no goodbye messages")}
+                  none={deferredText("Off: no goodbye messages")}
                   invalid={!!errors.goodbye_channel_id}
                 />
               </Field>
@@ -206,7 +207,7 @@ export function Welcome() {
             <MessageField
               guild={guild}
               kind="goodbye"
-              label={spaTranslate("Goodbye text")}
+              label={deferredText("Goodbye text")}
               value={value.goodbye_message}
               onChange={(text) => set("goodbye_message", text)}
               error={errors.goodbye_message}

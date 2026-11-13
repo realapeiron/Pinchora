@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 // The roles page's data: the shapes the API answers with, the hooks that read and write them, and the
 // small rules the forms check before they ask (the server checks them again, with the command's sentences).
 
@@ -177,7 +177,7 @@ export function problemWithExpiry(secs: number): string | null {
 /** The rules a panel asks, checked as `/roles panel` checks them. */
 export function problemWithRules(exclusive: boolean, min: number, max: number): string | null {
   if (min > LIMITS.entries || max > LIMITS.entries || min < 0 || max < 0)
-    return spaTranslate("A limit is 0 to {arg1}.", { arg1: LIMITS.entries });
+    return deferredText("A limit is 0 to {arg1}.", { arg1: LIMITS.entries });
   if (max > 0 && min > max) return "The fewest roles can't be more than the most.";
   if (exclusive && min > 1) return "One at a time can ask members to keep at most one role.";
   return null;
@@ -277,19 +277,19 @@ export function problemWithDraft(draft: PanelDraft): { field: string; message: s
   if (title.length === 0 || [...title].length > LIMITS.title)
     return {
       field: "title",
-      message: spaTranslate("The title is 1 to {arg1} characters.", { arg1: LIMITS.title }),
+      message: deferredText("The title is 1 to {arg1} characters.", { arg1: LIMITS.title }),
     };
   if ([...draft.description].length > LIMITS.description)
     return {
       field: "description",
-      message: spaTranslate("The text is at most {arg1} characters.", { arg1: LIMITS.description }),
+      message: deferredText("The text is at most {arg1} characters.", { arg1: LIMITS.description }),
     };
   const rules = problemWithRules(draft.exclusive, draft.min_picks, draft.max_picks);
   if (rules) return { field: "rules", message: rules };
   if (draft.roles.length > LIMITS.entries)
     return {
       field: "roles",
-      message: spaTranslate("A panel holds at most {arg1} roles.", { arg1: LIMITS.entries }),
+      message: deferredText("A panel holds at most {arg1} roles.", { arg1: LIMITS.entries }),
     };
   const seen = new Set<string>();
   for (const row of draft.roles) {
@@ -300,7 +300,7 @@ export function problemWithDraft(draft: PanelDraft): { field: string; message: s
     if (label.length === 0 || [...label].length > LIMITS.label)
       return {
         field: "roles",
-        message: spaTranslate("Every label is 1 to {arg1} characters.", { arg1: LIMITS.label }),
+        message: deferredText("Every label is 1 to {arg1} characters.", { arg1: LIMITS.label }),
       };
     if (row.temp_secs) {
       const why = problemWithExpiry(row.temp_secs);

@@ -14,6 +14,7 @@ use pinchora_core::community::tags::CommandDef;
 use pinchora_core::community::tags::Export;
 use pinchora_core::community::tags::MAX_COMMANDS;
 use pinchora_core::community::tags::tidy_name;
+use pinchora_core::t;
 use pinchora_db::{CommandRow, TagWrite};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -45,10 +46,20 @@ fn name_taken(name: &str) -> ApiError {
     )])
 }
 
-fn full() -> ApiError {
-    ApiError::limit(format!(
-        "A server has at most {MAX_COMMANDS} custom commands. Remove one first."
+fn full(lang: pinchora_core::infra::i18n::Lang) -> ApiError {
+    ApiError::limit(t!(
+        lang,
+        "command_control_web.errors.custom-commands-limit",
+        max = MAX_COMMANDS
     ))
+}
+
+fn replace_on_conflict(raw: Option<&str>, lang: pinchora_core::infra::i18n::Lang) -> ApiResult<bool> {
+    match raw {
+        None | Some("skip") => Ok(false),
+        Some("replace") => Ok(true),
+        Some(_) => Err(ApiError::malformed(t!(lang, "command_control_web.errors.on-conflict"))),
+    }
 }
 
 async fn load(state: &WebState, guild: u64, id: i64) -> ApiResult<CommandRow> {
@@ -75,7 +86,10 @@ pub async fn get(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    Ok(Json(command_json(&load(&state, managed.id, row_id(&params)?).await?)))
+    let lang = managed.panel_lang;
+    Ok(Json(command_json(
+        &load(&state, managed.id, row_id(&params, lang)?).await?,
+    )))
 }
 
 /// `POST /commands`: a new command.
@@ -84,6 +98,7 @@ pub async fn create(
     managed: ManagedGuild,
     ApiJson(def): ApiJson<CommandDef>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let def = def.clean(reserved_command_names())?;
     check_refs(&state, &managed, &Refs::of_command(&def), None).await?;
@@ -106,7 +121,7 @@ pub async fn create(
             Ok(Json(command_json(&row)))
         }
         TagWrite::NameTaken => Err(name_taken(&def.name)),
-        TagWrite::Full => Err(full()),
+        TagWrite::Full => Err(full(lang)),
         TagWrite::Gone => Err(ApiError::not_found()),
     }
 }
@@ -118,8 +133,9 @@ pub async fn replace(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(def): ApiJson<CommandDef>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
-    let old = load(&state, guild, row_id(&params)?).await?;
+    let old = load(&state, guild, row_id(&params, lang)?).await?;
     // A name that stays is not held against the bot's commands again.
     let reserved = if tidy_name(&def.name) == old.def.name {
         &[]
@@ -176,8 +192,9 @@ pub async fn set_enabled(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<EnabledBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
-    let old = load(&state, guild, row_id(&params)?).await?;
+    let old = load(&state, guild, row_id(&params, lang)?).await?;
     if old.def.enabled == body.enabled {
         return Ok(Json(command_json(&old)));
     }
@@ -214,11 +231,12 @@ pub async fn delete(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let removed = state
         .app
         .db
-        .delete_custom_command(guild, row_id(&params)?)
+        .delete_custom_command(guild, row_id(&params, lang)?)
         .await?
         .ok_or_else(ApiError::not_found)?;
     audit::finish(
@@ -293,7 +311,8 @@ pub async fn test(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<TestBody>,
 ) -> ApiResult<Json<Value>> {
-    let row = load(&state, managed.id, row_id(&params)?).await?;
+    let lang = managed.panel_lang;
+    let row = load(&state, managed.id, row_id(&params, lang)?).await?;
     preview_of(&state, &managed, &row.def, &body.args).await
 }
 
@@ -324,6 +343,7 @@ pub async fn import(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<ImportBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     if body.version.is_some_and(|v| v != Export::<CommandDef>::VERSION) {
         return Err(ApiError::malformed(
@@ -331,15 +351,13 @@ pub async fn import(
         ));
     }
     if body.items.len() > IMPORT_MAX {
-        return Err(ApiError::limit(format!(
-            "An import carries at most {IMPORT_MAX} commands."
+        return Err(ApiError::limit(t!(
+            lang,
+            "command_control_web.errors.commands-import-limit",
+            max = IMPORT_MAX
         )));
     }
-    let replace = match body.on_conflict.as_deref() {
-        None | Some("skip") => false,
-        Some("replace") => true,
-        Some(_) => return Err(ApiError::malformed("on_conflict is `skip` or `replace`.")),
-    };
+    let replace = replace_on_conflict(body.on_conflict.as_deref(), lang)?;
     let db = &state.app.db;
     let author = managed.current.session.user_id;
     let known = merged_info(&state, guild).await?;
@@ -408,7 +426,7 @@ pub async fn import(
                 }
             }
             TagWrite::NameTaken => skipped.push(def.name.clone()),
-            TagWrite::Full => failed.push(fail(&def.name, full().message)),
+            TagWrite::Full => failed.push(fail(&def.name, full(lang).message)),
             TagWrite::Gone => failed.push(fail(&def.name, "It was removed while importing.".to_owned())),
         }
     }

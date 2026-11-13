@@ -4,6 +4,7 @@
 
 mod log_settings;
 use log_settings::{LogChanges, check_log_destinations, parse_log_changes};
+use pinchora_core::infra::i18n::Lang;
 
 use std::collections::HashMap;
 
@@ -135,12 +136,13 @@ pub async fn put_moderation(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<ModerationBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let db = &state.app.db;
     let ladder = body.ladder.as_deref().map(check_ladder).transpose()?;
     let channel = match body.log_channel_id {
         Some(Some(raw)) => {
-            let id = parse_id(&raw).ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
+            let id = parse_id(&raw).ok_or_else(|| ApiError::malformed(t!(lang, "common.web.errors.channel-ids")))?;
             let info = guild_info::get_with(&state, guild, |info| info.channel(id).is_some()).await?;
             info.check_post_channel("log_channel_id", id)?;
             Some(Some(id))
@@ -367,11 +369,11 @@ pub struct CasesQuery {
     before: Option<i32>,
 }
 
-fn optional_id(raw: Option<&str>) -> ApiResult<Option<u64>> {
+fn optional_id(raw: Option<&str>, lang: Lang) -> ApiResult<Option<u64>> {
     match raw.map(str::trim).filter(|r| !r.is_empty()) {
         Some(raw) => parse_id(raw)
             .map(Some)
-            .ok_or_else(|| ApiError::malformed("Ids are numbers.")),
+            .ok_or_else(|| ApiError::malformed(t!(lang, "moderation.web.errors.ids-are-numbers"))),
         None => Ok(None),
     }
 }
@@ -382,13 +384,17 @@ pub async fn cases(
     managed: ManagedGuild,
     Query(query): Query<CasesQuery>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let kind = match query.kind.as_deref().filter(|k| !k.is_empty()) {
-        Some(key) => Some(CaseKind::parse(key).ok_or_else(|| ApiError::malformed("Unknown kind of case."))?),
+        Some(key) => Some(
+            CaseKind::parse(key)
+                .ok_or_else(|| ApiError::malformed(t!(lang, "moderation.web.errors.unknown-kind-of-case")))?,
+        ),
         None => None,
     };
     let filter = CaseFilter {
-        target: optional_id(query.member.as_deref())?,
-        moderator: optional_id(query.moderator.as_deref())?,
+        target: optional_id(query.member.as_deref(), lang)?,
+        moderator: optional_id(query.moderator.as_deref(), lang)?,
         kind,
         active_only: query.active == Some(true),
         query: query.q.map(|q| q.chars().take(100).collect()),
@@ -446,9 +452,12 @@ pub struct ReasonBody {
     reason: Option<String>,
 }
 
-fn checked_reason(raw: Option<&str>) -> ApiResult<Option<String>> {
+fn checked_reason(raw: Option<&str>, lang: Lang) -> ApiResult<Option<String>> {
     if raw.is_some_and(|text| text.chars().any(|c| c.is_control() && c != '\n' && c != '\t')) {
-        return Err(ApiError::malformed("A reason cannot contain control characters."));
+        return Err(ApiError::malformed(t!(
+            lang,
+            "moderation.web.errors.a-reason-cannot-contain-control-characters"
+        )));
     }
     Ok(check_reason(raw)?)
 }
@@ -460,7 +469,7 @@ async fn check_reason_editor(state: &WebState, managed: &ManagedGuild, case: &Ca
     if actor == opened_by || managed.guild.owner {
         return Ok(());
     }
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     let unavailable = || ApiError::blocked(t!(lang, "mod.no-roles"));
     let by_bot = opened_by == state.app.application_id.get() || opened_by == 0;
     let other = if by_bot {
@@ -536,8 +545,9 @@ pub async fn patch_case(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<ReasonBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let number = case_number(&params)?;
-    let reason = checked_reason(body.reason.as_deref())?;
+    let reason = checked_reason(body.reason.as_deref(), lang)?;
     let session = &managed.current.session;
     let original = state
         .app
@@ -576,11 +586,12 @@ pub async fn revoke_case(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<ReasonBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     use axum::http::StatusCode;
     use pinchora_commands::{RevokeActor, RevokeError};
 
     let number = case_number(&params)?;
-    let reason = checked_reason(body.reason.as_deref())?;
+    let reason = checked_reason(body.reason.as_deref(), lang)?;
     let session = &managed.current.session;
     let member = state
         .app
@@ -673,13 +684,19 @@ pub async fn staff_log(
     managed: ManagedGuild,
     Query(query): Query<StaffQuery>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let source = match query.source.as_deref().filter(|s| !s.is_empty()) {
         Some(s @ ("command" | "discord" | "web")) => Some(s.to_owned()),
-        Some(_) => return Err(ApiError::malformed("The source is command, discord or web.")),
+        Some(_) => {
+            return Err(ApiError::malformed(t!(
+                lang,
+                "moderation.web.errors.the-source-is-command-discord-or-web"
+            )));
+        }
         None => None,
     };
     let filter = StaffFilter {
-        actor: optional_id(query.actor.as_deref())?,
+        actor: optional_id(query.actor.as_deref(), lang)?,
         source,
         query: query.q.map(|q| q.chars().take(100).collect()),
         before: query.before,

@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { Case } from "../../../lib/api";
 import { dateTime } from "../../../i18n";
 import { t } from "../../../i18n/dashboard";
@@ -10,7 +10,7 @@ export function CasePills({ entry }: { entry: Case }) {
     <>
       <span className={`cases-kind ${caseTone(entry.kind)}`}>{t(entry.label)}</span>
       <span className={`cases-state ${entry.active ? "is-active" : ""}`}>
-        {entry.active ? t("Active") : entry.kind === "warn" ? spaTranslate("Taken back") : t("Ended")}
+        {entry.active ? t("Active") : entry.kind === "warn" ? deferredText("Taken back") : t("Ended")}
       </span>
     </>
   );
@@ -38,7 +38,7 @@ export function CaseList({ rows, onOpen }: { rows: Case[]; onOpen: (number: numb
               <th scope="col">#</th>
               <th scope="col">{t("Kind")}</th>
               <th scope="col">{t("Member or channel")}</th>
-              <th scope="col">{t("Moderator")}</th>
+              <th scope="col">{deferredText("Moderator")}</th>
               <th scope="col">{t("Reason")}</th>
               <th scope="col">{t("Duration")}</th>
               <th scope="col">{t("State")}</th>
@@ -71,7 +71,7 @@ export function CaseList({ rows, onOpen }: { rows: Case[]; onOpen: (number: numb
                     {entry.active
                       ? t("Active")
                       : entry.kind === "warn"
-                        ? spaTranslate("Taken back")
+                        ? deferredText("Taken back")
                         : t("Ended")}
                   </span>
                 </td>
@@ -104,7 +104,7 @@ export function CaseList({ rows, onOpen }: { rows: Case[]; onOpen: (number: numb
             <strong className="cases-card-target">{target(entry)}</strong>
             <span className="cases-card-reason">{entry.reason || "—"}</span>
             <span className="cases-card-meta">
-              {t("Moderator")}: {entry.moderator_name} · {t("Duration")}: {entry.duration || "—"}
+              {deferredText("Moderator")}: {entry.moderator_name} · {t("Duration")}: {entry.duration || "—"}
             </span>
           </button>
         ))}

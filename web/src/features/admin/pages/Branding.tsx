@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -30,7 +31,7 @@ const defaultDraft: BrandingDraft = {
 
 function refusedFields(codes: string): string {
   const names: Record<string, string> = {
-    nickname: t("Server nickname"),
+    nickname: deferredText("Server nickname"),
     avatar: t("Avatar"),
     banner: t("Banner"),
     bio: t("Bio"),
@@ -93,11 +94,11 @@ export function BrandingPage() {
       const result = await uploadBrandingImage(guild.id, file);
       setField(kind === "avatar" ? "avatar_upload_id" : "banner_upload_id", result.id);
       (kind === "avatar" ? setAvatar : setBanner)(result.url);
-      setNotice(t("Image uploaded. Save changes to keep it."));
+      setNotice(deferredText("Image uploaded. Save changes to keep it."));
     });
   };
   if (loading) return <Loading />;
-  if (!saved) return <Problem error={error ?? new Error(t("Branding could not load."))} />;
+  if (!saved) return <Problem error={error ?? new Error(deferredText("Branding could not load."))} />;
   const changed = JSON.stringify(brandingDraft(draft)) !== JSON.stringify(brandingDraft(saved));
   const color = /^#[0-9a-fA-F]{6}$/.test(draft.embed_color ?? "") ? draft.embed_color! : "#FF6B4A";
   const wait = saved.applied_at
@@ -106,8 +107,8 @@ export function BrandingPage() {
   return (
     <SettingsPage
       className="settings-page branding-page"
-      title={t("Server branding")}
-      lead={t(
+      title={deferredText("Server branding")}
+      lead={deferredText(
         "Set how Pinchora appears in this server. Preview your changes before applying them to Discord.",
       )}
     >
@@ -125,7 +126,7 @@ export function BrandingPage() {
       <div className="branding-feedback">
         {saved.last_error && (
           <p className="branding-warning" role="status">
-            {t("Discord refused part of the last apply: {detail}", {
+            {deferredText("Discord refused part of the last apply: {detail}", {
               detail: refusedFields(saved.last_error),
             })}
           </p>
@@ -134,7 +135,7 @@ export function BrandingPage() {
           saved.banner_supported === false ||
           saved.bio_supported === false) && (
           <p className="branding-warning">
-            {t(
+            {deferredText(
               "Some profile fields are unavailable to this app. The colour and available fields still work.",
             )}
           </p>
@@ -155,7 +156,7 @@ export function BrandingPage() {
                 setDraft(brandingDraft(value));
                 setAvatar(value.avatar_url);
                 setBanner(value.banner_url);
-                setNotice(t("Changes saved."));
+                setNotice(deferredText("Changes saved."));
               })
             }
           >
@@ -177,16 +178,16 @@ export function BrandingPage() {
             }
           >
             {wait > 0
-              ? t("Apply in {minutes} min", { minutes: Math.ceil(wait / 60) })
-              : t("Apply to Discord")}
+              ? deferredText("Apply in {minutes} min", { minutes: Math.ceil(wait / 60) })
+              : deferredText("Apply to Discord")}
           </PixelButton>
           <PixelButton variant="ghost" disabled={busy || wait > 0} onClick={() => setResetting(true)}>
-            {t("Reset branding")}
+            {deferredText("Reset branding")}
           </PixelButton>
         </div>
         {resetting && (
-          <div className="branding-reset" role="group" aria-label={t("Confirm reset")}>
-            <p>{t("Clear the saved profile and colour for this server?")}</p>
+          <div className="branding-reset" role="group" aria-label={deferredText("Confirm reset")}>
+            <p>{deferredText("Clear the saved profile and colour for this server?")}</p>
             <PixelButton
               disabled={busy}
               onClick={() =>
@@ -201,7 +202,7 @@ export function BrandingPage() {
                 })
               }
             >
-              {t("Confirm reset")}
+              {deferredText("Confirm reset")}
             </PixelButton>
             <PixelButton variant="ghost" onClick={() => setResetting(false)}>
               {t("Cancel")}

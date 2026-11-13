@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { translate as t } from "../../../i18n";
@@ -27,7 +28,7 @@ export function CommunityHighlights() {
       setNotice(t("Saved."));
       return true;
     } catch (error) {
-      setNotice(error instanceof Error ? t(error.message) : t("Could not save."));
+      setNotice(error instanceof Error ? t(error.message) : deferredText("Could not save."));
       return false;
     } finally {
       setBusy(false);
@@ -36,8 +37,10 @@ export function CommunityHighlights() {
   return (
     <SettingsPage
       className="settings-page community-tools-page"
-      title={t("KEYWORD HIGHLIGHTS")}
-      lead={t("Members opt in with /highlight add. A matching message sends a private link, never its text.")}
+      title={deferredText("KEYWORD HIGHLIGHTS")}
+      lead={deferredText(
+        "Members opt in with /highlight add. A matching message sends a private link, never its text.",
+      )}
     >
       {notice && (
         <p className="notice" role="status">
@@ -56,17 +59,17 @@ export function CommunityHighlights() {
           >
             <p role="status">
               {query.data.message_content
-                ? t("Message Content is enabled. Highlights are available.")
-                : t("Needs Message Content intent. Highlights are locked until it is enabled.")}
+                ? deferredText("Message Content is enabled. Highlights are available.")
+                : deferredText("Needs Message Content intent. Highlights are locked until it is enabled.")}
             </p>
             <p className="muted">
-              {t(
+              {deferredText(
                 "Each member can follow 10 words. Notifications are limited to one per 10 minutes per server.",
               )}
             </p>
           </SettingsRow>
         )}
-        {personal.isPending && <Loading label={t("Loading followed words")} />}
+        {personal.isPending && <Loading label={deferredText("Loading followed words")} />}
         {personal.isError && <Problem error={personal.error} />}
         {personal.data && (
           <SettingsRow
@@ -112,7 +115,7 @@ export function CommunityHighlights() {
                   void write("/highlights", "PUT", { word }).then((saved) => saved && setWord(""))
                 }
               >
-                {t("Follow word")}
+                {deferredText("Follow word")}
               </button>
             </div>
           </SettingsRow>

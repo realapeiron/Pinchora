@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Choice } from "../../../components/Choice";
@@ -82,12 +83,12 @@ export function AutoRoles({
           </span>
           <p className="muted panel-lead">
             {" "}
-            {spaTranslate(
+            {deferredText(
               "Give a role to everyone who joins, with a delay if you like, and take it back after a while. Adding the same role and kind again changes it.",
             )}{" "}
           </p>
           {items.length === 0 ? (
-            <p className="empty-row muted">{spaTranslate("No auto roles yet.")}</p>
+            <p className="empty-row muted">{deferredText("No auto roles yet.")}</p>
           ) : (
             <ul className="list" aria-label={spaTranslate("Auto roles")}>
               {items.map((row) => (
@@ -106,14 +107,14 @@ export function AutoRoles({
                       )}
                       {row.remove_after_secs > 0 && (
                         <span className="muted">
-                          {spaTranslate("taken back after")} {spanText(row.remove_after_secs)}
+                          {deferredText("taken back after")} {spanText(row.remove_after_secs)}
                         </span>
                       )}
                       {!row.enabled && <span className="badge badge-heart">{spaTranslate("PAUSED")}</span>}
                     </span>
                   </span>
                   <PixelToggle
-                    label={spaTranslate("Give {arg1} to {arg2}", {
+                    label={deferredText("Give {arg1} to {arg2}", {
                       arg1: roleName(row.role_id),
                       arg2: kindName(row.kind).toLowerCase(),
                     })}
@@ -132,7 +133,7 @@ export function AutoRoles({
                   <PixelButton
                     variant="ghost"
                     className="button-small"
-                    aria-label={spaTranslate("Remove {arg1} from {arg2}", {
+                    aria-label={deferredText("Remove {arg1} from {arg2}", {
                       arg1: roleName(row.role_id),
                       arg2: kindName(row.kind).toLowerCase(),
                     })}
@@ -149,9 +150,9 @@ export function AutoRoles({
           )}
 
           <div className="auto-form">
-            <Field label={spaTranslate("Who gets it")}>
+            <Field label={deferredText("Who gets it")}>
               <Choice
-                name={spaTranslate("Who gets the role")}
+                name={deferredText("Who gets the role")}
                 value={kind}
                 options={KINDS.map((item) => ({
                   ...item,
@@ -174,7 +175,7 @@ export function AutoRoles({
                 label={spaTranslate("Wait before giving it")}
                 htmlFor="auto-delay"
                 error={delayProblem ?? problemOf(write.error, "delay_secs")}
-                hint={spaTranslate("0 gives it at once.")}
+                hint={deferredText("0 gives it at once.")}
               >
                 <DurationInput
                   key={`d${fresh}`}
@@ -186,15 +187,15 @@ export function AutoRoles({
                 />
               </Field>
               <Field
-                label={spaTranslate("Take it back after")}
+                label={deferredText("Take it back after")}
                 htmlFor="auto-expiry"
                 error={expiryProblem ?? problemOf(write.error, "remove_after_secs")}
-                hint={spaTranslate("0 keeps it for good.")}
+                hint={deferredText("0 keeps it for good.")}
               >
                 <DurationInput
                   key={`e${fresh}`}
                   id="auto-expiry"
-                  label={spaTranslate("Take it back after")}
+                  label={deferredText("Take it back after")}
                   value={expiry}
                   onChange={setExpiry}
                   invalid={!!expiryProblem}
@@ -212,7 +213,7 @@ export function AutoRoles({
                         setDelay(0);
                         setExpiry(0);
                         setFresh((n) => n + 1);
-                        setToast(spaTranslate("Auto role saved."));
+                        setToast(deferredText("Auto role saved."));
                       },
                     )
                   }
@@ -235,7 +236,7 @@ export function AutoRoles({
 
           <h3 className="setting-name" style={{ marginTop: 24 }}>
             {" "}
-            {spaTranslate("What happens when someone joins")}{" "}
+            {deferredText("What happens when someone joins")}{" "}
           </h3>
           <Timeline items={items} info={info} />
         </div>

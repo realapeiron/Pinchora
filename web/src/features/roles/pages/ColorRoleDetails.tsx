@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { plural as spaPlural, translate as spaTranslate } from "../../../i18n";
 import { RoleTag } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
@@ -30,7 +31,7 @@ export function ColorPalette({
       <div className="settings-detail-fields">
         <p className="muted fine">
           {" "}
-          {spaTranslate(
+          {deferredText(
             "The card colours. A green tick means the role exists; the others are made the first time somebody picks them. Select a colour to try it on a name.",
           )}{" "}
         </p>
@@ -41,13 +42,13 @@ export function ColorPalette({
                 type="button"
                 className={`colour-tile ${sample === c.hex ? "is-picked" : ""}`}
                 aria-pressed={sample === c.hex}
-                aria-label={`${c.name}, ${made.has(c.hex) ? spaTranslate("role made") : spaTranslate("made when picked")}`}
+                aria-label={`${c.name}, ${made.has(c.hex) ? deferredText("role made") : deferredText("made when picked")}`}
                 onClick={() => setSample(c.hex)}
               >
                 <span className="tone-swatch" style={{ background: c.hex }} aria-hidden="true" />
                 <span>{c.name}</span>
                 <span className={`colour-state ${made.has(c.hex) ? "is-made" : ""}`} aria-hidden="true">
-                  {made.has(c.hex) ? spaTranslate("✓ ROLE MADE") : "\u00a0"}
+                  {made.has(c.hex) ? deferredText("✓ ROLE MADE") : "\u00a0"}
                 </span>
               </button>
             </li>
@@ -58,23 +59,23 @@ export function ColorPalette({
         <div
           className="colour-sample"
           role="img"
-          aria-label={spaTranslate("A name in {arg1}", { arg1: sample })}
+          aria-label={deferredText("A name in {arg1}", { arg1: sample })}
           aria-live="polite"
           style={{ marginTop: 12 }}
         >
           <span className="discord-avatar" aria-hidden="true" />
           <strong style={{ color: isHex(sample) ? sample : undefined }}>Captain Crab</strong>
-          <span className="muted">{spaTranslate("· how the name looks on Discord's dark chat")}</span>
+          <span className="muted">{deferredText("· how the name looks on Discord's dark chat")}</span>
         </div>
       </div>
       <div className="settings-detail-fields">
         <div className="panel-foot">
           {missing > 0 ? (
             <span className="muted fine">
-              {missing} {spaTranslate("palette colours have no role yet.")}
+              {missing} {deferredText("palette colours have no role yet.")}
             </span>
           ) : (
-            <span className="muted fine">{spaTranslate("Every palette colour has its role.")}</span>
+            <span className="muted fine">{deferredText("Every palette colour has its role.")}</span>
           )}
           <PixelButton
             variant="secondary"
@@ -82,8 +83,8 @@ export function ColorPalette({
             onClick={() => write.mutate({ method: "POST", sub: "/colors/create-missing" })}
           >
             {write.isPending && write.variables?.sub === "/colors/create-missing"
-              ? spaTranslate("Making roles…")
-              : spaTranslate("Create the missing roles")}
+              ? deferredText("Making roles…")
+              : deferredText("Create the missing roles")}
           </PixelButton>
         </div>
         {report && (
@@ -94,7 +95,7 @@ export function ColorPalette({
                   { one: "Made {count} role: {names}. ", other: "Made {count} roles: {names}. " },
                   { names: report.created.join(", ") },
                 )
-              : spaTranslate("Made no roles. ")}
+              : deferredText("Made no roles. ")}
             {report.stopped && <RichText text={report.stopped} />}
           </p>
         )}
@@ -130,13 +131,13 @@ export function ColorMadeRoles({
                   <RoleTag info={info} id={r.role_id} />
                   <span className="muted list-note">{r.hex}</span>
                   {own.some((o) => o.role_id === r.role_id) && (
-                    <span className="badge badge-dim">{spaTranslate("YOURS")}</span>
+                    <span className="badge badge-dim">{deferredText("YOURS")}</span>
                   )}
                 </span>
                 <PixelButton
                   variant="ghost"
                   className="button-small"
-                  aria-label={spaTranslate("Remove {arg1} from the colours", { arg1: r.name })}
+                  aria-label={deferredText("Remove {arg1} from the colours", { arg1: r.name })}
                   disabled={write.isPending}
                   onClick={() =>
                     write.mutate({
@@ -156,7 +157,7 @@ export function ColorMadeRoles({
               checked={deleteOnDiscord}
               onChange={(event) => setDeleteOnDiscord(event.target.checked)}
             />{" "}
-            {spaTranslate("Remove also deletes the role on Discord")}{" "}
+            {deferredText("Remove also deletes the role on Discord")}{" "}
           </label>
         </>
       )}

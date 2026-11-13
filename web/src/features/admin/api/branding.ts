@@ -1,4 +1,4 @@
-import { t } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 import { api, apiUpload } from "../../../lib/api";
 
 export interface Branding {
@@ -47,7 +47,7 @@ export function brandingDraft(value: BrandingDraft): BrandingDraft {
 export function brandingResultMessage(failed: boolean, reset = false): string {
   if (failed)
     return reset
-      ? t("Some profile fields could not be reset. Their previous values were kept.")
-      : t("Some profile fields could not be applied. Review the details below.");
-  return reset ? t("Branding reset.") : t("Branding applied to Discord.");
+      ? deferredText("Some profile fields could not be reset. Their previous values were kept.")
+      : deferredText("Some profile fields could not be applied. Review the details below.");
+  return reset ? deferredText("Branding reset.") : deferredText("Branding applied to Discord.");
 }

@@ -1,5 +1,5 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
-import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
 import { RolePicker } from "../../../components/Pickers";
 import { PixelButton } from "../../../components/PixelButton";
@@ -30,30 +30,36 @@ export function Rewards({
   const error = reward.error instanceof ApiError ? reward.error : null;
   return (
     <div className="settings-detail-fields">
-      <span className="badge badge-gold">{t("{count}/{limit} used", { count: rewards.length, limit })}</span>
+      <span className="badge badge-gold">
+        {deferredText("{count}/{limit} used", { count: rewards.length, limit })}
+      </span>
       <p className="panel-lead muted">
-        {t(
+        {deferredText(
           "A member earns a role when enough of their invitees are still here with eligible accounts. The role is checked again before Pinchora gives it.",
         )}
       </p>
       {rewards.length === 0 ? (
-        <p className="empty-row muted">{t("No milestones yet. Add the first one below.")}</p>
+        <p className="empty-row muted">{deferredText("No milestones yet. Add the first one below.")}</p>
       ) : (
-        <ul className="list" aria-label={t("Invite rewards")}>
+        <ul className="list" aria-label={deferredText("Invite rewards")}>
           {rewards.map((r) => (
             <li className="list-row inv-reward" key={r.invites}>
-              <span className="inv-reward-count">{t("{count} invites", { count: r.invites })}</span>
+              <span className="inv-reward-count">
+                {deferredText("{count} invites", { count: r.invites })}
+              </span>
               <span>→</span>
               <strong>
                 {discord.data?.roles.find((role) => role.id === r.role_id)?.name ??
-                  t("Role {id}", { id: r.role_id })}
+                  deferredText("Role {id}", { id: r.role_id })}
               </strong>
               <PixelButton
                 variant="ghost"
-                aria-label={spaTranslate("Remove reward at {arg1}", {
-                  arg1: t("{count} invites", { count: r.invites }),
+                aria-label={deferredText("Remove reward at {arg1}", {
+                  arg1: deferredText("{count} invites", { count: r.invites }),
                 })}
-                onClick={() => remove.mutate(r.invites, { onSuccess: () => onToast(t("Reward removed.")) })}
+                onClick={() =>
+                  remove.mutate(r.invites, { onSuccess: () => onToast(deferredText("Reward removed.")) })
+                }
               >
                 {t("Remove")}
               </PixelButton>
@@ -63,7 +69,7 @@ export function Rewards({
       )}
       <div className="inv-add-reward">
         <Field
-          label={t("Invites needed")}
+          label={deferredText("Invites needed")}
           htmlFor="inv-threshold"
           error={error?.field === "invites" ? error.message : null}
         >
@@ -84,7 +90,7 @@ export function Rewards({
             value={role}
             onChange={setRole}
             assignable
-            none={t("Choose a role")}
+            none={deferredText("Choose a role")}
           />
         </Field>
         <PixelButton
@@ -96,13 +102,13 @@ export function Rewards({
               {
                 onSuccess: () => {
                   setRole(null);
-                  onToast(t("Reward saved."));
+                  onToast(deferredText("Reward saved."));
                 },
               },
             )
           }
         >
-          {t("Add reward")}
+          {deferredText("Add reward")}
         </PixelButton>
       </div>
     </div>

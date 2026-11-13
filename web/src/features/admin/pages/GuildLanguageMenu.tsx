@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useRef, useState } from "react";
 import { api, type Me } from "../../../lib/api";
 import { Icon } from "../../../components/icons/Icon";
@@ -121,7 +122,7 @@ export function GuildLanguageMenu({
           )}
         </>
       )}
-      {error && <span role="alert">{t("Could not save your language choice. Try again.")}</span>}
+      {error && <span role="alert">{deferredText("Could not save your language choice. Try again.")}</span>}
     </div>
   );
 }

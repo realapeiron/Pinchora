@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { PixelButton } from "../../../components/PixelButton";
 import { translate as spaTranslate } from "../../../i18n";
@@ -85,9 +86,9 @@ export function PanelEditor({
           if (andPost) onPost(saved);
           else
             onDone(
-              spaTranslate("Saved “{arg1}”.{arg2}", {
+              deferredText("Saved “{arg1}”.{arg2}", {
                 arg1: saved.name,
-                arg2: saved.message_id ? spaTranslate(" Update the post to show it.") : "",
+                arg2: saved.message_id ? deferredText(" Update the post to show it.") : "",
               }),
               true,
             );
@@ -130,10 +131,10 @@ export function PanelEditor({
   return (
     <section
       className="tk-editor"
-      aria-label={panel ? spaTranslate("Edit panel {arg1}", { arg1: panel.name }) : spaTranslate("New panel")}
+      aria-label={panel ? deferredText("Edit panel {arg1}", { arg1: panel.name }) : spaTranslate("New panel")}
     >
       <div>
-        <div className="tk-tabs" role="tablist" aria-label={spaTranslate("Panel settings")}>
+        <div className="tk-tabs" role="tablist" aria-label={deferredText("Panel settings")}>
           {TABS.map((t, n) => {
             const broken = Object.keys(errors).some((field) => t.fields.includes(field));
             return (
@@ -156,7 +157,7 @@ export function PanelEditor({
                 {broken && (
                   <>
                     <span className="tk-tab-dot" aria-hidden="true" />
-                    <span className="sr-only"> {spaTranslate("(needs a fix)")}</span>
+                    <span className="sr-only"> {deferredText("(needs a fix)")}</span>
                   </>
                 )}
               </button>
@@ -183,7 +184,7 @@ export function PanelEditor({
           <PanelPreview draft={draft} labelledBy={`${base}-preview`} />
           <p className="muted fine">
             {" "}
-            {spaTranslate(
+            {deferredText(
               "This is how the panel looks in Discord. Nothing is posted until you post it.",
             )}{" "}
           </p>
@@ -199,7 +200,7 @@ export function PanelEditor({
           <span className="muted fine" role="status">
             {local.length === 1
               ? spaTranslate("Fix the marked field first")
-              : spaTranslate("Fix the {arg1} marked fields first", { arg1: local.length })}
+              : deferredText("Fix the {arg1} marked fields first", { arg1: local.length })}
           </span>
         )}
         <PixelButton variant="ghost" onClick={onCancel}>
@@ -213,7 +214,7 @@ export function PanelEditor({
           {save.isPending ? spaTranslate("Saving…") : spaTranslate("Save panel")}
         </PixelButton>
         <PixelButton onClick={() => submit(true)} disabled={save.isPending || local.length > 0}>
-          {panel?.message_id ? spaTranslate("Save and update post") : spaTranslate("Save and post")}
+          {panel?.message_id ? deferredText("Save and update post") : deferredText("Save and post")}
         </PixelButton>
       </div>
     </section>

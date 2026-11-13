@@ -49,3 +49,6 @@ modmail-denied = "You cannot open a support thread here."
 admin-only = "Manage Server is required."
 
 form-decided = "Application updated."
+
+[community_engagement.web.errors]
+this-server-already-has-10-forms = "This server already has 10 forms."

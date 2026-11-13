@@ -13,6 +13,7 @@ use pinchora_core::community::tags::Destination;
 use pinchora_core::community::tags::ResponderDef;
 use pinchora_core::community::tags::TriggerKind;
 use pinchora_core::community::tags::Vars;
+use pinchora_core::t;
 use pinchora_db::{CommandRow, ResponderRow};
 use serde_json::{Value, json};
 
@@ -51,12 +52,15 @@ pub fn responder_json(row: &ResponderRow) -> Value {
 }
 
 /// The `{id}` of a path, as a row id.
-pub fn row_id(params: &std::collections::HashMap<String, String>) -> ApiResult<i64> {
+pub fn row_id(
+    params: &std::collections::HashMap<String, String>,
+    lang: pinchora_core::infra::i18n::Lang,
+) -> ApiResult<i64> {
     params
         .get("id")
         .and_then(|raw| raw.parse::<i64>().ok())
         .filter(|id| *id > 0)
-        .ok_or_else(|| ApiError::malformed("Command ids are numbers."))
+        .ok_or_else(|| ApiError::malformed(t!(lang, "tags.web.errors.command-ids-are-numbers")))
 }
 
 // /Roles and channels

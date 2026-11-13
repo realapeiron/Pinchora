@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useContext } from "react";
 import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
@@ -36,12 +37,12 @@ export function StickyEditor({
         className="utility-dialog utility-editor"
         role="dialog"
         aria-modal="true"
-        aria-label={t("Sticky message editor")}
+        aria-label={deferredText("Sticky message editor")}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="utility-dialog-head">
           <strong>{t("STICKY MESSAGE")}</strong>
-          <button onClick={onCancel} aria-label={t("Close editor")}>
+          <button onClick={onCancel} aria-label={deferredText("Close editor")}>
             ×
           </button>
         </div>
@@ -58,7 +59,9 @@ export function StickyEditor({
         <Field
           label={t("Message")}
           htmlFor="sticky-content"
-          aside={<span className="counter">{t("{count}/1,000", { count: draft.content.length })}</span>}
+          aside={
+            <span className="counter">{deferredText("{count}/1,000", { count: draft.content.length })}</span>
+          }
         >
           <textarea
             id="sticky-content"
@@ -70,7 +73,7 @@ export function StickyEditor({
           />
         </Field>
         <div className="utility-two">
-          <Field label={t("After messages")} htmlFor="sticky-messages">
+          <Field label={deferredText("After messages")} htmlFor="sticky-messages">
             <input
               id="sticky-messages"
               className="pixel-input"
@@ -81,7 +84,7 @@ export function StickyEditor({
               onChange={(e) => set("min_messages", Number(e.target.value))}
             />
           </Field>
-          <Field label={t("Time interval (seconds)")} htmlFor="sticky-gap">
+          <Field label={deferredText("Time interval (seconds)")} htmlFor="sticky-gap">
             <input
               id="sticky-gap"
               className="pixel-input"
@@ -114,7 +117,7 @@ export function StickyEditor({
             disabled={busy || !draft.channel_id || (!draft.content.trim() && !draft.embed)}
             onClick={onSave}
           >
-            {busy ? t("Saving…") : t("Save sticky")}
+            {busy ? t("Saving…") : deferredText("Save sticky")}
           </PixelButton>
         </div>
       </section>

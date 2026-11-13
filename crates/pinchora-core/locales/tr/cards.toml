@@ -30,3 +30,8 @@ empty = "HENÜZ HİÇBİR ŞEY YOK"
 
 [card.days]
 other = "{count} GÜN"
+
+[cards.web.errors]
+the-kind-is-welcome-goodbye-boost-or-level-up = "Tür welcome, goodbye, boost veya level_up olmalı."
+that-saved-version-no-longer-exists = "Kaydedilen bu sürüm artık mevcut değil."
+dm-unavailable = "Discord özel mesaj kanalını açamadı."

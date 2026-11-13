@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { plural as spaPlural, translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { Link, useLocation, useOutletContext } from "react-router";
@@ -58,8 +59,8 @@ export function Responders() {
   return (
     <SettingsPage
       className="settings-page"
-      title={spaTranslate("AUTO-RESPONDERS")}
-      lead={spaTranslate(
+      title={deferredText("AUTO-RESPONDERS")}
+      lead={deferredText(
         "Messages the bot sends by itself: a greeting when someone joins, a cheer on a level-up, an answer to a keyword.",
       )}
       action={
@@ -69,14 +70,14 @@ export function Responders() {
           className={full ? "is-disabled" : ""}
         >
           {" "}
-          {spaTranslate("New responder")}{" "}
+          {deferredText("New responder")}{" "}
         </PixelLink>
       }
     >
       {locked && (
         <div className="notice" role="note" data-testid="keyword-lock">
-          <strong>{spaTranslate("Keyword triggers are locked.")}</strong>{" "}
-          {spaTranslate(
+          <strong>{deferredText("Keyword triggers are locked.")}</strong>{" "}
+          {deferredText(
             "Hearing keywords means reading chat, which needs Discord's privileged Message Content intent. This bot runs without it",
           )}{" "}
           {keywords.length > 0
@@ -85,10 +86,10 @@ export function Responders() {
                 other: ", so your {count} keyword responders stay quiet",
               })
             : ""}{" "}
-          {spaTranslate(". Joins, leaves, level-ups and role changes work as usual.")}{" "}
+          {deferredText(". Joins, leaves, level-ups and role changes work as usual.")}{" "}
         </div>
       )}
-      {list.isPending && <Loading label={spaTranslate("Reading the responders")} />}
+      {list.isPending && <Loading label={deferredText("Reading the responders")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && (
         <Panel
@@ -108,7 +109,7 @@ export function Responders() {
           {list.data.items.length === 0 ? (
             <p className="empty-row muted">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "No auto-responders yet. A welcome message for new members is a good first one.",
               )}{" "}
             </p>
@@ -125,7 +126,7 @@ export function Responders() {
                       summary={responderItemSummary(responder)}
                       enabled={responder.enabled}
                       onToggle={(enabled) => toggle.mutate({ id: responder.id, enabled })}
-                      toggleLabel={spaTranslate("Responder {arg1}", { arg1: responder.name })}
+                      toggleLabel={deferredText("Responder {arg1}", { arg1: responder.name })}
                       toggleDisabled={toggle.isPending || (asleep && !responder.enabled)}
                     >
                       <div className="settings-detail-fields">
@@ -140,13 +141,13 @@ export function Responders() {
                         </p>
                         <p className="tag-facts muted">
                           {responder.destination === "dm"
-                            ? spaTranslate("Answers by direct message")
+                            ? deferredText("Answers by direct message")
                             : responder.destination === "channel"
-                              ? spaTranslate("Answers in one channel")
-                              : spaTranslate("Answers where it happened")}
+                              ? deferredText("Answers in one channel")
+                              : deferredText("Answers where it happened")}
                           {responder.chance < 100 && ` · ${responder.chance}% of the time`}
                           {responder.cooldown_secs > 0 &&
-                            spaTranslate(" · cooldown {arg1}", {
+                            deferredText(" · cooldown {arg1}", {
                               arg1: cooldownLabel(responder.cooldown_secs),
                             })}
                           {responder.actions.length > 0 &&
@@ -166,7 +167,7 @@ export function Responders() {
                           <PixelButton
                             variant="ghost"
                             className="button-small"
-                            aria-label={spaTranslate("Delete {arg1}", { arg1: responder.name })}
+                            aria-label={deferredText("Delete {arg1}", { arg1: responder.name })}
                             onClick={() => setAsking(responder)}
                           >
                             {spaTranslate("Delete")}
@@ -181,7 +182,7 @@ export function Responders() {
           )}
           {full && (
             <p className="field-hint muted">
-              {spaTranslate("A server has at most")} {list.data.max} {spaTranslate("auto-responders.")}
+              {deferredText("A server has at most")} {list.data.max} {deferredText("auto-responders.")}
             </p>
           )}
         </Panel>
@@ -193,11 +194,11 @@ export function Responders() {
             <div className="panel-body">
               <h2 id="delete-title" className="pixel-title">
                 {" "}
-                {spaTranslate("Delete “")}
+                {deferredText("Delete “")}
                 {asking.name}”?
               </h2>
               <p>
-                {spaTranslate(
+                {deferredText(
                   "The bot stops answering this way. This can't be undone, but you can export first.",
                 )}
               </p>
@@ -221,13 +222,13 @@ export function Responders() {
                   onClick={() =>
                     remove.mutate(asking.id, {
                       onSuccess: () => {
-                        setToast(spaTranslate("Deleted “{arg1}”.", { arg1: asking.name }));
+                        setToast(deferredText("Deleted “{arg1}”.", { arg1: asking.name }));
                         setAsking(null);
                       },
                     })
                   }
                 >
-                  {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
+                  {remove.isPending ? deferredText("Deleting…") : "Delete it"}
                 </PixelButton>
               </div>
             </div>

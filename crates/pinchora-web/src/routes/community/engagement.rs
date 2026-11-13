@@ -271,6 +271,7 @@ async fn form_write(
     existing: Option<i64>,
     body: FormBody,
 ) -> ApiResult<Json<Value>> {
+    let lang = guild.panel_lang;
     if !pinchora_core::community::community::valid_form(&body.name, &json!(body.questions)) {
         return Err(bad(
             "questions",
@@ -324,7 +325,10 @@ async fn form_write(
             if existing.is_some() {
                 ApiError::not_found()
             } else {
-                ApiError::limit("This server already has 10 forms.")
+                ApiError::limit(t!(
+                    lang,
+                    "community_engagement.web.errors.this-server-already-has-10-forms"
+                ))
             }
         })?;
     let target = form_id.to_string();

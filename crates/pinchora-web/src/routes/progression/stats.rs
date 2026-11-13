@@ -30,6 +30,7 @@ use pinchora_core::admin::server_stats::check_template;
 use pinchora_core::admin::server_stats::counter_name;
 use pinchora_core::admin::settings::FieldError;
 use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use pinchora_db::{CounterRow, CounterSave};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -80,10 +81,12 @@ pub struct PeriodQuery {
     days: Option<i64>,
 }
 
-fn period_of(query: &PeriodQuery) -> ApiResult<Period> {
+fn period_of(query: &PeriodQuery, lang: Lang) -> ApiResult<Period> {
     match query.days {
         None => Ok(Period::default()),
-        Some(days) => Period::of_days(days).ok_or_else(|| ApiError::malformed("days is 7, 30 or 90.")),
+        Some(days) => {
+            Period::of_days(days).ok_or_else(|| ApiError::malformed(t!(lang, "stats.web.errors.days-is-7-30-or-90")))
+        }
     }
 }
 
@@ -226,7 +229,8 @@ pub async fn summary(
     managed: ManagedGuild,
     Query(query): Query<PeriodQuery>,
 ) -> ApiResult<Json<Value>> {
-    let period = period_of(&query)?;
+    let lang = managed.panel_lang;
+    let period = period_of(&query, lang)?;
     let guild = managed.id;
     let mut out = period_json(&state, guild, period, true, None).await?;
     let settings = state.app.db.guild_settings(guild).await?;
@@ -272,7 +276,8 @@ pub async fn card(
     managed: ManagedGuild,
     Query(query): Query<PeriodQuery>,
 ) -> ApiResult<Response> {
-    let period = period_of(&query)?;
+    let lang = managed.panel_lang;
+    let period = period_of(&query, lang)?;
     let session = &managed.current.session;
     ratelimit::check(
         &state.app.cache,
@@ -382,6 +387,7 @@ pub async fn add_counter(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<CounterBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let channel = body
         .channel_id
@@ -426,8 +432,10 @@ pub async fn add_counter(
         .await?
     {
         CounterSave::Full => {
-            return Err(ApiError::limit(format!(
-                "This server has {MAX_COUNTERS} counter channels already. Remove one first."
+            return Err(ApiError::limit(t!(
+                lang,
+                "stats.web.errors.counter-channels-limit",
+                max = MAX_COUNTERS
             )));
         }
         CounterSave::Saved(row) => row,
@@ -499,11 +507,12 @@ pub async fn delete_counter(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let channel = params
         .get("channel")
         .and_then(|raw| parse_id(raw))
-        .ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "common.web.errors.channel-ids")))?;
     let before = state
         .app
         .db

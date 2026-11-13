@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useId, useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { Choice } from "../../../components/Choice";
@@ -59,7 +60,7 @@ export function SettingsForm({
     value.auto_close_hours < 0 ||
     value.auto_close_hours > limits.auto_close_hours
   ) {
-    errors.auto_close_hours ??= spaTranslate("0 (never) to {arg1} hours.", { arg1: limits.auto_close_hours });
+    errors.auto_close_hours ??= deferredText("0 (never) to {arg1} hours.", { arg1: limits.auto_close_hours });
     local.push("auto_close_hours");
   }
   if (
@@ -88,42 +89,42 @@ export function SettingsForm({
         >
           <FieldGrid>
             <Field
-              label={spaTranslate("Ticket category")}
+              label={deferredText("Ticket category")}
               htmlFor={`${base}-open`}
               error={errors.open_category_id}
-              hint={spaTranslate("Where ticket channels are made. A panel can pick its own.")}
+              hint={deferredText("Where ticket channels are made. A panel can pick its own.")}
             >
               <CategoryPicker
                 id={`${base}-open`}
                 info={info}
                 value={value.open_category_id}
                 onChange={(id) => set("open_category_id", id)}
-                none={spaTranslate("No category (top of the list)")}
+                none={deferredText("No category (top of the list)")}
                 invalid={!!errors.open_category_id}
               />
             </Field>
             <Field
-              label={spaTranslate("Closed category")}
+              label={deferredText("Closed category")}
               htmlFor={`${base}-closed`}
               error={errors.closed_category_id}
-              hint={spaTranslate("Closed tickets move here. None: they stay where they are.")}
+              hint={deferredText("Closed tickets move here. None: they stay where they are.")}
             >
               <CategoryPicker
                 id={`${base}-closed`}
                 info={info}
                 value={value.closed_category_id}
                 onChange={(id) => set("closed_category_id", id)}
-                none={spaTranslate("Don't move closed tickets")}
+                none={deferredText("Don't move closed tickets")}
                 invalid={!!errors.closed_category_id}
               />
             </Field>
             <Field
-              label={spaTranslate("Channel name")}
+              label={deferredText("Channel name")}
               htmlFor={`${base}-naming`}
               error={errors.naming}
               hint={
                 <span className="tk-sample">
-                  {"{number}"}, {"{user}"} {spaTranslate("and")} {"{topic}"} {spaTranslate("are filled in:")}{" "}
+                  {"{number}"}, {"{user}"} {spaTranslate("and")} {"{topic}"} {deferredText("are filled in:")}{" "}
                   <code>#{example || "…"}</code>
                 </span>
               }
@@ -139,7 +140,7 @@ export function SettingsForm({
               />
             </Field>
           </FieldGrid>
-          <Field label={spaTranslate("Tickets are")} htmlFor={`${base}-mode`}>
+          <Field label={deferredText("Tickets are")} htmlFor={`${base}-mode`}>
             <Choice
               name="Where tickets live"
               value={value.mode}
@@ -155,13 +156,13 @@ export function SettingsForm({
           summary={summary.transcripts}
           enabled={value.dm_transcript}
           onToggle={(on) => set("dm_transcript", on)}
-          toggleLabel={spaTranslate("Transcript by direct message")}
+          toggleLabel={deferredText("Transcript by direct message")}
         >
           <Field
-            label={spaTranslate("Log channel")}
+            label={deferredText("Log channel")}
             htmlFor={`${base}-log`}
             error={errors.log_channel_id}
-            hint={spaTranslate("Opened, claimed and closed tickets, with each transcript.")}
+            hint={deferredText("Opened, claimed and closed tickets, with each transcript.")}
           >
             <ChannelPicker
               posting
@@ -169,12 +170,12 @@ export function SettingsForm({
               info={info}
               value={value.log_channel_id}
               onChange={(id) => set("log_channel_id", id)}
-              none={spaTranslate("No log")}
+              none={deferredText("No log")}
               invalid={!!errors.log_channel_id}
             />
           </Field>
           <p className="panel-lead muted">
-            {spaTranslate(
+            {deferredText(
               "The member gets their ticket's transcript when it closes (unless they turned server DMs off).",
             )}
           </p>
@@ -187,13 +188,13 @@ export function SettingsForm({
         >
           <FieldGrid>
             <Field
-              label={spaTranslate("Auto-close after (hours)")}
+              label={deferredText("Auto-close after (hours)")}
               htmlFor={`${base}-auto`}
               error={errors.auto_close_hours}
               hint={
                 value.auto_close_hours === 0
-                  ? spaTranslate("0: tickets never close by themselves.")
-                  : spaTranslate("A ticket nobody writes in for {arg1} h closes.", {
+                  ? deferredText("0: tickets never close by themselves.")
+                  : deferredText("A ticket nobody writes in for {arg1} h closes.", {
                       arg1: value.auto_close_hours,
                     })
               }
@@ -210,7 +211,7 @@ export function SettingsForm({
               />
             </Field>
             <Field
-              label={spaTranslate("Open tickets per member")}
+              label={deferredText("Open tickets per member")}
               htmlFor={`${base}-max`}
               error={errors.max_open_per_user}
               hint={`1 to ${limits.open_per_user}. One ticket a minute per member either way.`}
@@ -230,15 +231,15 @@ export function SettingsForm({
         </SettingsRow>
         <SettingsRow
           rowId="ticket-settings-ratings"
-          title={spaTranslate("Ratings")}
+          title={deferredText("Ratings")}
           description={t("Ask members to rate closed tickets.")}
           summary={summary.ratings}
           enabled={value.rating_enabled}
           onToggle={(on) => set("rating_enabled", on)}
-          toggleLabel={spaTranslate("Ratings")}
+          toggleLabel={deferredText("Ratings")}
         >
           <p className="panel-lead muted">
-            {spaTranslate(
+            {deferredText(
               "Ask the member for one to five stars after a close; the numbers above show the average.",
             )}
           </p>
@@ -250,14 +251,14 @@ export function SettingsForm({
         blocked={local.length > 0}
         error={
           local.length > 0
-            ? spaTranslate("Fix the marked fields first")
+            ? deferredText("Fix the marked fields first")
             : save.isError && refused.length === 0
               ? save.error.message
               : null
         }
         onSave={() =>
           save.mutate(value, {
-            onSuccess: () => onToast(spaTranslate("Saved. New tickets use it right away.")),
+            onSuccess: () => onToast(deferredText("Saved. New tickets use it right away.")),
           })
         }
         onReset={() => {

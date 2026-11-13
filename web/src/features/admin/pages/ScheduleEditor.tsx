@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useContext } from "react";
 import { EmbedEditor } from "../components/EmbedEditor";
 import { Field } from "../../../components/Field";
@@ -50,12 +51,12 @@ export function ScheduleEditor({
         className="utility-dialog utility-editor"
         role="dialog"
         aria-modal="true"
-        aria-label={t("Schedule editor")}
+        aria-label={deferredText("Schedule editor")}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="utility-dialog-head">
-          <strong>{editing ? t("EDIT SCHEDULE") : t("SCHEDULE A MESSAGE")}</strong>
-          <button onClick={onCancel} aria-label={t("Close editor")}>
+          <strong>{editing ? deferredText("EDIT SCHEDULE") : deferredText("SCHEDULE A MESSAGE")}</strong>
+          <button onClick={onCancel} aria-label={deferredText("Close editor")}>
             ×
           </button>
         </div>
@@ -72,7 +73,9 @@ export function ScheduleEditor({
         <Field
           label={t("Message")}
           htmlFor="schedule-content"
-          aside={<span className="counter">{t("{count}/2,000", { count: draft.content.length })}</span>}
+          aside={
+            <span className="counter">{deferredText("{count}/2,000", { count: draft.content.length })}</span>
+          }
         >
           <textarea
             id="schedule-content"
@@ -84,7 +87,7 @@ export function ScheduleEditor({
           />
         </Field>
         <div className="utility-two">
-          <Field label={t("First run (UTC)")} htmlFor="schedule-when">
+          <Field label={deferredText("First run (UTC)")} htmlFor="schedule-when">
             <input
               id="schedule-when"
               className="pixel-input"
@@ -110,14 +113,14 @@ export function ScheduleEditor({
             onChange={(e) => changeKind(e.target.value as Recurrence["kind"])}
           >
             <option value="once">{t("Once")}</option>
-            <option value="interval">{t("Every interval")}</option>
+            <option value="interval">{deferredText("Every interval")}</option>
             <option value="daily">{t("Daily")}</option>
             <option value="weekly">{t("Weekly")}</option>
-            <option value="cron">{t("Cron pattern")}</option>
+            <option value="cron">{deferredText("Cron pattern")}</option>
           </select>
         </Field>
         {kind === "interval" && (
-          <Field label={t("Every seconds")} htmlFor="schedule-interval">
+          <Field label={deferredText("Every seconds")} htmlFor="schedule-interval">
             <input
               id="schedule-interval"
               className="pixel-input"
@@ -132,7 +135,7 @@ export function ScheduleEditor({
         {kind === "daily" && <TimeFields schedule={draft.schedule} onChange={(s) => set("schedule", s)} />}
         {kind === "weekly" && (
           <>
-            <Field label={t("Day of week")} htmlFor="schedule-weekday">
+            <Field label={deferredText("Day of week")} htmlFor="schedule-weekday">
               <select
                 id="schedule-weekday"
                 className="pixel-input pixel-select"
@@ -166,9 +169,9 @@ export function ScheduleEditor({
         )}
         {kind === "cron" && (
           <Field
-            label={t("Cron: minute hour day month weekday")}
+            label={deferredText("Cron: minute hour day month weekday")}
             htmlFor="schedule-cron"
-            hint={t("Use * or one number in each field. Example: 0 9 * * 1")}
+            hint={deferredText("Use * or one number in each field. Example: 0 9 * * 1")}
           >
             <input
               id="schedule-cron"
@@ -211,7 +214,7 @@ export function ScheduleEditor({
             disabled={busy || !validTime || !draft.channel_id || (!draft.content.trim() && !draft.embed)}
             onClick={onSave}
           >
-            {busy ? t("Saving…") : editing ? t("Save schedule") : t("Schedule")}
+            {busy ? t("Saving…") : editing ? deferredText("Save schedule") : t("Schedule")}
           </PixelButton>
         </div>
       </section>

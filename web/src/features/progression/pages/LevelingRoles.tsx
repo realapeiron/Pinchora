@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
@@ -32,7 +33,7 @@ export function LevelRoles({
   const [level, setLevel] = useState("5");
   const [role, setRole] = useState<string | null>(null);
   const picked = info?.roles.find((r) => r.id === role);
-  const local = level === "" ? spaTranslate("Write a level.") : problem(checkLevel(Number(level)));
+  const local = level === "" ? deferredText("Write a level.") : problem(checkLevel(Number(level)));
   const items = query.data?.items ?? [];
   const serverField = write.error instanceof ApiError ? write.error.field : undefined;
 
@@ -50,7 +51,7 @@ export function LevelRoles({
             max: query.data?.max ?? LIMITS.max_level_roles,
           })}
         </span>
-        <Field label={spaTranslate("When a member earns a new one")}>
+        <Field label={deferredText("When a member earns a new one")}>
           <Choice
             name="Level role mode"
             value={stack ? "stack" : "replace"}
@@ -58,25 +59,25 @@ export function LevelRoles({
               {
                 value: "stack",
                 title: spaTranslate("Stack"),
-                detail: spaTranslate("Keep every role earned."),
+                detail: deferredText("Keep every role earned."),
               },
               {
                 value: "replace",
                 title: spaTranslate("Replace"),
-                detail: spaTranslate("Keep only the highest one."),
+                detail: deferredText("Keep only the highest one."),
               },
             ]}
             onChange={(mode) => setStack(mode === "stack")}
           />
         </Field>
         {items.length === 0 ? (
-          <p className="empty-row muted">{spaTranslate("No level roles yet.")}</p>
+          <p className="empty-row muted">{deferredText("No level roles yet.")}</p>
         ) : (
           <ul className="list" aria-label={spaTranslate("Level roles")}>
             {items.map((row) => (
               <li key={row.role_id} className="list-row">
                 <span className="list-level pixel-label">
-                  {spaTranslate("LV")} {row.level}
+                  {deferredText("LV")} {row.level}
                 </span>
                 <span className="list-main">
                   <RoleTag info={info} id={row.role_id} />
@@ -84,7 +85,7 @@ export function LevelRoles({
                 <PixelButton
                   variant="ghost"
                   className="button-small"
-                  aria-label={spaTranslate("Remove level role")}
+                  aria-label={deferredText("Remove level role")}
                   disabled={write.isPending}
                   onClick={() => write.mutate({ method: "DELETE", sub: `/${row.role_id}` })}
                 >
@@ -169,10 +170,10 @@ function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) 
   return (
     <div className="sync">
       <div className="sync-text">
-        <h3 className="setting-name">{spaTranslate("Sync members")}</h3>
+        <h3 className="setting-name">{deferredText("Sync members")}</h3>
         <p className="muted">
           {" "}
-          {spaTranslate(
+          {deferredText(
             "Give members who are already past a level the roles they earned. Checks up to 1,000 members with the newest XP first.",
           )}{" "}
         </p>
@@ -191,7 +192,7 @@ function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) 
           });
         }}
       >
-        {running ? spaTranslate("Syncing…") : spaTranslate("Sync members")}
+        {running ? deferredText("Syncing…") : deferredText("Sync members")}
       </PixelButton>
       {(showing || start.isPending) && (
         <div className="sync-status" aria-live="polite">

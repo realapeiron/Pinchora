@@ -22,6 +22,7 @@ use crate::{
     ratelimit,
     state::WebState,
 };
+use pinchora_core::t;
 
 /// Bot pictures of rooms per session per minute; each also waits for a render slot like the bot's cards.
 const RENDERS_PER_MINUTE: i64 = 30;
@@ -235,18 +236,20 @@ async fn owner_name(state: &WebState, owner: u64) -> String {
         .unwrap_or_else(|| "This player".to_owned())
 }
 
-fn room_index(raw: &str) -> ApiResult<i16> {
-    raw.parse::<i16>()
-        .ok()
-        .filter(|idx| *idx >= 0)
-        .ok_or_else(|| ApiError::malformed("Room numbers are small whole numbers, counted from 0."))
+fn room_index(raw: &str, lang: pinchora_core::infra::i18n::Lang) -> ApiResult<i16> {
+    raw.parse::<i16>().ok().filter(|idx| *idx >= 0).ok_or_else(|| {
+        ApiError::malformed(t!(
+            lang,
+            "house.web.errors.room-numbers-are-small-whole-numbers-counted-from-0"
+        ))
+    })
 }
 
-fn user_id(raw: &str) -> ApiResult<u64> {
+fn user_id(raw: &str, lang: pinchora_core::infra::i18n::Lang) -> ApiResult<u64> {
     raw.parse::<u64>()
         .ok()
         .filter(|id| *id > 0)
-        .ok_or_else(|| ApiError::malformed("That is not a player id."))
+        .ok_or_else(|| ApiError::malformed(t!(lang, "house.web.errors.that-is-not-a-player-id")))
 }
 
 pub(super) async fn overview(state: &WebState, current: &CurrentSession, whose: Whose) -> ApiResult<Json<Value>> {
@@ -283,8 +286,13 @@ pub(super) async fn overview(state: &WebState, current: &CurrentSession, whose: 
     })))
 }
 
-pub(super) async fn room_data(state: &WebState, whose: Whose, idx: &str) -> ApiResult<RoomData> {
-    let idx = room_index(idx)?;
+pub(super) async fn room_data(
+    state: &WebState,
+    whose: Whose,
+    idx: &str,
+    lang: pinchora_core::infra::i18n::Lang,
+) -> ApiResult<RoomData> {
+    let idx = room_index(idx, lang)?;
     let (house, rooms) = open(state, whose).await?;
     RoomData::load(&state.app, whose.owner(), &house, &rooms, idx)
         .await?
@@ -335,10 +343,16 @@ async fn own_room(
     Path(idx): Path<String>,
     Query(query): Query<crate::routes::house::house_edit::Scope>,
 ) -> ApiResult<Json<Value>> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or_default();
     let mut current = current;
     let who = crate::routes::house::house_edit::resolve(&state, &mut current, &query, false).await?;
     let _guard = state.app.db.house_editor(who.owner).await?;
-    let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
+    let data = room_data(&state, Whose::Own(who.owner), &idx, lang).await?;
     let mut value = data.json();
     let extra = pinchora_commands::house::house_edit::snapshot(&state.app, who, data.room.idx, &data.placements).await;
     value
@@ -357,8 +371,14 @@ async fn visit_house(
     current: CurrentSession,
     Path(user): Path<String>,
 ) -> ApiResult<Json<Value>> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or_default();
     let whose = Whose::Visit {
-        owner: user_id(&user)?,
+        owner: user_id(&user, lang)?,
         guest: current.session.user_id,
     };
     overview(&state, &current, whose).await
@@ -371,11 +391,17 @@ async fn visit_room(
     current: CurrentSession,
     Path((user, idx)): Path<(String, String)>,
 ) -> ApiResult<Json<Value>> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or_default();
     let whose = Whose::Visit {
-        owner: user_id(&user)?,
+        owner: user_id(&user, lang)?,
         guest: current.session.user_id,
     };
-    Ok(Json(room_data(&state, whose, &idx).await?.json()))
+    Ok(Json(room_data(&state, whose, &idx, lang).await?.json()))
 }
 
 #[derive(Deserialize)]
@@ -397,6 +423,12 @@ async fn render(
     mut data: RoomData,
     query: RenderQuery,
 ) -> ApiResult<Response> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(pinchora_core::infra::i18n::Lang::En);
     ratelimit::check(
         &state.app.cache,
         "house-render",
@@ -407,7 +439,10 @@ async fn render(
     .await?;
     let scale = query.scale.unwrap_or(2);
     if !SCALES.contains(&scale) {
-        return Err(ApiError::malformed("The scale is 1, 2, 3 or 4."));
+        return Err(ApiError::malformed(t!(
+            lang,
+            "house.web.errors.the-scale-is-1-2-3-or-4"
+        )));
     }
     data.seed = query.seed.unwrap_or_else(|| house_seed_at(state.app.now()));
     let mut view = data.view();
@@ -418,13 +453,13 @@ async fn render(
         let x = parts.first().and_then(|s| s.parse::<u32>().ok());
         let y = parts.get(1).and_then(|s| s.parse::<u32>().ok());
         let (Some(x), Some(y)) = (x, y) else {
-            return Err(ApiError::malformed("Invalid cursor."));
+            return Err(ApiError::malformed(t!(lang, "house.web.errors.invalid-cursor")));
         };
         let wall = match parts.get(2).copied().unwrap_or("floor") {
             "floor" | "f" => None,
             "right" | "r" => Some(pinchora_render::room::WallSide::Right),
             "left" | "l" => Some(pinchora_render::room::WallSide::Left),
-            _ => return Err(ApiError::malformed("Invalid cursor.")),
+            _ => return Err(ApiError::malformed(t!(lang, "house.web.errors.invalid-cursor"))),
         };
         if x >= if matches!(wall, Some(pinchora_render::room::WallSide::Left)) {
             data.depth
@@ -432,7 +467,7 @@ async fn render(
             data.width
         } || y >= if wall.is_some() { 3 } else { data.depth }
         {
-            return Err(ApiError::malformed("Invalid cursor."));
+            return Err(ApiError::malformed(t!(lang, "house.web.errors.invalid-cursor")));
         }
         view.cursor = Some(pinchora_render::room::Cursor {
             x,
@@ -458,9 +493,15 @@ async fn own_render(
     Path(idx): Path<String>,
     Query(query): Query<RenderQuery>,
 ) -> ApiResult<Response> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or_default();
     let mut current = current;
     let who = crate::routes::house::house_edit::resolve(&state, &mut current, &query.scope, false).await?;
-    let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
+    let data = room_data(&state, Whose::Own(who.owner), &idx, lang).await?;
     render(&state, &current, data, query).await
 }
 
@@ -471,11 +512,17 @@ async fn visit_render(
     Path((user, idx)): Path<(String, String)>,
     Query(query): Query<RenderQuery>,
 ) -> ApiResult<Response> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or_default();
     let whose = Whose::Visit {
-        owner: user_id(&user)?,
+        owner: user_id(&user, lang)?,
         guest: current.session.user_id,
     };
-    let data = room_data(&state, whose, &idx).await?;
+    let data = room_data(&state, whose, &idx, lang).await?;
     render(&state, &current, data, query).await
 }
 
@@ -492,8 +539,17 @@ async fn character(
     current: CurrentSession,
     Query(query): Query<CharacterQuery>,
 ) -> ApiResult<Response> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(pinchora_core::infra::i18n::Lang::En);
     if query.code.len() > MAX_CODE {
-        return Err(ApiError::malformed("That is not a character code."));
+        return Err(ApiError::malformed(t!(
+            lang,
+            "house.web.errors.that-is-not-a-character-code"
+        )));
     }
     ratelimit::check(
         &state.app.cache,
@@ -505,7 +561,7 @@ async fn character(
     .await?;
     let png = character_png(&state.app, &query.code)
         .await?
-        .ok_or_else(|| ApiError::malformed("That is not a character code."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "house.web.errors.that-is-not-a-character-code")))?;
     let mut response = png.into_response();
     let h = response.headers_mut();
     h.insert(header::CONTENT_TYPE, HeaderValue::from_static("image/png"));

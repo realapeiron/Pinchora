@@ -18,6 +18,7 @@ use pinchora_commands::Who;
 use pinchora_commands::house::house_edit;
 use pinchora_commands::house::house_edit::Operation;
 use pinchora_commands::house::house_edit::Outcome;
+use pinchora_core::t;
 use pinchora_db::{HouseUpdate, HouseUpdateOutcome, NewRoom};
 use pinchora_game::{Content, Currency, house};
 use serde::{Deserialize, Serialize};
@@ -39,6 +40,12 @@ pub(super) async fn resolve(
     scope: &Scope,
     write: bool,
 ) -> ApiResult<Who> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(pinchora_core::infra::i18n::Lang::En);
     let me = current.session.user_id;
     match scope.scope.as_str() {
         "own" => Ok(Who::own(me)),
@@ -56,7 +63,7 @@ pub(super) async fn resolve(
             let id = scope
                 .guild
                 .filter(|id| *id > 0 && *id <= i64::MAX as u64)
-                .ok_or_else(|| ApiError::malformed("Choose a server."))?;
+                .ok_or_else(|| ApiError::malformed(t!(lang, "house.web.errors.choose-a-server")))?;
             // Identical Manage Server/Administrator/owner and bot-presence checks to ManagedGuild.
             let guilds = discord::user_guilds(state, current, true).await?;
             let guild = guilds
@@ -95,7 +102,7 @@ pub(super) async fn resolve(
             }
             Ok(Who::own(id))
         }
-        _ => Err(ApiError::malformed("Unknown house scope.")),
+        _ => Err(ApiError::malformed(t!(lang, "house.web.errors.unknown-house-scope"))),
     }
 }
 
@@ -146,15 +153,21 @@ async fn operate(
     Query(scope): Query<Scope>,
     ApiJson(request): ApiJson<Request>,
 ) -> ApiResult<Response> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(pinchora_core::infra::i18n::Lang::En);
     let who = resolve(&state, &mut current, &scope, true).await?;
     state.app.cache.ping().await?;
-    let receipt = edit_receipt(&request, current.session.user_id)?;
+    let receipt = edit_receipt(&request, current.session.user_id, lang)?;
     let _settings_guard = if matches!(&request.op, Op::Extra(_)) {
         Some(state.app.db.house_editor(who.owner).await?)
     } else {
         None
     };
-    let data = room_data(&state, Whose::Own(who.owner), &idx).await?;
+    let data = room_data(&state, Whose::Own(who.owner), &idx, lang).await?;
     let before = house_edit::snapshot(&state.app, who, data.room.idx, &data.placements).await;
     if let Some(receipt) = receipt.as_ref().filter(|_| matches!(&request.op, Op::Extra(_))) {
         match state
@@ -169,7 +182,12 @@ async fn operate(
                 value["replayed"] = json!(true);
                 return Ok(Json(value).into_response());
             }
-            Some(false) => return Err(ApiError::blocked("This request id was already used.")),
+            Some(false) => {
+                return Err(ApiError::blocked(t!(
+                    lang,
+                    "house.web.errors.this-request-id-was-already-used"
+                )));
+            }
             None => {}
         }
     }
@@ -179,6 +197,7 @@ async fn operate(
     let operation = serde_json::to_value(&request.op).map_err(anyhow::Error::from)?;
     let change = HouseChange {
         state: &state,
+        lang,
         who,
         data: &data,
         scope: &scope,
@@ -272,8 +291,14 @@ async fn thumbnail(
     Query(scope): Query<Scope>,
     headers: HeaderMap,
 ) -> ApiResult<Response> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or_default();
     let who = resolve(&state, &mut current, &scope, false).await?;
-    let data = room_data(&state, Whose::Own(who.owner), "0").await?;
+    let data = room_data(&state, Whose::Own(who.owner), "0", lang).await?;
     let view = data.view();
     let sprites = state.app.sprites.clone();
     let png = state
@@ -310,6 +335,7 @@ async fn guestbook(State(state): State<WebState>, current: CurrentSession) -> Ap
 
 struct HouseChange<'a> {
     state: &'a WebState,
+    lang: pinchora_core::infra::i18n::Lang,
     who: Who,
     data: &'a pinchora_commands::RoomData,
     scope: &'a Scope,
@@ -326,6 +352,7 @@ impl HouseChange<'_> {
             scope,
             receipt,
             expected,
+            ..
         } = *self;
         let result = match op {
             Op::Edit(op) => match house_edit::apply_receipted(
@@ -381,6 +408,7 @@ impl HouseChange<'_> {
         floor: Option<String>,
         confirm_price: Option<i64>,
     ) -> ApiResult<Option<Response>> {
+        let lang = self.lang;
         let Self {
             state,
             who,
@@ -388,10 +416,11 @@ impl HouseChange<'_> {
             scope,
             receipt,
             expected,
+            ..
         } = *self;
 
         if wallpaper.is_some() == floor.is_some() {
-            return Err(ApiError::malformed("Choose one surface."));
+            return Err(ApiError::malformed(t!(lang, "house.web.errors.choose-one-surface")));
         }
         let wall = wallpaper.is_some();
         let id = wallpaper.as_ref().or(floor.as_ref()).expect("one surface");
@@ -404,7 +433,10 @@ impl HouseChange<'_> {
         let surface = list.iter().find(|s| &s.id == id).ok_or_else(ApiError::not_found)?;
         let key = format!("{}:{id}", if wall { "wp" } else { "fl" });
         if scope.scope == "plaza" && !state.app.db.owns(who.stock, &key).await? {
-            return Err(ApiError::blocked("You do not own this piece."));
+            return Err(ApiError::blocked(t!(
+                lang,
+                "house.web.errors.you-do-not-own-this-piece"
+            )));
         }
         let (currency, label) = match surface.currency {
             Currency::Shells => (pinchora_db::Currency::Shells, "shells"),
@@ -437,6 +469,7 @@ impl HouseChange<'_> {
         Ok(None)
     }
     async fn upgrade_house(&self, from_tier: i16) -> ApiResult<Option<Response>> {
+        let lang = self.lang;
         let Self {
             state,
             who,
@@ -447,7 +480,10 @@ impl HouseChange<'_> {
         } = *self;
 
         if !(1..6).contains(&from_tier) {
-            return Err(ApiError::blocked("Your house is already at the largest tier."));
+            return Err(ApiError::blocked(t!(
+                lang,
+                "house.web.errors.your-house-is-already-at-the-largest-tier"
+            )));
         }
         let next = house::tier(from_tier + 1);
         let content = Content::get();
@@ -498,7 +534,11 @@ impl HouseChange<'_> {
     }
 }
 
-fn edit_receipt(request: &Request, actor: u64) -> ApiResult<Option<pinchora_db::ReefEditRequest>> {
+fn edit_receipt(
+    request: &Request,
+    actor: u64,
+    lang: pinchora_core::infra::i18n::Lang,
+) -> ApiResult<Option<pinchora_db::ReefEditRequest>> {
     let receipt = match (&request.request_id, &request.expected_revision) {
         (Some(id), Some(revision)) if !id.is_empty() && id.len() <= 100 => Some(pinchora_db::ReefEditRequest {
             actor,
@@ -509,10 +549,15 @@ fn edit_receipt(request: &Request, actor: u64) -> ApiResult<Option<pinchora_db::
                 .parse::<i64>()
                 .ok()
                 .filter(|n| *n >= 0)
-                .ok_or_else(|| ApiError::malformed("Invalid revision."))?,
+                .ok_or_else(|| ApiError::malformed(t!(lang, "house.web.errors.invalid-revision")))?,
         }),
         (None, None) => None,
-        _ => return Err(ApiError::malformed("Request id and revision are required together.")),
+        _ => {
+            return Err(ApiError::malformed(t!(
+                lang,
+                "house.web.errors.request-id-and-revision-are-required-together"
+            )));
+        }
     };
     Ok(receipt)
 }

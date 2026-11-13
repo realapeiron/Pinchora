@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useOutletContext } from "react-router";
 
@@ -33,7 +34,7 @@ export function Points() {
     <SettingsPage
       className="settings-page"
       title={spaTranslate("POINTS")}
-      lead={spaTranslate(
+      lead={deferredText(
         "A currency for this server only: members earn it by chatting and spend it on roles in /store.",
       )}
     >
@@ -51,7 +52,7 @@ export function Points() {
                 label={spaTranslate("Name")}
                 htmlFor="points-name"
                 error={errors.points_name}
-                hint={spaTranslate("What members see, e.g. coins or shells.")}
+                hint={deferredText("What members see, e.g. coins or shells.")}
               >
                 <input
                   id="points-name"
@@ -66,7 +67,7 @@ export function Points() {
                 label={spaTranslate("Emoji")}
                 htmlFor="points-emoji"
                 error={errors.points_emoji}
-                hint={spaTranslate("One emoji, or a custom one as <:name:id>.")}
+                hint={deferredText("One emoji, or a custom one as <:name:id>.")}
               >
                 <input
                   id="points-emoji"
@@ -76,7 +77,7 @@ export function Points() {
                   aria-invalid={errors.points_emoji ? true : undefined}
                 />
               </Field>
-              <Field label={spaTranslate("Least per message")} htmlFor="points-min" error={errors.points_min}>
+              <Field label={deferredText("Least per message")} htmlFor="points-min" error={errors.points_min}>
                 <input
                   id="points-min"
                   className="pixel-input input-short"
@@ -88,7 +89,7 @@ export function Points() {
                   aria-invalid={errors.points_min ? true : undefined}
                 />
               </Field>
-              <Field label={spaTranslate("Most per message")} htmlFor="points-max" error={errors.points_max}>
+              <Field label={deferredText("Most per message")} htmlFor="points-max" error={errors.points_max}>
                 <input
                   id="points-max"
                   className="pixel-input input-short"
@@ -105,12 +106,12 @@ export function Points() {
               <span className="pixel-label muted">{spaTranslate("LOOKS LIKE")}</span>
               <span>
                 {" "}
-                {spaTranslate("Each message earns")}{" "}
+                {deferredText("Each message earns")}{" "}
                 <strong>
                   {value.points_min}–{value.points_max}
                 </strong>{" "}
                 {value.points_emoji} {value.points_name}
-                {spaTranslate(". XP multipliers scale it too.")}{" "}
+                {deferredText(". XP multipliers scale it too.")}{" "}
               </span>
             </p>
           </div>

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
 import { translate } from "../../../i18n";
@@ -106,7 +107,12 @@ export function ShellNav({
           serverOpenRequested={serverOpenRequested}
           closeDrawer={closeDrawer}
         />
-        <button type="button" className="shell-search" title={t("Filter pages")} onClick={openSearch}>
+        <button
+          type="button"
+          className="shell-search"
+          title={deferredText("Filter pages")}
+          onClick={openSearch}
+        >
           <Icon name="search" />
           <span>{t("Search pages")}</span>
           <kbd>{/Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "⌘K" : "Ctrl K"}</kbd>
@@ -173,7 +179,7 @@ export function ShellNav({
       </nav>
       <GuildLanguageMenu me={me} drawer />
       <div className="shell-side-foot">
-        <NavLink to="/servers">{t("Switch server")}</NavLink>
+        <NavLink to="/servers">{deferredText("Switch server")}</NavLink>
         <NavLink to="/me">{t("My world")}</NavLink>
       </div>
     </aside>

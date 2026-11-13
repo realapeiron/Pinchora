@@ -79,8 +79,13 @@ pub(crate) fn preview_error(error: PreviewError) -> ApiError {
     }
 }
 
-fn kind_of(raw: &str) -> ApiResult<CardKind> {
-    CardKind::parse(raw).ok_or_else(|| ApiError::malformed("The kind is welcome, goodbye, boost or level_up."))
+fn kind_of(raw: &str, lang: Lang) -> ApiResult<CardKind> {
+    CardKind::parse(raw).ok_or_else(|| {
+        ApiError::malformed(t!(
+            lang,
+            "cards.web.errors.the-kind-is-welcome-goodbye-boost-or-level-up"
+        ))
+    })
 }
 
 /// The design JSON a request sent, checked.
@@ -175,8 +180,8 @@ pub async fn put_card(
     Path((_, kind)): Path<(String, String)>,
     ApiJson(body): ApiJson<PutBody>,
 ) -> ApiResult<Json<Value>> {
-    let guild = managed.id;
-    let kind = kind_of(&kind)?;
+    let (guild, lang) = (managed.id, managed.panel_lang);
+    let kind = kind_of(&kind, lang)?;
     let delivery = card_design::check_delivery(kind, &body.delivery)?;
     let design = match &body.design {
         Some(value) => {
@@ -227,7 +232,8 @@ pub async fn history(
     managed: ManagedGuild,
     Path((_, kind)): Path<(String, String)>,
 ) -> ApiResult<Json<Value>> {
-    let kind = kind_of(&kind)?;
+    let lang = managed.panel_lang;
+    let kind = kind_of(&kind, lang)?;
     let rows = state.app.db.card_history(managed.id, kind).await?;
     Ok(Json(json!(
         rows.iter()
@@ -245,14 +251,15 @@ pub async fn rollback(
     managed: ManagedGuild,
     Path((_, kind, revision)): Path<(String, String, i64)>,
 ) -> ApiResult<Json<Value>> {
-    let kind = kind_of(&kind)?;
+    let lang = managed.panel_lang;
+    let kind = kind_of(&kind, lang)?;
     let guild = managed.id;
     let row = state
         .app
         .db
         .card_revision(guild, kind, revision)
         .await?
-        .ok_or_else(|| ApiError::malformed("That saved version no longer exists."))?;
+        .ok_or_else(|| ApiError::malformed(t!(lang, "cards.web.errors.that-saved-version-no-longer-exists")))?;
     let delivery = card_design::check_delivery(kind, &row.delivery)?;
     if let Some(raw) = &row.design {
         let value: Value = serde_json::from_str(raw).map_err(anyhow::Error::from)?;
@@ -376,8 +383,8 @@ pub async fn test(
     Path((_, kind)): Path<(String, String)>,
     ApiJson(body): ApiJson<TestBody>,
 ) -> ApiResult<Json<Value>> {
-    let guild = managed.id;
-    let kind = kind_of(&kind)?;
+    let (guild, lang) = (managed.id, managed.panel_lang);
+    let kind = kind_of(&kind, lang)?;
     let delivery = card_design::check_delivery(kind, &body.delivery)?;
     let design = design_of(&body.design)?;
     check_upload(&state, guild, &design).await?;
@@ -400,10 +407,10 @@ pub async fn test(
     let channel = if body.dm {
         pinchora_commands::open_private_channel(&state.app, managed.current.session.user_id)
             .await
-            .ok_or_else(|| ApiError::malformed("Discord could not open your direct messages."))?
+            .ok_or_else(|| ApiError::malformed(t!(lang, "cards.web.errors.dm-unavailable")))?
     } else {
         let channel = parse_id(body.channel_id.as_deref().unwrap_or_default())
-            .ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
+            .ok_or_else(|| ApiError::malformed(t!(lang, "common.web.errors.channel-ids")))?;
         let info = guild_info::get_with(&state, guild, |info| info.channel(channel).is_some()).await?;
         info.check_post_channel("channel_id", channel)?;
         Id::new(channel)

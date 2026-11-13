@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
@@ -46,7 +47,7 @@ export function Stats() {
     <SettingsPage
       className="settings-page stats-page"
       title={spaTranslate("STATS")}
-      lead={spaTranslate(
+      lead={deferredText(
         "What happens in your server, counted without reading anyone's messages. Days and hours are in UTC.",
       )}
       action={<PeriodTabs days={days} onChange={setDays} />}
@@ -75,13 +76,13 @@ function Notes({ guild, stats }: { guild: string; stats: GuildStats }) {
         <p className="notice" role="note">
           <strong>{spaTranslate("Stats")}</strong> {spaTranslate("is switched off in")}{" "}
           <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
-          {spaTranslate(": nothing new is counted and counter channels keep their last number.")}{" "}
+          {deferredText(": nothing new is counted and counter channels keep their last number.")}{" "}
         </p>
       )}
       {!stats.voice_counted && (
         <p className="notice" role="note">
           {" "}
-          {spaTranslate("Voice time is counted where voice XP is on. Switch it on in")}{" "}
+          {deferredText("Voice time is counted where voice XP is on. Switch it on in")}{" "}
           <Link to={`/g/${guild}/leveling`}>{spaTranslate("Leveling")}</Link>{" "}
           {spaTranslate("to see it here.")}{" "}
         </p>
@@ -101,7 +102,7 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
     <div className="settings-detail-list">
       <SettingsRow
         rowId="stats-public-stats-page"
-        title={spaTranslate("Public stats page")}
+        title={deferredText("Public stats page")}
         description={dashboardT("Share a read-only stats page by link.")}
         summary={statsSummary(undefined, isPublic).publicPage}
         enabled={isPublic}
@@ -110,8 +111,8 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
             onSuccess: () =>
               setToast(
                 on
-                  ? spaTranslate("Anyone with the link can see it now.")
-                  : spaTranslate("The page is private again."),
+                  ? deferredText("Anyone with the link can see it now.")
+                  : deferredText("The page is private again."),
               ),
           })
         }
@@ -119,7 +120,7 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
       >
         <div className="settings-detail-fields">
           <p>
-            {spaTranslate(
+            {deferredText(
               "Anyone with the link sees the last 30 days: the charts, the busiest hours and channels. No member is named.",
             )}
           </p>
@@ -130,27 +131,27 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
           )}
           {isPublic && (
             <PixelLink href={link} variant="ghost" target="_blank" rel="noreferrer">
-              {spaTranslate("Open the public page")}
+              {deferredText("Open the public page")}
             </PixelLink>
           )}
         </div>
       </SettingsRow>
       <SettingsRow
         rowId="stats-preview-the-stats-card"
-        title={spaTranslate("Preview the /stats card")}
+        title={deferredText("Preview the /stats card")}
         description={dashboardT("Preview the server stats card.")}
         summary={statsSummary(undefined, isPublic, card).card}
       >
         <div className="settings-detail-fields">
           <PixelButton variant="secondary" onClick={() => setCard(Date.now())}>
-            {card ? spaTranslate("Draw it again") : spaTranslate("Preview the /stats card")}
+            {card ? deferredText("Draw it again") : deferredText("Preview the /stats card")}
           </PixelButton>
         </div>
         {card && (
           <figure className="card-preview settings-detail-preview">
             <img
               src={`/api/guilds/${guild}/stats/card?days=${days}&v=${card}`}
-              alt={spaTranslate(
+              alt={deferredText(
                 "The /stats server card for the last {arg1} days, as Pinchora draws it in Discord",
                 { arg1: days },
               )}

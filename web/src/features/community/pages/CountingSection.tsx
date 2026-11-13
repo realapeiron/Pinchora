@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
@@ -15,19 +16,19 @@ export function CountingSection() {
       summary={summary.counting ?? dt("Off")}
     >
       <p className="panel-lead muted">
-        {t(
+        {deferredText(
           "One member posts the next number. A second turn by the same member fails. Simple arithmetic is optional.",
         )}
       </p>
       <p className="community-pack-metric">
         {counting.current}
-        <small>{t("Current count")}</small>
+        <small>{deferredText("Current count")}</small>
       </p>
       <p className="muted">
         {t("Record")}: {counting.record}
       </p>
       <label>
-        {t("Counting channel")}
+        {deferredText("Counting channel")}
         <ChannelPicker
           posting
           info={info}
@@ -42,7 +43,7 @@ export function CountingSection() {
           checked={counting.reset_on_fail}
           onChange={(e) => setCounting({ ...counting, reset_on_fail: e.target.checked })}
         />
-        {t("Reset on a mistake")}
+        {deferredText("Reset on a mistake")}
       </label>
       <label className="community-pack-check">
         <input
@@ -50,10 +51,10 @@ export function CountingSection() {
           checked={counting.allow_math}
           onChange={(e) => setCounting({ ...counting, allow_math: e.target.checked })}
         />
-        {t("Allow small arithmetic")}
+        {deferredText("Allow small arithmetic")}
       </label>
       <label>
-        {t("Failure role")}
+        {deferredText("Failure role")}
         <select
           className="pixel-input pixel-select"
           value={counting.fail_role_id ?? ""}
@@ -75,10 +76,10 @@ export function CountingSection() {
           disabled={busy || !counting.channel_id}
           onClick={() => void write("/counting", "PUT", countingSettings(counting))}
         >
-          {t("Save counting")}
+          {deferredText("Save counting")}
         </button>
         <button disabled={busy || !data.counting} onClick={() => void write("/counting/reset", "POST")}>
-          {t("Reset count")}
+          {deferredText("Reset count")}
         </button>
       </div>
     </SettingsRow>

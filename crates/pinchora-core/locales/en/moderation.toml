@@ -208,3 +208,9 @@ ignore-summary = "Ignored channels: {channels} · roles: {roles} · members: {me
 bots-ignored = "ignored"
 bots-logged = "logged"
 ignore-full = "An ignore list holds at most {max} entries."
+
+[moderation.web.errors]
+ids-are-numbers = "Ids are numbers."
+unknown-kind-of-case = "Unknown kind of case."
+a-reason-cannot-contain-control-characters = "A reason cannot contain control characters."
+the-source-is-command-discord-or-web = "The source is command, discord or web."

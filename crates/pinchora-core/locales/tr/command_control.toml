@@ -66,3 +66,10 @@
 command_control = "Komut denetimi"
 [module-blurb]
 command_control = "Pinchora komut kuralları ve kısayolları. Discord sunucu izinleri geçerliliğini korur."
+
+[command_control_web.errors]
+on-conflict = "on_conflict `skip` veya `replace` olmalı."
+custom-commands-limit = "Bir sunucuda en fazla {max} özel komut olabilir. Önce birini kaldırın."
+auto-responders-limit = "Bir sunucuda en fazla {max} otomatik yanıtlayıcı olabilir. Önce birini kaldırın."
+commands-import-limit = "Bir içe aktarma en fazla {max} komut içerebilir."
+responders-import-limit = "Bir içe aktarma en fazla {max} otomatik yanıtlayıcı içerebilir."

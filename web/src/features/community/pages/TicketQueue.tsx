@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useId, useState } from "react";
 import { Link } from "react-router";
 import { translate as spaTranslate } from "../../../i18n";
@@ -37,11 +38,11 @@ export function TicketList({ guild }: { guild: string }) {
     setFilter(merged);
   };
   return (
-    <Panel title={spaTranslate("ALL TICKETS")}>
+    <Panel title={deferredText("ALL TICKETS")}>
       <form
         className="tk-filters"
         role="search"
-        aria-label={spaTranslate("Filter tickets")}
+        aria-label={deferredText("Filter tickets")}
         onSubmit={(event) => {
           event.preventDefault();
           setFilter(typed);
@@ -59,34 +60,34 @@ export function TicketList({ guild }: { guild: string }) {
             </button>
           ))}
         </div>
-        <Field label={spaTranslate("Words or number")} htmlFor={`${base}-q`}>
+        <Field label={deferredText("Words or number")} htmlFor={`${base}-q`}>
           <input
             id={`${base}-q`}
             className="pixel-input"
             type="search"
-            placeholder={spaTranslate("billing, 42…")}
+            placeholder={deferredText("billing, 42…")}
             value={typed.q}
             onChange={(e) => setTyped({ ...typed, q: e.target.value })}
             onBlur={() => setFilter(typed)}
           />
         </Field>
-        <Field label={spaTranslate("Member id")} htmlFor={`${base}-user`}>
+        <Field label={deferredText("Member id")} htmlFor={`${base}-user`}>
           <input
             id={`${base}-user`}
             className="pixel-input"
             inputMode="numeric"
-            placeholder={spaTranslate("Who opened it")}
+            placeholder={deferredText("Who opened it")}
             value={typed.user}
             onChange={(e) => setTyped({ ...typed, user: e.target.value.replace(/\D/g, "") })}
             onBlur={() => setFilter(typed)}
           />
         </Field>
-        <Field label={spaTranslate("Staff id")} htmlFor={`${base}-staff`}>
+        <Field label={deferredText("Staff id")} htmlFor={`${base}-staff`}>
           <input
             id={`${base}-staff`}
             className="pixel-input"
             inputMode="numeric"
-            placeholder={spaTranslate("Who claimed or closed it")}
+            placeholder={deferredText("Who claimed or closed it")}
             value={typed.staff}
             onChange={(e) => setTyped({ ...typed, staff: e.target.value.replace(/\D/g, "") })}
             onBlur={() => setFilter(typed)}
@@ -97,20 +98,20 @@ export function TicketList({ guild }: { guild: string }) {
           {spaTranslate("Search")}{" "}
         </PixelButton>
       </form>
-      {list.isPending && <Loading label={spaTranslate("Reading the tickets")} />}
+      {list.isPending && <Loading label={deferredText("Reading the tickets")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && items.length === 0 && (
         <p className="empty-row muted">
           {filter.state || filter.q || filter.user || filter.staff
-            ? spaTranslate("No ticket matches.")
-            : spaTranslate("No tickets yet. Once a panel is posted, the tickets members open show up here.")}
+            ? deferredText("No ticket matches.")
+            : deferredText("No tickets yet. Once a panel is posted, the tickets members open show up here.")}
         </p>
       )}
       {items.length > 0 && (
         <>
           {/* eslint-disable jsx-a11y/no-redundant-roles, jsx-a11y/no-interactive-element-to-noninteractive-role -- Mobile display:block removes native table semantics in some browsers. */}
           <table className="tk-table" role="table">
-            <caption className="sr-only">{spaTranslate("Tickets, newest first")}</caption>
+            <caption className="sr-only">{deferredText("Tickets, newest first")}</caption>
             <thead role="rowgroup">
               <tr role="row">
                 <th role="columnheader" scope="col">
@@ -206,7 +207,7 @@ export function TicketList({ guild }: { guild: string }) {
             onClick={() => list.fetchNextPage()}
             disabled={list.isFetchingNextPage}
           >
-            {list.isFetchingNextPage ? spaTranslate("Loading…") : spaTranslate("Older tickets")}
+            {list.isFetchingNextPage ? spaTranslate("Loading…") : deferredText("Older tickets")}
           </PixelButton>
         </div>
       )}

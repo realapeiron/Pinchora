@@ -45,3 +45,6 @@ react = "Pinchora için Tepki Ekle izni gerekiyor."
 thread = "Pinchora için Herkese Açık Konu Oluştur izni gerekiyor."
 
 [cmd]
+
+[starboard.web.errors]
+this-server-already-has-3-3-starboards = "Bu sunucuda zaten 3/3 yıldız panosu var."

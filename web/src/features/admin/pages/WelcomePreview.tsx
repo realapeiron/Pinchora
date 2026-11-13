@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { PreviewBlock } from "../../../components/PreviewBlock";
 import { PixelButton } from "../../../components/PixelButton";
@@ -56,7 +57,7 @@ export function WelcomePreview({
     }
   };
   const status = !valid
-    ? spaTranslate("Fix the message to see it.")
+    ? deferredText("Fix the message to see it.")
     : message !== settled || preview.isPending
       ? "…"
       : preview.isError

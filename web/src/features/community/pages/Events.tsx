@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { locale, translate as spaTranslate } from "../../../i18n";
 import "../../../styles/events.css";
 
@@ -31,7 +32,7 @@ const fresh = (tz: string): EventBody => {
     required_role_id: null,
     options: [
       { key: "going", label: spaTranslate("Going"), capacity: 0 },
-      { key: "maybe", label: spaTranslate("Maybe"), capacity: 0 },
+      { key: "maybe", label: deferredText("Maybe"), capacity: 0 },
       { key: "declined", label: spaTranslate("Declined"), capacity: 0 },
     ],
     recurrence: null,

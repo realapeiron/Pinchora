@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { ChannelPicker } from "../../../components/DashboardPickers";
@@ -48,7 +49,7 @@ export function VoteEditor({
             </label>
             <label>
               {" "}
-              {spaTranslate("Up emoji")}{" "}
+              {deferredText("Up emoji")}{" "}
               <input
                 className="pixel-input"
                 value={vote.up_emoji}
@@ -57,7 +58,7 @@ export function VoteEditor({
             </label>
             <label>
               {" "}
-              {spaTranslate("Down emoji")}{" "}
+              {deferredText("Down emoji")}{" "}
               <input
                 className="pixel-input"
                 value={vote.down_emoji}
@@ -67,15 +68,15 @@ export function VoteEditor({
           </div>
           {!messageContent && (
             <p className="notice">
-              <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
-              {spaTranslate("Media-only voting needs the Message Content intent.")}{" "}
+              <span className="badge badge-gold">{deferredText("NEEDS MESSAGE CONTENT")}</span>{" "}
+              {deferredText("Media-only voting needs the Message Content intent.")}{" "}
             </p>
           )}
         </div>
       </SettingsRow>
       <SettingsRow
         rowId="vote-editor-media-posts-only"
-        title={spaTranslate("Media posts only")}
+        title={deferredText("Media posts only")}
         description={dt("Limit voting to posts with media.")}
         summary={dt(vote.only_media ? "On" : "Off")}
         enabled={vote.only_media}
@@ -86,7 +87,7 @@ export function VoteEditor({
       </SettingsRow>
       <SettingsRow
         rowId="vote-editor-create-a-discussion-thread"
-        title={spaTranslate("Create a discussion thread")}
+        title={deferredText("Create a discussion thread")}
         description={dt("Open a thread under each post.")}
         summary={dt(vote.create_thread ? "On" : "Off")}
         enabled={vote.create_thread}
@@ -125,7 +126,7 @@ export function VoteEditor({
           }
         >
           {" "}
-          {spaTranslate("Save vote channel")}{" "}
+          {deferredText("Save vote channel")}{" "}
         </PixelButton>
       </div>
     </div>

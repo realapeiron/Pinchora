@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as t, dateTime } from "../../../i18n";
 import { SettingsPage } from "../../../components/PageHead";
@@ -12,7 +13,9 @@ export function CommunityGiveaways() {
     <SettingsPage
       className="settings-page community-tools-page"
       title={t("GIVEAWAYS")}
-      lead={t("Schedule draws, set entry requirements and award bonus entries by role with /giveaway start.")}
+      lead={deferredText(
+        "Schedule draws, set entry requirements and award bonus entries by role with /giveaway start.",
+      )}
     >
       <State query={query} />
       {query.data && (
@@ -51,7 +54,9 @@ export function CommunityPolls() {
     <SettingsPage
       className="settings-page community-tools-page"
       title={t("POLLS")}
-      lead={t("Timed polls can allow multiple choices, anonymous authors and role restrictions with /poll.")}
+      lead={deferredText(
+        "Timed polls can allow multiple choices, anonymous authors and role restrictions with /poll.",
+      )}
     >
       <State query={query} />
       {query.data && (
@@ -72,8 +77,8 @@ export function CommunityPolls() {
                   </strong>
                   <span className="muted">
                     {t(p.status)} · {p.options.length} {t("choices")} · {dateTime(p.ends_at)}
-                    {p.multiple ? ` · ${t("Multiple choice")}` : ""}
-                    {p.anonymous ? ` · ${t("Anonymous")}` : ""}
+                    {p.multiple ? ` · ${deferredText("Multiple choice")}` : ""}
+                    {p.anonymous ? ` · ${deferredText("Anonymous")}` : ""}
                   </span>
                 </article>
               ))}
@@ -91,7 +96,9 @@ export function CommunitySuggestions() {
     <SettingsPage
       className="settings-page community-tools-page"
       title={t("SUGGESTIONS")}
-      lead={t("Review ideas, keep private staff notes and track their status. Members vote with /suggest.")}
+      lead={deferredText(
+        "Review ideas, keep private staff notes and track their status. Members vote with /suggest.",
+      )}
     >
       {notice && (
         <p className="notice" role="status">

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { Dispatch, SetStateAction } from "react";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { PixelButton } from "../../../components/PixelButton";
@@ -57,11 +58,11 @@ export function EventCalendar({
         description={dt("Review upcoming events and guest lists.")}
         summary={summary.upcoming}
       >
-        <span className="ev-small">{t("Next 100 events")}</span>
+        <span className="ev-small">{deferredText("Next 100 events")}</span>
         {upcoming.length === 0 ? (
           <div className="ev-empty">
-            <strong>{t("No events on the calendar yet.")}</strong>
-            <p>{t("Choose Create event to post the first RSVP card.")}</p>
+            <strong>{deferredText("No events on the calendar yet.")}</strong>
+            <p>{deferredText("Choose Create event to post the first RSVP card.")}</p>
           </div>
         ) : (
           <div className="ev-list">
@@ -73,23 +74,23 @@ export function EventCalendar({
                 </div>
                 <div className="ev-detail">
                   <h3>{event.title}</h3>
-                  <p>{event.description || t("No description")}</p>
+                  <p>{event.description || deferredText("No description")}</p>
                   <div className="ev-meta">
                     <span>#{event.id}</span>
                     <span>
                       {event.options[0]?.capacity
-                        ? t("{count} going places", { count: event.options[0].capacity })
-                        : t("Open capacity")}
+                        ? deferredText("{count} going places", { count: event.options[0].capacity })
+                        : deferredText("Open capacity")}
                     </span>
                     {event.recurrence && (
                       <span>
-                        {t("{repeat} until {date}", {
+                        {deferredText("{repeat} until {date}", {
                           repeat: t(event.recurrence.repeat),
                           date: event.recurrence.until,
                         })}
                       </span>
                     )}
-                    {event.discord_event_id && <span>{t("Discord synced")}</span>}
+                    {event.discord_event_id && <span>{deferredText("Discord synced")}</span>}
                   </div>
                 </div>
                 <div className="ev-actions">
@@ -117,18 +118,20 @@ export function EventCalendar({
                       });
                     }}
                   >
-                    {t("Duplicate")}
+                    {deferredText("Duplicate")}
                   </PixelButton>
                   <PixelButton
                     variant="ghost"
                     onClick={async () => {
-                      if (!window.confirm(t("Cancel {title}?", { title: event.title }))) return;
+                      if (!window.confirm(deferredText("Cancel {title}?", { title: event.title }))) return;
                       try {
                         const saved = await events.cancel.mutateAsync(event.id);
-                        setNotice(saved.warning ?? t("Event cancelled."));
+                        setNotice(saved.warning ?? deferredText("Event cancelled."));
                       } catch (error) {
                         setNotice(
-                          error instanceof Error ? t(error.message) : t("Could not cancel the event."),
+                          error instanceof Error
+                            ? t(error.message)
+                            : deferredText("Could not cancel the event."),
                         );
                       }
                     }}
@@ -167,7 +170,7 @@ export function EventCalendar({
                     })
                   }
                 >
-                  {t("Duplicate")}
+                  {deferredText("Duplicate")}
                 </PixelButton>
               </div>
             ))}

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 
@@ -62,7 +63,7 @@ export function IdList({
           />
         ) : (
           <ChannelPicker
-            label={spaTranslate("Add to {arg1}", { arg1: name })}
+            label={deferredText("Add to {arg1}", { arg1: name })}
             info={info}
             value={pick}
             onChange={setPick}

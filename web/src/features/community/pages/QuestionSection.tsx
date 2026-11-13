@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { locale, translate as t } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
 import { t as dt } from "../../../i18n/dashboard";
@@ -16,12 +17,12 @@ export function QuestionSection() {
       initialOpen
     >
       <p className="panel-lead muted">
-        {t(
+        {deferredText(
           "A question posts once a day in the server time zone. Members can suggest questions with /qotd suggest.",
         )}
       </p>
       <label>
-        {t("Post channel")}
+        {deferredText("Post channel")}
         <ChannelPicker
           posting
           info={info}
@@ -32,7 +33,7 @@ export function QuestionSection() {
       </label>
       <div className="community-pack-inline">
         <label>
-          {t("Hour (0–23)")}
+          {deferredText("Hour (0–23)")}
           <input
             className="pixel-input"
             type="number"
@@ -43,7 +44,7 @@ export function QuestionSection() {
           />
         </label>
         <label>
-          {t("Time zone")}
+          {deferredText("Time zone")}
           <input
             className="pixel-input"
             value={qotd.timezone}
@@ -52,7 +53,7 @@ export function QuestionSection() {
         </label>
       </div>
       <label>
-        {t("Ping role")}
+        {deferredText("Ping role")}
         <select
           className="pixel-input pixel-select"
           value={qotd.ping_role_id ?? ""}
@@ -72,19 +73,19 @@ export function QuestionSection() {
           checked={qotd.thread}
           onChange={(e) => setQotd({ ...qotd, thread: e.target.checked })}
         />
-        {t("Open a discussion thread")}
+        {deferredText("Open a discussion thread")}
       </label>
       <button className="pixel-button" disabled={busy} onClick={() => void write("/qotd", "PUT", qotd)}>
-        {t("Save QOTD")}
+        {deferredText("Save QOTD")}
       </button>
       <h3>
-        {t("Question queue")} <small>{data.questions.length}/500</small>
+        {deferredText("Question queue")} <small>{data.questions.length}/500</small>
       </h3>
       <div className="community-pack-list">
         {data.questions.slice(0, 30).map((question) => (
           <article key={question.id}>
             <span className="muted">
-              #{question.id} · {question.approved ? t("Approved") : t("Pending")}
+              #{question.id} · {question.approved ? deferredText("Approved") : t("Pending")}
             </span>
             <p>{questionText(question, locale())}</p>
             {!question.approved && (
@@ -99,7 +100,7 @@ export function QuestionSection() {
                   disabled={busy}
                   onClick={() => void write(`/qotd/${question.id}/decision`, "PUT", { approve: false })}
                 >
-                  {t("Deny")}
+                  {deferredText("Deny")}
                 </button>
               </div>
             )}

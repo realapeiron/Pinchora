@@ -14,6 +14,7 @@ use crate::{
     extract::ManagedGuild,
     state::WebState,
 };
+use pinchora_core::t;
 
 /// Rows per page.
 const PAGE: i64 = 50;
@@ -28,10 +29,11 @@ pub async fn audit(
     managed: ManagedGuild,
     Query(query): Query<AuditQuery>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let before = match query.before.as_deref() {
         Some(raw) => Some(
             raw.parse::<i64>()
-                .map_err(|_| ApiError::malformed("before is a row id."))?,
+                .map_err(|_| ApiError::malformed(t!(lang, "log.web.errors.before-is-a-row-id")))?,
         ),
         None => None,
     };

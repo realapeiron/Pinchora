@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as tr } from "../../../i18n";
 import { Field, SwitchRow } from "../../../components/Field";
@@ -76,13 +77,13 @@ export function LevelingPolicyPanel({ guild, info }: { guild: string; info: Guil
   const me = useMe();
   if (data.query.isPending)
     return (
-      <Panel title={tr("XP OPTIONS")}>
-        <p>{tr("Loading XP options…")}</p>
+      <Panel title={deferredText("XP OPTIONS")}>
+        <p>{deferredText("Loading XP options…")}</p>
       </Panel>
     );
   if (data.query.isError)
     return (
-      <Panel title={tr("XP OPTIONS")}>
+      <Panel title={deferredText("XP OPTIONS")}>
         <p role="alert">{apiError(data.query.error.message)}</p>
       </Panel>
     );
@@ -183,26 +184,26 @@ function Editor({
       >
         <div className="settings-detail-fields">
           <p className="muted panel-lead">
-            {tr(
+            {deferredText(
               "Choose how members earn levels. Changes to the curve recalculate displayed levels from existing XP.",
             )}
           </p>
-          <Field label={tr("Level curve")} htmlFor="parity-curve">
+          <Field label={deferredText("Level curve")} htmlFor="parity-curve">
             <select
               id="parity-curve"
               className="pixel-input pixel-select"
               value={kind}
               onChange={(e) => set("curve", chooseCurve(e.target.value))}
             >
-              <option value="classic">{tr("Classic")}</option>
-              <option value="mee6">{tr("MEE6 style")}</option>
+              <option value="classic">{deferredText("Classic")}</option>
+              <option value="mee6">{deferredText("MEE6 style")}</option>
               <option value="linear">{tr("Linear")}</option>
-              <option value="custom">{tr("Custom polynomial")}</option>
+              <option value="custom">{deferredText("Custom polynomial")}</option>
             </select>
           </Field>
           {coeff && (
             <div className="form-grid">
-              <Field label={tr("Base XP")} htmlFor="parity-base">
+              <Field label={deferredText("Base XP")} htmlFor="parity-base">
                 <input
                   id="parity-base"
                   className="pixel-input input-short"
@@ -220,7 +221,7 @@ function Editor({
                   }
                 />
               </Field>
-              <Field label={tr("Linear coefficient")} htmlFor="parity-linear">
+              <Field label={deferredText("Linear coefficient")} htmlFor="parity-linear">
                 <input
                   id="parity-linear"
                   className="pixel-input input-short"
@@ -239,7 +240,7 @@ function Editor({
                 />
               </Field>
               {kind === "custom" && (
-                <Field label={tr("Quadratic coefficient")} htmlFor="parity-quadratic">
+                <Field label={deferredText("Quadratic coefficient")} htmlFor="parity-quadratic">
                   <input
                     id="parity-quadratic"
                     className="pixel-input input-short"
@@ -275,11 +276,13 @@ function Editor({
           </div>
           {!messageContent && (
             <p className="notice" role="status">
-              {tr("Long-message effort needs the Message Content intent. Attachment bonuses still work.")}
+              {deferredText(
+                "Long-message effort needs the Message Content intent. Attachment bonuses still work.",
+              )}
             </p>
           )}
           <div className="form-grid">
-            <Field label={tr("Highlights channel ID")} htmlFor="parity-highlights">
+            <Field label={deferredText("Highlights channel ID")} htmlFor="parity-highlights">
               <ChannelPicker
                 posting
                 id="parity-highlights"
@@ -289,10 +292,10 @@ function Editor({
               />
             </Field>
             <SwitchRow
-              title={tr("Public leaderboard")}
+              title={deferredText("Public leaderboard")}
               control={
                 <PixelToggle
-                  label={tr("Public leaderboard")}
+                  label={deferredText("Public leaderboard")}
                   checked={draft.vanity_slug !== null}
                   onChange={(on) => {
                     if (!on) setLastSlug(draft.vanity_slug ?? "");
@@ -301,11 +304,11 @@ function Editor({
                 />
               }
             >
-              {tr(
+              {deferredText(
                 "Anyone with the link can view this board. Turning it off removes the public URL when you save.",
               )}
             </SwitchRow>
-            <Field label={tr("Leaderboard URL name")} htmlFor="parity-vanity">
+            <Field label={deferredText("Leaderboard URL name")} htmlFor="parity-vanity">
               <input
                 id="parity-vanity"
                 className="pixel-input"
@@ -323,7 +326,7 @@ function Editor({
           )}
           {invalid && (
             <p className="field-error" role="alert">
-              {tr("Check XP ranges and the URL name.")}
+              {deferredText("Check XP ranges and the URL name.")}
             </p>
           )}
           {data.save.isError && (
@@ -336,7 +339,7 @@ function Editor({
               disabled={invalid || JSON.stringify(draft) === JSON.stringify(saved) || data.save.isPending}
               onClick={() => data.save.mutate(draft)}
             >
-              {tr("Save XP options")}
+              {deferredText("Save XP options")}
             </PixelButton>
             <PixelButton
               variant="ghost"

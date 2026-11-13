@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { Link, useLocation, useOutletContext } from "react-router";
@@ -33,8 +34,8 @@ export function Commands() {
   return (
     <SettingsPage
       className="settings-page"
-      title={spaTranslate("CUSTOM COMMANDS")}
-      lead={spaTranslate(
+      title={deferredText("CUSTOM COMMANDS")}
+      lead={deferredText(
         "Members run these commands with {tag}: send a reply or embed, or give a role. Create simple commands in Discord with {setup}.",
         { tag: "/tag", setup: "/setup commands" },
       )}
@@ -45,11 +46,11 @@ export function Commands() {
           className={full ? "is-disabled" : ""}
         >
           {" "}
-          {spaTranslate("New command")}{" "}
+          {deferredText("New command")}{" "}
         </PixelLink>
       }
     >
-      {list.isPending && <Loading label={spaTranslate("Reading the commands")} />}
+      {list.isPending && <Loading label={deferredText("Reading the commands")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && (
         <Panel
@@ -69,7 +70,7 @@ export function Commands() {
           {list.data.items.length === 0 ? (
             <p className="empty-row muted">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "No custom commands yet. Make the first one: a rules reminder, a link list, an FAQ answer.",
               )}{" "}
             </p>
@@ -84,7 +85,7 @@ export function Commands() {
                     summary={commandItemSummary(command)}
                     enabled={command.enabled}
                     onToggle={(enabled) => toggle.mutate({ id: command.id, enabled })}
-                    toggleLabel={spaTranslate("Command {arg1}", { arg1: command.name })}
+                    toggleLabel={deferredText("Command {arg1}", { arg1: command.name })}
                     toggleDisabled={toggle.isPending}
                   >
                     <div className="settings-detail-fields">
@@ -93,9 +94,9 @@ export function Commands() {
                       </Link>
                       {command.description && <p className="muted tag-detail">{command.description}</p>}
                       <p className="tag-facts muted">
-                        {spaTranslate("Used")} {command.uses} {command.uses === 1 ? "time" : "times"}
+                        {deferredText("Used")} {command.uses} {command.uses === 1 ? "time" : "times"}
                         {command.cooldown_secs > 0 &&
-                          spaTranslate(" · cooldown {arg1}", { arg1: cooldownLabel(command.cooldown_secs) })}
+                          deferredText(" · cooldown {arg1}", { arg1: cooldownLabel(command.cooldown_secs) })}
                         {command.reply_mode === "ephemeral" && " · private answer"}
                         {command.embed && " · embed"}
                         {command.responses.length > 1 && ` · ${command.responses.length} replies`}
@@ -114,7 +115,7 @@ export function Commands() {
                         <PixelButton
                           variant="ghost"
                           className="button-small"
-                          aria-label={spaTranslate("Delete {arg1}", { arg1: command.name })}
+                          aria-label={deferredText("Delete {arg1}", { arg1: command.name })}
                           onClick={() => setAsking(command)}
                         >
                           {spaTranslate("Delete")}
@@ -128,7 +129,7 @@ export function Commands() {
           )}
           {full && (
             <p className="field-hint muted">
-              {spaTranslate("A server has at most")} {list.data.max} {spaTranslate("custom commands.")}
+              {deferredText("A server has at most")} {list.data.max} {deferredText("custom commands.")}
             </p>
           )}
         </Panel>
@@ -140,11 +141,11 @@ export function Commands() {
             <div className="panel-body">
               <h2 id="delete-title" className="pixel-title">
                 {" "}
-                {spaTranslate("Delete /tag")} {asking.name}?
+                {deferredText("Delete /tag")} {asking.name}?
               </h2>
               <p>
                 {" "}
-                {spaTranslate(
+                {deferredText(
                   "Members can't run it any more. This can't be undone, but you can export your commands first.",
                 )}{" "}
               </p>
@@ -168,13 +169,13 @@ export function Commands() {
                   onClick={() =>
                     remove.mutate(asking.id, {
                       onSuccess: () => {
-                        setToast(spaTranslate("Deleted /tag {arg1}.", { arg1: asking.name }));
+                        setToast(deferredText("Deleted /tag {arg1}.", { arg1: asking.name }));
                         setAsking(null);
                       },
                     })
                   }
                 >
-                  {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
+                  {remove.isPending ? deferredText("Deleting…") : "Delete it"}
                 </PixelButton>
               </div>
             </div>

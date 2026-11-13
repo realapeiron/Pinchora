@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as t } from "../../../i18n";
 import { Field, SwitchRow } from "../../../components/Field";
@@ -36,7 +37,7 @@ export function RobloxBinds({
       setRanks(result.roles ?? []);
     } catch (error) {
       setRanks([]);
-      setRankError(error instanceof Error ? error.message : t("Group lookup failed."));
+      setRankError(error instanceof Error ? error.message : deferredText("Group lookup failed."));
     }
   };
   const addBind = () => {
@@ -51,7 +52,7 @@ export function RobloxBinds({
     };
     add.mutate(bind, {
       onSuccess: () => {
-        setNotice(t("Role bind added."));
+        setNotice(deferredText("Role bind added."));
         setRole(null);
       },
       onError: (e) => setNotice(e.message),
@@ -60,15 +61,17 @@ export function RobloxBinds({
   return (
     <SettingsRow
       rowId="roblox-binds-role-binds"
-      title={t("Role binds")}
+      title={deferredText("Role binds")}
       description={dt("Assign roles from Roblox conditions.")}
       summary={robloxSummary(data.settings, data.binds, discord).binds}
     >
       <p className="muted">
-        {t("A bind gives a role only while the Roblox condition matches. Up to 25 binds per server.")}
+        {deferredText(
+          "A bind gives a role only while the Roblox condition matches. Up to 25 binds per server.",
+        )}
       </p>
       {data.binds.length === 0 ? (
-        <p>{t("No role binds yet.")}</p>
+        <p>{deferredText("No role binds yet.")}</p>
       ) : (
         <ul className="roblox-bind-list">
           {data.binds.map((b) => (
@@ -96,12 +99,12 @@ export function RobloxBinds({
             value={kind}
             onChange={(e) => setKind(e.target.value as NewBind["kind"])}
           >
-            <option value="verified">{t("Verified account")}</option>
-            <option value="group_member">{t("Group member")}</option>
-            <option value="group_rank">{t("Group rank")}</option>
+            <option value="verified">{deferredText("Verified account")}</option>
+            <option value="group_member">{deferredText("Group member")}</option>
+            <option value="group_rank">{deferredText("Group rank")}</option>
           </select>
         </Field>
-        <Field label={t("Role to grant")} htmlFor="rb-role">
+        <Field label={deferredText("Role to grant")} htmlFor="rb-role">
           <RolePicker
             id="rb-role"
             info={discord}
@@ -109,12 +112,12 @@ export function RobloxBinds({
             onChange={setRole}
             assignable
             forActions
-            none={t("Choose a role")}
+            none={deferredText("Choose a role")}
           />
         </Field>
       </div>
       {kind !== "verified" && (
-        <Field label={t("Roblox group ID")} htmlFor="rb-group">
+        <Field label={deferredText("Roblox group ID")} htmlFor="rb-group">
           <div className="roblox-inline">
             <input
               id="rb-group"
@@ -125,7 +128,7 @@ export function RobloxBinds({
               onChange={(e) => setGroup(e.target.value)}
             />
             <PixelButton variant="secondary" onClick={search} disabled={!group}>
-              {t("Find ranks")}
+              {deferredText("Find ranks")}
             </PixelButton>
           </div>
         </Field>
@@ -134,7 +137,7 @@ export function RobloxBinds({
       {ranks.length > 0 && <p className="muted">{ranks.map((r) => `${r.rank} ${r.name}`).join(" · ")}</p>}
       {kind === "group_rank" && (
         <div className="settings-grid">
-          <Field label={t("Minimum rank")} htmlFor="rb-min">
+          <Field label={deferredText("Minimum rank")} htmlFor="rb-min">
             <input
               id="rb-min"
               className="pixel-input"
@@ -145,7 +148,7 @@ export function RobloxBinds({
               onChange={(e) => setMinimum(Number(e.target.value))}
             />
           </Field>
-          <Field label={t("Maximum rank")} htmlFor="rb-max">
+          <Field label={deferredText("Maximum rank")} htmlFor="rb-max">
             <input
               id="rb-max"
               className="pixel-input"
@@ -159,10 +162,10 @@ export function RobloxBinds({
         </div>
       )}
       <SwitchRow
-        title={t("Remove role when unmatched")}
+        title={deferredText("Remove role when unmatched")}
         control={
           <PixelToggle
-            label={t("Remove role when unmatched")}
+            label={deferredText("Remove role when unmatched")}
             checked={removeUnmet}
             onChange={setRemoveUnmet}
           />
@@ -172,7 +175,7 @@ export function RobloxBinds({
         onClick={addBind}
         disabled={!role || (kind !== "verified" && !group) || add.isPending || data.binds.length >= 25}
       >
-        {t("Add bind")}
+        {deferredText("Add bind")}
       </PixelButton>
       {notice && <p role="status">{notice}</p>}
     </SettingsRow>

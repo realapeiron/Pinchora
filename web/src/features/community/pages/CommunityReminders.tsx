@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { translate as t, dateTime } from "../../../i18n";
@@ -29,7 +30,7 @@ export function CommunityReminders() {
       setNotice(t("Saved."));
       return true;
     } catch (error) {
-      setNotice(error instanceof Error ? t(error.message) : t("Could not save."));
+      setNotice(error instanceof Error ? t(error.message) : deferredText("Could not save."));
       return false;
     } finally {
       setBusy(false);
@@ -38,15 +39,17 @@ export function CommunityReminders() {
   return (
     <SettingsPage
       className="settings-page community-tools-page"
-      title={t("REMINDERS & CHECKLISTS")}
-      lead={t("Personal tools are private to you and sync with /remind and /checklist in Discord.")}
+      title={deferredText("REMINDERS & CHECKLISTS")}
+      lead={deferredText(
+        "Personal tools are private to you and sync with /remind and /checklist in Discord.",
+      )}
     >
       {notice && (
         <p className="notice" role="status">
           {notice}
         </p>
       )}
-      {personal.isPending && <Loading label={t("Loading personal tools")} />}
+      {personal.isPending && <Loading label={deferredText("Loading personal tools")} />}
       {personal.isError && <Problem error={personal.error} />}
       {personal.data && (
         <div className="settings-detail-list">
@@ -62,7 +65,8 @@ export function CommunityReminders() {
                 <article key={r.id} className="community-v2-item">
                   <strong>{r.body}</strong>
                   <span className="muted">
-                    {t("Every {hours} hours", { hours: r.interval_minutes / 60 })} · {dateTime(r.next_at)}
+                    {deferredText("Every {hours} hours", { hours: r.interval_minutes / 60 })} ·{" "}
+                    {dateTime(r.next_at)}
                   </span>
                   <button
                     className="pixel-button"
@@ -76,7 +80,7 @@ export function CommunityReminders() {
             </div>
             <div className="community-v2-controls">
               <label>
-                {t("Reminder text")}
+                {deferredText("Reminder text")}
                 <input
                   className="pixel-input"
                   maxLength={200}
@@ -85,7 +89,7 @@ export function CommunityReminders() {
                 />
               </label>
               <label>
-                {t("Repeat every (hours)")}
+                {deferredText("Repeat every (hours)")}
                 <input
                   className="pixel-input"
                   type="number"
@@ -111,7 +115,7 @@ export function CommunityReminders() {
                   )
                 }
               >
-                {t("Add reminder")}
+                {deferredText("Add reminder")}
               </button>
             </div>
           </SettingsRow>
@@ -150,7 +154,7 @@ export function CommunityReminders() {
             </div>
             <div className="community-v2-controls">
               <label>
-                {t("New task")}
+                {deferredText("New task")}
                 <input
                   className="pixel-input"
                   maxLength={200}
@@ -165,7 +169,7 @@ export function CommunityReminders() {
                   void write("/checklist", "PUT", { text: task }).then((saved) => saved && setTask(""))
                 }
               >
-                {t("Add task")}
+                {deferredText("Add task")}
               </button>
             </div>
           </SettingsRow>

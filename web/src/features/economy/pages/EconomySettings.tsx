@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ export function EconomySettings() {
   return (
     <SettingsPage
       title={t("Economy settings")}
-      lead={t(
+      lead={deferredText(
         "Set store conditions and a community goal. Reset and inflation tools affect server points only; global shells stay with players.",
       )}
     >
@@ -76,7 +77,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
         >
           <div className="settings-detail-fields">
             <p>
-              {t(
+              {deferredText(
                 "Donated shells are permanent community contributions. Reaching the goal marks a milestone; the pool never pays shells back out.",
               )}
             </p>
@@ -106,18 +107,18 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
         </SettingsRow>
         <SettingsRow
           rowId="economy-settings-store-conditions"
-          title={t("Store conditions")}
+          title={deferredText("Store conditions")}
           description={dt("Set who can use the store.")}
           summary={summary.store}
           enabled={draft.shop_enabled}
-          toggleLabel={t("Store enabled")}
+          toggleLabel={deferredText("Store enabled")}
           onToggle={(on) => setDraft({ ...draft, shop_enabled: on })}
           initialOpen
         >
           <div className="settings-detail-fields">
             <div className="economy-form">
               <label>
-                {t("Minimum server level")}
+                {deferredText("Minimum server level")}
                 <input
                   type="number"
                   min={0}
@@ -128,7 +129,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
                 />
               </label>
               <label>
-                {t("Minimum membership days")}
+                {deferredText("Minimum membership days")}
                 <input
                   type="number"
                   min={0}
@@ -140,7 +141,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
               </label>
             </div>
             <p>
-              {t(
+              {deferredText(
                 "Membership days count from the first stored membership record after this feature was enabled.",
               )}
             </p>
@@ -153,18 +154,18 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
       </form>
       <SettingsRow
         rowId="economy-settings-server-point-reset-inflation"
-        title={t("Server-point reset & inflation")}
+        title={deferredText("Server-point reset & inflation")}
         description={dt("Preview and reduce server balances.")}
         summary={summary.balances}
       >
         <div className="settings-detail-fields">
           <p>
-            {t(
+            {deferredText(
               "Preview all affected members. Choose the percentage of server points to keep: zero resets points, fifty keeps half. Concurrent balance changes require a new preview.",
             )}
           </p>
           <label>
-            {t("Percentage to keep")}
+            {deferredText("Percentage to keep")}
             <input
               type="number"
               min={0}
@@ -177,13 +178,13 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
             />
           </label>
           <PixelButton variant="secondary" disabled={preview.isPending} onClick={() => preview.mutate()}>
-            {t("Preview affected balances")}
+            {deferredText("Preview affected balances")}
           </PixelButton>
           {preview.isError && <Problem error={preview.error} />}
           {review && (
             <div className="economy-review">
               <p>
-                {t("{count} members · {total} server points · keep {percent}%", {
+                {deferredText("{count} members · {total} server points · keep {percent}%", {
                   count: review.count,
                   total: review.total,
                   percent,
@@ -191,7 +192,7 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
               </p>
               <label className="economy-check">
                 <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-                {t("I confirm this server-point change for the displayed members.")}
+                {deferredText("I confirm this server-point change for the displayed members.")}
               </label>
               <PixelButton
                 disabled={
@@ -205,12 +206,12 @@ function SettingsEditor({ initial, path }: { initial: Settings; path: string }) 
                 }
                 onClick={() => scale.mutate()}
               >
-                {percent === 0 ? t("Reset server points") : t("Apply point reduction")}
+                {percent === 0 ? deferredText("Reset server points") : deferredText("Apply point reduction")}
               </PixelButton>
             </div>
           )}
           {scale.isError && <Problem error={scale.error} />}{" "}
-          {scale.isSuccess && <p role="status">{t("Server points updated.")}</p>}
+          {scale.isSuccess && <p role="status">{deferredText("Server points updated.")}</p>}
         </div>
       </SettingsRow>
     </div>

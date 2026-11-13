@@ -6,12 +6,11 @@ use std::collections::{HashMap, HashSet};
 use axum::{
     Json, Router,
     extract::{Path, Query, State},
-    http::StatusCode,
     routing::{delete, get, post, put},
 };
 use pinchora_cache::Invalidation;
 use pinchora_commands::{
-    PostRefusal, check_emoji, color_palette, color_stop_text, create_palette_roles, delete_color_role, post_role_panel,
+    check_emoji, color_palette, color_stop_text, create_palette_roles, delete_color_role, post_role_panel,
     role_rules_problem, start_sticky_snapshot, sticky_changed,
 };
 use pinchora_core::admin::settings::FieldError;
@@ -27,9 +26,8 @@ use pinchora_core::roles::automation::MIN_EXPIRY_SECS;
 use pinchora_core::roles::automation::PanelStyle;
 use pinchora_core::roles::automation::RulesError;
 use pinchora_core::roles::automation::check_rules;
-use pinchora_db::{
-    ColorSettings, MAX_PANEL_ROLES, NewAutoRole, PanelDoc, PanelEntry, PanelRoleDoc, PanelRoleRow, PanelRow, PanelSaved,
-};
+use pinchora_core::t;
+use pinchora_db::{ColorSettings, MAX_PANEL_ROLES, NewAutoRole, PanelDoc, PanelEntry, PanelRoleDoc, PanelSaved};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -44,6 +42,10 @@ use crate::guild_info::GuildInfo;
 use crate::routes::admin::settings::parse_id;
 use crate::routes::admin::settings::present;
 use crate::state::WebState;
+
+#[path = "presentation.rs"]
+mod presentation;
+use presentation::{auto_json, panel_json, post_refusal};
 
 pub fn router() -> Router<WebState> {
     Router::new()
@@ -65,47 +67,11 @@ const DESCRIPTION_MAX: usize = 500;
 const LABEL_MAX: usize = 80;
 const LINE_MAX: usize = 100;
 
-fn path_id(params: &HashMap<String, String>, name: &str) -> ApiResult<u64> {
+fn path_id(params: &HashMap<String, String>, name: &str, lang: Lang) -> ApiResult<u64> {
     params
         .get(name)
         .and_then(|raw| parse_id(raw))
-        .ok_or_else(|| ApiError::malformed("Discord ids are numbers."))
-}
-
-fn auto_json(row: &pinchora_db::AutoRoleRow) -> Value {
-    json!({
-        "role_id": row.role_id.to_string(),
-        "kind": row.kind,
-        "delay_secs": row.delay_secs,
-        "remove_after_secs": row.remove_after_secs,
-        "enabled": row.enabled,
-    })
-}
-
-fn entry_json(entry: &PanelRoleRow) -> Value {
-    json!({
-        "role_id": entry.role_id.to_string(),
-        "label": entry.label,
-        "emoji": entry.emoji,
-        "description": entry.description,
-        "temp_secs": entry.temp_secs,
-    })
-}
-
-fn panel_json(panel: &PanelRow, entries: &[PanelRoleRow]) -> Value {
-    json!({
-        "id": panel.id.to_string(),
-        "title": panel.title,
-        "description": panel.description,
-        "style": panel.style,
-        "exclusive": panel.exclusive,
-        "required_role": panel.required_role.map(|r| r.to_string()),
-        "min_picks": panel.min_picks,
-        "max_picks": panel.max_picks,
-        "channel_id": panel.channel_id.map(|c| c.to_string()),
-        "message_id": panel.message_id.map(|m| m.to_string()),
-        "roles": entries.iter().map(entry_json).collect::<Vec<_>>(),
-    })
+        .ok_or_else(|| ApiError::malformed(t!(lang, "xp.web.errors.discord-ids-are-numbers")))
 }
 
 /// Everything the page shows, in one answer: every write answers with it again.
@@ -152,9 +118,7 @@ async fn view(state: &WebState, guild: u64) -> ApiResult<Value> {
 pub async fn page(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Json<Value>> {
     Ok(Json(view(&state, managed.id).await?))
 }
-
 // /Auto roles
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AutoBody {
@@ -185,7 +149,8 @@ pub async fn put_auto(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<AutoBody>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, path_id(&params, "role")?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, path_id(&params, "role", lang)?);
     let Some(kind) = kind_of(&params)? else {
         return Err(ApiError::not_found());
     };
@@ -224,8 +189,10 @@ pub async fn put_auto(
         enabled: body.enabled,
     };
     if !db.save_auto_role(guild, &auto, MAX_AUTO_ROLES as i64).await? {
-        return Err(ApiError::limit(format!(
-            "A server can have {MAX_AUTO_ROLES} auto roles. Remove one first."
+        return Err(ApiError::limit(t!(
+            lang,
+            "roles.web.errors.auto-roles-limit",
+            max = MAX_AUTO_ROLES
         )));
     }
     let target = format!("{role}:{}", kind.key());
@@ -257,7 +224,8 @@ pub async fn delete_auto(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, path_id(&params, "role")?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, path_id(&params, "role", lang)?);
     let kind = kind_of(&params)?;
     let removed = state
         .app
@@ -319,7 +287,6 @@ pub async fn put_sticky(
     }
     Ok(Json(view(&state, guild).await?))
 }
-
 // /Panels
 
 #[derive(Deserialize)]
@@ -551,7 +518,8 @@ pub async fn save_panel(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<PanelBody>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, id) = (managed.id, path_id(&params, "id")? as i64);
+    let lang = managed.panel_lang;
+    let (guild, id) = (managed.id, path_id(&params, "id", lang)? as i64);
     let db = &state.app.db;
     let Some(was) = db.panel_by_id(guild, id).await? else {
         return Err(ApiError::not_found());
@@ -588,7 +556,8 @@ pub async fn delete_panel(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, id) = (managed.id, path_id(&params, "id")? as i64);
+    let lang = managed.panel_lang;
+    let (guild, id) = (managed.id, path_id(&params, "id", lang)? as i64);
     if let Some(was) = state.app.db.delete_panel(guild, id).await? {
         let target = id.to_string();
         audit::finish(
@@ -615,34 +584,6 @@ pub struct PostBody {
 }
 
 /// What a refused post says on the page.
-fn post_refusal(refusal: PostRefusal) -> ApiError {
-    match refusal {
-        PostRefusal::NoRoles => ApiError::invalid(vec![FieldError::new("roles", "Add a role to the panel first.")]),
-        PostRefusal::MissingEmoji(label) => ApiError::invalid(vec![FieldError::new(
-            "roles",
-            format!("A reactions panel needs an emoji on every role, and {label} has none."),
-        )]),
-        PostRefusal::SameEmoji(label) => ApiError::invalid(vec![FieldError::new(
-            "roles",
-            format!("Two roles share an emoji: {label} needs one of its own."),
-        )]),
-        PostRefusal::NoAccess => ApiError::blocked(
-            "I can't post there: I need View Channel, Send Messages and Embed Links in that channel (and Add Reactions \
-             for a reactions panel).",
-        ),
-        PostRefusal::UnknownChannel => ApiError::invalid(vec![FieldError::new(
-            "channel_id",
-            "That channel no longer exists, or I can't see it. Refresh the list.",
-        )]),
-        PostRefusal::Refused => ApiError::blocked("Discord refused the message. Check that the emojis are valid."),
-        PostRefusal::Unreachable => ApiError::new(
-            StatusCode::BAD_GATEWAY,
-            "discord_unreachable",
-            "Discord could not be reached. Try again in a moment.",
-        ),
-    }
-}
-
 /// `POST /roles/panels/{id}/post`: the bot posts the panel in a channel, or edits its message there.
 pub async fn post_panel(
     State(state): State<WebState>,
@@ -650,7 +591,8 @@ pub async fn post_panel(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<PostBody>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, id) = (managed.id, path_id(&params, "id")? as i64);
+    let lang = managed.panel_lang;
+    let (guild, id) = (managed.id, path_id(&params, "id", lang)? as i64);
     let Some(panel) = state.app.db.panel_by_id(guild, id).await? else {
         return Err(ApiError::not_found());
     };
@@ -676,7 +618,7 @@ pub async fn post_panel(
     }
     let posted = post_role_panel(&state.app, guild, &panel, channel)
         .await
-        .map_err(post_refusal)?;
+        .map_err(|refusal| post_refusal(refusal, lang))?;
     let target = id.to_string();
     audit::finish(
         &state,
@@ -829,7 +771,8 @@ pub async fn remove_color(
     Path(params): Path<HashMap<String, String>>,
     Query(query): Query<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, path_id(&params, "role")?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, path_id(&params, "role", lang)?);
     let delete = query.get("delete_role").is_some_and(|v| v == "true");
     if delete {
         let info = guild_info::live(&state, guild).await?;

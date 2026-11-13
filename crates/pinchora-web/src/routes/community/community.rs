@@ -5,6 +5,7 @@
 use axum::{Json, extract::State};
 use pinchora_cache::Invalidation;
 use pinchora_core::admin::settings::FieldError;
+use pinchora_core::t;
 use pinchora_db::{CollectionSettings, PartySettings};
 use pinchora_game::party::surge::EVERY_CHOICES;
 use serde::Deserialize;
@@ -69,10 +70,15 @@ pub struct CrittersBody {
 }
 
 /// A channel field: `None` absent, `Some(None)` cleared, or an id the bot can post in.
-async fn channel_field(state: &WebState, guild: u64, raw: Option<Option<String>>) -> ApiResult<Option<Option<u64>>> {
+async fn channel_field(
+    state: &WebState,
+    guild: u64,
+    raw: Option<Option<String>>,
+    lang: pinchora_core::infra::i18n::Lang,
+) -> ApiResult<Option<Option<u64>>> {
     let Some(raw) = raw else { return Ok(None) };
     let Some(raw) = raw else { return Ok(Some(None)) };
-    let id = parse_id(&raw).ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
+    let id = parse_id(&raw).ok_or_else(|| ApiError::malformed(t!(lang, "common.web.errors.channel-ids")))?;
     let info = guild_info::get_with(state, guild, |info| info.channel(id).is_some()).await?;
     info.check_post_channel("channel_id", id)?;
     Ok(Some(Some(id)))
@@ -87,7 +93,9 @@ pub async fn put_suggestions(
     let guild = managed.id;
     let db = &state.app.db;
     let was = db.suggestion_channel(guild).await?;
-    let channel = channel_field(&state, guild, body.channel_id).await?.unwrap_or(was);
+    let channel = channel_field(&state, guild, body.channel_id, managed.panel_lang)
+        .await?
+        .unwrap_or(was);
     if channel != was {
         db.set_suggestion_channel(guild, channel).await?;
         audit::finish(
@@ -116,7 +124,7 @@ pub async fn put_critters(
     let guild = managed.id;
     let db = &state.app.db;
     let was = db.collection_settings(guild).await?;
-    let channel = channel_field(&state, guild, body.channel_id)
+    let channel = channel_field(&state, guild, body.channel_id, managed.panel_lang)
         .await?
         .filter(|c| c.map(|id| id as i64) != was.channel_id);
     let enabled = body.enabled.filter(|&e| e != was.enabled);
@@ -156,6 +164,7 @@ pub async fn put_surge(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<SurgeBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let db = &state.app.db;
     let was = db.party_settings(guild).await?;
@@ -176,7 +185,7 @@ pub async fn put_surge(
     };
     let channel = match body.channel_id.as_deref() {
         Some(raw) => {
-            let id = parse_id(raw).ok_or_else(|| ApiError::malformed("Channel ids are numbers."))?;
+            let id = parse_id(raw).ok_or_else(|| ApiError::malformed(t!(lang, "common.web.errors.channel-ids")))?;
             let info = guild_info::get_with(&state, guild, |info| info.channel(id).is_some()).await?;
             info.check_post_channel("channel_id", id)?;
             Some(id).filter(|id| Some(*id as i64) != was.surge_channel_id)

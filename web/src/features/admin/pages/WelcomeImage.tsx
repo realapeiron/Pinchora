@@ -1,8 +1,8 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
-
 import { CardCanvas } from "../components/card/CardCanvas";
 import {
   CanvasProperties,
@@ -95,7 +95,7 @@ function useMediaQuery(query: string): boolean {
 function problems(design: CardDesign): string[] {
   const layers = design.layers.flatMap((layer, i) => {
     if (layer.type !== "text") return [];
-    const name = spaTranslate("Layer {arg1} (Text)", { arg1: i + 1 });
+    const name = deferredText("Layer {arg1} (Text)", { arg1: i + 1 });
     if (layer.text.trim() === "") return [`${name}: write something, or delete the layer.`];
     const unknown = unknownPlaceholders(layer.text);
     return unknown.length ? [`${name}: ${unknown[0]} isn't a placeholder.`] : [];
@@ -104,7 +104,7 @@ function problems(design: CardDesign): string[] {
   return [
     ...layers,
     ...(avatars > CARD.max_avatars
-      ? [spaTranslate("A design has at most {arg1} avatars.", { arg1: CARD.max_avatars })]
+      ? [deferredText("A design has at most {arg1} avatars.", { arg1: CARD.max_avatars })]
       : []),
     ...(designCost(design.layers) > CARD.layer_cost_max ? [heavyMessage(design.layers)] : []),
   ];
@@ -116,7 +116,7 @@ export function WelcomeImage() {
   const cards = useCards(guild);
   const atlas = useAtlasIndex();
   const me = useMe();
-  if (cards.isPending || me.isPending) return <Loading label={spaTranslate("Opening the editor")} />;
+  if (cards.isPending || me.isPending) return <Loading label={deferredText("Opening the editor")} />;
   if (cards.isError) return <Problem error={cards.error} />;
   if (me.isError) return <Problem error={me.error} />;
   return (
@@ -226,19 +226,19 @@ function Editor({
 
   const addLayer = (next: Layer) => {
     if (design.layers.length >= CARD.max_layers) {
-      setToast(spaTranslate("A design has at most {arg1} layers.", { arg1: CARD.max_layers }));
+      setToast(deferredText("A design has at most {arg1} layers.", { arg1: CARD.max_layers }));
       return;
     }
     if (
       next.type === "avatar" &&
       design.layers.filter((l) => l.type === "avatar").length >= CARD.max_avatars
     ) {
-      setToast(spaTranslate("A design has at most {arg1} avatars.", { arg1: CARD.max_avatars }));
+      setToast(deferredText("A design has at most {arg1} avatars.", { arg1: CARD.max_avatars }));
       return;
     }
     if (designCost([...design.layers, next]) > CARD.layer_cost_max) {
       setToast(
-        spaTranslate("That would make the image too heavy to draw quickly. Shrink or hide a layer first."),
+        deferredText("That would make the image too heavy to draw quickly. Shrink or hide a layer first."),
       );
       return;
     }
@@ -369,12 +369,12 @@ function Editor({
       );
       await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
       await refreshRevisions(kind);
-      setToast(spaTranslate("Saved. The next matching event uses this design."));
+      setToast(deferredText("Saved. The next matching event uses this design."));
     } catch (error) {
       setErrors(
         error instanceof ApiError
           ? error.errors.map((e) => e.message).concat(error.errors.length ? [] : [error.message])
-          : [spaTranslate("The design could not be saved.")],
+          : [deferredText("The design could not be saved.")],
       );
     } finally {
       setSaving(false);
@@ -384,7 +384,7 @@ function Editor({
   const upload = async (file: File) => {
     if (file.size > CARD.upload_max_bytes) {
       setErrors([
-        spaTranslate("A picture is at most {arg1} MB.", { arg1: CARD.upload_max_bytes / 1024 / 1024 }),
+        deferredText("A picture is at most {arg1} MB.", { arg1: CARD.upload_max_bytes / 1024 / 1024 }),
       ]);
       return;
     }
@@ -397,7 +397,7 @@ function Editor({
       setDesign({ ...design, background: { type: "upload", id: made.id } });
     } catch (error) {
       setErrors([
-        error instanceof ApiError ? error.message : spaTranslate("The picture could not be uploaded."),
+        error instanceof ApiError ? error.message : deferredText("The picture could not be uploaded."),
       ]);
     } finally {
       setUploading(false);
@@ -417,11 +417,11 @@ function Editor({
       const name = discord.data?.channels.find((c) => c.id === testChannel)?.name;
       setToast(
         dm
-          ? spaTranslate("Test sent to your DMs.")
-          : spaTranslate("Test posted{arg1}.", { arg1: name ? ` in #${name}` : "" }),
+          ? deferredText("Test sent to your DMs.")
+          : deferredText("Test posted{arg1}.", { arg1: name ? ` in #${name}` : "" }),
       );
     } catch (error) {
-      setErrors(error instanceof ApiError ? [error.message] : [spaTranslate("The test could not be sent.")]);
+      setErrors(error instanceof ApiError ? [error.message] : [deferredText("The test could not be sent.")]);
     } finally {
       setTesting(false);
     }
@@ -439,13 +439,13 @@ function Editor({
   return (
     <SettingsPage
       className="settings-page card-editor"
-      title={spaTranslate("WELCOME IMAGE")}
-      lead={spaTranslate(
+      title={deferredText("WELCOME IMAGE")}
+      lead={deferredText(
         "Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; Try it, further down, shows the picture the bot really draws.",
       )}
     >
       <div className="card-toolbar" role="toolbar" aria-label={spaTranslate("Editor")}>
-        <div className="segmented" role="tablist" aria-label={spaTranslate("Which image")}>
+        <div className="segmented" role="tablist" aria-label={deferredText("Which image")}>
           {KINDS.map((k) => (
             <button
               key={k.kind}
@@ -466,10 +466,10 @@ function Editor({
           ))}
         </div>
         <label className="card-send">
-          <span className="pixel-label">{spaTranslate("SEND")}</span>
+          <span className="pixel-label">{deferredText("SEND")}</span>
           <select
             className="pixel-input pixel-select"
-            aria-label={spaTranslate("How the image is sent")}
+            aria-label={deferredText("How the image is sent")}
             value={side.delivery}
             onChange={(event) => setSide({ delivery: event.target.value as Delivery })}
           >
@@ -483,7 +483,7 @@ function Editor({
         <span className="card-toolbar-gap" />
         <PixelButton variant="secondary" className="button-small" onClick={() => setDialog("templates")}>
           {" "}
-          {spaTranslate("Templates")}{" "}
+          {deferredText("Templates")}{" "}
         </PixelButton>
         <PixelButton
           variant="ghost"
@@ -492,7 +492,7 @@ function Editor({
           disabled={hist.past.length === 0}
           aria-label={spaTranslate("Undo")}
         >
-          {spaTranslate("↶ Undo")}
+          {deferredText("↶ Undo")}
         </PixelButton>
         <PixelButton
           variant="ghost"
@@ -502,7 +502,7 @@ function Editor({
           aria-label={spaTranslate("Redo")}
         >
           {" "}
-          {spaTranslate("↷ Redo")}{" "}
+          {deferredText("↷ Redo")}{" "}
         </PixelButton>
       </div>
 
@@ -510,7 +510,7 @@ function Editor({
         <p className="notice">
           {" "}
           {spaTranslate("This")} {kind}{" "}
-          {spaTranslate(
+          {deferredText(
             "goes out as text only, so the image is not sent. Pick another way to send it to use the design.",
           )}{" "}
         </p>
@@ -559,7 +559,7 @@ function Editor({
                 checked={safeArea}
                 onChange={(event) => setSafeArea(event.target.checked)}
               />{" "}
-              {spaTranslate("Safe area")}
+              {deferredText("Safe area")}
             </label>
             <span className="muted fine card-size">
               {design.width}×{design.height}
@@ -595,30 +595,30 @@ function Editor({
               <div className="layer-add">
                 <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "text"))}>
                   {" "}
-                  {spaTranslate("+ Text")}{" "}
+                  {deferredText("+ Text")}{" "}
                 </PixelButton>
                 <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "avatar"))}>
                   {" "}
-                  {spaTranslate("+ Avatar")}{" "}
+                  {deferredText("+ Avatar")}{" "}
                 </PixelButton>
                 <PixelButton className="button-small" onClick={() => setDialog("sticker")}>
                   {" "}
-                  {spaTranslate("+ Sticker")}{" "}
+                  {deferredText("+ Sticker")}{" "}
                 </PixelButton>
                 <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "shape"))}>
                   {" "}
-                  {spaTranslate("+ Shape")}{" "}
+                  {deferredText("+ Shape")}{" "}
                 </PixelButton>
               </div>
               <div className={`cost-meter ${share > 100 ? "is-over" : share >= 80 ? "is-high" : ""}`}>
                 <span className="cost-label">
-                  <span className="pixel-label">{spaTranslate("DRAW COST")}</span>
+                  <span className="pixel-label">{deferredText("DRAW COST")}</span>
                   <span>{share}%</span>
                 </span>
                 <span
                   className="cost-bar"
                   role="meter"
-                  aria-label={spaTranslate("How much of a card's drawing allowance the visible layers use")}
+                  aria-label={deferredText("How much of a card's drawing allowance the visible layers use")}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.min(100, share)}
@@ -626,7 +626,7 @@ function Editor({
                   <span style={{ width: `${Math.min(100, share)}%` }} />
                 </span>
               </div>
-              <ol className="layer-list" aria-label={spaTranslate("Layers, top first")}>
+              <ol className="layer-list" aria-label={deferredText("Layers, top first")}>
                 {ordered.map((l) => {
                   const index = design.layers.indexOf(l);
                   return (
@@ -639,8 +639,8 @@ function Editor({
                         className="layer-icon"
                         aria-label={
                           l.hidden
-                            ? spaTranslate("Show {arg1}", { arg1: layerLabel(l) })
-                            : spaTranslate("Hide {arg1}", { arg1: layerLabel(l) })
+                            ? deferredText("Show {arg1}", { arg1: layerLabel(l) })
+                            : deferredText("Hide {arg1}", { arg1: layerLabel(l) })
                         }
                         aria-pressed={!l.hidden}
                         onClick={() => setLayer({ ...l, hidden: !l.hidden })}
@@ -652,8 +652,8 @@ function Editor({
                         className="layer-icon layer-lock"
                         aria-label={
                           l.locked
-                            ? spaTranslate("Unlock {arg1}", { arg1: layerLabel(l) })
-                            : spaTranslate("Lock {arg1}", { arg1: layerLabel(l) })
+                            ? deferredText("Unlock {arg1}", { arg1: layerLabel(l) })
+                            : deferredText("Lock {arg1}", { arg1: layerLabel(l) })
                         }
                         aria-pressed={l.locked}
                         onClick={() => setLayer({ ...l, locked: !l.locked })}
@@ -675,7 +675,7 @@ function Editor({
                         <button
                           type="button"
                           className="layer-icon"
-                          aria-label={spaTranslate("Move {arg1} up", { arg1: layerLabel(l) })}
+                          aria-label={deferredText("Move {arg1} up", { arg1: layerLabel(l) })}
                           disabled={index === design.layers.length - 1}
                           onClick={() => restack(l.id, 1)}
                         >
@@ -684,7 +684,7 @@ function Editor({
                         <button
                           type="button"
                           className="layer-icon"
-                          aria-label={spaTranslate("Move {arg1} down", { arg1: layerLabel(l) })}
+                          aria-label={deferredText("Move {arg1} down", { arg1: layerLabel(l) })}
                           disabled={index === 0}
                           onClick={() => restack(l.id, -1)}
                         >
@@ -697,14 +697,14 @@ function Editor({
                 {design.layers.length === 0 && (
                   <li className="empty-row muted">
                     {" "}
-                    {spaTranslate("Nothing on the canvas yet. Add a layer or pick a template.")}{" "}
+                    {deferredText("Nothing on the canvas yet. Add a layer or pick a template.")}{" "}
                   </li>
                 )}
               </ol>
               {layer && (
                 <div className="layer-actions">
                   <PixelButton variant="secondary" className="button-small" onClick={() => duplicate(layer)}>
-                    {spaTranslate("Duplicate")}
+                    {deferredText("Duplicate")}
                   </PixelButton>
                   <PixelButton variant="ghost" className="button-small" onClick={() => removeLayer(layer.id)}>
                     {spaTranslate("Delete")}
@@ -714,7 +714,7 @@ function Editor({
             </Panel>
           </div>
           <div className="card-props">
-            <Panel title={spaTranslate("PROPERTIES")}>
+            <Panel title={deferredText("PROPERTIES")}>
               {layer ? (
                 <LayerProperties
                   layer={layer}
@@ -739,11 +739,11 @@ function Editor({
         </div>
       </div>
 
-      <Panel title={spaTranslate("IMAGE ACCESSIBILITY")}>
+      <Panel title={deferredText("IMAGE ACCESSIBILITY")}>
         <Field
           label={spaTranslate("Image alt text")}
           htmlFor="card-alt-text"
-          hint={spaTranslate(
+          hint={deferredText(
             "Describe the picture for screen readers. Discord receives this description with the attachment.",
           )}
         >
@@ -758,7 +758,7 @@ function Editor({
         </Field>
       </Panel>
 
-      <Panel title={spaTranslate("SAVED VERSIONS")}>
+      <Panel title={deferredText("SAVED VERSIONS")}>
         <div className="card-test">
           {revisions.map((revision) => (
             <div key={revision.id} className="card-revision">
@@ -776,9 +776,9 @@ function Editor({
                     setSaved(next);
                     setHist(history(next));
                     await refreshRevisions(kind);
-                    setToast(spaTranslate("Version restored."));
+                    setToast(deferredText("Version restored."));
                   } catch (error) {
-                    setErrors([studioError(error, spaTranslate("Restore failed."))]);
+                    setErrors([studioError(error, deferredText("Restore failed."))]);
                   }
                 }}
               >
@@ -786,12 +786,12 @@ function Editor({
               </PixelButton>
             </div>
           ))}
-          {revisions.length === 0 && <p className="muted">{spaTranslate("No saved versions yet.")}</p>}
+          {revisions.length === 0 && <p className="muted">{deferredText("No saved versions yet.")}</p>}
         </div>
       </Panel>
 
       {(errors.length > 0 || local.length > 0) && (
-        <Panel title={spaTranslate("FIX THIS FIRST")} tone="accent">
+        <Panel title={deferredText("FIX THIS FIRST")} tone="accent">
           <ul className="card-errors" role="alert">
             {[...local, ...errors].map((e) => (
               <li key={e}>{e}</li>
@@ -801,7 +801,7 @@ function Editor({
       )}
 
       <Panel
-        title={spaTranslate("TRY IT")}
+        title={deferredText("TRY IT")}
         aside={
           <PixelButton
             variant="secondary"
@@ -810,15 +810,15 @@ function Editor({
             aria-controls="card-bot-preview"
             onClick={() => setShowBot((on) => !on)}
           >
-            {showBot ? spaTranslate("Hide the bot's picture") : spaTranslate("Show the bot's picture")}
+            {showBot ? deferredText("Hide the bot's picture") : deferredText("Show the bot's picture")}
           </PixelButton>
         }
       >
         <div className="card-test">
           <Field
-            label={spaTranslate("Post a test in")}
+            label={deferredText("Post a test in")}
             htmlFor="card-test-channel"
-            hint={spaTranslate("With you as the member, pinging nobody.")}
+            hint={deferredText("With you as the member, pinging nobody.")}
           >
             <ChannelPicker
               posting
@@ -839,12 +839,12 @@ function Editor({
             onClick={() => void sendTest(true)}
             disabled={testing || local.length > 0}
           >
-            {spaTranslate("Send test to my DMs")}
+            {deferredText("Send test to my DMs")}
           </PixelButton>
         </div>
         {showBot && (
           <div className="card-bot-preview" id="card-bot-preview">
-            <h3 className="pixel-label">{spaTranslate("WHAT THE BOT POSTS")}</h3>
+            <h3 className="pixel-label">{deferredText("WHAT THE BOT POSTS")}</h3>
             <PreviewFrame
               path={`/api/guilds/${guild}/preview/card`}
               body={local.length === 0 ? { design } : null}
@@ -855,12 +855,12 @@ function Editor({
             />
             <p className="muted fine">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "Drawn by the bot with you as the member, from the design above, at most twenty times a minute for the whole server.",
               )}{" "}
               {side.custom
                 ? ""
-                : spaTranslate("This is the classic card from /setup welcome card until you change it.")}
+                : deferredText("This is the classic card from /setup welcome card until you change it.")}
             </p>
           </div>
         )}
@@ -869,7 +869,7 @@ function Editor({
       {dialog === "templates" && (
         <Dialog title={spaTranslate("TEMPLATES")} onClose={() => setDialog(null)}>
           <p className="muted">
-            {spaTranslate("Start from one of these; your current design stays one undo away.")}
+            {deferredText("Start from one of these; your current design stays one undo away.")}
           </p>
           <div className="template-grid">
             {cards.templates.map((t) => (
@@ -920,7 +920,7 @@ function Editor({
         count={changed}
         saving={saving}
         blocked={local.length > 0}
-        error={local.length > 0 ? spaTranslate("Fix the marked layers first") : null}
+        error={local.length > 0 ? deferredText("Fix the marked layers first") : null}
         onSave={save}
         onReset={reset}
       />

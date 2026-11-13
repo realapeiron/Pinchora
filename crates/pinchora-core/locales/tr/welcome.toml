@@ -7,3 +7,6 @@ preview-replaced = "Bu klasik kart, panelin düzenleyicisinde yaptığın tasar�
 preview-custom = "Bu, panelin düzenleyicisinde yaptığın tasarım; buradaki herhangi bir seçenek klasik karta geri döner."
 test-welcome = "Karşılama görselinin denemesi; {name} tarafından panelden gönderildi."
 test-goodbye = "Veda görselinin denemesi; {name} tarafından panelden gönderildi."
+
+[welcome.web.errors]
+kind-is-welcome-goodbye-or-levelup = "Tür welcome, goodbye veya levelup olmalı."

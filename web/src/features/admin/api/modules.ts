@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { number, translate as spaTranslate } from "../../../i18n";
 // Module edits: what the page lets you change, and the request that saves it.
 
@@ -55,7 +56,7 @@ export function problem(saved: ModuleEntry, draft: ModuleDraft | undefined, max:
     return "Pick at least one channel, or choose all channels.";
   }
   if (now.channels.length > max)
-    return spaTranslate("A module can name at most {arg1} channels.", { arg1: max });
+    return deferredText("A module can name at most {arg1} channels.", { arg1: max });
   return null;
 }
 
@@ -69,8 +70,8 @@ export function badge(
   if (mode === "all") return { text: spaTranslate("ON"), tone: "mint" };
   const n = `${number(channels)} ${spaTranslate(channels === 1 ? "CHANNEL" : "CHANNELS")}`;
   return mode === "only"
-    ? { text: spaTranslate("ONLY IN {arg1}", { arg1: n }), tone: "gold" }
-    : { text: spaTranslate("OFF IN {arg1}", { arg1: n }), tone: "gold" };
+    ? { text: deferredText("ONLY IN {arg1}", { arg1: n }), tone: "gold" }
+    : { text: deferredText("OFF IN {arg1}", { arg1: n }), tone: "gold" };
 }
 
 /** Picks a mode, keeping the channels already chosen so switching between the two lists loses nothing. */

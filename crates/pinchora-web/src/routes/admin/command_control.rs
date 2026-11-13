@@ -69,7 +69,7 @@ async fn save(
     managed: ManagedGuild,
     ApiJson(config): ApiJson<Config>,
 ) -> ApiResult<Json<Value>> {
-    let lang = state.app.guild_lang(managed.id).await;
+    let lang = managed.panel_lang;
     let before = state.app.db.command_control(managed.id).await?;
     config
         .validate_update(

@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 import { type GuildInfo } from "../../../lib/api";
 import { type Creator, type Room, ago } from "../api/tempVoice";
 import { t, tf } from "../api/tempVoiceI18n";
@@ -21,7 +21,7 @@ export function RoomRow({
   const source = creators.find((c) => c.channel_id === room.source_id);
   const owner =
     room.owner_name ??
-    (room.owner_id ? tf(spaTranslate("Member {id}"), { id: room.owner_id.slice(-4) }) : t("Nobody"));
+    (room.owner_id ? tf(deferredText("Member {id}"), { id: room.owner_id.slice(-4) }) : t("Nobody"));
   const full = room.user_limit > 0 ? `${room.members}/${room.user_limit}` : String(room.members);
   return (
     <li>
@@ -37,7 +37,7 @@ export function RoomRow({
           </span>
           <span className="room-people">
             <span className="pixel-label muted">{t("INSIDE")}</span>{" "}
-            <span aria-label={tf(spaTranslate("{count} people inside"), { count: full })}>{full}</span>
+            <span aria-label={tf(deferredText("{count} people inside"), { count: full })}>{full}</span>
           </span>
           <span className="room-flags">
             {room.locked && <span className="badge badge-gold">{t("LOCKED")}</span>}

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
@@ -33,7 +34,7 @@ export function OverviewExtras({ data }: { data: Overview }) {
           label={t("Prefix")}
           htmlFor="text-prefix"
           error={error}
-          hint={t("Every command also works as text: {arg1}profile, or @Pinchora profile.", {
+          hint={deferredText("Every command also works as text: {arg1}profile, or @Pinchora profile.", {
             arg1: prefix.trim() || DEFAULTS.prefix,
           })}
           aside={
@@ -60,10 +61,10 @@ export function OverviewExtras({ data }: { data: Overview }) {
           />
         </Field>
       </Panel>
-      <Panel title={t("RECENT CHANGES")}>
+      <Panel title={deferredText("RECENT CHANGES")}>
         {data.audit.length === 0 ? (
           <p className="muted">
-            {t("No changes from the dashboard yet. What you save here shows up in this list.")}
+            {deferredText("No changes from the dashboard yet. What you save here shows up in this list.")}
           </p>
         ) : (
           <ol className="audit-list">

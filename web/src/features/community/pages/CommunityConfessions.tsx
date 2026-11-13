@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as t, dateTime } from "../../../i18n";
 import { SettingsPage } from "../../../components/PageHead";
@@ -15,8 +16,8 @@ export function CommunityConfessions() {
     return (
       <SettingsPage
         className="settings-page community-tools-page"
-        title={t("ANONYMOUS CONFESSIONS")}
-        lead={t("Members submit anonymously; staff review before public posting.")}
+        title={deferredText("ANONYMOUS CONFESSIONS")}
+        lead={deferredText("Members submit anonymously; staff review before public posting.")}
       >
         <State query={query} />
       </SettingsPage>
@@ -55,8 +56,8 @@ function ConfessionForm({
   return (
     <SettingsPage
       className="settings-page community-tools-page"
-      title={t("ANONYMOUS CONFESSIONS")}
-      lead={t("Members submit anonymously; staff review before public posting.")}
+      title={deferredText("ANONYMOUS CONFESSIONS")}
+      lead={deferredText("Members submit anonymously; staff review before public posting.")}
     >
       {notice && (
         <p className="notice" role="status">
@@ -76,11 +77,11 @@ function ConfessionForm({
         >
           <div className="community-v2-controls">
             <label>
-              {t("Staff review channel")}
+              {deferredText("Staff review channel")}
               <ChannelPicker posting info={discord} value={review} onChange={setReview} />
             </label>
             <label>
-              {t("Public channel")}
+              {deferredText("Public channel")}
               <ChannelPicker posting info={discord} value={publish} onChange={setPublish} />
             </label>
             <button
@@ -129,7 +130,7 @@ function ConfessionForm({
                         disabled={busy}
                         onClick={() => void write(`/confessions/${c.id}/review`, "PUT", { approve: false })}
                       >
-                        {t("Deny")}
+                        {deferredText("Deny")}
                       </button>
                     </div>
                   </article>
@@ -158,14 +159,14 @@ function ConfessionForm({
                       disabled={busy}
                       onClick={() => void write(`/confessions/${c.id}/ban`, "PUT", { banned: true })}
                     >
-                      {t("Block author")}
+                      {deferredText("Block author")}
                     </button>
                     <button
                       className="pixel-button"
                       disabled={busy}
                       onClick={() => void write(`/confessions/${c.id}/ban`, "PUT", { banned: false })}
                     >
-                      {t("Unblock author")}
+                      {deferredText("Unblock author")}
                     </button>
                   </div>
                 </article>

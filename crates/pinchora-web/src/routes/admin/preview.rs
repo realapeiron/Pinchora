@@ -76,10 +76,11 @@ pub async fn message(
     managed: ManagedGuild,
     ApiJson(body): ApiJson<MessageBody>,
 ) -> ApiResult<Json<Value>> {
-    let kind =
-        MessageKind::parse(&body.kind).ok_or_else(|| ApiError::malformed("kind is welcome, goodbye or levelup."))?;
+    let lang = managed.panel_lang;
+    let kind = MessageKind::parse(&body.kind)
+        .ok_or_else(|| ApiError::malformed(t!(lang, "welcome.web.errors.kind-is-welcome-goodbye-or-levelup")))?;
     Ok(Json(
-        json!({ "text": render_message(kind, body.message.as_deref(), managed.current.session.display_name(), &managed.guild.name, None)? }),
+        json!({ "text": render_message(kind, body.message.as_deref(), managed.current.session.display_name(), &managed.guild.name, Some(managed.panel_lang))? }),
     ))
 }
 

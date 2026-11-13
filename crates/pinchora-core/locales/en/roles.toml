@@ -57,3 +57,7 @@ access = "I can't post in {channel}: I need View Channel, Send Messages and Embe
 gone = "That channel no longer exists."
 refused = "Discord refused the message."
 unreachable = "Discord could not be reached. Try again in a moment."
+
+[roles.web.errors]
+post-refused = "Discord refused the message. Check that the emojis are valid."
+auto-roles-limit = "A server can have {max} auto roles. Remove one first."

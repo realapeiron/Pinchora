@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 
@@ -63,7 +64,7 @@ export function ColorRoles({
       <SettingsRow
         rowId="color-roles-colour-roles"
         title={t("row.Colour roles", {}, "COLOUR ROLES")}
-        description={spaTranslate("Let members pick a colour")}
+        description={deferredText("Let members pick a colour")}
         summary={colorRolesSummary(colors)}
         enabled={colors.enabled}
         onToggle={(on) => save({ enabled: on })}
@@ -76,16 +77,16 @@ export function ColorRoles({
           </span>
           <p className="muted panel-lead">
             {" "}
-            {spaTranslate("Members colour their name with")} <code>/color pick</code>
-            {spaTranslate(
+            {deferredText("Members colour their name with")} <code>/color pick</code>
+            {deferredText(
               ". Each colour is a role the bot makes the first time somebody picks it, and a member holds one at a time.",
             )}{" "}
           </p>
           <p className="muted fine">
-            {spaTranslate("Off hides")} <code>/color</code>{" "}
-            {spaTranslate("from members. Colours already given stay.")}
+            {deferredText("Off hides")} <code>/color</code>{" "}
+            {deferredText("from members. Colours already given stay.")}
           </p>
-          <Field label={spaTranslate("Which colours")}>
+          <Field label={deferredText("Which colours")}>
             <Choice
               name="Colour mode"
               value={colors.mode}
@@ -97,13 +98,13 @@ export function ColorRoles({
 
           <div className="form-grid form-grid-2">
             <Field
-              label={spaTranslate("Who may pick")}
+              label={deferredText("Who may pick")}
               htmlFor="colour-allow"
               error={error?.field === "allowed_roles" ? error.message : null}
               hint={
                 colors.allowed_roles.length === 0
-                  ? spaTranslate("Everyone may. Add a role to limit it, for boosters, say.")
-                  : spaTranslate("Only members with one of these roles. {arg1}/{arg2}", {
+                  ? deferredText("Everyone may. Add a role to limit it, for boosters, say.")
+                  : deferredText("Only members with one of these roles. {arg1}/{arg2}", {
                       arg1: colors.allowed_roles.length,
                       arg2: colors.max_allowed,
                     })
@@ -115,7 +116,7 @@ export function ColorRoles({
                   info={info}
                   value={allow}
                   onChange={setAllow}
-                  none={spaTranslate("Pick a role to add")}
+                  none={deferredText("Pick a role to add")}
                 />
                 <PixelButton
                   variant="secondary"
@@ -127,7 +128,7 @@ export function ColorRoles({
                 </PixelButton>
               </div>
               {colors.allowed_roles.length > 0 && (
-                <ul className="channel-chips" aria-label={spaTranslate("Roles that may pick")}>
+                <ul className="channel-chips" aria-label={deferredText("Roles that may pick")}>
                   {colors.allowed_roles.map((id) => (
                     <li key={id} className="channel-chip">
                       <RoleTag info={info} id={id} />
@@ -145,13 +146,13 @@ export function ColorRoles({
               )}
             </Field>
             <Field
-              label={spaTranslate("Make new colour roles under")}
+              label={deferredText("Make new colour roles under")}
               htmlFor="colour-anchor"
               error={
                 (picked && !picked.assignable ? picked.why_not : null) ??
                 (error?.field === "anchor_role_id" ? error.message : null)
               }
-              hint={spaTranslate(
+              hint={deferredText(
                 "A colour only shows when no role above it has one. Pick a role below the bot, and put it above the roles that colour names.",
               )}
             >
@@ -160,7 +161,7 @@ export function ColorRoles({
                 info={info}
                 value={colors.anchor_role_id}
                 onChange={(role) => save({ anchor_role_id: role })}
-                none={spaTranslate("None: new roles land at the bottom")}
+                none={deferredText("None: new roles land at the bottom")}
                 assignable
                 disabled={write.isPending}
               />
@@ -170,7 +171,7 @@ export function ColorRoles({
       </SettingsRow>
       <SettingsRow
         rowId="color-roles-the-palette"
-        title={spaTranslate("The palette")}
+        title={deferredText("The palette")}
         description={t("Preview colours and create the missing roles.")}
         summary={t("{count} colours · {missing} not made", { count: colors.palette.length, missing })}
       >
@@ -188,7 +189,7 @@ export function ColorRoles({
       {colors.roles.length > 0 && (
         <SettingsRow
           rowId="color-roles-colour-roles-made"
-          title={spaTranslate("Colour roles made")}
+          title={deferredText("Colour roles made")}
           description={t("Review or remove created colour roles.")}
           summary={t("{count} roles made", { count: colors.roles.length })}
         >

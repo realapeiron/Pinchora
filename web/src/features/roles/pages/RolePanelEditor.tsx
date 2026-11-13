@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { Choice } from "../../../components/Choice";
 import { Field, SwitchRow } from "../../../components/Field";
@@ -66,7 +67,7 @@ export function Editor({
 
   return (
     <Panel
-      title={current ? spaTranslate("EDIT PANEL") : spaTranslate("NEW PANEL")}
+      title={current ? deferredText("EDIT PANEL") : spaTranslate("NEW PANEL")}
       aside={<span className="pixel-label muted">{`${draft.roles.length}/${LIMITS.entries} roles`}</span>}
     >
       <div className="panel-designer">
@@ -91,13 +92,13 @@ export function Editor({
                 aria-required="true"
                 value={draft.title}
                 maxLength={LIMITS.title + 20}
-                placeholder={spaTranslate("Pick your colours")}
+                placeholder={deferredText("Pick your colours")}
                 onChange={(event) => set("title", event.target.value)}
                 aria-invalid={why("title") ? true : undefined}
               />
             </Field>
             <Field
-              label={spaTranslate("Text above the roles")}
+              label={deferredText("Text above the roles")}
               htmlFor="panel-description"
               error={why("description")}
               aside={
@@ -113,7 +114,7 @@ export function Editor({
                 className="pixel-input pixel-textarea"
                 rows={3}
                 value={draft.description}
-                placeholder={spaTranslate("What are these roles for?")}
+                placeholder={deferredText("What are these roles for?")}
                 onChange={(event) => set("description", event.target.value)}
                 aria-invalid={why("description") ? true : undefined}
               />
@@ -133,7 +134,7 @@ export function Editor({
             <Field
               label={spaTranslate("Required role")}
               htmlFor="panel-required"
-              hint={spaTranslate("Only members with it can use the panel.")}
+              hint={deferredText("Only members with it can use the panel.")}
             >
               <RolePicker
                 id="panel-required"
@@ -144,9 +145,9 @@ export function Editor({
               />
             </Field>
             <Field
-              label={spaTranslate("Fewest roles")}
+              label={deferredText("Fewest roles")}
               htmlFor="panel-min"
-              hint={spaTranslate("They keep at least this many.")}
+              hint={deferredText("They keep at least this many.")}
             >
               <input
                 id="panel-min"
@@ -160,9 +161,9 @@ export function Editor({
               />
             </Field>
             <Field
-              label={spaTranslate("Most roles")}
+              label={deferredText("Most roles")}
               htmlFor="panel-max"
-              hint={spaTranslate("0 has no limit.")}
+              hint={deferredText("0 has no limit.")}
             >
               <input
                 id="panel-max"
@@ -193,7 +194,7 @@ export function Editor({
             }
           >
             {" "}
-            {spaTranslate(
+            {deferredText(
               "Picking a role takes the member's other role from this panel away, like a team or a colour.",
             )}{" "}
           </SwitchRow>
@@ -219,7 +220,7 @@ export function Editor({
             />
           )}
           {!current && (
-            <p className="muted fine">{spaTranslate("Save the panel first, then post it in a channel.")}</p>
+            <p className="muted fine">{deferredText("Save the panel first, then post it in a channel.")}</p>
           )}
         </div>
       </div>

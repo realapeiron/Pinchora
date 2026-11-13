@@ -47,3 +47,11 @@ text_commands = "Metin komutları"
 [component]
 button-expired = "Bu düğmenin süresi doldu."
 form-expired = "Bu formun süresi doldu."
+
+[common.web.errors]
+invalid-request-body = "İstek gövdesi geçersiz."
+this-login-link-is-stale-or-was-not-started-here-log-in-again = "Bu giriş bağlantısının süresi dolmuş veya giriş burada başlatılmamış. Yeniden giriş yapın."
+user-id-must-be-a-number = "user_id sayı olmalı."
+bad-path = "Geçersiz yol."
+server-ids-are-numbers = "Sunucu kimlikleri sayı olmalı."
+channel-ids = "Kanal kimlikleri sayı olmalı."

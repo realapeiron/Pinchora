@@ -1,5 +1,6 @@
 //! The server store: roles members buy with server points. Same rules as `/config store`.
 
+use pinchora_core::infra::i18n::Lang;
 use std::collections::HashMap;
 
 use axum::{
@@ -8,6 +9,7 @@ use axum::{
 };
 use pinchora_cache::Invalidation;
 use pinchora_core::admin::settings;
+use pinchora_core::t;
 use pinchora_db::{MAX_STORE_ITEMS, StoreItem};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -51,11 +53,11 @@ pub struct ItemBody {
     stock: Option<Option<i64>>,
 }
 
-fn role_of(params: &HashMap<String, String>) -> ApiResult<u64> {
+fn role_of(params: &HashMap<String, String>, lang: Lang) -> ApiResult<u64> {
     params
         .get("role")
         .and_then(|raw| parse_id(raw))
-        .ok_or_else(|| ApiError::malformed("Role ids are numbers."))
+        .ok_or_else(|| ApiError::malformed(t!(lang, "economy.web.errors.role-ids-are-numbers")))
 }
 
 /// `PUT /store/{role}`: puts a role on sale, or changes its price and stock.
@@ -65,7 +67,8 @@ pub async fn put_item(
     Path(params): Path<HashMap<String, String>>,
     ApiJson(body): ApiJson<ItemBody>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, role_of(&params)?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, role_of(&params, lang)?);
     let price = settings::check_price(body.price);
     let stock = body.stock.flatten().map(settings::check_stock).transpose();
     let (price, stock) = match (price, stock) {
@@ -85,8 +88,10 @@ pub async fn put_item(
         return Ok(Json(view(&state, guild).await?));
     }
     let Some(item) = db.add_store_item(guild, role, price, stock).await? else {
-        return Err(ApiError::limit(format!(
-            "A store holds at most {MAX_STORE_ITEMS} roles. Remove one first."
+        return Err(ApiError::limit(t!(
+            lang,
+            "economy.web.errors.store-roles-limit",
+            max = MAX_STORE_ITEMS
         )));
     };
     let target = role.to_string();
@@ -112,7 +117,8 @@ pub async fn delete_item(
     managed: ManagedGuild,
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
-    let (guild, role) = (managed.id, role_of(&params)?);
+    let lang = managed.panel_lang;
+    let (guild, role) = (managed.id, role_of(&params, lang)?);
     let db = &state.app.db;
     let was = db
         .store_items(guild)

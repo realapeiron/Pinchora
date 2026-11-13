@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { plural as spaPlural, translate as spaTranslate } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
@@ -8,7 +9,7 @@ export function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] 
   const numbers: Summary = summary[span];
   return (
     <Panel
-      title={spaTranslate("AT A GLANCE")}
+      title={deferredText("AT A GLANCE")}
       aside={
         <div className="tk-segment is-tight" role="group" aria-label={spaTranslate("Period")}>
           {(
@@ -32,7 +33,7 @@ export function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] 
     >
       <ul className="tk-stats">
         <li className="tk-stat">
-          <span className="tk-stat-name">{spaTranslate("Open now")}</span>
+          <span className="tk-stat-name">{deferredText("Open now")}</span>
           <span className="tk-stat-value">{numbers.open_now}</span>
         </li>
         <li className="tk-stat">
@@ -44,7 +45,7 @@ export function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] 
           <span className="tk-stat-value">{numbers.closed}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">{spaTranslate("First reply")}</span>
+          <span className="tk-stat-name">{deferredText("First reply")}</span>
           <span className="tk-stat-value">{duration(numbers.median_first_reply_secs)}</span>
           <span className="tk-stat-detail">{spaTranslate("median")}</span>
         </li>

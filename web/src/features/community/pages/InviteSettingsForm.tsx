@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
 import { ChannelPicker } from "../../../components/DashboardPickers";
@@ -50,15 +51,17 @@ export function InviteSettingsForm({
           summary={summary.tracking}
           enabled={draft.enabled}
           onToggle={(v) => set("enabled", v)}
-          toggleLabel={t("Count invitations")}
+          toggleLabel={deferredText("Count invitations")}
           initialOpen
         >
           <div className="settings-detail-fields">
-            <p className="muted">{t("Count new members when their invite code can be identified.")}</p>
+            <p className="muted">
+              {deferredText("Count new members when their invite code can be identified.")}
+            </p>
             <Field
-              label={t("Join log channel")}
+              label={deferredText("Join log channel")}
               htmlFor="inv-log"
-              hint={t("Optional. Keep it visible only to the people who should review joins.")}
+              hint={deferredText("Optional. Keep it visible only to the people who should review joins.")}
               error={problem("log_channel_id")}
             >
               <ChannelPicker
@@ -67,13 +70,13 @@ export function InviteSettingsForm({
                 info={discord.data}
                 value={draft.log_channel_id}
                 onChange={(v) => set("log_channel_id", v)}
-                none={t("No dedicated join log")}
+                none={deferredText("No dedicated join log")}
               />
             </Field>
             <Field
-              label={t("New account window")}
+              label={deferredText("New account window")}
               htmlFor="inv-fake"
-              hint={t(
+              hint={deferredText(
                 "Members with younger Discord accounts are shown separately and do not earn invite rewards.",
               )}
               error={problem("fake_days")}
@@ -100,14 +103,16 @@ export function InviteSettingsForm({
           summary={summary.links}
           enabled={draft.temp_enabled}
           onToggle={(v) => set("temp_enabled", v)}
-          toggleLabel={t("Let members make links")}
+          toggleLabel={deferredText("Let members make links")}
         >
           <div className="settings-detail-fields">
-            <p className="muted">{t("Each link is sent privately to the member who requests it.")}</p>
+            <p className="muted">
+              {deferredText("Each link is sent privately to the member who requests it.")}
+            </p>
             <Field
-              label={t("Invite channel")}
+              label={deferredText("Invite channel")}
               htmlFor="inv-temp-channel"
-              hint={t("The bot needs Create Instant Invite in this channel.")}
+              hint={deferredText("The bot needs Create Instant Invite in this channel.")}
               error={problem("temp_channel_id")}
             >
               <ChannelPicker
@@ -120,7 +125,11 @@ export function InviteSettingsForm({
               />
             </Field>
             <div className="inv-number-grid">
-              <Field label={t("Link lifetime")} htmlFor="inv-age" error={problem("temp_max_age_secs")}>
+              <Field
+                label={deferredText("Link lifetime")}
+                htmlFor="inv-age"
+                error={problem("temp_max_age_secs")}
+              >
                 <div className="inv-unit">
                   <input
                     id="inv-age"
@@ -134,7 +143,11 @@ export function InviteSettingsForm({
                   <span>{t("sec")}</span>
                 </div>
               </Field>
-              <Field label={t("Uses per link")} htmlFor="inv-uses" error={problem("temp_max_uses")}>
+              <Field
+                label={deferredText("Uses per link")}
+                htmlFor="inv-uses"
+                error={problem("temp_max_uses")}
+              >
                 <input
                   id="inv-uses"
                   type="number"
@@ -145,7 +158,11 @@ export function InviteSettingsForm({
                   onChange={(e) => set("temp_max_uses", Number(e.target.value))}
                 />
               </Field>
-              <Field label={t("Per member daily")} htmlFor="inv-daily" error={problem("temp_per_user_daily")}>
+              <Field
+                label={deferredText("Per member daily")}
+                htmlFor="inv-daily"
+                error={problem("temp_per_user_daily")}
+              >
                 <input
                   id="inv-daily"
                   type="number"
@@ -159,7 +176,7 @@ export function InviteSettingsForm({
             </div>
             <p className="muted inv-small-note">
               {t("Members use")} <code>/invites temp</code>{" "}
-              {t("or the “Invite a friend” button. Post the button with")}{" "}
+              {deferredText("or the “Invite a friend” button. Post the button with")}{" "}
               <code>/integrations invites post</code>.
             </p>
           </div>
@@ -179,7 +196,7 @@ export function InviteSettingsForm({
           save.mutate(draft, {
             onSuccess: (now) => {
               setDraft(now);
-              onToast(t("Invite settings saved."));
+              onToast(deferredText("Invite settings saved."));
             },
           })
         }

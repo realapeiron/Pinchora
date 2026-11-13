@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { Choice } from "../../../components/Choice";
 import { Field } from "../../../components/Field";
@@ -21,7 +22,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
           label={spaTranslate("Name")}
           htmlFor={`${base}-name`}
           error={errors.name}
-          hint={spaTranslate("How /community tickets and this page find it. Members never see it.")}
+          hint={deferredText("How /community tickets and this page find it. Members never see it.")}
         >
           <input
             id={`${base}-name`}
@@ -33,10 +34,10 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
           />
         </Field>
         <Field
-          label={spaTranslate("Posted in")}
+          label={deferredText("Posted in")}
           htmlFor={`${base}-channel`}
           error={errors.channel_id}
-          hint={spaTranslate("Private threads open off this channel in thread mode.")}
+          hint={deferredText("Private threads open off this channel in thread mode.")}
         >
           <ChannelPicker
             posting
@@ -70,7 +71,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
         label={spaTranslate("Text")}
         htmlFor={`${base}-description`}
         error={errors.description}
-        hint={spaTranslate("Markdown works: **bold**, *italic*. Mentions are dropped.")}
+        hint={deferredText("Markdown works: **bold**, *italic*. Mentions are dropped.")}
         aside={
           <span className="counter">
             {[...draft.description].length}/{limits.description}
@@ -89,12 +90,12 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
         label={spaTranslate("Colour")}
         htmlFor={`${base}-color`}
         error={errors.color}
-        hint={spaTranslate("The stripe down the side.")}
+        hint={deferredText("The stripe down the side.")}
       >
         <div className="tk-color">
           <input
             type="color"
-            aria-label={spaTranslate("Pick the colour")}
+            aria-label={deferredText("Pick the colour")}
             value={/^#[0-9a-fA-F]{6}$/.test(draft.color) ? draft.color : "#ff6b4a"}
             onChange={(e) => set("color", e.target.value)}
           />
@@ -118,18 +119,18 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
             {
               value: "buttons",
               title: spaTranslate("Buttons"),
-              detail: spaTranslate("One button per topic, up to {arg1}.", { arg1: limits.buttons }),
+              detail: deferredText("One button per topic, up to {arg1}.", { arg1: limits.buttons }),
             },
             {
               value: "select",
               title: spaTranslate("Menu"),
-              detail: spaTranslate("A drop-down of up to {arg1} topics.", { arg1: limits.options }),
+              detail: deferredText("A drop-down of up to {arg1} topics.", { arg1: limits.options }),
             },
           ]}
         />
       </Field>
       <Field
-        label={spaTranslate("Topics")}
+        label={deferredText("Topics")}
         error={errors.buttons}
         aside={
           <span className={`counter ${draft.topics.length > most ? "is-over" : ""}`}>
@@ -142,7 +143,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
             <li key={n} className={`tk-topic ${draft.style === "select" ? "is-menu" : ""}`}>
               <input
                 className="pixel-input tk-emoji"
-                aria-label={spaTranslate("Topic {arg1} emoji", { arg1: n + 1 })}
+                aria-label={deferredText("Topic {arg1} emoji", { arg1: n + 1 })}
                 placeholder="🎫"
                 value={topic.emoji ?? ""}
                 maxLength={8}
@@ -150,7 +151,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
               />
               <input
                 className="pixel-input"
-                aria-label={spaTranslate("Topic {arg1} label", { arg1: n + 1 })}
+                aria-label={deferredText("Topic {arg1} label", { arg1: n + 1 })}
                 value={topic.label}
                 maxLength={limits.label}
                 onChange={(e) => updateTopic(n, { label: e.target.value })}
@@ -158,7 +159,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
               {draft.style === "buttons" ? (
                 <select
                   className="pixel-input pixel-select"
-                  aria-label={spaTranslate("Topic {arg1} colour", { arg1: n + 1 })}
+                  aria-label={deferredText("Topic {arg1} colour", { arg1: n + 1 })}
                   value={topic.tone}
                   onChange={(e) => updateTopic(n, { tone: e.target.value as Tone })}
                 >
@@ -171,8 +172,8 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
               ) : (
                 <input
                   className="pixel-input"
-                  aria-label={spaTranslate("Topic {arg1} description", { arg1: n + 1 })}
-                  placeholder={spaTranslate("A line under it (optional)")}
+                  aria-label={deferredText("Topic {arg1} description", { arg1: n + 1 })}
+                  placeholder={deferredText("A line under it (optional)")}
                   value={topic.description ?? ""}
                   maxLength={limits.option_description}
                   onChange={(e) => updateTopic(n, { description: e.target.value })}
@@ -181,7 +182,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
               <button
                 type="button"
                 className="tk-icon-button"
-                aria-label={spaTranslate("Remove topic {arg1}", { arg1: n + 1 })}
+                aria-label={deferredText("Remove topic {arg1}", { arg1: n + 1 })}
                 onClick={() =>
                   set(
                     "topics",
@@ -203,7 +204,7 @@ export function ButtonsTab({ draft, set, limits, info, errors, base, most, updat
           }
         >
           {" "}
-          {spaTranslate("Add topic")}{" "}
+          {deferredText("Add topic")}{" "}
         </PixelButton>
       </Field>
     </>

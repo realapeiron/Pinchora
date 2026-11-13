@@ -149,3 +149,7 @@ other = "⚠️ Son yeniden adlandırma gerçekleşmedi; 10 dakika sonra yeniden
 
 [module-blurb]
 stats = "/stats, /integrations stats ve İstatistikler sayfası; mesajları, sesli sohbet dakikalarını, katılmaları ve ayrılmaları sayar."
+
+[stats.web.errors]
+days-is-7-30-or-90 = "days 7, 30 veya 90 olmalı."
+counter-channels-limit = "Bu sunucuda zaten {max} sayaç kanalı var. Önce birini kaldırın."

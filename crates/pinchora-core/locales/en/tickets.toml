@@ -241,3 +241,19 @@ already-closed = "This ticket is already closed."
 
 [module-blurb]
 tickets = "/ticket and /community tickets: private support tickets opened from a panel, with transcripts."
+
+[tickets.web.errors]
+field-id = "`{field}` is not an id."
+member-ids-are-numbers = "Member ids are numbers."
+ticket-panels-limit = "A server has at most {max} ticket panels."
+panel-channel = "Pick a channel."
+panel-style = "A panel shows buttons or a menu."
+panel-category-kind = "{name} isn't a category."
+panel-category-gone = "That category no longer exists. Refresh the list."
+panel-everyone = "@everyone can't be a support role: everybody would see every ticket."
+panel-color = "Colours look like `#ff6b4a`."
+panel-post-kind = "#{name} isn't a text or announcement channel."
+panel-channel-gone = "That channel no longer exists, or I can't see it. Refresh the list."
+panel-role-gone = "That role no longer exists. Refresh the list."
+ticket-mode = "Tickets are channels, private threads or automatic."
+panel-name-taken = "Another panel is already called “{name}”."

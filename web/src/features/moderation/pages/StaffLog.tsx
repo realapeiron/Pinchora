@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
@@ -23,17 +24,17 @@ export function StaffLog() {
   return (
     <SettingsPage
       className="settings-page"
-      title={spaTranslate("STAFF LOG")}
-      lead={spaTranslate(
+      title={deferredText("STAFF LOG")}
+      lead={deferredText(
         "What staff did: moderation commands, changes made on this dashboard, and what Discord's audit log says was done by hand. Kept 180 days.",
       )}
     >
-      <Panel title={spaTranslate("FIND")}>
+      <Panel title={deferredText("FIND")}>
         <div className="filters">
           <Field
             label={spaTranslate("Search")}
             htmlFor="staff-search"
-            hint={spaTranslate("A name, an action, a reason, or a user id.")}
+            hint={deferredText("A name, an action, a reason, or a user id.")}
           >
             <input
               id="staff-search"
@@ -41,7 +42,7 @@ export function StaffLog() {
               className="pixel-input"
               value={typed}
               onChange={(event) => setTyped(event.target.value)}
-              placeholder={spaTranslate("ban, Mia, 1234…")}
+              placeholder={deferredText("ban, Mia, 1234…")}
             />
           </Field>
           <Field label={spaTranslate("Where")} htmlFor="staff-source">
@@ -52,9 +53,9 @@ export function StaffLog() {
               onChange={(event) => setSource(event.target.value)}
             >
               <option value="">{spaTranslate("Everywhere")}</option>
-              <option value="command">{spaTranslate("With Pinchora's commands")}</option>
-              <option value="web">{spaTranslate("On the dashboard")}</option>
-              <option value="discord">{spaTranslate("By hand in Discord")}</option>
+              <option value="command">{deferredText("With Pinchora's commands")}</option>
+              <option value="web">{deferredText("On the dashboard")}</option>
+              <option value="discord">{deferredText("By hand in Discord")}</option>
             </select>
           </Field>
         </div>
@@ -64,11 +65,11 @@ export function StaffLog() {
         {log.isError && <Problem error={log.error} />}
         {log.isSuccess && rows.length === 0 && (
           <p className="empty-row muted">
-            {q || source ? spaTranslate("Nothing matches.") : spaTranslate("Nothing yet.")}
+            {q || source ? deferredText("Nothing matches.") : spaTranslate("Nothing yet.")}
           </p>
         )}
         {rows.length > 0 && (
-          <ol className="audit-table" aria-label={spaTranslate("Staff actions")}>
+          <ol className="audit-table" aria-label={deferredText("Staff actions")}>
             {rows.map((entry) => (
               <StaffRow key={entry.key} entry={entry} />
             ))}
@@ -81,7 +82,7 @@ export function StaffLog() {
               disabled={log.isFetchingNextPage}
               onClick={() => void log.fetchNextPage()}
             >
-              {log.isFetchingNextPage ? spaTranslate("Loading…") : spaTranslate("Older actions")}
+              {log.isFetchingNextPage ? spaTranslate("Loading…") : deferredText("Older actions")}
             </PixelButton>
           </div>
         )}
@@ -107,7 +108,7 @@ function StaffRow({ entry }: { entry: StaffEntry }) {
           {entry.case_number !== null && (
             <span className="muted">
               {" "}
-              {spaTranslate("· case #")}
+              {deferredText("· case #")}
               {entry.case_number}
             </span>
           )}

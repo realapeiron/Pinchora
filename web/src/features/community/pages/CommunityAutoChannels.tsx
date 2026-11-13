@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as t } from "../../../i18n";
 import { SettingsPage } from "../../../components/PageHead";
@@ -16,8 +17,8 @@ export function CommunityAutoChannels() {
   return (
     <SettingsPage
       className="settings-page community-tools-page"
-      title={t("AUTO CHANNELS")}
-      lead={t("Open discussion threads and crosspost announcements for new messages.")}
+      title={deferredText("AUTO CHANNELS")}
+      lead={deferredText("Open discussion threads and crosspost announcements for new messages.")}
     >
       {notice && (
         <p className="notice" role="status">
@@ -41,7 +42,8 @@ export function CommunityAutoChannels() {
                 <div className="community-v2-item" key={c.channel_id}>
                   <strong>#{c.channel_id}</strong>
                   <span className="muted">
-                    {c.thread ? t("Auto thread") : ""} {c.crosspost ? t("Auto crosspost") : ""}
+                    {c.thread ? deferredText("Auto thread") : ""}{" "}
+                    {c.crosspost ? deferredText("Auto crosspost") : ""}
                   </span>
                   <button
                     className="pixel-button"
@@ -67,11 +69,11 @@ export function CommunityAutoChannels() {
               </label>
               <label>
                 <input type="checkbox" checked={thread} onChange={(e) => setThread(e.target.checked)} />{" "}
-                {t("Auto thread")}
+                {deferredText("Auto thread")}
               </label>
               <label>
                 <input type="checkbox" checked={crosspost} onChange={(e) => setCrosspost(e.target.checked)} />{" "}
-                {t("Auto crosspost")}
+                {deferredText("Auto crosspost")}
               </label>
               <button
                 className="pixel-button"

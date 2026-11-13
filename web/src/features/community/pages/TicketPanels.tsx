@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { Panel } from "../../../components/Panel";
 import { PixelButton } from "../../../components/PixelButton";
@@ -56,9 +57,9 @@ export function TicketPanels({
     >
       <p className="panel-lead muted">
         {" "}
-        {spaTranslate("A panel is the message members open tickets from: up to")} {limits.buttons}{" "}
-        {spaTranslate("topic buttons, or a menu of up to")} {limits.options}
-        {spaTranslate(". Save it, then post it; posting again updates the message in place.")}{" "}
+        {deferredText("A panel is the message members open tickets from: up to")} {limits.buttons}{" "}
+        {deferredText("topic buttons, or a menu of up to")} {limits.options}
+        {deferredText(". Save it, then post it; posting again updates the message in place.")}{" "}
       </p>
       {post.isError && (
         <p className="field-error" role="alert">
@@ -67,7 +68,7 @@ export function TicketPanels({
       )}
       {panels.length === 0 ? (
         <p className="empty-row muted">
-          {spaTranslate("No panels yet. Make one and post it where members ask for help.")}
+          {deferredText("No panels yet. Make one and post it where members ask for help.")}
         </p>
       ) : (
         <ul className="tk-panel-list">
@@ -82,7 +83,7 @@ export function TicketPanels({
       <div className="panel-foot">
         {full && (
           <span className="muted fine">
-            {spaTranslate("A server has at most")} {limits.panels} {spaTranslate("panels.")}
+            {deferredText("A server has at most")} {limits.panels} {spaTranslate("panels.")}
           </span>
         )}
         <PixelButton onClick={() => setEditing("new")} disabled={full || editing === "new"}>

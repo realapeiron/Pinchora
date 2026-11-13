@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import type { GuildInfo } from "../../../lib/api";
 import type { Board } from "../api/starboard";
@@ -27,12 +28,12 @@ export function BoardCard({
       </p>
       <div className="star-preview">
         <span>
-          ⭐ {board.threshold} {spaTranslate("· #source")}
+          ⭐ {board.threshold} {deferredText("· #source")}
         </span>
-        <strong>{spaTranslate("A standout post appears here")}</strong>
+        <strong>{deferredText("A standout post appears here")}</strong>
         <small>
-          {spaTranslate("Author · jump link")}
-          {messageContent ? spaTranslate(" · attachments") : ""}
+          {deferredText("Author · jump link")}
+          {messageContent ? deferredText(" · attachments") : ""}
         </small>
       </div>
       <div className="star-actions">

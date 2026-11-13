@@ -61,13 +61,13 @@ function announce() {
   for (const listener of listeners) listener();
 }
 
-/** A user's explicit choice wins; otherwise use the managed server, then the browser. */
+/** A manager's panel follows their choice or browser; public server pages may use the guild. */
 export function locale(): Locale {
   if (selected) return selected;
-  return (
-    guild ??
-    (typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("tr") ? "tr" : "en")
-  );
+  const browser =
+    typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("tr") ? "tr" : "en";
+  if (account) return browser;
+  return guild ?? browser;
 }
 
 export function useLocale(): Locale {
@@ -83,10 +83,10 @@ export function useLocale(): Locale {
 
 /** Called after /api/me loads; the bot's /language selection is authoritative. */
 export function configureUser(id: string, choice: Locale | null) {
-  if (account === id && selected === (choice ?? stored(id))) return;
+  if (account === id && selected === choice) return;
   selection++;
   account = id;
-  selected = choice ?? stored(id);
+  selected = choice;
   announce();
 }
 

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { Field } from "../../../components/Field";
@@ -20,7 +21,7 @@ const ACTIONS: { key: LadderAction; label: string }[] = [
 
 /** What the length box says while empty. */
 function placeholder(action: LadderAction): string {
-  if (action === "kick") return spaTranslate("no length");
+  if (action === "kick") return deferredText("no length");
   return action === "ban" ? spaTranslate("for good") : "1h";
 }
 
@@ -50,7 +51,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
     save.mutate(patch, {
       onSuccess: (now) => {
         setLadder(draftLadder(now));
-        setToast(spaTranslate("Saved. The next case follows it."));
+        setToast(deferredText("Saved. The next case follows it."));
       },
     });
   const reset = () => {
@@ -72,10 +73,10 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
         >
           <div className="settings-detail-fields">
             <Field
-              label={spaTranslate("Mod-log channel")}
+              label={deferredText("Mod-log channel")}
               htmlFor="modlog-channel"
               error={fieldError("log_channel_id")}
-              hint={spaTranslate(
+              hint={deferredText(
                 "Every case is posted here with its number, the moderator, the member, the reason and how long. Keep it private to staff.",
               )}
             >
@@ -85,21 +86,21 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
                 info={discord.data}
                 value={channel}
                 onChange={setChannel}
-                none={spaTranslate("The server log's moderation channel")}
+                none={deferredText("The server log's moderation channel")}
               />
             </Field>
           </div>
         </SettingsRow>
         <SettingsRow
           rowId="moderation-form-tell-members"
-          title={spaTranslate("Tell members")}
+          title={deferredText("Tell members")}
           description={t("Send members a message about their cases.")}
           summary={summary.dm}
           enabled={dm}
           onToggle={setDm}
         >
           <p className="muted">
-            {spaTranslate(
+            {deferredText(
               "A direct message when they are warned, timed out, kicked or banned, with the reason and how long. Members with closed direct messages are skipped; the case says so.",
             )}
           </p>
@@ -114,12 +115,12 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
           <div className="settings-detail-fields">
             <p className="panel-lead muted">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "When a warn brings a member's active warns to a number on the ladder, Pinchora acts on its own, as a case of its own. Taking a warn back with /mod unwarn lowers the count again.",
               )}{" "}
             </p>
             {ladder.length === 0 ? (
-              <p className="empty-row muted">{spaTranslate("No rungs yet: warns are only counted.")}</p>
+              <p className="empty-row muted">{deferredText("No rungs yet: warns are only counted.")}</p>
             ) : (
               <ul className="list" aria-label={spaTranslate("Warn ladder")}>
                 {ladder.map((rung, n) => (
@@ -128,7 +129,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
                       {rung.warns} {spaTranslate("warns")}
                     </span>
                     <select
-                      aria-label={spaTranslate("What {arg1} warns bring", { arg1: rung.warns })}
+                      aria-label={deferredText("What {arg1} warns bring", { arg1: rung.warns })}
                       className="pixel-input pixel-select"
                       value={rung.action}
                       onChange={(event) => change(n, { action: event.target.value as LadderAction })}
@@ -140,7 +141,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
                       ))}
                     </select>
                     <input
-                      aria-label={spaTranslate("How long, at {arg1} warns", { arg1: rung.warns })}
+                      aria-label={deferredText("How long, at {arg1} warns", { arg1: rung.warns })}
                       className="pixel-input input-short"
                       value={rung.duration}
                       disabled={rung.action === "kick"}
@@ -150,7 +151,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
                     <button
                       type="button"
                       className="chip-remove"
-                      aria-label={spaTranslate("Remove the rung at {arg1} warns", { arg1: rung.warns })}
+                      aria-label={deferredText("Remove the rung at {arg1} warns", { arg1: rung.warns })}
                       onClick={() => setLadder((rungs) => rungs.filter((_, i) => i !== n))}
                     >
                       ×
@@ -165,7 +166,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
               </p>
             )}
             <div className="add-row add-row-role">
-              <Field label={spaTranslate("Warns")} htmlFor="rung-warns">
+              <Field label={deferredText("Warns")} htmlFor="rung-warns">
                 <input
                   id="rung-warns"
                   type="number"
@@ -176,7 +177,7 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
                   onChange={(event) => setAdding({ ...adding, warns: Number(event.target.value) })}
                 />
               </Field>
-              <Field label={spaTranslate("Brings")} htmlFor="rung-action">
+              <Field label={deferredText("Brings")} htmlFor="rung-action">
                 <div className="ladder-add">
                   <select
                     id="rung-action"
@@ -213,14 +214,14 @@ export function ModerationForm({ guild, saved }: { guild: string; saved: Moderat
                   onClick={add}
                 >
                   {" "}
-                  {spaTranslate("Add rung")}{" "}
+                  {deferredText("Add rung")}{" "}
                 </PixelButton>
               </div>
             </div>
             {full && (
               <p className="notice">
-                {spaTranslate("The ladder holds")} {saved.max_rungs}{" "}
-                {spaTranslate("rungs. Remove one to add another.")}
+                {deferredText("The ladder holds")} {saved.max_rungs}{" "}
+                {deferredText("rungs. Remove one to add another.")}
               </p>
             )}
           </div>

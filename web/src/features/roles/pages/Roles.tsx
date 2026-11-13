@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useOutletContext } from "react-router";
 import { RichText } from "../../../components/RichText";
@@ -16,14 +17,14 @@ export function Roles() {
   const guild = data.guild.id;
   const discord = useDiscord(guild);
   const roles = useRoles(guild);
-  if (roles.isPending) return <Loading label={spaTranslate("Loading roles")} />;
+  if (roles.isPending) return <Loading label={deferredText("Loading roles")} />;
   if (roles.isError) return <Problem error={roles.error} />;
   const view = roles.data;
   return (
     <SettingsPage
       className="settings-page"
       title={spaTranslate("ROLES")}
-      lead={spaTranslate(
+      lead={deferredText(
         "Roles members get on their own, panels where they pick their own, and colours for their names.",
       )}
     >

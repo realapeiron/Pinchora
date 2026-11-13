@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
@@ -50,7 +51,7 @@ export function CreatorForm({
   const limit = Number.isNaN(value.default_limit) ? null : value.default_limit;
   const limitError =
     limit === null || !Number.isInteger(limit) || limit < 0 || limit > limits.max_limit
-      ? tf(spaTranslate("A limit is 0 (no limit) to {max} people."), { max: limits.max_limit })
+      ? tf(deferredText("A limit is 0 (no limit) to {max} people."), { max: limits.max_limit })
       : null;
   const refused = save.error instanceof ApiError ? save.error : null;
   const serverError = (field: string) => refused?.errors.find((e) => e.field === field)?.message ?? null;
@@ -75,7 +76,7 @@ export function CreatorForm({
     <form
       id={`${id}-form`}
       className="creator-form"
-      aria-label={tf(spaTranslate("Settings of {name}"), {
+      aria-label={tf(deferredText("Settings of {name}"), {
         name: nameOf(info, creator.channel_id, t("this creator")),
       })}
       onSubmit={(event) => {
@@ -228,13 +229,13 @@ export function CreatorForm({
       )}
       <div className="creator-foot">
         <PixelButton variant="ghost" onClick={() => setPreview((shown) => !shown)} aria-expanded={preview}>
-          {t(preview ? spaTranslate("Hide preview") : spaTranslate("Preview room"))}
+          {t(preview ? deferredText("Hide preview") : deferredText("Preview room"))}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onClose}>
           {t(changed > 0 ? spaTranslate("Discard") : spaTranslate("Close"))}
         </PixelButton>
         <PixelButton onClick={submit} disabled={blocked || changed === 0 || save.isPending}>
-          {t(save.isPending ? spaTranslate("Saving…") : spaTranslate("Save creator"))}
+          {t(save.isPending ? spaTranslate("Saving…") : deferredText("Save creator"))}
         </PixelButton>
       </div>
     </form>

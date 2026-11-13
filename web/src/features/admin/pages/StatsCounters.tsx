@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { Field } from "../../../components/Field";
@@ -33,9 +34,9 @@ export function CounterChannels({ guild }: { guild: string }) {
   const full = counters.length >= max && !existing;
   const templateProblem =
     template.trim() && !template.includes("{count}")
-      ? spaTranslate("Put {count} where the number goes.")
+      ? deferredText("Put {count} where the number goes.")
       : template.length > (list?.template_max ?? 80)
-        ? spaTranslate("Keep it to {arg1} characters.", { arg1: list?.template_max ?? 80 })
+        ? deferredText("Keep it to {arg1} characters.", { arg1: list?.template_max ?? 80 })
         : null;
   const refused = add.error instanceof ApiError ? add.error : null;
   const fieldError = (field: string) => refused?.errors.find((e) => e.field === field)?.message ?? null;
@@ -50,7 +51,7 @@ export function CounterChannels({ guild }: { guild: string }) {
           name: null,
           value: null,
           problem:
-            error instanceof Error ? error.message : spaTranslate("The preview could not be worked out."),
+            error instanceof Error ? error.message : deferredText("The preview could not be worked out."),
         }),
       )
       .finally(() => setPreviewing(false));
@@ -79,14 +80,14 @@ export function CounterChannels({ guild }: { guild: string }) {
           </span>
           <p className="muted panel-lead">
             {" "}
-            {spaTranslate("A channel whose name shows a live number, like")}{" "}
-            <strong>{spaTranslate("Members: 1,234")}</strong>
-            {spaTranslate(
+            {deferredText("A channel whose name shows a live number, like")}{" "}
+            <strong>{deferredText("Members: 1,234")}</strong>
+            {deferredText(
               ". Pinchora renames it when the number changes, at most once every 10 minutes. A locked voice channel works best. Same as",
             )}{" "}
             <code>/integrations stats</code> {spaTranslate("in Discord.")}{" "}
           </p>
-          {query.isPending && <Loading label={spaTranslate("Reading the counters")} />}
+          {query.isPending && <Loading label={deferredText("Reading the counters")} />}
           {query.isError && <Problem error={query.error} />}
           <CounterList
             list={list}
@@ -96,7 +97,7 @@ export function CounterChannels({ guild }: { guild: string }) {
             onEdit={edit}
             onRemove={(id) =>
               remove.mutate(id, {
-                onSuccess: () => setToast(spaTranslate("Removed. The channel keeps its last name.")),
+                onSuccess: () => setToast(deferredText("Removed. The channel keeps its last name.")),
               })
             }
           />
@@ -146,9 +147,9 @@ export function CounterChannels({ guild }: { guild: string }) {
                 hint={
                   <>
                     {" "}
-                    {spaTranslate("Leave it empty for")}{" "}
+                    {deferredText("Leave it empty for")}{" "}
                     <strong>{chosen?.template ?? "Members: {count}"}</strong>
-                    {spaTranslate(". Write")} <code>{"{count}"}</code>{" "}
+                    {deferredText(". Write")} <code>{"{count}"}</code>{" "}
                     {spaTranslate("where the number goes.")}{" "}
                   </>
                 }
@@ -175,7 +176,7 @@ export function CounterChannels({ guild }: { guild: string }) {
               disabled={!!templateProblem || previewing || (chosen?.needs_role && !role)}
               onClick={runPreview}
             >
-              {previewing ? spaTranslate("Asking Discord…") : spaTranslate("Preview name")}
+              {previewing ? deferredText("Asking Discord…") : deferredText("Preview name")}
             </PixelButton>
             <PixelButton
               disabled={
@@ -188,8 +189,8 @@ export function CounterChannels({ guild }: { guild: string }) {
                     onSuccess: () => {
                       setToast(
                         existing
-                          ? spaTranslate("Counter updated.")
-                          : spaTranslate("Counter added. The channel is renamed in a moment."),
+                          ? deferredText("Counter updated.")
+                          : deferredText("Counter added. The channel is renamed in a moment."),
                       );
                       setChannel(null);
                       setTemplate("");
@@ -199,13 +200,13 @@ export function CounterChannels({ guild }: { guild: string }) {
                 )
               }
             >
-              {existing ? spaTranslate("Update counter") : spaTranslate("Add counter")}
+              {existing ? deferredText("Update counter") : deferredText("Add counter")}
             </PixelButton>
             {preview && (
               <p role="status">
                 {preview.name && (
                   <>
-                    <span className="muted">{spaTranslate("It would read")} </span>
+                    <span className="muted">{deferredText("It would read")} </span>
                     <span className="counter-preview-name">{preview.name}</span>
                   </>
                 )}
@@ -219,7 +220,7 @@ export function CounterChannels({ guild }: { guild: string }) {
             )}
             {full && (
               <p className="muted">
-                {spaTranslate("All")} {max} {spaTranslate("counters are in use: remove one to add another.")}
+                {spaTranslate("All")} {max} {deferredText("counters are in use: remove one to add another.")}
               </p>
             )}
           </div>

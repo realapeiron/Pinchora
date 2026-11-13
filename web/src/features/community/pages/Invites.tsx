@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { InviteWordsContext, useInviteWords } from "../api/inviteWords";
 import "../../../styles/invites.css";
 
@@ -42,8 +43,8 @@ function InvitesPage() {
   return (
     <SettingsPage
       className="settings-page inv-page"
-      title={t("INVITES")}
-      lead={t(
+      title={deferredText("INVITES")}
+      lead={deferredText(
         "See where new members came from, reward real invitations, and give members short-lived links for friends.",
       )}
       action={
@@ -56,34 +57,34 @@ function InvitesPage() {
                 .then(({ data }) =>
                   setToast(
                     data?.can_read_invites
-                      ? t("Invite list is available.")
-                      : t("Manage Server permission is missing for the bot."),
+                      ? deferredText("Invite list is available.")
+                      : deferredText("Manage Server permission is missing for the bot."),
                   ),
                 );
             }}
           >
-            {t("Test tracking")}
+            {deferredText("Test tracking")}
           </PixelButton>
           <PixelLink href={inviteExportUrl(guild)} variant="secondary">
-            {t("Export CSV")}
+            {deferredText("Export CSV")}
           </PixelLink>
         </div>
       }
     >
       {module && !module.enabled && (
         <p className="notice" role="note">
-          <strong>{t("Invite tracking is off.")}</strong> {t("Switch it on in")}{" "}
+          <strong>{deferredText("Invite tracking is off.")}</strong> {t("Switch it on in")}{" "}
           <Link to={`/g/${guild}/modules`}>{t("Modules")}</Link> {t("to count new joins.")}
         </p>
       )}
-      {invites.query.isPending && <Loading label={t("Reading invite settings")} />}
+      {invites.query.isPending && <Loading label={deferredText("Reading invite settings")} />}
       {invites.query.isError && <Problem error={invites.query.error} />}
       {invites.query.data && (
         <>
           {!invites.query.data.can_read_invites && (
             <p className="notice" role="note">
-              <strong>{t("Manage Server permission missing.")}</strong>{" "}
-              {t(
+              <strong>{deferredText("Manage Server permission missing.")}</strong>{" "}
+              {deferredText(
                 "Pinchora needs Manage Server to read the invite list. New joins stay unknown until the bot has it.",
               )}
             </p>
@@ -93,9 +94,9 @@ function InvitesPage() {
               ↗
             </div>
             <div>
-              <strong>{t("Every join has a source.")}</strong>
+              <strong>{deferredText("Every join has a source.")}</strong>
               <p>
-                {t(
+                {deferredText(
                   "Invite uses are compared when someone joins. If Discord cannot identify a code, the join stays unknown; it is never credited by guesswork.",
                 )}
               </p>

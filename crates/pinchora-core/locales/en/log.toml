@@ -138,3 +138,6 @@ taken = "Taken"
 allowed = "Allowed"
 denied = "Denied"
 permissions = "Permissions"
+
+[log.web.errors]
+before-is-a-row-id = "before is a row id."

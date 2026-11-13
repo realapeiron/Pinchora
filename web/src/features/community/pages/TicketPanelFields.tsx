@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 
@@ -37,7 +38,7 @@ export function CategoryPicker({
       <option value="">{none}</option>
       {!known && (
         <option value={value!}>
-          {spaTranslate("Deleted category (")}
+          {deferredText("Deleted category (")}
           {value})
         </option>
       )}
@@ -71,10 +72,10 @@ export function SupportRoles({
     <div className="id-list">
       {ids.length === 0 ? (
         <p className="muted id-list-empty">
-          {spaTranslate("No support role: only managers see the tickets.")}
+          {deferredText("No support role: only managers see the tickets.")}
         </p>
       ) : (
-        <ul className="channel-chips" aria-label={spaTranslate("Support roles")}>
+        <ul className="channel-chips" aria-label={deferredText("Support roles")}>
           {ids.map((role) => (
             <li key={role} className="channel-chip">
               <RoleTag info={info} id={role} />
@@ -138,7 +139,7 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
               <RichText text={draft.description} />
             </p>
           )}
-          <p className="embed-footer muted">{spaTranslate("Pick a topic to open a private ticket.")}</p>
+          <p className="embed-footer muted">{deferredText("Pick a topic to open a private ticket.")}</p>
         </div>
       </div>
       {draft.style === "buttons" ? (
@@ -153,10 +154,10 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
       ) : (
         <>
           <div className="dc-select" aria-hidden="true">
-            <span>{spaTranslate("What do you need help with?")}</span>
+            <span>{deferredText("What do you need help with?")}</span>
             <span>▾</span>
           </div>
-          <ul className="dc-options" aria-label={spaTranslate("Menu options")}>
+          <ul className="dc-options" aria-label={deferredText("Menu options")}>
             {topics.slice(0, 25).map((t, n) => (
               <li key={n}>
                 <span>

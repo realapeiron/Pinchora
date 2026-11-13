@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import "../../../styles/cases.css";
 import { useState } from "react";
@@ -37,7 +38,7 @@ export function Cases() {
     <SettingsPage
       className="settings-page cases-page"
       title={spaTranslate("CASES")}
-      lead={spaTranslate(
+      lead={deferredText(
         "Every moderation action taken with Pinchora, numbered per server. Open one to see it whole and give it a better reason.",
       )}
     >
@@ -52,18 +53,18 @@ export function Cases() {
               value={typed}
               onChange={(event) => setTyped(event.target.value)}
               placeholder={t("Member, moderator or reason")}
-              title={spaTranslate("spam, Mia, 1234…")}
+              title={deferredText("spam, Mia, 1234…")}
               aria-describedby="case-search-hint"
             />
           </label>
           <span id="case-search-hint" className="visually-hidden">
-            {spaTranslate("A name, a reason, a word in the details, or a user id.")}
+            {deferredText("A name, a reason, a word in the details, or a user id.")}
           </span>
           <div className="cases-tabs" role="group" aria-label={t("Kind")}>
             <button
               type="button"
               aria-pressed={!kind}
-              title={spaTranslate("Every kind")}
+              title={deferredText("Every kind")}
               onClick={() => setKind("")}
             >
               {t("All")} <span>{kindCounts(kinds)}</span>
@@ -81,24 +82,24 @@ export function Cases() {
           </div>
           <div
             className="cases-active"
-            title={spaTranslate("Only bans, warns and timeouts that still stand")}
+            title={deferredText("Only bans, warns and timeouts that still stand")}
           >
-            <span className="field-label" title={spaTranslate("Still standing")}>
+            <span className="field-label" title={deferredText("Still standing")}>
               {t("Active only")}
             </span>
             <PixelToggle label={t("Active only")} checked={active} onChange={setActive} />
           </div>
         </div>
       </Panel>
-      <Panel title={spaTranslate("ALL CASES")}>
-        {cases.isPending && <Loading label={spaTranslate("Reading the cases")} />}
+      <Panel title={deferredText("ALL CASES")}>
+        {cases.isPending && <Loading label={deferredText("Reading the cases")} />}
         {cases.isError && <Problem error={cases.error} />}
         {cases.isSuccess && rows.length === 0 && (
           <div className="cases-empty">
             <p>
               {q || kind || active
-                ? spaTranslate("No case matches.")
-                : spaTranslate("No cases yet. /warn, /timeout, /ban and the others open them.")}
+                ? deferredText("No case matches.")
+                : deferredText("No cases yet. /warn, /timeout, /ban and the others open them.")}
             </p>
             {q && (
               <PixelButton variant="secondary" onClick={() => setTyped("")}>
@@ -115,7 +116,7 @@ export function Cases() {
               disabled={cases.isFetchingNextPage}
               onClick={() => void cases.fetchNextPage()}
             >
-              {cases.isFetchingNextPage ? t("Loading…") : spaTranslate("Older cases")}
+              {cases.isFetchingNextPage ? t("Loading…") : deferredText("Older cases")}
             </PixelButton>
           </div>
         )}

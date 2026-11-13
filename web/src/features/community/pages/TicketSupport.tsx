@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { PixelButton } from "../../../components/PixelButton";
@@ -28,7 +29,7 @@ export type SettingsEdit = {
 function SupportWindows({ draft, setDraft }: SettingsEdit) {
   return (
     <div className="tk-operations-hours">
-      <strong>{spaTranslate("Support windows")}</strong>
+      <strong>{deferredText("Support windows")}</strong>
       {draft.support_hours.map((window, index) => (
         <div className="tk-operations-window" key={index}>
           <select
@@ -100,7 +101,7 @@ function SupportWindows({ draft, setDraft }: SettingsEdit) {
           })
         }
       >
-        {spaTranslate("Add window")}
+        {deferredText("Add window")}
       </PixelButton>
     </div>
   );
@@ -126,7 +127,7 @@ export function SupportHoursForm({
       }}
     >
       <label>
-        {spaTranslate("Support timezone")}
+        {deferredText("Support timezone")}
         <input
           className="pixel-input"
           value={draft.support_timezone}
@@ -136,7 +137,7 @@ export function SupportHoursForm({
       </label>
       <SupportWindows draft={draft} setDraft={setDraft} />
       <label>
-        {spaTranslate("Outside-hours message")}
+        {deferredText("Outside-hours message")}
         <textarea
           className="pixel-input"
           rows={2}
@@ -146,13 +147,13 @@ export function SupportHoursForm({
         />
       </label>
       <label>
-        {spaTranslate("Status board channel")}
+        {deferredText("Status board channel")}
         <select
           className="pixel-input pixel-select"
           value={draft.status_channel_id ?? ""}
           onChange={(event) => setDraft({ ...draft, status_channel_id: event.target.value || null })}
         >
-          <option value="">{spaTranslate("No status board")}</option>
+          <option value="">{deferredText("No status board")}</option>
           {(info?.channels ?? [])
             .filter((c) => c.type === 0)
             .map((c) => (
@@ -163,7 +164,7 @@ export function SupportHoursForm({
         </select>
       </label>
       <label>
-        {spaTranslate("Close request timeout (hours)")}
+        {deferredText("Close request timeout (hours)")}
         <input
           className="pixel-input"
           type="number"
@@ -174,7 +175,7 @@ export function SupportHoursForm({
         />
       </label>
       <PixelButton type="submit" disabled={!changed || save.isPending}>
-        {spaTranslate("Save operations")}
+        {deferredText("Save operations")}
       </PixelButton>
     </form>
   );
@@ -193,8 +194,8 @@ export function SavedReplies({ guild }: { guild: string }) {
         <Problem error={snippets.error ?? saveSnippet.error ?? deleteSnippet.error} />
       )}
       <div className="tk-operations-form">
-        <h3>{spaTranslate("Saved replies")}</h3>
-        <p className="muted">{spaTranslate("Use {user}, {server}, {number} and {topic} in replies.")}</p>
+        <h3>{deferredText("Saved replies")}</h3>
+        <p className="muted">{deferredText("Use {user}, {server}, {number} and {topic} in replies.")}</p>
         <ul className="tk-operations-notes">
           {snippets.data?.items.map((snippet) => (
             <li key={snippet.id}>
@@ -222,7 +223,7 @@ export function SavedReplies({ guild }: { guild: string }) {
           }}
         >
           <label>
-            {spaTranslate("Reply name")}
+            {deferredText("Reply name")}
             <input
               className="pixel-input"
               maxLength={50}
@@ -231,7 +232,7 @@ export function SavedReplies({ guild }: { guild: string }) {
             />
           </label>
           <label>
-            {spaTranslate("Reply text")}
+            {deferredText("Reply text")}
             <textarea
               className="pixel-input"
               rows={3}
@@ -241,7 +242,7 @@ export function SavedReplies({ guild }: { guild: string }) {
             />
           </label>
           <PixelButton type="submit" disabled={!changed || saveSnippet.isPending}>
-            {spaTranslate("Save reply")}
+            {deferredText("Save reply")}
           </PixelButton>
         </form>
       </div>

@@ -130,3 +130,7 @@ other = "⚠️ The last rename didn't go through; it is tried again in 10 minut
 
 [module-blurb]
 stats = "/stats, /integrations stats, the Stats page and counting messages, voice minutes, joins and leaves."
+
+[stats.web.errors]
+days-is-7-30-or-90 = "days is 7, 30 or 90."
+counter-channels-limit = "This server has {max} counter channels already. Remove one first."

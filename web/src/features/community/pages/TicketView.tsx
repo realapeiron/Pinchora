@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { PixelButton, PixelLink } from "../../../components/PixelButton";
 import { Panel } from "../../../components/Panel";
@@ -26,7 +27,7 @@ export function TicketView({ guild, id }: { guild: string; id: string }) {
     <div className="settings-page">
       <PixelLink variant="ghost" className="button-small tk-back" href={`/g/${guild}/tickets`}>
         {" "}
-        {spaTranslate("← All tickets")}{" "}
+        {deferredText("← All tickets")}{" "}
       </PixelLink>
       {query.isPending && <Loading label={spaTranslate("Reading the ticket")} />}
       {query.isError && <Problem error={query.error} />}
@@ -46,7 +47,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
   return (
     <>
       <PageHead
-        title={spaTranslate("TICKET {arg1}", { arg1: number })}
+        title={deferredText("TICKET {arg1}", { arg1: number })}
         lead={
           <>
             <span className={`badge ${STATE_BADGE[ticket.state]}`}>
@@ -56,7 +57,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
             {ticket.panel && (
               <span className="muted">
                 {" "}
-                {spaTranslate("· from the")} {ticket.panel} {spaTranslate("panel")}
+                {deferredText("· from the")} {ticket.panel} {spaTranslate("panel")}
               </span>
             )}
           </>
@@ -70,7 +71,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
                 disabled={close.isPending}
                 onClick={() => close.mutate(ticket.id)}
               >
-                {close.isPending ? spaTranslate("Closing…") : spaTranslate("Close ticket")}
+                {close.isPending ? deferredText("Closing…") : deferredText("Close ticket")}
               </PixelButton>
             )}
             {transcript && (
@@ -80,14 +81,14 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
                 download={`ticket-${String(ticket.number).padStart(4, "0")}.html`}
               >
                 {" "}
-                {spaTranslate("Download transcript")}{" "}
+                {deferredText("Download transcript")}{" "}
               </a>
             )}
           </>
         }
       />
       {close.isError && <Problem error={close.error} />}
-      <Panel title={spaTranslate("DETAILS")}>
+      <Panel title={deferredText("DETAILS")}>
         <dl className="tk-facts">
           <div>
             <dt>{spaTranslate("Opened by")}</dt>
@@ -98,17 +99,17 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
             <dd>{when(ticket.opened_at)}</dd>
           </div>
           <div>
-            <dt>{spaTranslate("Claimed by")}</dt>
+            <dt>{deferredText("Claimed by")}</dt>
             <dd>{personLabel(ticket.claimed_by)}</dd>
           </div>
           <div>
-            <dt>{spaTranslate("First reply")}</dt>
+            <dt>{deferredText("First reply")}</dt>
             <dd>
-              {firstReply === null ? "—" : spaTranslate("after {arg1}", { arg1: duration(firstReply) })}
+              {firstReply === null ? "—" : deferredText("after {arg1}", { arg1: duration(firstReply) })}
             </dd>
           </div>
           <div>
-            <dt>{spaTranslate("Closed by")}</dt>
+            <dt>{deferredText("Closed by")}</dt>
             <dd>
               {ticket.closed_at
                 ? ticket.closed_by
@@ -139,7 +140,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
           </div>
         </dl>
         {ticket.answers.length > 0 && (
-          <dl className="tk-answers" aria-label={spaTranslate("Form answers")}>
+          <dl className="tk-answers" aria-label={deferredText("Form answers")}>
             {ticket.answers.map((a, n) => (
               <div key={n}>
                 <dt>{a.question}</dt>
@@ -151,7 +152,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
       </Panel>
       <TicketOperationsPanel guild={guild} ticket={ticket} />
       <Panel
-        title={spaTranslate("TRANSCRIPT")}
+        title={deferredText("TRANSCRIPT")}
         aside={
           transcript && (
             <span className="muted counter">
@@ -164,8 +165,8 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
         {!transcript ? (
           <p className="empty-row muted">
             {ticket.state === "closed"
-              ? spaTranslate("No transcript was kept for this ticket.")
-              : spaTranslate(
+              ? deferredText("No transcript was kept for this ticket.")
+              : deferredText(
                   "The transcript is kept when the ticket closes. In Discord, the Transcript button shows it so far.",
                 )}
           </p>
@@ -173,18 +174,18 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
           <>
             {!transcript.with_content && (
               <p className="notice" role="note">
-                <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
-                {spaTranslate(
+                <span className="badge badge-gold">{deferredText("NEEDS MESSAGE CONTENT")}</span>{" "}
+                {deferredText(
                   "Kept without the Message Content intent: who wrote, when, and the files, but not the words.",
                 )}{" "}
               </p>
             )}
             {transcript.lines.length === 0 ? (
-              <p className="empty-row muted">{spaTranslate("Nobody wrote anything in this ticket.")}</p>
+              <p className="empty-row muted">{deferredText("Nobody wrote anything in this ticket.")}</p>
             ) : (
               <ol
                 className="tk-transcript"
-                aria-label={spaTranslate("Transcript of ticket {arg1}", { arg1: number })}
+                aria-label={deferredText("Transcript of ticket {arg1}", { arg1: number })}
               >
                 {transcript.lines.map((line, n) => {
                   const author: TranscriptAuthor | undefined = transcript.authors.find(
@@ -195,20 +196,20 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
                     <li key={n} className="tk-line">
                       <div className={`tk-who ${name === null ? "is-gone" : author?.bot ? "is-bot" : ""}`}>
                         {name ?? "Deleted user"}
-                        {author?.bot && <span className="sr-only"> {spaTranslate("(bot)")}</span>}
+                        {author?.bot && <span className="sr-only"> {deferredText("(bot)")}</span>}
                         <time dateTime={line.t}>{when(line.t)}</time>
                       </div>
                       <div>
                         {line.c ? <p className="tk-text">{line.c}</p> : null}
                         {line.f && line.f.length > 0 && (
                           <p className="tk-files">
-                            📎 {line.f.length === 1 ? spaTranslate("1 file") : `${line.f.length} files`}:{" "}
+                            📎 {line.f.length === 1 ? deferredText("1 file") : `${line.f.length} files`}:{" "}
                             {line.f.join(", ")}
                           </p>
                         )}
                         {line.e ? (
                           <p className="tk-files">
-                            {line.e === 1 ? spaTranslate("1 embed") : `${line.e} embeds`}
+                            {line.e === 1 ? deferredText("1 embed") : `${line.e} embeds`}
                           </p>
                         ) : null}
                         {!line.c && !line.f?.length && !line.e && <p className="tk-text muted">—</p>}

@@ -13,6 +13,7 @@ use pinchora_core::community::starboard::MAX_ROLE_WEIGHT;
 use pinchora_core::community::starboard::MAX_SOURCE_CHANNELS;
 use pinchora_core::community::starboard::MAX_THRESHOLD;
 use pinchora_core::community::starboard::MAX_WEIGHTED_ROLES;
+use pinchora_core::t;
 use pinchora_db::{Starboard, VoteChannel};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -109,6 +110,7 @@ async fn save_board(
     guild: ManagedGuild,
     ApiJson(body): ApiJson<BoardBody>,
 ) -> ApiResult<Json<Value>> {
+    let lang = guild.panel_lang;
     let db = &state.app.db;
     let channel = id(&body.channel_id, "channel_id")?;
     let info = guild_info::get(&state, guild.id, false).await?;
@@ -159,7 +161,10 @@ async fn save_board(
         }
         previous
     } else if db.starboards(guild.id).await?.len() >= MAX_BOARDS {
-        return Err(ApiError::limit("This server already has 3/3 starboards."));
+        return Err(ApiError::limit(t!(
+            lang,
+            "starboard.web.errors.this-server-already-has-3-3-starboards"
+        )));
     } else {
         None
     };

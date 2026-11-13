@@ -2715,6 +2715,12 @@
     "$.max:number",
     "$:object"
   ],
+  "GET /api/guilds/{g}/commands 400": [
+    "$.error.code:string",
+    "$.error.message:string",
+    "$.error:object",
+    "$:object"
+  ],
   "GET /api/guilds/{g}/commands 401": [
     "$.error.code:string",
     "$.error.message:string",

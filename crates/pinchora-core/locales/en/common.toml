@@ -47,3 +47,11 @@ text_commands = "Text commands"
 [component]
 button-expired = "This button has expired."
 form-expired = "This form has expired."
+
+[common.web.errors]
+invalid-request-body = "Invalid request body."
+this-login-link-is-stale-or-was-not-started-here-log-in-again = "This login link is stale or was not started here. Log in again."
+user-id-must-be-a-number = "user_id must be a number."
+bad-path = "Bad path."
+server-ids-are-numbers = "Server ids are numbers."
+channel-ids = "Channel ids are numbers."

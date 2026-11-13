@@ -1,4 +1,5 @@
-import { locale, translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
+import { locale } from "../../../i18n";
 // Tickets: the shapes `/api/guilds/{g}/tickets/...` answers with, the hooks that read and write them, and
 // the small rules the page checks before the server does (the server's sentences are the final word).
 
@@ -346,7 +347,7 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
   else if (chars(name) > limits.name)
     errors.push({
       field: "name",
-      message: spaTranslate("A panel's name is at most {arg1} characters.", { arg1: limits.name }),
+      message: deferredText("A panel's name is at most {arg1} characters.", { arg1: limits.name }),
     });
   else if (/^\d+$/.test(name))
     errors.push({ field: "name", message: "A panel's name can't be only a number." });
@@ -355,12 +356,12 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
   else if (chars(draft.title) > limits.title)
     errors.push({
       field: "title",
-      message: spaTranslate("A title is at most {arg1} characters.", { arg1: limits.title }),
+      message: deferredText("A title is at most {arg1} characters.", { arg1: limits.title }),
     });
   if (chars(draft.description) > limits.description)
     errors.push({
       field: "description",
-      message: spaTranslate("The text is at most {arg1} characters.", { arg1: limits.description }),
+      message: deferredText("The text is at most {arg1} characters.", { arg1: limits.description }),
     });
   if (!/^#?[0-9a-fA-F]{6}$/.test(draft.color.trim()))
     errors.push({ field: "color", message: "Colours look like `#ff6b4a`." });
@@ -373,18 +374,18 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
   else if (draft.topics.length > most)
     errors.push({
       field: "buttons",
-      message: spaTranslate("This style shows at most {arg1} topics. Use a menu for more.", { arg1: most }),
+      message: deferredText("This style shows at most {arg1} topics. Use a menu for more.", { arg1: most }),
     });
   draft.topics.forEach((t, n) => {
     if (!t.label.trim())
       errors.push({
         field: "buttons",
-        message: spaTranslate("Topic {arg1} needs a label.", { arg1: n + 1 }),
+        message: deferredText("Topic {arg1} needs a label.", { arg1: n + 1 }),
       });
     else if (chars(t.label.trim()) > limits.label)
       errors.push({
         field: "buttons",
-        message: spaTranslate("Topic {arg1}'s label is at most {arg2} characters.", {
+        message: deferredText("Topic {arg1}'s label is at most {arg2} characters.", {
           arg1: n + 1,
           arg2: limits.label,
         }),
@@ -393,23 +394,23 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
   if (chars(draft.welcome_text) > limits.welcome)
     errors.push({
       field: "welcome_text",
-      message: spaTranslate("The welcome text is at most {arg1} characters.", { arg1: limits.welcome }),
+      message: deferredText("The welcome text is at most {arg1} characters.", { arg1: limits.welcome }),
     });
   if (draft.questions.length > limits.questions)
     errors.push({
       field: "questions",
-      message: spaTranslate("A form asks at most {arg1} questions.", { arg1: limits.questions }),
+      message: deferredText("A form asks at most {arg1} questions.", { arg1: limits.questions }),
     });
   draft.questions.forEach((q, n) => {
     if (!q.label.trim())
       errors.push({
         field: "questions",
-        message: spaTranslate("Question {arg1} needs a label.", { arg1: n + 1 }),
+        message: deferredText("Question {arg1} needs a label.", { arg1: n + 1 }),
       });
     else if (chars(q.label.trim()) > limits.question)
       errors.push({
         field: "questions",
-        message: spaTranslate("Question {arg1} is at most {arg2} characters.", {
+        message: deferredText("Question {arg1} is at most {arg2} characters.", {
           arg1: n + 1,
           arg2: limits.question,
         }),
@@ -421,7 +422,7 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
     )
       errors.push({
         field: "questions",
-        message: spaTranslate("Choices need 1–100 characters (at most 25)."),
+        message: deferredText("Choices need 1–100 characters (at most 25)."),
       });
   });
   return errors;
@@ -445,7 +446,7 @@ export function exampleName(template: string, number = 42, user = "sam", topic =
 export function duration(secs: number | null): string {
   if (secs === null || !Number.isFinite(secs)) return "—";
   const minutes = Math.round(secs / 60);
-  if (minutes < 1) return spaTranslate("under a minute");
+  if (minutes < 1) return deferredText("under a minute");
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   if (hours < 48) return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
@@ -467,7 +468,7 @@ export const STATE_LABEL: Record<TicketState, string> = {
 /** A person as the table shows them: the name Discord has, else the id. */
 export function personLabel(person: Person | null): string {
   if (!person) return "—";
-  return person.name ?? spaTranslate("User {arg1}", { arg1: person.id });
+  return person.name ?? deferredText("User {arg1}", { arg1: person.id });
 }
 
 /** A time as "6 Nov, 18:04", in the viewer's zone. */

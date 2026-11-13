@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { roleColor } from "../../../components/Pickers";
 import type { GuildInfo } from "../../../lib/api";
@@ -19,7 +20,7 @@ export function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildIn
   const color = (id: string) => roleColor(info?.roles.find((r) => r.id === id));
   const rows = draft.roles.filter((r) => r.role_id);
   return (
-    <div className="panel-preview" role="region" aria-label={spaTranslate("Panel preview")}>
+    <div className="panel-preview" role="region" aria-label={deferredText("Panel preview")}>
       <div className="discord">
         <div className="discord-head">
           <span className="discord-avatar" aria-hidden="true" />
@@ -31,7 +32,7 @@ export function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildIn
             <p className="embed-title">{draft.title.trim() || "Untitled panel"}</p>
             <div className="embed-description">
               {draft.description.trim() && <span>{draft.description.trim()}</span>}
-              {rows.length === 0 && <span className="muted">{spaTranslate("No roles yet.")}</span>}
+              {rows.length === 0 && <span className="muted">{deferredText("No roles yet.")}</span>}
               {rows.map((r) => (
                 <span key={r.key} className="preview-line">
                   {r.emoji && (
@@ -91,7 +92,7 @@ export function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildIn
               ))}
               {rows.length > 4 && (
                 <small>
-                  {spaTranslate("and")} {rows.length - 4} {spaTranslate("more…")}
+                  {spaTranslate("and")} {rows.length - 4} {deferredText("more…")}
                 </small>
               )}
             </div>
@@ -109,7 +110,7 @@ export function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildIn
       </div>
       <p className="preview-note muted">
         {" "}
-        {spaTranslate(
+        {deferredText(
           "Drawn here as Discord would show it. Nothing is posted until you press Post panel.",
         )}{" "}
       </p>

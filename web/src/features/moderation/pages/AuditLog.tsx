@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { Field } from "../../../components/Field";
@@ -33,10 +34,10 @@ export function AuditLog() {
   const invalid = !!draft.from && !!draft.until && draft.from > draft.until;
   return (
     <SettingsPage
-      title={t("AUDIT LOG")}
-      lead={t("Every change made on the dashboard: who, what, and when. Kept 180 days.")}
+      title={deferredText("AUDIT LOG")}
+      lead={deferredText("Every change made on the dashboard: who, what, and when. Kept 180 days.")}
     >
-      <Panel title={t("FILTER CHANGES")}>
+      <Panel title={deferredText("FILTER CHANGES")}>
         <form
           className="audit-filters"
           onSubmit={(e) => {
@@ -44,7 +45,7 @@ export function AuditLog() {
             if (!invalid) setFilters({ ...draft });
           }}
         >
-          <Field label={t("Actor ID")} htmlFor="audit-actor">
+          <Field label={deferredText("Actor ID")} htmlFor="audit-actor">
             <input
               className="pixel-input"
               id="audit-actor"
@@ -57,7 +58,7 @@ export function AuditLog() {
           <Field
             label={t("Area")}
             htmlFor="audit-area"
-            hint={t("Action prefix, for example roles, settings or access.")}
+            hint={deferredText("Action prefix, for example roles, settings or access.")}
           >
             <input
               className="pixel-input"
@@ -68,7 +69,7 @@ export function AuditLog() {
               onChange={(e) => setDraft({ ...draft, area: e.target.value })}
             />
           </Field>
-          <Field label={t("From date (UTC)")} htmlFor="audit-from">
+          <Field label={deferredText("From date (UTC)")} htmlFor="audit-from">
             <input
               className="pixel-input"
               type="date"
@@ -78,7 +79,7 @@ export function AuditLog() {
               onChange={(e) => setDraft({ ...draft, from: e.target.value })}
             />
           </Field>
-          <Field label={t("Through date (UTC)")} htmlFor="audit-until">
+          <Field label={deferredText("Through date (UTC)")} htmlFor="audit-until">
             <input
               className="pixel-input"
               type="date"
@@ -90,9 +91,9 @@ export function AuditLog() {
             />
           </Field>
           <Field
-            label={t("Search changes")}
+            label={deferredText("Search changes")}
             htmlFor="audit-text"
-            hint={t("Search actors, actions, targets and before/after values.")}
+            hint={deferredText("Search actors, actions, targets and before/after values.")}
           >
             <input
               className="pixel-input"
@@ -105,7 +106,7 @@ export function AuditLog() {
           </Field>
           <div className="audit-filter-actions">
             <PixelButton type="submit" disabled={invalid}>
-              {t("Apply filters")}
+              {deferredText("Apply filters")}
             </PixelButton>
             <PixelButton
               variant="ghost"
@@ -114,19 +115,19 @@ export function AuditLog() {
                 setFilters(EMPTY_FILTERS);
               }}
             >
-              {t("Clear filters")}
+              {deferredText("Clear filters")}
             </PixelButton>
             <a
               className="pixel-button pixel-button-secondary"
               href={`/api/guilds/${data.guild.id}/audit-tools/export?${auditParams(filters)}`}
               download
             >
-              {t("Export CSV")}
+              {deferredText("Export CSV")}
             </a>
           </div>
         </form>
         <p className="muted fine">
-          {t(
+          {deferredText(
             "CSV uses applied filters. Limited to 10,000 changes, 100,000 inspected rows, 8 MiB or 10 seconds; a final row marks a reached limit.",
           )}
         </p>
@@ -137,10 +138,10 @@ export function AuditLog() {
         {audit.isSuccess && rows.length === 0 && (
           <p className="empty-row muted">
             {audit.hasNextPage
-              ? t("No matches in this batch. Load older changes to continue searching.")
+              ? deferredText("No matches in this batch. Load older changes to continue searching.")
               : Object.values(filters).some(Boolean)
-                ? t("No changes match these filters.")
-                : t("No changes yet. What you save on the dashboard shows up here.")}
+                ? deferredText("No changes match these filters.")
+                : deferredText("No changes yet. What you save on the dashboard shows up here.")}
           </p>
         )}
         {rows.length > 0 && (
@@ -157,7 +158,7 @@ export function AuditLog() {
               disabled={audit.isFetchingNextPage}
               onClick={() => void audit.fetchNextPage()}
             >
-              {audit.isFetchingNextPage ? t("Loading…") : t("Older changes")}
+              {audit.isFetchingNextPage ? t("Loading…") : deferredText("Older changes")}
             </PixelButton>
           </div>
         )}

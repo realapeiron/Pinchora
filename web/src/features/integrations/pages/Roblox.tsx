@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { translate as t } from "../../../i18n";
@@ -31,7 +32,7 @@ export function Roblox() {
     <SettingsPage
       className="settings-page roblox-page"
       title={t("Roblox verification")}
-      lead={t("Link Roblox profiles, then assign safe roles from group membership and ranks.")}
+      lead={deferredText("Link Roblox profiles, then assign safe roles from group membership and ranks.")}
     >
       {query.isPending && <Loading />}
       {query.isError && <Problem error={query.error} />}
@@ -41,7 +42,9 @@ export function Roblox() {
           guild={guild}
           data={query.data}
           save={save}
-          onSave={(draft) => save.mutate(draft, { onSuccess: () => setNotice(t("Roblox settings saved.")) })}
+          onSave={(draft) =>
+            save.mutate(draft, { onSuccess: () => setNotice(deferredText("Roblox settings saved.")) })
+          }
         />
       )}
       {notice && <p role="status">{notice}</p>}
@@ -74,16 +77,16 @@ function RobloxEditor({
       <div className="settings-detail-list">
         <SettingsRow
           rowId="roblox-verification-settings"
-          title={t("Verification settings")}
+          title={deferredText("Verification settings")}
           description={dt("Link members to their Roblox profiles.")}
           summary={robloxSummary(draft, data.binds, discord).verification}
           enabled={draft.enabled}
           onToggle={(v) => change("enabled", v)}
-          toggleLabel={t("Enable Roblox verification")}
+          toggleLabel={deferredText("Enable Roblox verification")}
         >
           <div className="settings-detail-fields">
-            <p>{t("Members use /roblox verify to link their profile.")}</p>
-            <Field label={t("Verified role")} htmlFor="rb-verified">
+            <p>{deferredText("Members use /roblox verify to link their profile.")}</p>
+            <Field label={deferredText("Verified role")} htmlFor="rb-verified">
               <RolePicker
                 id="rb-verified"
                 info={discord}
@@ -94,7 +97,7 @@ function RobloxEditor({
                 none={t("No role")}
               />
             </Field>
-            <Field label={t("Verification channel")} htmlFor="rb-channel">
+            <Field label={deferredText("Verification channel")} htmlFor="rb-channel">
               <ChannelPicker
                 posting
                 id="rb-channel"
@@ -108,15 +111,15 @@ function RobloxEditor({
         </SettingsRow>
         <SettingsRow
           rowId="roblox-hold-unverified-newcomers"
-          title={t("Hold unverified newcomers")}
+          title={deferredText("Hold unverified newcomers")}
           description={dt("Choose how newcomers are held.")}
           summary={robloxSummary(draft, data.binds, discord).newcomers}
           enabled={draft.require_verified}
           onToggle={(v) => change("require_verified", v)}
         >
           <div className="settings-detail-fields">
-            <p>{t("Requires the server join gate and a verification channel.")}</p>
-            <Field label={t("Unverified role")} htmlFor="rb-unverified">
+            <p>{deferredText("Requires the server join gate and a verification channel.")}</p>
+            <Field label={deferredText("Unverified role")} htmlFor="rb-unverified">
               <RolePicker
                 id="rb-unverified"
                 info={discord}
@@ -131,15 +134,15 @@ function RobloxEditor({
         </SettingsRow>
         <SettingsRow
           rowId="roblox-nickname-template"
-          title={t("Nickname template")}
+          title={deferredText("Nickname template")}
           description={dt("Set member display names.")}
           summary={robloxSummary(draft, data.binds, discord).nickname}
         >
           <div className="settings-detail-fields">
             <Field
-              label={t("Nickname template")}
+              label={deferredText("Nickname template")}
               htmlFor="rb-template"
-              hint={t("Use {roblox-name} and {discord-name}. Leave empty to keep Discord names.")}
+              hint={deferredText("Use {roblox-name} and {discord-name}. Leave empty to keep Discord names.")}
             >
               <input
                 id="rb-template"

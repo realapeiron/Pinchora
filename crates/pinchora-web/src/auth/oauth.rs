@@ -13,6 +13,7 @@ use axum::{
 };
 use base64::Engine;
 use pinchora_core::infra::config::Secret;
+use pinchora_core::t;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -109,8 +110,14 @@ pub async fn callback(
     headers: HeaderMap,
     Query(query): Query<CallbackQuery>,
 ) -> ApiResult<Response> {
+    let lang = crate::dashboard_language::accepted(&headers);
     let clear_pending = session::set_cookie(OAUTH_COOKIE, "", "/auth", 0, state.settings.cookie_secure);
-    let bad_state = || ApiError::malformed("This login link is stale or was not started here. Log in again.");
+    let bad_state = || {
+        ApiError::malformed(t!(
+            lang,
+            "common.web.errors.this-login-link-is-stale-or-was-not-started-here-log-in-again"
+        ))
+    };
     let returned = query.state.as_deref().ok_or_else(bad_state)?;
     let expected = session::cookie(&headers, OAUTH_COOKIE).ok_or_else(bad_state)?;
     if returned != expected || returned.len() != 64 || !returned.bytes().all(|b| b.is_ascii_hexdigit()) {
@@ -187,13 +194,14 @@ pub async fn dev_login(
     headers: HeaderMap,
     ApiJson(body): ApiJson<DevLogin>,
 ) -> ApiResult<Response> {
+    let lang = crate::dashboard_language::accepted(&headers);
     if !state.settings.dev_login {
         return Err(ApiError::not_found());
     }
     let user_id = body
         .user_id
         .parse()
-        .map_err(|_| ApiError::malformed("user_id must be a number."))?;
+        .map_err(|_| ApiError::malformed(t!(lang, "common.web.errors.user-id-must-be-a-number")))?;
     let now = chrono::Utc::now().timestamp();
     let session = Session {
         user_id,

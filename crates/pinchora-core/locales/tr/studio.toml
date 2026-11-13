@@ -23,3 +23,6 @@ test-missing-permissions = "Pinchora bu kanala gönderi yapamıyor: {permissions
 permission-view_channel = "Kanalı Görüntüle"
 permission-send_messages = "Mesaj Gönder"
 permission-attach_files = "Dosya Ekle"
+
+[studio.web.errors]
+that-kit-version-is-no-longer-available = "Kitin bu sürümü artık mevcut değil."

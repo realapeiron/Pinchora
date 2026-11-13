@@ -10,6 +10,7 @@ use pinchora_core::admin::message_studio;
 use pinchora_core::admin::message_studio::KitComponent;
 use pinchora_core::admin::message_studio::MessageKit;
 use pinchora_core::admin::settings::FieldError;
+use pinchora_core::t;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use twilight_model::{
@@ -315,6 +316,7 @@ async fn rollback(
     managed: ManagedGuild,
     Path((_, raw, version)): Path<(String, String, i64)>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let key = key(&raw)?;
     let (payload,): (Value,) =
         sqlx::query_as("SELECT payload FROM message_kit_history WHERE guild_id=$1 AND key=$2 AND version=$3")
@@ -323,7 +325,9 @@ async fn rollback(
             .bind(version)
             .fetch_optional(state.app.db.pool())
             .await?
-            .ok_or_else(|| ApiError::malformed("That kit version is no longer available."))?;
+            .ok_or_else(|| {
+                ApiError::malformed(t!(lang, "studio.web.errors.that-kit-version-is-no-longer-available"))
+            })?;
     save_kit(state, managed, key.to_owned(), payload, "message_kit.rollback").await
 }
 

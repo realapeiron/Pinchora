@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router";
 import { translate as t } from "../../../i18n";
@@ -50,30 +51,41 @@ const starter = (kind: "welcome" | "announcement" | "faq"): Kit => {
   if (kind === "welcome") {
     return {
       ...empty(),
-      name: t("Welcome kit"),
-      content: t("{{if returning}}Welcome back, {user}!{{else}}Welcome, {user}!{{end}}"),
+      name: deferredText("Welcome kit"),
+      content: deferredText("{{if returning}}Welcome back, {user}!{{else}}Welcome, {user}!{{end}}"),
       variants: [
-        t("{{if returning}}Welcome back, {user}!{{else}}Welcome, {user}!{{end}}"),
-        t("{{if returning}}Glad to see you again, {user}!{{else}}Glad you're here, {user}!{{end}}"),
+        deferredText("{{if returning}}Welcome back, {user}!{{else}}Welcome, {user}!{{end}}"),
+        deferredText(
+          "{{if returning}}Glad to see you again, {user}!{{else}}Glad you're here, {user}!{{end}}",
+        ),
       ],
     };
   }
   if (kind === "announcement") {
     return {
       ...empty(),
-      name: t("Announcement kit"),
-      content: t("News from {server}"),
+      name: deferredText("Announcement kit"),
+      content: deferredText("News from {server}"),
       embeds: [
-        { ...blankEmbed(), title: t("Announcement title"), description: t("Write your announcement here.") },
+        {
+          ...blankEmbed(),
+          title: deferredText("Announcement title"),
+          description: deferredText("Write your announcement here."),
+        },
       ],
     };
   }
   return {
     ...empty(),
-    name: t("FAQ kit"),
-    content: t("Need help? Use the button below."),
+    name: deferredText("FAQ kit"),
+    content: deferredText("Need help? Use the button below."),
     components: [
-      { type: "button", label: t("Get help"), url: null, response: t("Ask a moderator for help.") },
+      {
+        type: "button",
+        label: deferredText("Get help"),
+        url: null,
+        response: deferredText("Ask a moderator for help."),
+      },
     ],
   };
 };
@@ -112,7 +124,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
   const refreshHistory = async (selected: string) =>
     setRevisions(await api<Revision[]>(`${path}/${selected}/history`));
   useEffect(() => {
-    void refresh().catch(() => setError(t("Could not load message kits.")));
+    void refresh().catch(() => setError(deferredText("Could not load message kits.")));
   }, [path]);
   useEffect(() => {
     let active = true;
@@ -131,7 +143,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
         .catch((cause) => {
           if (!active) return;
           setPreview(null);
-          setError(studioError(cause, t("Preview failed.")));
+          setError(studioError(cause, deferredText("Preview failed.")));
         });
     }, 400);
     return () => {
@@ -157,12 +169,12 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
   const useStarter = (kind: "welcome" | "announcement" | "faq") => {
     fresh();
     setDraft(starter(kind));
-    setNotice(t("Template loaded. Edit it and save as a kit."));
+    setNotice(deferredText("Template loaded. Edit it and save as a kit."));
   };
   const save = async () => {
     const selected = key || slug(draft.name);
     if (!selected) {
-      setError(t("Name this kit first."));
+      setError(deferredText("Name this kit first."));
       return;
     }
     setBusy(true);
@@ -174,9 +186,9 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
       setSaved(item.payload);
       await refresh();
       await refreshHistory(item.key);
-      setNotice(t("Kit saved."));
+      setNotice(deferredText("Kit saved."));
     } catch (cause) {
-      setError(studioError(cause, t("Save failed.")));
+      setError(studioError(cause, deferredText("Save failed.")));
     } finally {
       setBusy(false);
     }
@@ -193,9 +205,9 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
         variant,
       });
       setMessageId(result.message_id);
-      setNotice(t("Discord message sent. Its ID is {arg1}.", { arg1: result.message_id }));
+      setNotice(deferredText("Discord message sent. Its ID is {arg1}.", { arg1: result.message_id }));
     } catch (cause) {
-      setError(studioError(cause, t("Discord did not accept the message.")));
+      setError(studioError(cause, deferredText("Discord did not accept the message.")));
     } finally {
       setBusy(false);
     }
@@ -209,16 +221,16 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
       setSaved(item.payload);
       await refresh();
       await refreshHistory(key);
-      setNotice(t("Version restored."));
+      setNotice(deferredText("Version restored."));
     } catch (cause) {
-      setError(studioError(cause, t("Restore failed.")));
+      setError(studioError(cause, deferredText("Restore failed.")));
     } finally {
       setBusy(false);
     }
   };
   const importJson = async (file: File) => {
     if (file.size > 32 * 1024) {
-      setError(t("JSON must be at most 32 KiB."));
+      setError(deferredText("JSON must be at most 32 KiB."));
       return;
     }
     try {
@@ -230,9 +242,9 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
       setMessageId("");
       setKey("");
       setSaved(null);
-      setNotice(t("JSON imported. Review and save it."));
+      setNotice(deferredText("JSON imported. Review and save it."));
     } catch {
-      setError(t("Invalid message kit JSON."));
+      setError(deferredText("Invalid message kit JSON."));
     }
   };
   const exportJson = () => {
@@ -252,22 +264,22 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
     try {
       await api(`${path}/events/${kind}`, "PUT", { key: selected || null });
       setBindings((old) => ({ ...old, [kind]: selected }));
-      setNotice(t("Event message updated."));
+      setNotice(deferredText("Event message updated."));
     } catch (cause) {
-      setError(studioError(cause, t("Event message could not be updated.")));
+      setError(studioError(cause, deferredText("Event message could not be updated.")));
     }
   };
 
   return (
     <SettingsPage
       className="settings-page message-studio"
-      title={t("MESSAGE STUDIO")}
-      lead={t("Build, preview, save, and post Discord messages. Saved kits keep 20 versions.")}
+      title={deferredText("MESSAGE STUDIO")}
+      lead={deferredText("Build, preview, save, and post Discord messages. Saved kits keep 20 versions.")}
     >
-      <Panel title={t("SAVED KITS")} aside={<span className="counter">{kits.length}/50</span>}>
+      <Panel title={deferredText("SAVED KITS")} aside={<span className="counter">{kits.length}/50</span>}>
         <div className="studio-actions">
           <PixelButton variant="secondary" onClick={fresh}>
-            {t("New kit")}
+            {deferredText("New kit")}
           </PixelButton>
           <select
             className="pixel-input pixel-select"
@@ -279,7 +291,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
               else fresh();
             }}
           >
-            <option value="">{t("Choose a saved kit")}</option>
+            <option value="">{deferredText("Choose a saved kit")}</option>
             {kits.map((kit) => (
               <option key={kit.key} value={kit.key}>
                 {kit.name}
@@ -287,7 +299,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
             ))}
           </select>
           <label className="button pixel-button">
-            {t("Import JSON")}
+            {deferredText("Import JSON")}
             <input
               type="file"
               accept="application/json,.json"
@@ -299,27 +311,29 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
             />
           </label>
           <PixelButton variant="ghost" onClick={exportJson}>
-            {t("Export JSON")}
+            {deferredText("Export JSON")}
           </PixelButton>
         </div>
       </Panel>
-      <Panel title={t("STARTER TEMPLATES")}>
-        <p className="muted">{t("Choose a starting point, then customize and save it as a kit.")}</p>
+      <Panel title={deferredText("STARTER TEMPLATES")}>
+        <p className="muted">
+          {deferredText("Choose a starting point, then customize and save it as a kit.")}
+        </p>
         <div className="studio-actions">
           <PixelButton variant="secondary" onClick={() => useStarter("welcome")}>
-            {t("Welcome kit")}
+            {deferredText("Welcome kit")}
           </PixelButton>
           <PixelButton variant="secondary" onClick={() => useStarter("announcement")}>
-            {t("Announcement kit")}
+            {deferredText("Announcement kit")}
           </PixelButton>
           <PixelButton variant="secondary" onClick={() => useStarter("faq")}>
-            {t("FAQ kit")}
+            {deferredText("FAQ kit")}
           </PixelButton>
         </div>
       </Panel>
       <Panel title={t("MESSAGE")}>
         <div className="form-grid form-grid-2">
-          <Field label={t("Kit name")} htmlFor="kit-name">
+          <Field label={deferredText("Kit name")} htmlFor="kit-name">
             <input
               id="kit-name"
               className="pixel-input"
@@ -328,14 +342,14 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
               onChange={(event) => set("name", event.target.value)}
             />
           </Field>
-          <Field label={t("Template key")} htmlFor="kit-key">
+          <Field label={deferredText("Template key")} htmlFor="kit-key">
             <input id="kit-key" className="pixel-input" value={key || slug(draft.name)} readOnly />
           </Field>
         </div>
         <Field
           label={t("Content")}
           htmlFor="kit-content"
-          hint={t(
+          hint={deferredText(
             "Use {user}, {server}, {level}, {ordinal}, and if/else for booster, returning, account_age_days>=7, or ordinal>=100.",
           )}
         >
@@ -348,7 +362,9 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
             onChange={(event) => set("content", event.target.value)}
           />
           <span className="counter">{draft.content.length}/2000</span>
-          <span className="muted">{t("Example: {{if returning}}Welcome back{{else}}Welcome{{end}}")}</span>
+          <span className="muted">
+            {deferredText("Example: {{if returning}}Welcome back{{else}}Welcome{{end}}")}
+          </span>
         </Field>
         <label className="studio-check">
           <input
@@ -356,20 +372,22 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
             checked={draft.allow_mass_mentions}
             onChange={(event) => set("allow_mass_mentions", event.target.checked)}
           />{" "}
-          {t("Admin allows @everyone and role pings from this kit")}
+          {deferredText("Admin allows @everyone and role pings from this kit")}
         </label>
-        <p className="muted">{t("Pings are blocked unless an admin explicitly enables them here.")}</p>
+        <p className="muted">
+          {deferredText("Pings are blocked unless an admin explicitly enables them here.")}
+        </p>
       </Panel>
       <Panel
-        title={t("RANDOM MESSAGE GROUP")}
+        title={deferredText("RANDOM MESSAGE GROUP")}
         aside={<span className="counter">{draft.variants.length}/10</span>}
       >
-        <p className="muted">{t("When variants exist, one is chosen at random for each post.")}</p>
+        <p className="muted">{deferredText("When variants exist, one is chosen at random for each post.")}</p>
         {draft.variants.map((text, index) => (
           <div className="studio-row" key={index}>
             <textarea
               className="pixel-input"
-              aria-label={t("Variant {arg1}", { arg1: index + 1 })}
+              aria-label={deferredText("Variant {arg1}", { arg1: index + 1 })}
               maxLength={2000}
               value={text}
               onChange={(event) =>
@@ -395,15 +413,15 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
         <PixelButton
           variant="secondary"
           disabled={draft.variants.length >= 10}
-          onClick={() => set("variants", [...draft.variants, draft.content || t("Hello {user}!")])}
+          onClick={() => set("variants", [...draft.variants, draft.content || deferredText("Hello {user}!")])}
         >
-          {t("Add variant")}
+          {deferredText("Add variant")}
         </PixelButton>
       </Panel>
-      <Panel title={t("EMBEDS")} aside={<span className="counter">{draft.embeds.length}/10</span>}>
+      <Panel title={deferredText("EMBEDS")} aside={<span className="counter">{draft.embeds.length}/10</span>}>
         {draft.embeds.map((embed, index) => (
           <div className="studio-embed" key={index}>
-            <h3>{t("Embed {arg1}", { arg1: index + 1 })}</h3>
+            <h3>{deferredText("Embed {arg1}", { arg1: index + 1 })}</h3>
             <EmbedEditor
               embed={embed}
               onChange={(next) =>
@@ -422,17 +440,17 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
           disabled={draft.embeds.length >= 10}
           onClick={() => set("embeds", [...draft.embeds, blankEmbed()])}
         >
-          {t("Add an embed")}
+          {deferredText("Add an embed")}
         </PixelButton>
       </Panel>
       <Panel
-        title={t("BUTTONS AND SELECTS")}
+        title={deferredText("BUTTONS AND SELECTS")}
         aside={<span className="counter">{componentRows(draft.components).length}/5</span>}
       >
         {draft.components.map((component, index) => (
           <div className="studio-component" key={index}>
             <div className="studio-actions">
-              <strong>{component.type === "button" ? t("Button") : t("Select menu")}</strong>
+              <strong>{component.type === "button" ? t("Button") : deferredText("Select menu")}</strong>
               <PixelButton
                 variant="ghost"
                 onClick={() =>
@@ -456,7 +474,10 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                     onChange={(event) => editComponent(index, { ...component, label: event.target.value })}
                   />
                 </Field>
-                <Field label={t("HTTPS URL or leave blank for a reply")} htmlFor={`button-url-${index}`}>
+                <Field
+                  label={deferredText("HTTPS URL or leave blank for a reply")}
+                  htmlFor={`button-url-${index}`}
+                >
                   <input
                     id={`button-url-${index}`}
                     className="pixel-input"
@@ -471,7 +492,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                   />
                 </Field>
                 {!component.url && (
-                  <Field label={t("Private reply")} htmlFor={`button-reply-${index}`}>
+                  <Field label={deferredText("Private reply")} htmlFor={`button-reply-${index}`}>
                     <input
                       id={`button-reply-${index}`}
                       className="pixel-input"
@@ -501,7 +522,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                   <div className="studio-row" key={optionIndex}>
                     <input
                       className="pixel-input"
-                      aria-label={t("Option label")}
+                      aria-label={deferredText("Option label")}
                       maxLength={100}
                       value={option.label}
                       onChange={(event) =>
@@ -515,7 +536,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                     />
                     <input
                       className="pixel-input"
-                      aria-label={t("Option value")}
+                      aria-label={deferredText("Option value")}
                       maxLength={100}
                       value={option.value}
                       onChange={(event) =>
@@ -529,7 +550,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                     />
                     <input
                       className="pixel-input"
-                      aria-label={t("Private reply")}
+                      aria-label={deferredText("Private reply")}
                       maxLength={2000}
                       value={option.response}
                       onChange={(event) =>
@@ -565,13 +586,13 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                         {
                           label: t("Choice"),
                           value: `choice_${component.options.length + 1}`,
-                          response: t("Selected!"),
+                          response: deferredText("Selected!"),
                         },
                       ],
                     })
                   }
                 >
-                  {t("Add choice")}
+                  {deferredText("Add choice")}
                 </PixelButton>
               </div>
             )}
@@ -588,7 +609,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
               ])
             }
           >
-            {t("Add button")}
+            {deferredText("Add button")}
           </PixelButton>
           <PixelButton
             variant="secondary"
@@ -599,16 +620,16 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                 {
                   type: "select",
                   placeholder: t("Choose"),
-                  options: [{ label: t("Choice"), value: "choice_1", response: t("Selected!") }],
+                  options: [{ label: t("Choice"), value: "choice_1", response: deferredText("Selected!") }],
                 },
               ])
             }
           >
-            {t("Add select")}
+            {deferredText("Add select")}
           </PixelButton>
         </div>
       </Panel>
-      <Panel title={t("LIVE DISCORD PREVIEW")}>
+      <Panel title={deferredText("LIVE DISCORD PREVIEW")}>
         {preview ? (
           <>
             <MessagePreview
@@ -622,23 +643,26 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
               }}
             />
             <p className="muted">
-              {t("Allowed mentions: {arg1}", {
-                arg1: preview.allowed_mentions === "none" ? t("No pings") : t("Everyone and roles"),
+              {deferredText("Allowed mentions: {arg1}", {
+                arg1:
+                  preview.allowed_mentions === "none"
+                    ? deferredText("No pings")
+                    : deferredText("Everyone and roles"),
               })}
             </p>
             {draft.variants.length > 0 && (
               <div className="studio-actions">
                 <PixelButton variant="ghost" onClick={() => setVariant((v) => v + 1)}>
-                  {t("Preview another variant")}
+                  {deferredText("Preview another variant")}
                 </PixelButton>
               </div>
             )}
           </>
         ) : (
-          <p className="muted">{t("Add content or an embed to preview.")}</p>
+          <p className="muted">{deferredText("Add content or an embed to preview.")}</p>
         )}
       </Panel>
-      <Panel title={t("POST OR EDIT IN DISCORD")}>
+      <Panel title={deferredText("POST OR EDIT IN DISCORD")}>
         <div className="studio-actions">
           <ChannelPicker
             posting
@@ -649,20 +673,22 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
           />
           <input
             className="pixel-input"
-            aria-label={t("Existing message ID to edit (optional)")}
+            aria-label={deferredText("Existing message ID to edit (optional)")}
             value={messageId}
             onChange={(event) => setMessageId(event.target.value)}
-            placeholder={t("Message ID to edit (optional)")}
+            placeholder={deferredText("Message ID to edit (optional)")}
           />
           <PixelButton disabled={!channel || !key || dirty || busy || !preview} onClick={() => void send()}>
-            {messageId ? t("Update message") : t("Send message")}
+            {messageId ? deferredText("Update message") : deferredText("Send message")}
           </PixelButton>
         </div>
-        <p className="muted">{t("Save the kit before posting. Enter a Pinchora message ID to edit it.")}</p>
-      </Panel>
-      <Panel title={t("AUTOMATIC EVENT MESSAGES")}>
         <p className="muted">
-          {t(
+          {deferredText("Save the kit before posting. Enter a Pinchora message ID to edit it.")}
+        </p>
+      </Panel>
+      <Panel title={deferredText("AUTOMATIC EVENT MESSAGES")}>
+        <p className="muted">
+          {deferredText(
             "Assign a text-only kit to welcome, goodbye, boost, or level up. Random variants and member conditions are evaluated when the event happens.",
           )}
         </p>
@@ -687,7 +713,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
                 value={bindings[kind] ?? ""}
                 onChange={(event) => void bind(kind, event.target.value)}
               >
-                <option value="">{t("Default message")}</option>
+                <option value="">{deferredText("Default message")}</option>
                 {kits
                   .filter((item) => item.payload.embeds.length === 0 && item.payload.components.length === 0)
                   .map((item) => (
@@ -700,7 +726,7 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
           ))}
         </div>
       </Panel>
-      <Panel title={t("SAVED VERSIONS")}>
+      <Panel title={deferredText("SAVED VERSIONS")}>
         <div className="studio-actions">
           {revisions.map((revision) => (
             <div className="studio-revision" key={revision.version}>
@@ -712,12 +738,12 @@ function StudioEditor({ guild }: { guild: Overview["guild"] }) {
               </PixelButton>
             </div>
           ))}
-          {revisions.length === 0 && <p className="muted">{t("No saved versions yet.")}</p>}
+          {revisions.length === 0 && <p className="muted">{deferredText("No saved versions yet.")}</p>}
         </div>
       </Panel>
       <div className="studio-save">
         <PixelButton disabled={!dirty || busy} onClick={() => void save()}>
-          {busy ? t("Working…") : t("Save kit")}
+          {busy ? deferredText("Working…") : deferredText("Save kit")}
         </PixelButton>
         {error && (
           <p role="alert" className="field-error">

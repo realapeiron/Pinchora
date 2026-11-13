@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { Creator, Room, TempVoice } from "../api/tempVoice";
 import { t } from "../../../i18n/dashboard";
 
@@ -17,7 +18,7 @@ export function tempVoiceSummary(data: TempVoice) {
 
 export function creatorSummary(creator: Creator) {
   return creator.enabled
-    ? `${creator.name_template} · ${creator.default_limit || t("No people limit")} · ${creator.rooms} ${t("open now")}`
+    ? `${creator.name_template} · ${creator.default_limit || deferredText("No people limit")} · ${creator.rooms} ${t("open now")}`
     : t("Off");
 }
 

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 
 import { UNITS, type Unit, joinSpan, splitSpan } from "../api/roles";
@@ -46,7 +47,7 @@ export function DurationInput({
       />
       <select
         className="pixel-input pixel-select"
-        aria-label={translate("Unit of time for {label}", { label })}
+        aria-label={deferredText("Unit of time for {label}", { label })}
         value={unit}
         onChange={(event) => {
           const next = event.target.value as Unit;

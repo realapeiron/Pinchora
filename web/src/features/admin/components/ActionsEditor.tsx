@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import type { GuildInfo, TagAction, TriggerKind } from "../../../lib/api";
 import { LIMITS, actionNeedsRole } from "../../../lib/tags";
@@ -48,7 +49,7 @@ export function ActionsEditor({
     <Field
       label={spaTranslate("Actions")}
       error={error}
-      hint={spaTranslate(
+      hint={deferredText(
         "Done right after the answer, for the member it is about. With actions, a member waits at least {arg1} s between uses; points from actions stop at {arg2} a member a day, direct messages at {arg3} an hour, and roles with admin powers are never handed out.",
         {
           arg1: LIMITS.action_cooldown_min,
@@ -57,7 +58,7 @@ export function ActionsEditor({
         },
       )}
     >
-      {actions.length === 0 && <p className="muted">{spaTranslate("Nothing besides the answer.")}</p>}
+      {actions.length === 0 && <p className="muted">{deferredText("Nothing besides the answer.")}</p>}
       <ul className="actions-list">
         {actions.map((action, index) => {
           const role = actionNeedsRole(action) ? info?.roles.find((r) => r.id === action.role_id) : undefined;
@@ -96,7 +97,7 @@ export function ActionsEditor({
                 <input
                   type="number"
                   className="pixel-input input-short"
-                  aria-label={spaTranslate("Points, negative to take")}
+                  aria-label={deferredText("Points, negative to take")}
                   min={LIMITS.points_action[0]}
                   max={LIMITS.points_action[1]}
                   value={action.amount}
@@ -106,7 +107,7 @@ export function ActionsEditor({
               {action.kind === "dm" && (
                 <textarea
                   className="pixel-input pixel-textarea action-value"
-                  aria-label={spaTranslate("Direct message text")}
+                  aria-label={deferredText("Direct message text")}
                   rows={2}
                   maxLength={LIMITS.response_max}
                   value={action.text}
@@ -124,7 +125,7 @@ export function ActionsEditor({
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label={spaTranslate("Remove action {arg1}", { arg1: index + 1 })}
+                aria-label={deferredText("Remove action {arg1}", { arg1: index + 1 })}
                 onClick={() => onChange(actions.filter((_, i) => i !== index))}
               >
                 {spaTranslate("Remove")}
@@ -141,7 +142,7 @@ export function ActionsEditor({
             onClick={() => onChange([...actions, fresh("add_role")])}
           >
             {" "}
-            {spaTranslate("Add an action (")}
+            {deferredText("Add an action (")}
             {actions.length}/{LIMITS.max_actions})
           </PixelButton>
         </div>

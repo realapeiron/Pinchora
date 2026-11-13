@@ -248,10 +248,13 @@ pub async fn read(
     managed: ManagedGuild,
     Json(body): Json<ReadBody>,
 ) -> ApiResult<Json<Value>> {
-    let lang = state.app.guild_lang(managed.id).await;
-    let at = DateTime::parse_from_rfc3339(&body.up_to)
-        .map_err(|_| ApiError::malformed(t!(lang, "notifications.bad_time")))?
-        .with_timezone(&Utc);
+    let at = match DateTime::parse_from_rfc3339(&body.up_to) {
+        Ok(at) => at.with_timezone(&Utc),
+        Err(_) => {
+            let lang = managed.panel_lang;
+            return Err(ApiError::malformed(t!(lang, "notifications.bad_time")));
+        }
+    };
     let read_at: DateTime<Utc> = sqlx::query_scalar(
         "INSERT INTO dashboard_notification_reads (guild_id, manager_id, read_at) VALUES ($1,$2,LEAST($3,now())) ON CONFLICT (guild_id,manager_id) DO UPDATE SET read_at=GREATEST(dashboard_notification_reads.read_at,LEAST(EXCLUDED.read_at,now())) RETURNING read_at")
         .bind(managed.id as i64).bind(managed.current.session.user_id as i64).bind(at).fetch_one(state.app.db.pool()).await?;

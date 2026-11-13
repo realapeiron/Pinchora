@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useOutletContext } from "react-router";
 
 import type { Overview } from "../../../lib/api";
@@ -13,12 +13,12 @@ export function Moderation() {
   return (
     <SettingsPage
       className="settings-page mod-page"
-      title={spaTranslate("MODERATION")}
-      lead={spaTranslate(
+      title={deferredText("MODERATION")}
+      lead={deferredText(
         "Where the cases of /ban, /kick, /timeout, /warn and the others are posted, whether members hear about them, and what enough warns bring.",
       )}
     >
-      {query.isPending && <Loading label={spaTranslate("Reading the settings")} />}
+      {query.isPending && <Loading label={deferredText("Reading the settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <ModerationForm guild={data.guild.id} saved={query.data} />}
     </SettingsPage>

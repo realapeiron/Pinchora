@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useOutletContext } from "react-router";
@@ -75,10 +76,10 @@ export function CommunityEngagement() {
     try {
       await api(`/api/guilds/${guild}/community-pack${path}`, method, body);
       await client.invalidateQueries({ queryKey: ["community-pack", guild] });
-      setNotice(t("Saved community changes."));
+      setNotice(deferredText("Saved community changes."));
       return true;
     } catch (error) {
-      setNotice(error instanceof Error ? t(error.message) : t("Could not save changes."));
+      setNotice(error instanceof Error ? t(error.message) : deferredText("Could not save changes."));
       return false;
     } finally {
       setBusy(false);
@@ -88,22 +89,24 @@ export function CommunityEngagement() {
   return (
     <SettingsPage
       className="settings-page community-pack-page"
-      title={t("COMMUNITY PACK")}
-      lead={t("Give members a daily question, a counting channel, applications and a private path to staff.")}
+      title={deferredText("COMMUNITY PACK")}
+      lead={deferredText(
+        "Give members a daily question, a counting channel, applications and a private path to staff.",
+      )}
     >
       {notice && (
         <p className="notice" role="status">
           {notice}
         </p>
       )}
-      {query.isPending && <Loading label={t("Loading community pack")} />}
+      {query.isPending && <Loading label={deferredText("Loading community pack")} />}
       {query.isError && <Problem error={query.error} />}
       {query.data && (
         <>
           {!query.data.message_content && (
             <p className="notice" role="note">
-              <strong className="badge badge-gold">{t("NEEDS MESSAGE CONTENT")}</strong>{" "}
-              {t(
+              <strong className="badge badge-gold">{deferredText("NEEDS MESSAGE CONTENT")}</strong>{" "}
+              {deferredText(
                 "Counting reads the message text and staff replies from forum threads need the Message Content intent. Modmail DMs still arrive without it.",
               )}
             </p>
@@ -138,7 +141,7 @@ export function CommunityEngagement() {
           <p className="muted">
             {t("Members use")} <code>/qotd suggest</code>, <code>/counting stats</code> {t("and")}{" "}
             <code>/form list</code>. <Link to={`/g/${guild}/modules`}>{t("Modules")}</Link>{" "}
-            {t("can turn each feature off.")}
+            {deferredText("can turn each feature off.")}
           </p>
         </>
       )}

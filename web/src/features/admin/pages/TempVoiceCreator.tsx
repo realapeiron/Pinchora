@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { PixelButton } from "../../../components/PixelButton";
@@ -79,7 +80,7 @@ export function CreatorRow({
               className="button-small"
               aria-expanded={open}
               aria-controls={open ? `creator-${creator.channel_id}-form` : undefined}
-              aria-label={`${text(open ? spaTranslate("Close the settings of") : spaTranslate("Edit"))} ${name}`}
+              aria-label={`${text(open ? deferredText("Close the settings of") : spaTranslate("Edit"))} ${name}`}
               onClick={onToggle}
             >
               {text(open ? spaTranslate("Close") : spaTranslate("Edit"))}
@@ -89,11 +90,11 @@ export function CreatorRow({
                 <PixelButton
                   variant="secondary"
                   className="button-small"
-                  aria-label={tf(spaTranslate("Really remove {name}"), { name })}
+                  aria-label={tf(deferredText("Really remove {name}"), { name })}
                   disabled={remove.isPending}
                   onClick={() => remove.mutate(creator.channel_id, { onSettled: () => setSure(false) })}
                 >
-                  {text(remove.isPending ? spaTranslate("Removing…") : spaTranslate("Yes, remove"))}
+                  {text(remove.isPending ? deferredText("Removing…") : deferredText("Yes, remove"))}
                 </PixelButton>
                 <PixelButton variant="ghost" className="button-small" onClick={() => setSure(false)}>
                   {text("Keep ")}
@@ -113,11 +114,11 @@ export function CreatorRow({
         </div>
         <p className="creator-summary muted">
           <span className="creator-sample">{roomName(creator.name_template, SAMPLE_OWNER, 1)}</span>
-          {category ? tf(spaTranslate(" · in {category}"), { category }) : text(" · at the top of the list")}
+          {category ? tf(deferredText(" · in {category}"), { category }) : text(" · at the top of the list")}
           {creator.default_limit > 0
-            ? tf(spaTranslate(" · {count} people"), { count: creator.default_limit })
+            ? tf(deferredText(" · {count} people"), { count: creator.default_limit })
             : text(" · no limit")}
-          {creator.rooms > 0 ? tf(spaTranslate(" · {count} open now"), { count: creator.rooms }) : ""}
+          {creator.rooms > 0 ? tf(deferredText(" · {count} open now"), { count: creator.rooms }) : ""}
         </p>
         {remove.isError && (
           <p className="field-error" role="alert">

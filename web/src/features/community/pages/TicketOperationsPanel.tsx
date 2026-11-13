@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
@@ -16,7 +17,7 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
   const failure = claim.error ?? unclaim.error ?? reply.error ?? ops.error;
 
   return (
-    <Panel title={spaTranslate("STAFF OPERATIONS")}>
+    <Panel title={deferredText("STAFF OPERATIONS")}>
       {failure && <Problem error={failure} />}
       <div className="tk-operations-state">
         <span>
@@ -27,12 +28,12 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
         </span>
         {ops.data?.escalated_at && (
           <span>
-            {spaTranslate("Escalated")}: {when(ops.data.escalated_at)}
+            {deferredText("Escalated")}: {when(ops.data.escalated_at)}
           </span>
         )}
         {ops.data?.close_request_expires_at && (
           <span>
-            {spaTranslate("Close requested; expires")}: {when(ops.data.close_request_expires_at)}
+            {deferredText("Close requested; expires")}: {when(ops.data.close_request_expires_at)}
           </span>
         )}
         {ticket.closed_at && (
@@ -70,7 +71,7 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
             reply.mutate(replyText.trim(), { onSuccess: () => setReplyText("") });
           }}
         >
-          <label htmlFor="ticket-web-reply">{spaTranslate("Reply as Pinchora")}</label>
+          <label htmlFor="ticket-web-reply">{deferredText("Reply as Pinchora")}</label>
           <textarea
             id="ticket-web-reply"
             className="pixel-input"
@@ -80,7 +81,7 @@ export function TicketOperationsPanel({ guild, ticket }: { guild: string; ticket
             onChange={(event) => setReplyText(event.target.value)}
           />
           <PixelButton type="submit" disabled={!replyText.trim() || reply.isPending}>
-            {reply.isPending ? spaTranslate("Sending…") : spaTranslate("Send reply")}
+            {reply.isPending ? spaTranslate("Sending…") : deferredText("Send reply")}
           </PixelButton>
         </form>
       )}
@@ -104,7 +105,7 @@ function PrivateNotes({ guild, ticket }: { guild: string; ticket: string }) {
           note.mutate(noteText.trim(), { onSuccess: () => setNoteText("") });
         }}
       >
-        <label htmlFor="ticket-staff-note">{spaTranslate("Private staff note")}</label>
+        <label htmlFor="ticket-staff-note">{deferredText("Private staff note")}</label>
         <textarea
           id="ticket-staff-note"
           className="pixel-input"
@@ -114,10 +115,10 @@ function PrivateNotes({ guild, ticket }: { guild: string; ticket: string }) {
           onChange={(event) => setNoteText(event.target.value)}
         />
         <p className="muted">
-          {spaTranslate("Staff notes stay off the ticket channel and every opener transcript.")}
+          {deferredText("Staff notes stay off the ticket channel and every opener transcript.")}
         </p>
         <PixelButton type="submit" variant="secondary" disabled={!noteText.trim() || note.isPending}>
-          {spaTranslate("Save private note")}
+          {deferredText("Save private note")}
         </PixelButton>
       </form>
       {notes.data && notes.data.items.length > 0 && (

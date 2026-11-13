@@ -14,7 +14,6 @@ use chrono::{Duration, Utc};
 use futures_util::future::join_all;
 use pinchora_commands::{TicketPanelPost, close_ticket_from_web, post_ticket_panel};
 use pinchora_core::admin::settings::FieldError;
-use pinchora_core::admin::settings::parse_hex_color;
 use pinchora_core::community::tickets;
 use pinchora_core::community::tickets::ANSWER_MAX;
 use pinchora_core::community::tickets::AUTO_CLOSE_MAX;
@@ -31,7 +30,6 @@ use pinchora_core::community::tickets::OPEN_LIMIT_MAX;
 use pinchora_core::community::tickets::OPTION_DESCRIPTION_MAX;
 use pinchora_core::community::tickets::PANEL_NAME_MAX;
 use pinchora_core::community::tickets::PLACEHOLDER_MAX;
-use pinchora_core::community::tickets::PanelDraft;
 use pinchora_core::community::tickets::PanelStyle;
 use pinchora_core::community::tickets::QUESTION_MAX;
 use pinchora_core::community::tickets::Question;
@@ -40,6 +38,7 @@ use pinchora_core::community::tickets::Topic;
 use pinchora_core::community::tickets::TranscriptHead;
 use pinchora_core::community::tickets::WELCOME_MAX;
 use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 use pinchora_db::{
     PanelWrite, StoredTranscript, Ticket, TicketFilter, TicketPanel, TicketPanelSaved, TicketSettings, TicketSummary,
 };
@@ -58,6 +57,8 @@ use crate::routes::admin::settings::parse_id;
 use crate::state::WebState;
 
 mod operations;
+mod validation;
+use validation::{check_category, check_panel_body, check_post_channel, optional_id};
 
 /// Tickets one page of the list holds.
 const PAGE: i64 = 50;
@@ -174,28 +175,6 @@ fn invalid(field: &'static str, message: impl Into<String>) -> ApiError {
     ApiError::invalid(vec![FieldError::new(field, message)])
 }
 
-/// An id field of a body: absent or `null` is none, anything else must be a number.
-fn optional_id(field: &'static str, raw: &Option<String>) -> ApiResult<Option<u64>> {
-    match raw.as_deref() {
-        None | Some("") => Ok(None),
-        Some(raw) => parse_id(raw)
-            .map(Some)
-            .ok_or_else(|| ApiError::malformed(format!("`{field}` is not an id."))),
-    }
-}
-
-fn check_category(info: &GuildInfo, field: &'static str, id: Option<u64>) -> Result<(), FieldError> {
-    let Some(id) = id else { return Ok(()) };
-    match info.channel(id) {
-        Some(c) if c.kind == CATEGORY => Ok(()),
-        Some(c) => Err(FieldError::new(field, format!("{} isn't a category.", c.name))),
-        None => Err(FieldError::new(
-            field,
-            "That category no longer exists. Refresh the list.",
-        )),
-    }
-}
-
 /// The server's lists, fresh enough to know the channels and roles a body names.
 async fn info_for(state: &WebState, guild: u64, channels: &[u64], roles: &[u64]) -> ApiResult<GuildInfo> {
     guild_info::get_with(state, guild, |info| {
@@ -225,17 +204,17 @@ pub async fn put_settings(
     ApiJson(body): ApiJson<SettingsBody>,
 ) -> ApiResult<Json<Value>> {
     let guild = managed.id;
-    let lang = Lang::En;
-    let open = optional_id("open_category_id", &body.open_category_id)?;
-    let closed = optional_id("closed_category_id", &body.closed_category_id)?;
-    let log = optional_id("log_channel_id", &body.log_channel_id)?;
+    let lang = managed.panel_lang;
+    let open = optional_id("open_category_id", &body.open_category_id, lang)?;
+    let closed = optional_id("closed_category_id", &body.closed_category_id, lang)?;
+    let log = optional_id("log_channel_id", &body.log_channel_id, lang)?;
     let named: Vec<u64> = [open, closed, log].into_iter().flatten().collect();
     let info = info_for(&state, guild, &named, &[]).await?;
     let mut errors = Vec::new();
-    errors.extend(check_category(&info, "open_category_id", open).err());
-    errors.extend(check_category(&info, "closed_category_id", closed).err());
+    errors.extend(check_category(&info, "open_category_id", open, lang).err());
+    errors.extend(check_category(&info, "closed_category_id", closed, lang).err());
     if let Some(log) = log {
-        errors.extend(info.check_post_channel("log_channel_id", log).err());
+        errors.extend(check_post_channel(&info, "log_channel_id", log, lang).err());
     }
     let hours = tickets::check_auto_close(body.auto_close_hours, lang)
         .map_err(|e| errors.push(e))
@@ -248,10 +227,7 @@ pub async fn put_settings(
         .ok();
     let mode = Mode::parse(&body.mode);
     if mode.is_none() {
-        errors.push(FieldError::new(
-            "mode",
-            "Tickets are channels, private threads or automatic.",
-        ));
+        errors.push(FieldError::new("mode", t!(lang, "tickets.web.errors.ticket-mode")));
     }
     if !errors.is_empty() {
         return Err(ApiError::invalid(errors));
@@ -344,82 +320,15 @@ struct CheckedPanel {
     log: Option<u64>,
 }
 
-async fn check_panel_body(state: &WebState, guild: u64, body: &PanelBody) -> ApiResult<CheckedPanel> {
-    let channel = parse_id(&body.channel_id).ok_or_else(|| invalid("channel_id", "Pick a channel."))?;
-    let roles: Vec<u64> = body
-        .support_roles
-        .iter()
-        .map(|raw| parse_id(raw).ok_or_else(|| ApiError::malformed("Role ids are numbers.")))
-        .collect::<ApiResult<_>>()?;
-    let open_category = optional_id("open_category_id", &body.open_category_id)?;
-    let log = optional_id("log_channel_id", &body.log_channel_id)?;
-    let mut named = vec![channel];
-    named.extend(open_category);
-    named.extend(log);
-    let info = info_for(state, guild, &named, &roles).await?;
-    let style = match body.style.as_deref() {
-        None => PanelStyle::Buttons,
-        Some(key) => PanelStyle::parse(key).ok_or_else(|| invalid("style", "A panel shows buttons or a menu."))?,
-    };
-    let mut errors = tickets::check_panel(
-        &PanelDraft {
-            name: &body.name,
-            title: &body.title,
-            description: &body.description,
-            style,
-            topics: &body.topics,
-            questions: &body.questions,
-            welcome: &body.welcome_text,
-            support_roles: roles.len(),
-        },
-        Lang::En,
-    );
-    errors.extend(info.check_post_channel("channel_id", channel).err());
-    errors.extend(check_category(&info, "open_category_id", open_category).err());
-    if let Some(log) = log {
-        errors.extend(info.check_post_channel("log_channel_id", log).err());
-    }
-    for role in &roles {
-        match info.check_role("support_roles", *role) {
-            Ok(r) if r.everyone => errors.push(FieldError::new(
-                "support_roles",
-                "@everyone can't be a support role: everybody would see every ticket.",
-            )),
-            Ok(_) => {}
-            Err(problem) => errors.push(problem),
-        }
-    }
-    let color = match body.color.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
-        None => tickets::DEFAULT_COLOR,
-        Some(hex) => match parse_hex_color(hex) {
-            Some(color) => color,
-            None => {
-                errors.push(FieldError::new("color", "Colours look like `#ff6b4a`."));
-                0
-            }
-        },
-    };
-    if !errors.is_empty() {
-        return Err(ApiError::invalid(errors));
-    }
-    Ok(CheckedPanel {
-        channel,
-        color,
-        style,
-        roles,
-        open_category,
-        log,
-    })
-}
-
 async fn save_panel(
     state: &WebState,
     managed: &ManagedGuild,
     id: Option<i64>,
     body: PanelBody,
 ) -> ApiResult<(StatusCode, Json<Value>)> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
-    let checked = check_panel_body(state, guild, &body).await?;
+    let checked = check_panel_body(state, managed, &body).await?;
     let db = &state.app.db;
     let was = match id {
         Some(id) => Some(
@@ -449,14 +358,16 @@ async fn save_panel(
     let panel = match db.save_ticket_panel(id, &write).await? {
         TicketPanelSaved::Saved(panel) => panel,
         TicketPanelSaved::Full => {
-            return Err(ApiError::limit(format!(
-                "A server has at most {MAX_PANELS} ticket panels."
+            return Err(ApiError::limit(t!(
+                lang,
+                "tickets.web.errors.ticket-panels-limit",
+                max = MAX_PANELS
             )));
         }
         TicketPanelSaved::NameTaken => {
             return Err(invalid(
                 "name",
-                format!("Another panel is already called “{}”.", body.name.trim()),
+                t!(lang, "tickets.web.errors.panel-name-taken", name = body.name.trim()),
             ));
         }
         TicketPanelSaved::Gone => return Err(ApiError::not_found()),
@@ -653,13 +564,14 @@ pub async fn list(
     managed: ManagedGuild,
     Query(query): Query<ListQuery>,
 ) -> ApiResult<Json<Value>> {
+    let lang = managed.panel_lang;
     let guild = managed.id;
     let parse = |raw: &Option<String>| -> ApiResult<Option<u64>> {
         match raw.as_deref().map(str::trim) {
             None | Some("") => Ok(None),
             Some(raw) => parse_id(raw)
                 .map(Some)
-                .ok_or_else(|| ApiError::malformed("Member ids are numbers.")),
+                .ok_or_else(|| ApiError::malformed(t!(lang, "tickets.web.errors.member-ids-are-numbers"))),
         }
     };
     let filter = TicketFilter {

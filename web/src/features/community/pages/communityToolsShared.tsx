@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext } from "react-router";
@@ -86,7 +87,7 @@ export function useWrite(guild: string, client: ReturnType<typeof useQueryClient
       setNotice(t("Saved."));
       return true;
     } catch (error) {
-      setNotice(error instanceof Error ? t(error.message) : t("Could not save."));
+      setNotice(error instanceof Error ? t(error.message) : deferredText("Could not save."));
       return false;
     } finally {
       setBusy(false);
@@ -95,7 +96,7 @@ export function useWrite(guild: string, client: ReturnType<typeof useQueryClient
   return { busy, notice, write };
 }
 export function State({ query }: { query: ReturnType<typeof useTools>["query"] }) {
-  if (query.isPending) return <Loading label={t("Loading community tools")} />;
+  if (query.isPending) return <Loading label={deferredText("Loading community tools")} />;
   if (query.isError) return <Problem error={query.error} />;
   return null;
 }

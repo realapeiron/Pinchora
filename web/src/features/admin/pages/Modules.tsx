@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { locale, translate as spaTranslate } from "../../../i18n";
 import { useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
@@ -42,11 +43,11 @@ export function Modules() {
     <SettingsPage
       className="settings-page"
       title={spaTranslate("MODULES")}
-      lead={spaTranslate(
+      lead={deferredText(
         "Switch parts of Pinchora off for the whole server, or keep them to some channels. Switched-off commands answer privately that the feature is off.",
       )}
     >
-      {query.isPending && <Loading label={spaTranslate("Reading the modules")} />}
+      {query.isPending && <Loading label={deferredText("Reading the modules")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <ModulesForm guild={guild} data={query.data} />}
     </SettingsPage>
@@ -81,7 +82,7 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
     save.mutate(todo, {
       onSuccess: () => {
         setDrafts({});
-        setToast(spaTranslate("Saved. The bot follows it from the next command or message."));
+        setToast(deferredText("Saved. The bot follows it from the next command or message."));
       },
     });
   };
@@ -168,11 +169,11 @@ function ModuleRow({
       >
         <div className="settings-detail-fields">
           {saved.server_only ? (
-            <p className="module-scope muted">{spaTranslate("Whole server")}</p>
+            <p className="module-scope muted">{deferredText("Whole server")}</p>
           ) : (
             <>
               <Choice
-                name={spaTranslate("Where {arg1} works", { arg1: saved.label })}
+                name={deferredText("Where {arg1} works", { arg1: saved.label })}
                 value={now.mode}
                 options={MODES}
                 onChange={(mode) => onChange(withMode(saved, draft, mode))}

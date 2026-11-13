@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { translate as spaTranslate } from "../../../i18n";
 import { SettingsRow } from "../../../components/SettingsRow";
@@ -22,7 +23,7 @@ export function BoardOptions({
     <>
       <SettingsRow
         rowId={`board-${board.id}-channels`}
-        title={dt("Only from channels")}
+        title={deferredText("Only from channels")}
         description={dt("Limit which channels can send posts to this board.")}
         summary={summary.exclusions}
       >
@@ -30,7 +31,7 @@ export function BoardOptions({
           <div className="star-options">
             <label>
               {" "}
-              {spaTranslate("Only from channels")}{" "}
+              {deferredText("Only from channels")}{" "}
               <select
                 className="pixel-input pixel-select"
                 multiple
@@ -47,14 +48,14 @@ export function BoardOptions({
               </select>
               <small>
                 {" "}
-                {spaTranslate(
+                {deferredText(
                   "Leave empty for all channels. Private sources remain excluded to protect their audience.",
                 )}{" "}
               </small>
             </label>
             <label>
               {" "}
-              {spaTranslate("Except channels")}{" "}
+              {deferredText("Except channels")}{" "}
               <select
                 className="pixel-input pixel-select"
                 multiple
@@ -75,15 +76,15 @@ export function BoardOptions({
       </SettingsRow>
       {(
         [
-          ["self_star", spaTranslate("Allow self stars"), dt("Count stars from the post author.")],
-          ["allow_bots", spaTranslate("Include bot posts and stars"), dt("Include bot posts and reactions.")],
-          ["require_image", spaTranslate("Require an image"), dt("Only collect posts with an image.")],
+          ["self_star", deferredText("Allow self stars"), dt("Count stars from the post author.")],
+          ["allow_bots", deferredText("Include bot posts and stars"), dt("Include bot posts and reactions.")],
+          ["require_image", deferredText("Require an image"), dt("Only collect posts with an image.")],
           [
             "remove_below",
-            spaTranslate("Remove below threshold"),
+            deferredText("Remove below threshold"),
             dt("Remove posts when their score falls."),
           ],
-          ["enabled", spaTranslate("Board enabled"), dt("Collect posts for this board.")],
+          ["enabled", deferredText("Board enabled"), dt("Collect posts for this board.")],
         ] as const
       ).map(([key, title, description]) => (
         <SettingsRow
@@ -108,23 +109,23 @@ export function BoardOptions({
         <div className="settings-detail-fields">
           <div className="star-weights">
             <strong>
-              {spaTranslate("Role weights ·")} {Object.keys(board.role_weights).length}
-              {spaTranslate("/25 used")}
+              {deferredText("Role weights ·")} {Object.keys(board.role_weights).length}
+              {deferredText("/25 used")}
             </strong>
             <p className="muted">
               {" "}
-              {spaTranslate(
+              {deferredText(
                 "Members with a weighted role count for its highest weight. Everyone else counts once.",
               )}{" "}
             </p>
             <div className="star-weight-inputs">
               <select
                 className="pixel-input pixel-select"
-                aria-label={spaTranslate("Weighted role")}
+                aria-label={deferredText("Weighted role")}
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               >
-                <option value="">{spaTranslate("Choose a role")}</option>
+                <option value="">{deferredText("Choose a role")}</option>
                 {(info?.roles ?? [])
                   .filter((r) => !r.everyone)
                   .map((r) => (
@@ -148,7 +149,7 @@ export function BoardOptions({
                 onClick={() => change({ role_weights: { ...board.role_weights, [role]: weight } })}
               >
                 {" "}
-                {spaTranslate("Add weight")}{" "}
+                {deferredText("Add weight")}{" "}
               </button>
             </div>
             {Object.entries(board.role_weights).map(([id, amount]) => (
@@ -156,7 +157,7 @@ export function BoardOptions({
                 @{info?.roles.find((r) => r.id === id)?.name ?? id} ×{amount}{" "}
                 <button
                   type="button"
-                  aria-label={spaTranslate("Remove weight for {arg1}", { arg1: id })}
+                  aria-label={deferredText("Remove weight for {arg1}", { arg1: id })}
                   onClick={() => {
                     const next = { ...board.role_weights };
                     delete next[id];

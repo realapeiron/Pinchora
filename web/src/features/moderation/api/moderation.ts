@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 // Pure helpers of the moderation pages: what a staff log line says, and what a draft of the log or
 // moderation settings changes.
 
@@ -89,7 +89,7 @@ export const SOURCES: Record<StaffEntry["source"], string> = {
 export function staffLine(entry: StaffEntry): string {
   if (entry.source === "web" && !DID[entry.action]) {
     const changed = translate(
-      CHANGED[entry.action] ?? spaTranslate("changed the settings ({arg1})", { arg1: entry.action }),
+      CHANGED[entry.action] ?? deferredText("changed the settings ({arg1})", { arg1: entry.action }),
     );
     return changed.endsWith(":") && entry.target_name
       ? `${changed} ${entry.target_name}`

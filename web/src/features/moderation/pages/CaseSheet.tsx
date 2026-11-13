@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../../../i18n";
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dateTime } from "../../../i18n";
@@ -103,7 +103,7 @@ export function CaseSheet({
               <Icon name="x" />
             </button>
           </div>
-          {detail.isPending && <Loading label={spaTranslate("Opening the case")} />}
+          {detail.isPending && <Loading label={deferredText("Opening the case")} />}
           {detail.isError &&
             (detail.error instanceof ApiError && detail.error.status === 404 ? (
               <p role="alert">{t("Case #{number} does not exist.", { number })}</p>
@@ -117,7 +117,7 @@ export function CaseSheet({
                 <dd>
                   {entry.target_name || entry.target_id} <small>({entry.target_id})</small>
                 </dd>
-                <dt>{t("Moderator")}</dt>
+                <dt>{deferredText("Moderator")}</dt>
                 <dd>
                   {entry.moderator_name} <small>({entry.moderator_id})</small>
                 </dd>
@@ -146,7 +146,7 @@ export function CaseSheet({
                 {entry.dm_sent !== null && (
                   <>
                     <dt>{t("Direct message")}</dt>
-                    <dd>{entry.dm_sent ? t("Delivered") : t("Not delivered")}</dd>
+                    <dd>{entry.dm_sent ? deferredText("Delivered") : deferredText("Not delivered")}</dd>
                   </>
                 )}
               </dl>
@@ -177,8 +177,8 @@ export function CaseSheet({
                 />
               )}
               {!entry.on_channel && (
-                <section className="cases-history" aria-label={spaTranslate("Their other cases")}>
-                  <h3>{spaTranslate("Their other cases")}</h3>
+                <section className="cases-history" aria-label={deferredText("Their other cases")}>
+                  <h3>{deferredText("Their other cases")}</h3>
                   {history.length ? (
                     <ol>
                       {history.slice(0, 5).map((item) => (
@@ -214,14 +214,18 @@ function ReasonEditor({ guild, entry }: { guild: string; entry: Case }) {
   const [notice, setNotice] = useState<string | null>(null);
   const changed = reason.trim() !== (entry.reason ?? "");
   const error =
-    save.error instanceof ApiError ? save.error.message : save.error ? t("Could not save the reason.") : null;
+    save.error instanceof ApiError
+      ? save.error.message
+      : save.error
+        ? deferredText("Could not save the reason.")
+        : null;
   return (
     <div className="cases-reason-editor">
       <Field
         label={t("Reason")}
         htmlFor={`case-reason-${entry.number}`}
         error={error}
-        hint={spaTranslate("Saving edits the case in the mod-log too.")}
+        hint={deferredText("Saving edits the case in the mod-log too.")}
         aside={<span className={`counter ${reason.length > 512 ? "is-over" : ""}`}>{reason.length}/512</span>}
       >
         <textarea
@@ -244,7 +248,11 @@ function ReasonEditor({ guild, entry }: { guild: string; entry: Case }) {
           )
         }
       >
-        {save.isPending ? t("Saving…") : save.isSuccess && !changed ? t("Saved") : t("Save reason")}
+        {save.isPending
+          ? t("Saving…")
+          : save.isSuccess && !changed
+            ? t("Saved")
+            : deferredText("Save reason")}
       </PixelButton>
       <Toast message={notice} onDone={() => setNotice(null)} />
     </div>

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { number as spaNumber, translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
@@ -31,7 +32,7 @@ export function StoreItems({
   const items = query.data?.items ?? [];
   const picked = discord.data?.roles.find((r) => r.id === role);
   const existing = items.find((i) => i.role_id === role);
-  const priceProblem = price === "" ? spaTranslate("Write a price.") : problem(checkPrice(Number(price)));
+  const priceProblem = price === "" ? deferredText("Write a price.") : problem(checkPrice(Number(price)));
   const stockProblem = stock === "" ? null : problem(checkStock(Number(stock)));
   const roleProblem = picked && !picked.assignable ? picked.why_not : null;
 
@@ -59,11 +60,11 @@ export function StoreItems({
         </span>
         <p className="muted panel-lead">
           {" "}
-          {spaTranslate("Roles members can buy with")} {name} {spaTranslate("in")} <code>/store</code>
-          {spaTranslate(". The bot gives the role right away; members keep it when it goes off sale.")}{" "}
+          {deferredText("Roles members can buy with")} {name} {spaTranslate("in")} <code>/store</code>
+          {deferredText(". The bot gives the role right away; members keep it when it goes off sale.")}{" "}
         </p>
         {items.length === 0 ? (
-          <p className="empty-row muted">{spaTranslate("Nothing on sale yet.")}</p>
+          <p className="empty-row muted">{deferredText("Nothing on sale yet.")}</p>
         ) : (
           <ul className="list" aria-label={spaTranslate("Store")}>
             {items.map((item) => (
@@ -83,7 +84,7 @@ export function StoreItems({
                 <PixelButton
                   variant="ghost"
                   className="button-small"
-                  aria-label={spaTranslate("Take off sale")}
+                  aria-label={deferredText("Take off sale")}
                   disabled={write.isPending}
                   onClick={() => write.mutate({ method: "DELETE", sub: `/${item.role_id}` })}
                 >
@@ -98,7 +99,7 @@ export function StoreItems({
             <RolePicker id="store-role" info={discord.data} value={role} onChange={setRole} assignable />
           </Field>
           <Field
-            label={spaTranslate("Price ({arg1})", { arg1: name })}
+            label={deferredText("Price ({arg1})", { arg1: name })}
             htmlFor="store-price"
             error={priceProblem}
           >
@@ -118,7 +119,7 @@ export function StoreItems({
               type="number"
               min={LIMITS.stock[0]}
               value={stock}
-              placeholder={spaTranslate("∞ unlimited")}
+              placeholder={deferredText("∞ unlimited")}
               onChange={(event) => setStock(event.target.value)}
             />
           </Field>
@@ -137,7 +138,7 @@ export function StoreItems({
                 )
               }
             >
-              {existing ? spaTranslate("Update") : spaTranslate("Put on sale")}
+              {existing ? spaTranslate("Update") : deferredText("Put on sale")}
             </PixelButton>
           </div>
         </div>

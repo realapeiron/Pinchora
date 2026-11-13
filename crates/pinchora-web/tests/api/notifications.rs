@@ -78,6 +78,7 @@ async fn notifications_show_sources_and_read_marks() {
         pinchora_core::t!(Lang::En, "notifications.bad_time")
     );
     h.state.app.set_guild_lang(guild, Some(Lang::Tr)).await.unwrap();
+    h.state.app.set_user_lang(owner, Some(Lang::Tr)).await.unwrap();
     let bad_tr = browser
         .write(Method::POST, &format!("{path}/read"), json!({"up_to":"bad"}))
         .await;

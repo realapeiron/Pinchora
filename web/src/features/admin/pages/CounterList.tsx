@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { PixelButton } from "../../../components/PixelButton";
 import { RichText } from "../../../components/RichText";
@@ -39,7 +40,7 @@ export function CounterList({
     <>
       {list &&
         (counters.length === 0 ? (
-          <p className="empty-row muted">{spaTranslate("No counter channels yet.")}</p>
+          <p className="empty-row muted">{deferredText("No counter channels yet.")}</p>
         ) : (
           <ul className="counter-list" aria-label={spaTranslate("Counter channels")}>
             {counters.map((c) => (
@@ -56,8 +57,8 @@ export function CounterList({
                     <span>{KIND_LABEL(list, c.kind)}</span>
                     <span>
                       {c.name
-                        ? spaTranslate("Renamed {arg1}", { arg1: relative(c.renamed_at) })
-                        : spaTranslate("Not renamed yet")}
+                        ? deferredText("Renamed {arg1}", { arg1: relative(c.renamed_at) })
+                        : deferredText("Not renamed yet")}
                     </span>
                   </p>
                 </div>
@@ -68,7 +69,7 @@ export function CounterList({
                   <PixelButton
                     variant="ghost"
                     className="button-small"
-                    aria-label={spaTranslate("Stop counting in {arg1}", {
+                    aria-label={deferredText("Stop counting in {arg1}", {
                       arg1: channelName(info, c),
                     })}
                     disabled={pending}

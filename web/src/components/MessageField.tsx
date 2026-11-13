@@ -1,3 +1,4 @@
+import { t as deferredText } from "../i18n/dashboard";
 import { translate as spaTranslate } from "../i18n";
 import { useRef } from "react";
 import { flushSync } from "react-dom";
@@ -80,7 +81,7 @@ export function MessageField({
         ))}
         {value !== null && (
           <PixelButton variant="ghost" className="chip-reset" onClick={() => onChange(null)}>
-            {spaTranslate("Use default")}
+            {deferredText("Use default")}
           </PixelButton>
         )}
       </div>
@@ -91,7 +92,7 @@ export function MessageField({
             {preview.data !== undefined ? (
               <RichText text={preview.data} />
             ) : (
-              <span className="muted">{valid ? "…" : spaTranslate("Fix the message to see it.")}</span>
+              <span className="muted">{valid ? "…" : deferredText("Fix the message to see it.")}</span>
             )}
           </p>
         </div>

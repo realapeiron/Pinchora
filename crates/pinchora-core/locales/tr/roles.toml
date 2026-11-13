@@ -57,3 +57,7 @@ access = "{channel} kanalına mesaj gönderemiyorum: orada Kanalı Görüntüle,
 gone = "Bu kanal artık yok."
 refused = "Discord mesajı reddetti."
 unreachable = "Discord'a ulaşılamadı. Birazdan tekrar dene."
+
+[roles.web.errors]
+post-refused = "Discord mesajı reddetti. Emojilerin geçerli olduğunu kontrol edin."
+auto-roles-limit = "Bir sunucuda en fazla {max} otomatik rol olabilir. Önce birini kaldırın."

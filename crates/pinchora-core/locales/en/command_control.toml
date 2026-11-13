@@ -66,3 +66,10 @@
 command_control = "Command control"
 [module-blurb]
 command_control = "Pinchora command rules and aliases. Discord server permissions still apply."
+
+[command_control_web.errors]
+on-conflict = "on_conflict is `skip` or `replace`."
+custom-commands-limit = "A server has at most {max} custom commands. Remove one first."
+auto-responders-limit = "A server has at most {max} auto-responders. Remove one first."
+commands-import-limit = "An import carries at most {max} commands."
+responders-import-limit = "An import carries at most {max} responders."

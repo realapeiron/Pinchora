@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { Field } from "../../../components/Field";
 import { PixelButton } from "../../../components/PixelButton";
@@ -8,7 +9,7 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
     <Field
       label={spaTranslate("Questions")}
       error={errors.questions}
-      hint={spaTranslate(
+      hint={deferredText(
         "Asked in a form before the ticket opens; the answers are the ticket's first message. No questions, no form.",
       )}
       aside={
@@ -18,7 +19,7 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
       }
     >
       {draft.questions.length === 0 ? (
-        <p className="empty-row muted">{spaTranslate("No form: the ticket opens straight away.")}</p>
+        <p className="empty-row muted">{deferredText("No form: the ticket opens straight away.")}</p>
       ) : (
         <ol className="tk-questions">
           {draft.questions.map((q, n) => (
@@ -26,15 +27,15 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
               <input
                 className="pixel-input"
                 aria-label={spaTranslate("Question {arg1}", { arg1: n + 1 })}
-                placeholder={spaTranslate("What is your order number?")}
+                placeholder={deferredText("What is your order number?")}
                 value={q.label}
                 maxLength={limits.question}
                 onChange={(e) => updateQuestion(n, { label: e.target.value })}
               />
               <input
                 className="pixel-input"
-                aria-label={spaTranslate("Question {arg1} example", { arg1: n + 1 })}
-                placeholder={spaTranslate("An example answer (optional)")}
+                aria-label={deferredText("Question {arg1} example", { arg1: n + 1 })}
+                placeholder={deferredText("An example answer (optional)")}
                 value={q.placeholder}
                 maxLength={limits.placeholder}
                 onChange={(e) => updateQuestion(n, { placeholder: e.target.value })}
@@ -42,7 +43,7 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
               <button
                 type="button"
                 className="tk-icon-button"
-                aria-label={spaTranslate("Remove question {arg1}", { arg1: n + 1 })}
+                aria-label={deferredText("Remove question {arg1}", { arg1: n + 1 })}
                 onClick={() =>
                   set(
                     "questions",
@@ -59,7 +60,7 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
                     checked={q.long}
                     onChange={(e) => updateQuestion(n, { long: e.target.checked })}
                   />{" "}
-                  {spaTranslate("Long answer")}{" "}
+                  {deferredText("Long answer")}{" "}
                 </label>
                 <label className="tk-check">
                   <input
@@ -77,14 +78,14 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
                       updateQuestion(n, { upload: e.target.checked, choices: [], long: false })
                     }
                   />{" "}
-                  {spaTranslate("File upload")}{" "}
+                  {deferredText("File upload")}{" "}
                 </label>
               </div>
               {!q.upload && (
                 <input
                   className="pixel-input tk-question-choices"
-                  aria-label={spaTranslate("Choices for question {arg1}", { arg1: n + 1 })}
-                  placeholder={spaTranslate("Choices separated by commas (optional)")}
+                  aria-label={deferredText("Choices for question {arg1}", { arg1: n + 1 })}
+                  placeholder={deferredText("Choices separated by commas (optional)")}
                   value={(q.choices ?? []).join(", ")}
                   onChange={(e) =>
                     updateQuestion(n, {
@@ -109,7 +110,7 @@ export function FormTab({ draft, set, limits, errors, updateQuestion }: TabProps
         }
       >
         {" "}
-        {spaTranslate("Add question")}{" "}
+        {deferredText("Add question")}{" "}
       </PixelButton>
     </Field>
   );

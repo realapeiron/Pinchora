@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { Panel } from "../../../components/Panel";
 import {
@@ -42,7 +43,7 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
             t.active_members === null
               ? undefined
               : t.active_members === 0
-                ? spaTranslate("Nobody took part yet")
+                ? deferredText("Nobody took part yet")
                 : `${thousands(t.active_members)} members took part`
           }
         />
@@ -64,16 +65,16 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
           delta={change(t.leaves, p?.leaves)}
           upIsGood={false}
           period={stats.days}
-          note={spaTranslate("Net {arg1}{arg2} members", { arg1: net > 0 ? "+" : "", arg2: thousands(net) })}
+          note={deferredText("Net {arg1}{arg2} members", { arg1: net > 0 ? "+" : "", arg2: thousands(net) })}
         />
       </div>
 
-      <Panel title={spaTranslate("MESSAGES PER DAY")}>
+      <Panel title={deferredText("MESSAGES PER DAY")}>
         <div className="chart-room">
           <DailyColumns days={stats.daily} value={(d) => d.messages} label={spaTranslate("messages")} />
         </div>
         <NumbersTable
-          caption={spaTranslate("Each day's numbers")}
+          caption={deferredText("Each day's numbers")}
           columns={[
             spaTranslate("Day (UTC)"),
             spaTranslate("Messages"),
@@ -86,12 +87,12 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
       </Panel>
 
       <div className="stats-grid-2">
-        <Panel title={spaTranslate("JOINS AND LEAVES")}>
+        <Panel title={deferredText("JOINS AND LEAVES")}>
           <div className="chart-room">
             <JoinsLeaves days={stats.daily} />
           </div>
         </Panel>
-        <Panel title={spaTranslate("VOICE TIME PER DAY")}>
+        <Panel title={deferredText("VOICE TIME PER DAY")}>
           <div className="chart-room">
             <DailyColumns
               days={stats.daily}
@@ -104,10 +105,10 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
         </Panel>
       </div>
 
-      <Panel title={spaTranslate("BUSIEST HOURS (UTC)")}>
+      <Panel title={deferredText("BUSIEST HOURS (UTC)")}>
         <Heatmap grid={stats.heatmap} />
         <NumbersTable
-          caption={spaTranslate("Messages by weekday and hour, UTC")}
+          caption={deferredText("Messages by weekday and hour, UTC")}
           columns={[
             spaTranslate("Day"),
             ...Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}h`),
@@ -117,16 +118,16 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
       </Panel>
 
       <div className={showMembers && members ? "stats-grid-2" : undefined}>
-        <Panel title={spaTranslate("TOP CHANNELS")}>
+        <Panel title={deferredText("TOP CHANNELS")}>
           <RankBars
-            label={spaTranslate("Top channels")}
-            empty={spaTranslate("Nobody has written anywhere yet.")}
+            label={deferredText("Top channels")}
+            empty={deferredText("Nobody has written anywhere yet.")}
             rows={stats.top_channels.map((c) => ({
               id: c.id ?? "other",
               name: c.id
                 ? c.name
                   ? `#${c.name}`
-                  : spaTranslate("A thread or a deleted channel")
+                  : deferredText("A thread or a deleted channel")
                 : spaTranslate("Other"),
               value: c.messages,
               shown: `${thousands(c.messages)} msgs`,
@@ -134,10 +135,10 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
           />
         </Panel>
         {showMembers && members && (
-          <Panel title={spaTranslate("TOP MEMBERS")}>
+          <Panel title={deferredText("TOP MEMBERS")}>
             <RankBars
-              label={spaTranslate("Top members")}
-              empty={spaTranslate("Nobody has written yet. Members who hide from leaderboards are left out.")}
+              label={deferredText("Top members")}
+              empty={deferredText("Nobody has written yet. Members who hide from leaderboards are left out.")}
               rows={members.map((m) => ({
                 id: m.id,
                 name: m.name ?? "Unknown member",

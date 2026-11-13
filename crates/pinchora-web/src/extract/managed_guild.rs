@@ -6,11 +6,14 @@ use axum::{
 };
 
 use crate::dashboard_access;
+use crate::dashboard_language;
 use crate::discord;
 use crate::discord::UserGuild;
 use crate::error::ApiError;
 use crate::extract::CurrentSession;
 use crate::state::WebState;
+use pinchora_core::infra::i18n::Lang;
+use pinchora_core::t;
 
 /// A server with the bot present and full Discord management rights or a current role grant for
 /// this endpoint. The latter is checked for every read and write; unknown areas fail closed.
@@ -21,6 +24,7 @@ pub struct ManagedGuild {
     pub current: CurrentSession,
     /// None means full Discord management rights; Some lists delegated areas.
     pub areas: Option<Vec<String>>,
+    pub panel_lang: Lang,
 }
 
 impl FromRequestParts<WebState> for ManagedGuild {
@@ -30,15 +34,41 @@ impl FromRequestParts<WebState> for ManagedGuild {
         if let Some(managed) = parts.extensions.get::<Self>() {
             return Ok(managed.clone());
         }
-        let Path(params) = Path::<HashMap<String, String>>::from_request_parts(parts, state)
-            .await
-            .map_err(|_| ApiError::malformed("Bad path."))?;
-        let id: u64 = params
-            .get("g")
-            .and_then(|g| g.parse().ok())
-            .filter(|&g| g > 0)
-            .ok_or_else(|| ApiError::malformed("Server ids are numbers."))?;
+        let accepted_language = dashboard_language::accepted(&parts.headers);
+        let path = Path::<HashMap<String, String>>::from_request_parts(parts, state).await;
+        let Path(params) = match path {
+            Ok(path) => path,
+            Err(_) => {
+                let current = CurrentSession::from_request_parts(parts, state).await?;
+                let lang = state
+                    .app
+                    .user_lang_choice(current.session.user_id)
+                    .await
+                    .unwrap_or(accepted_language);
+                return Err(ApiError::malformed(t!(lang, "common.web.errors.bad-path")));
+            }
+        };
+        let id = params.get("g").and_then(|g| g.parse::<u64>().ok()).filter(|&g| g > 0);
         let mut current = CurrentSession::from_request_parts(parts, state).await?;
+        let id = match id {
+            Some(id) => id,
+            None => {
+                let lang = state
+                    .app
+                    .user_lang_choice(current.session.user_id)
+                    .await
+                    .unwrap_or(accepted_language);
+                return Err(ApiError::malformed(t!(
+                    lang,
+                    "common.web.errors.server-ids-are-numbers"
+                )));
+            }
+        };
+        let panel_lang = state
+            .app
+            .user_lang_choice(current.session.user_id)
+            .await
+            .unwrap_or(accepted_language);
         let guilds = discord::user_guilds(state, &mut current, true).await?;
         let guild = guilds
             .into_iter()
@@ -82,6 +112,7 @@ impl FromRequestParts<WebState> for ManagedGuild {
             guild,
             current,
             areas,
+            panel_lang,
         })
     }
 }

@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate } from "../../../i18n";
 import { useMessagePreview } from "../../../lib/queries";
 import { checkMessage } from "../../../lib/rules";
@@ -15,7 +16,7 @@ export function LevelUpPreview({ guild, message }: { guild: string; message: str
         {preview.data !== undefined ? (
           <RichText text={preview.data} />
         ) : (
-          <span className="muted">{valid ? "…" : translate("Fix the message to see it.")}</span>
+          <span className="muted">{valid ? "…" : deferredText("Fix the message to see it.")}</span>
         )}
       </p>
     </div>

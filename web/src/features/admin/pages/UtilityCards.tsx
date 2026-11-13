@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useContext, useState } from "react";
 import { dateTime } from "../../../i18n";
 import { Field } from "../../../components/Field";
@@ -28,7 +29,11 @@ export function TimezoneEditor({
   return (
     <div className="settings-detail-fields">
       <div className="utility-timezone">
-        <Field label={t("Default IANA time zone")} htmlFor="utility-offset" hint={t(TIMEZONE_NOTICE)}>
+        <Field
+          label={deferredText("Default IANA time zone")}
+          htmlFor="utility-offset"
+          hint={t(TIMEZONE_NOTICE)}
+        >
           <input
             id="utility-offset"
             className="pixel-input"
@@ -41,7 +46,7 @@ export function TimezoneEditor({
           disabled={busy || value === initial || !validTimezone(value)}
           onClick={() => onSave(value)}
         >
-          {busy ? t("Saving…") : t("Save time zone")}
+          {busy ? t("Saving…") : deferredText("Save time zone")}
         </PixelButton>
       </div>
       {error && (
@@ -75,14 +80,14 @@ export function ScheduleCard({
           #{item.id} · {name(info, item.channel_id)}
         </strong>
         <span className={`badge ${item.enabled ? "badge-gold" : ""}`}>
-          {item.enabled ? t("ACTIVE") : t("PAUSED")}
+          {item.enabled ? deferredText("ACTIVE") : t("PAUSED")}
         </span>
-        <p>{item.content || t("Embed only")}</p>
+        <p>{item.content || deferredText("Embed only")}</p>
         {pauseReason(item.pause_reason) && (
           <p role="status">{item.pause_reason_text ?? t(pauseReason(item.pause_reason) ?? "")}</p>
         )}
         <small>
-          {t("{kind} · next {when} · {count} sent", {
+          {deferredText("{kind} · next {when} · {count} sent", {
             kind: t(item.schedule.kind),
             when: dateTime(item.next_run_at),
             count: item.runs,
@@ -94,10 +99,10 @@ export function ScheduleCard({
           {t("Edit")}
         </PixelButton>
         <PixelButton variant="secondary" onClick={onPreview}>
-          {t("Preview 5 runs")}
+          {deferredText("Preview 5 runs")}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onToggle}>
-          {item.enabled ? t("Pause") : t("Resume")}
+          {item.enabled ? t("Pause") : deferredText("Resume")}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onRemove}>
           {t("Remove")}

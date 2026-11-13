@@ -138,3 +138,6 @@ taken = "Alındı"
 allowed = "İzin verildi"
 denied = "Engellendi"
 permissions = "İzinler"
+
+[log.web.errors]
+before-is-a-row-id = "before bir satır kimliği olmalı."

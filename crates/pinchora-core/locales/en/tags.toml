@@ -74,3 +74,6 @@ limit-allow-channels = "{count} channels it works in"
 limit-deny-channels = "{count} channels it doesn't"
 capped = "Custom commands give at most {max} {name} a day; you reached today's limit."
 unchecked = "I couldn't check {role} just now. Try again in a moment."
+
+[tags.web.errors]
+command-ids-are-numbers = "Command ids are numbers."

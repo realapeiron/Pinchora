@@ -30,3 +30,7 @@ ready = "ready"
 days = "{n}d"
 hours = "{n}h"
 minutes = "{n}m"
+
+[economy.web.errors]
+role-ids-are-numbers = "Role ids are numbers."
+store-roles-limit = "A store holds at most {max} roles. Remove one first."

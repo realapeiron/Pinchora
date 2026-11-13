@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { Field } from "../../../components/Field";
@@ -26,7 +27,7 @@ import "../../../styles/server-tools.css";
 export function Access() {
   const data = useOutletContext<AccessOverview>();
   const access = useAccess(data.guild.id);
-  if (access.query.isPending) return <Loading label={t("Loading access…")} />;
+  if (access.query.isPending) return <Loading label={deferredText("Loading access…")} />;
   if (access.query.isError) return <Problem error={access.query.error} />;
   return (
     <AccessEditor key={data.guild.id} guild={data.guild.id} initial={access.query.data} access={access} />
@@ -59,17 +60,17 @@ function AccessEditor({
   return (
     <SettingsPage
       title={t("ACCESS")}
-      lead={t(
+      lead={deferredText(
         "Give server roles access to chosen dashboard areas. Discord permissions and role safety still apply.",
       )}
       action={
         <PixelButton variant="secondary" onClick={() => setPreview(!preview)} aria-expanded={preview}>
-          {t("Preview access")}
+          {deferredText("Preview access")}
         </PixelButton>
       }
     >
       <p className="notice">
-        {t(
+        {deferredText(
           "The owner, Administrators and members with Manage Server always have full access. Only they can change access, backups and command controls.",
         )}
       </p>
@@ -86,14 +87,14 @@ function AccessEditor({
               {dashboardT("{count} of {max} manager roles used", { count: draft.length, max: initial.max })}
             </span>
             <p className="muted panel-lead">
-              {t(
+              {deferredText(
                 "Grants from all held roles combine. Removing a grant or a Discord role takes effect on the next request.",
               )}
             </p>
             {discord.isError && <Problem error={discord.error} />}
             {draft.length === 0 && (
               <p className="empty-row muted">
-                {t("No delegated roles. Only Discord server managers can use this dashboard.")}
+                {deferredText("No delegated roles. Only Discord server managers can use this dashboard.")}
               </p>
             )}
             <ul className="access-grants">
@@ -104,7 +105,7 @@ function AccessEditor({
                     <PixelButton
                       variant="ghost"
                       disabled={access.save.isPending}
-                      aria-label={t("Remove access for {role}", {
+                      aria-label={deferredText("Remove access for {role}", {
                         role: discord.data?.roles.find((r) => r.id === grant.role_id)?.name ?? grant.role_id,
                       })}
                       onClick={() => setDraft(draft.filter((r) => r.role_id !== grant.role_id))}
@@ -113,7 +114,7 @@ function AccessEditor({
                     </PixelButton>
                   </div>
                   <fieldset className="access-areas" disabled={access.save.isPending}>
-                    <legend>{t("Allowed areas")}</legend>
+                    <legend>{deferredText("Allowed areas")}</legend>
                     {initial.areas.map((area) => (
                       <label key={area}>
                         <input
@@ -139,13 +140,15 @@ function AccessEditor({
                     ))}
                   </fieldset>
                   {grant.areas.length === 0 && (
-                    <p className="field-error">{t("Choose at least one area or remove this role.")}</p>
+                    <p className="field-error">
+                      {deferredText("Choose at least one area or remove this role.")}
+                    </p>
                   )}
                 </li>
               ))}
             </ul>
             <p className="muted fine">
-              {t(
+              {deferredText(
                 "Configuration includes welcome, leveling, points, modules, branding, custom commands and responders. Audit access includes all server dashboard changes.",
               )}
             </p>
@@ -169,21 +172,21 @@ function AccessEditor({
                   }
                 }}
               >
-                {t("Add manager role")}
+                {deferredText("Add manager role")}
               </PixelButton>
             </div>
             {access.save.isError && <Problem error={access.save.error} />}
           </div>
           {preview && (
             <div className="settings-detail-preview">
-              <Panel title={t("ACCESS PREVIEW")}>
+              <Panel title={deferredText("ACCESS PREVIEW")}>
                 <p className="muted">
-                  {t("Unsaved preview. Each role can open these areas; other pages are denied.")}
+                  {deferredText("Unsaved preview. Each role can open these areas; other pages are denied.")}
                 </p>
                 {draft.map((r) => (
                   <p className="access-preview" key={r.role_id}>
                     <RoleTag info={discord.data} id={r.role_id} />
-                    <span>{r.areas.map(areaLabel).join(" · ") || t("No areas selected")}</span>
+                    <span>{r.areas.map(areaLabel).join(" · ") || deferredText("No areas selected")}</span>
                   </p>
                 ))}
               </Panel>
@@ -204,7 +207,7 @@ function AccessEditor({
             onSuccess: (data) => {
               setSaved(data.items);
               setDraft(data.items);
-              setToast(t("Access saved."));
+              setToast(deferredText("Access saved."));
             },
           })
         }

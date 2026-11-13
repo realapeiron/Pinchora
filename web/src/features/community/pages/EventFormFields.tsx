@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import type { Dispatch, SetStateAction } from "react";
 import { Field } from "../../../components/Field";
 import { ChannelPicker, RolePicker } from "../../../components/DashboardPickers";
@@ -63,11 +64,15 @@ export function EventFormFields({
         </Field>
       </div>
       <p className="muted ev-time-note">
-        {t("Enter the wall-clock time in {zone}. Members see it in their own time zone.", {
+        {deferredText("Enter the wall-clock time in {zone}. Members see it in their own time zone.", {
           zone: editing.body.tz,
         })}
       </p>
-      <Field label={t("Event time zone")} htmlFor="ev-tz" hint={t("IANA name, such as Europe/Istanbul.")}>
+      <Field
+        label={deferredText("Event time zone")}
+        htmlFor="ev-tz"
+        hint={deferredText("IANA name, such as Europe/Istanbul.")}
+      >
         <input
           id="ev-tz"
           className="pixel-input"
@@ -77,12 +82,12 @@ export function EventFormFields({
               new Intl.DateTimeFormat("en", { timeZone: e.target.value });
               setEditing({ ...editing, body: { ...editing.body, tz: e.target.value } });
             } catch {
-              setNotice(t("Use an IANA time zone such as Europe/Istanbul."));
+              setNotice(deferredText("Use an IANA time zone such as Europe/Istanbul."));
             }
           }}
         />
       </Field>
-      <Field label={t("Post RSVP card in")} htmlFor="ev-channel">
+      <Field label={deferredText("Post RSVP card in")} htmlFor="ev-channel">
         <ChannelPicker
           posting
           id="ev-channel"
@@ -94,9 +99,9 @@ export function EventFormFields({
       </Field>
       <div className="ev-form-pair">
         <Field
-          label={t("Going capacity")}
+          label={deferredText("Going capacity")}
           htmlFor="ev-capacity"
-          hint={t("0 means no limit; extra RSVPs wait in order.")}
+          hint={deferredText("0 means no limit; extra RSVPs wait in order.")}
         >
           <input
             id="ev-capacity"
@@ -118,12 +123,12 @@ export function EventFormFields({
             }
           />
         </Field>
-        <Field label={t("Required role")} htmlFor="ev-role" hint={t("Leave empty for everyone.")}>
+        <Field label={t("Required role")} htmlFor="ev-role" hint={deferredText("Leave empty for everyone.")}>
           <RolePicker
             id="ev-role"
             info={info}
             value={editing.body.required_role_id}
-            none={t("Everyone can RSVP")}
+            none={deferredText("Everyone can RSVP")}
             onChange={(required_role_id) =>
               setEditing({
                 ...editing,
@@ -141,11 +146,13 @@ export function EventFormFields({
             <Field
               label={
                 fixed
-                  ? t("{name} choice", { name: t(option?.label ?? t("Choice")) })
-                  : t("Custom choice {number}", { number: index - 2 })
+                  ? deferredText("{name} choice", { name: t(option?.label ?? t("Choice")) })
+                  : deferredText("Custom choice {number}", { number: index - 2 })
               }
               htmlFor={`ev-option-${index}`}
-              hint={fixed ? t("Default RSVP choice") : t("Leave blank to omit this choice.")}
+              hint={
+                fixed ? deferredText("Default RSVP choice") : deferredText("Leave blank to omit this choice.")
+              }
             >
               <input
                 id={`ev-option-${index}`}
@@ -168,7 +175,11 @@ export function EventFormFields({
               />
             </Field>
             {option && (
-              <Field label={t("Capacity")} htmlFor={`ev-option-cap-${index}`} hint={t("0 means unlimited.")}>
+              <Field
+                label={deferredText("Capacity")}
+                htmlFor={`ev-option-cap-${index}`}
+                hint={deferredText("0 means unlimited.")}
+              >
                 <input
                   id={`ev-option-cap-${index}`}
                   type="number"
@@ -223,13 +234,13 @@ export function EventFormFields({
               })
             }
           >
-            <option value="off">{t("No repeat")}</option>
+            <option value="off">{deferredText("No repeat")}</option>
             <option value="daily">{t("Daily")}</option>
             <option value="weekly">{t("Weekly")}</option>
           </select>
         </Field>
         {editing.body.recurrence && (
-          <Field label={t("Until")} htmlFor="ev-until">
+          <Field label={deferredText("Until")} htmlFor="ev-until">
             <input
               id="ev-until"
               type="date"
@@ -257,8 +268,8 @@ export function EventFormFields({
           checked={editing.body.sync}
           onChange={(e) => setEditing({ ...editing, body: { ...editing.body, sync: e.target.checked } })}
         />{" "}
-        {t("Also create a Discord Scheduled Event")}
-        <small>{t("Requires Manage Events for the bot.")}</small>
+        {deferredText("Also create a Discord Scheduled Event")}
+        <small>{deferredText("Requires Manage Events for the bot.")}</small>
       </label>
     </>
   );

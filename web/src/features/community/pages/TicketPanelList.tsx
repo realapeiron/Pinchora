@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { plural as spaPlural, translate as spaTranslate } from "../../../i18n";
 
 import { ChannelTag } from "../../../components/Pickers";
@@ -31,7 +32,7 @@ export function TicketPanelRow({
           {panel.message_id ? (
             <span className="badge badge-mint">{spaTranslate("POSTED")}</span>
           ) : (
-            <span className="badge tk-badge-quiet">{spaTranslate("NOT POSTED")}</span>
+            <span className="badge tk-badge-quiet">{deferredText("NOT POSTED")}</span>
           )}
           {!panel.enabled && <span className="badge badge-gold">{spaTranslate("OFF")}</span>}
         </span>
@@ -57,7 +58,7 @@ export function TicketPanelRow({
           className="button-small"
           onClick={() => setEditing(editing === panel.id ? null : panel.id)}
           aria-expanded={editing === panel.id}
-          aria-label={spaTranslate("Edit {arg1}", { arg1: panel.name })}
+          aria-label={deferredText("Edit {arg1}", { arg1: panel.name })}
         >
           {editing === panel.id ? spaTranslate("Close") : spaTranslate("Edit")}
         </PixelButton>
@@ -65,15 +66,15 @@ export function TicketPanelRow({
           className="button-small"
           onClick={() => publish(panel)}
           disabled={post.isPending}
-          aria-label={`${panel.message_id ? spaTranslate("Update the post of") : spaTranslate("Post")} ${panel.name}`}
+          aria-label={`${panel.message_id ? deferredText("Update the post of") : spaTranslate("Post")} ${panel.name}`}
         >
-          {panel.message_id ? spaTranslate("Update post") : spaTranslate("Post")}
+          {panel.message_id ? deferredText("Update post") : spaTranslate("Post")}
         </PixelButton>
         <PixelButton
           variant="ghost"
           className="button-small"
           onClick={() => setAsking(panel)}
-          aria-label={spaTranslate("Delete {arg1}", { arg1: panel.name })}
+          aria-label={deferredText("Delete {arg1}", { arg1: panel.name })}
         >
           {spaTranslate("Delete")}
         </PixelButton>
@@ -114,11 +115,11 @@ export function DeleteTicketPanel({
         <div className="panel-body">
           <h2 id="panel-delete-title" className="pixel-title">
             {" "}
-            {spaTranslate("Delete “")}
+            {deferredText("Delete “")}
             {asking.name}”?
           </h2>
           <p>
-            {spaTranslate("The panel and its posted message go. Its tickets and their transcripts stay.")}
+            {deferredText("The panel and its posted message go. Its tickets and their transcripts stay.")}
           </p>
           {remove.isError && (
             <p className="field-error" role="alert">
@@ -142,14 +143,14 @@ export function DeleteTicketPanel({
               onClick={() =>
                 remove.mutate(asking.id, {
                   onSuccess: () => {
-                    onToast(spaTranslate("Deleted “{arg1}”.", { arg1: asking.name }));
+                    onToast(deferredText("Deleted “{arg1}”.", { arg1: asking.name }));
                     if (editing === asking.id) setEditing(null);
                     setAsking(null);
                   },
                 })
               }
             >
-              {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
+              {remove.isPending ? deferredText("Deleting…") : "Delete it"}
             </PixelButton>
           </div>
         </div>

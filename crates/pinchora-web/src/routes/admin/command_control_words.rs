@@ -12,3 +12,15 @@ pub(crate) fn strings(lang: Lang, area: &str) -> BTreeMap<String, String> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn command_control_strings_exclude_api_error_copy() {
+        let strings = strings(Lang::En, "command_control");
+        assert!(strings.keys().all(|key| !key.starts_with("web.errors.")));
+        assert!(strings.contains_key("ui.title"));
+    }
+}

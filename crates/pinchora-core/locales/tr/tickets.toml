@@ -272,3 +272,19 @@ already-closed = "Bu talep zaten kapatılmış."
 
 [module-blurb]
 tickets = "/ticket ve /community tickets: panelden açılan özel destek talepleri ve konuşma dökümleri."
+
+[tickets.web.errors]
+field-id = "`{field}` bir kimlik değil."
+member-ids-are-numbers = "Üye kimlikleri sayı olmalı."
+ticket-panels-limit = "Bir sunucuda en fazla {max} talep paneli olabilir."
+panel-channel = "Bir kanal seçin."
+panel-style = "Panel düğme veya menü gösterir."
+panel-category-kind = "{name} bir kategori değil."
+panel-category-gone = "Bu kategori artık mevcut değil. Listeyi yenileyin."
+panel-everyone = "@everyone destek rolü olamaz: herkes her talebi görür."
+panel-color = "Renkler `#ff6b4a` biçiminde olmalı."
+panel-post-kind = "#{name} bir metin veya duyuru kanalı değil."
+panel-channel-gone = "Bu kanal artık mevcut değil veya bot kanalı göremiyor. Listeyi yenileyin."
+panel-role-gone = "Bu rol artık mevcut değil. Listeyi yenileyin."
+ticket-mode = "Talepler kanallar, özel konular veya otomatik olabilir."
+panel-name-taken = "“{name}” adında başka bir panel zaten var."

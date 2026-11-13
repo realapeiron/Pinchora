@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
@@ -23,7 +24,7 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
   const [multiplier, setMultiplier] = useState("2");
   const [confirmClear, setConfirmClear] = useState(false);
   const local =
-    multiplier === "" ? spaTranslate("Write a multiplier.") : problem(checkMultiplier(Number(multiplier)));
+    multiplier === "" ? deferredText("Write a multiplier.") : problem(checkMultiplier(Number(multiplier)));
   const items = query.data?.items ?? [];
   const add = (value: number) =>
     target &&
@@ -48,12 +49,12 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
         </span>
         <p className="muted panel-lead">
           {" "}
-          {spaTranslate(
+          {deferredText(
             "Scale the XP and points a channel or role earns: 2 doubles it, 0 earns none. A channel's multiplier times the member's best role multiplier; a no-XP role always wins. Server XP only; global XP stays normal.",
           )}{" "}
         </p>
         {items.length === 0 ? (
-          <p className="empty-row muted">{spaTranslate("No multipliers yet: everything earns normal XP.")}</p>
+          <p className="empty-row muted">{deferredText("No multipliers yet: everything earns normal XP.")}</p>
         ) : (
           <ul className="list" aria-label={spaTranslate("XP multipliers")}>
             {items.map((rule) => (
@@ -66,12 +67,12 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
                   )}
                 </span>
                 <span className={`badge ${rule.multiplier === 0 ? "badge-heart" : "badge-gold"}`}>
-                  {rule.multiplier === 0 ? spaTranslate("NO XP") : `×${rule.multiplier}`}
+                  {rule.multiplier === 0 ? deferredText("NO XP") : `×${rule.multiplier}`}
                 </span>
                 <PixelButton
                   variant="ghost"
                   className="button-small"
-                  aria-label={spaTranslate("Remove multiplier")}
+                  aria-label={deferredText("Remove multiplier")}
                   disabled={write.isPending}
                   onClick={() => write.mutate({ method: "DELETE", sub: `/${rule.kind}/${rule.target_id}` })}
                 >
@@ -92,7 +93,7 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
                 setTarget(null);
               }}
             >
-              <option value="channel">{spaTranslate("A channel or category")}</option>
+              <option value="channel">{deferredText("A channel or category")}</option>
               <option value="role">{spaTranslate("A role")}</option>
             </select>
           </Field>
@@ -142,11 +143,11 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
             {confirmClear ? (
               <>
                 <span>
-                  {spaTranslate("Remove all")} {items.length} {spaTranslate("multipliers?")}
+                  {deferredText("Remove all")} {items.length} {spaTranslate("multipliers?")}
                 </span>
                 <PixelButton variant="ghost" onClick={() => setConfirmClear(false)}>
                   {" "}
-                  {spaTranslate("Keep them")}{" "}
+                  {deferredText("Keep them")}{" "}
                 </PixelButton>
                 <PixelButton
                   onClick={() =>
@@ -154,12 +155,12 @@ export function Multipliers({ guild, info }: { guild: string; info: GuildInfo | 
                   }
                 >
                   {" "}
-                  {spaTranslate("Remove all")}{" "}
+                  {deferredText("Remove all")}{" "}
                 </PixelButton>
               </>
             ) : (
               <PixelButton variant="ghost" onClick={() => setConfirmClear(true)}>
-                {spaTranslate("Clear all")}
+                {deferredText("Clear all")}
               </PixelButton>
             )}
           </div>

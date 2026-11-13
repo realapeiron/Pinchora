@@ -208,3 +208,9 @@ ignore-summary = "Yok sayılan kanallar: {channels} · roller: {roles} · üyele
 bots-ignored = "yok sayılıyor"
 bots-logged = "kaydediliyor"
 ignore-full = "Bir yok sayma listesinde en fazla {max} kayıt olabilir."
+
+[moderation.web.errors]
+ids-are-numbers = "Kimlikler sayı olmalı."
+unknown-kind-of-case = "Bilinmeyen vaka türü."
+a-reason-cannot-contain-control-characters = "Gerekçe kontrol karakterleri içeremez."
+the-source-is-command-discord-or-web = "Kaynak command, discord veya web olmalı."

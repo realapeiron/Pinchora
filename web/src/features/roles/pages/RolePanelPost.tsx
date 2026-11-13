@@ -1,3 +1,4 @@
+import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
 import { useState } from "react";
 import { Field } from "../../../components/Field";
@@ -28,15 +29,15 @@ export function PostRow({
     <div>
       <div className="post-row">
         <Field
-          label={spaTranslate("Post it in")}
+          label={deferredText("Post it in")}
           htmlFor="panel-channel"
           error={error?.field === "channel_id" ? error.message : null}
           hint={
             unsaved
-              ? spaTranslate("Save your changes first: the bot posts what is saved.")
+              ? deferredText("Save your changes first: the bot posts what is saved.")
               : sameSpot
-                ? spaTranslate("The panel's message is edited in place.")
-                : spaTranslate("Text or announcement channels the bot can see.")
+                ? deferredText("The panel's message is edited in place.")
+                : deferredText("Text or announcement channels the bot can see.")
           }
         >
           <ChannelPicker
@@ -61,9 +62,9 @@ export function PostRow({
             }
           >
             {posting.isPending
-              ? spaTranslate("Posting…")
+              ? deferredText("Posting…")
               : sameSpot
-                ? spaTranslate("Update message")
+                ? deferredText("Update message")
                 : spaTranslate("Post panel")}
           </PixelButton>
         </div>
@@ -75,16 +76,16 @@ export function PostRow({
       )}
       {posted && posting.variables?.sub === `/panels/${panel.id}/post` && (
         <p className="notice" role="status">
-          {posted.updated ? spaTranslate("Updated") : spaTranslate("Posted")} {spaTranslate("in")}{" "}
+          {posted.updated ? deferredText("Updated") : spaTranslate("Posted")} {spaTranslate("in")}{" "}
           <ChannelTag info={info} id={posted.channel_id} />:{" "}
           <a href={posted.url} target="_blank" rel="noopener noreferrer">
             {" "}
-            {spaTranslate("open the message")}{" "}
+            {deferredText("open the message")}{" "}
           </a>
           {posted.unusable.length > 0 && (
             <>
               {" "}
-              {spaTranslate("Discord would not take these as reactions:")} {posted.unusable.join(" ")}.
+              {deferredText("Discord would not take these as reactions:")} {posted.unusable.join(" ")}.
             </>
           )}
         </p>

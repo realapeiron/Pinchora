@@ -50,3 +50,5 @@ confession-report-alert = "#{id} numaralı itiraf bildirildi. /confess ban veya 
 action-thread = "Sohbet"
 action-crosspost = "Duyuruyu paylaş"
 thread-name = "Sohbet"
+
+[community_tools.web.errors]

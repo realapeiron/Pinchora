@@ -1,5 +1,6 @@
 //! One fail-closed area map for every guild endpoint. Grants never confer Discord permissions.
 use crate::{error::ApiResult, state::WebState};
+use pinchora_core::t;
 use twilight_model::id::Id;
 
 /// Shared shell/picker reads are available to every delegate. Unknown and privileged paths are not.
@@ -120,9 +121,16 @@ pub async fn guard(
                 mime == "application/json" || mime.starts_with("application/") && mime.ends_with("+json")
             })
         {
-            let bytes = axum::body::to_bytes(body, 2 * 1024 * 1024)
-                .await
-                .map_err(|_| crate::error::ApiError::malformed("Invalid request body."))?;
+            let bytes = match axum::body::to_bytes(body, 2 * 1024 * 1024).await {
+                Ok(bytes) => bytes,
+                Err(_) => {
+                    let lang = managed.panel_lang;
+                    return Err(crate::error::ApiError::malformed(t!(
+                        lang,
+                        "common.web.errors.invalid-request-body"
+                    )));
+                }
+            };
             if let Ok(value) = serde_json::from_slice(&bytes) {
                 role_ids(&value, &mut ids);
             }
@@ -130,7 +138,7 @@ pub async fn guard(
         }
         check_role_access(&state, &managed, &ids).await?;
     }
-    parts.extensions.insert(managed);
+    parts.extensions.insert(managed.clone());
     Ok(next.run(axum::extract::Request::from_parts(parts, body)).await)
 }
 

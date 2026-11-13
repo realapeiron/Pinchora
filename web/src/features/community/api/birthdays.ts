@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../lib/api";
-import { serverText } from "../../../i18n";
+import { dashboardServerText } from "../../../i18n/dashboard";
 
 export interface BirthdaySettings {
   enabled: boolean;
@@ -49,5 +49,5 @@ export function useSaveBirthdays(guild: string) {
 
 export function birthdayWords(strings: Record<string, string> = {}, language = "en") {
   return (key: string, args: Record<string, string | number> = {}) =>
-    serverText(key, strings, args, language);
+    dashboardServerText(key, strings, args, language);
 }
