@@ -84,6 +84,7 @@ export function useEconomy() {
     refetchInterval: 15000,
   });
 }
+export type Run = (a: Record<string, unknown>) => void;
 /** Keep uncertain requests retryable and coalesce clicks before React renders pending state. */
 export function createEconomyActionSender() {
   const requests = new Map<string, { id: string; pending?: Promise<Record<string, unknown>> }>();
