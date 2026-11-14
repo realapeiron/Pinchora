@@ -1,15 +1,5 @@
 {
   "files": {
-    "crates/pinchora-commands/src/commands/games/duel.rs": 861,
-    "crates/pinchora-commands/src/commands/moderation/mod.rs": 864,
-    "crates/pinchora-commands/src/commands/roles/automation/panel.rs": 867,
-    "crates/pinchora-commands/src/commands/social/pet.rs": 874,
-    "crates/pinchora-commands/src/community/feeds/parse.rs": 801,
-    "crates/pinchora-commands/src/community/starboard.rs": 801,
-    "crates/pinchora-commands/src/community/tickets/open.rs": 810,
-    "crates/pinchora-commands/src/infra/app.rs": 839,
-    "crates/pinchora-commands/src/infra/routing/tests.rs": 822,
-    "crates/pinchora-commands/src/infra/text/parse.rs": 814,
     "crates/pinchora-commands/tests/simulate.rs": 15559,
     "crates/pinchora-commands/tests/simulate/anti_nuke.rs": 1123,
     "crates/pinchora-commands/tests/simulate/basics.rs": 1190,

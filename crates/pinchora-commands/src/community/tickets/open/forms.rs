@@ -1,6 +1,11 @@
 //! User-bound, expiring multi-page ticket forms.
 use crate::community::tickets::open::*;
 
+/// The text input of question `n` in a panel's form.
+pub(super) fn question_id(n: usize) -> String {
+    format!("q{n}")
+}
+
 /// The form a panel asks before a ticket opens, as `tf:<panel>:<topic>`.
 pub(crate) async fn on_form(cx: &Cx, mut parts: Split<'_, char>, fields: &[(String, String)]) -> anyhow::Result<()> {
     let picked = parts
