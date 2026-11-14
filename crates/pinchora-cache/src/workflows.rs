@@ -1,11 +1,11 @@
-use crate::{Cache, PREFIX};
+use crate::Cache;
 use std::time::Duration;
 
 impl Cache {
     /// Swap the observed role snapshot atomically so duplicate callbacks produce no delta.
     pub async fn replace_workflow_roles(&self, key: &str, roles: &str) -> anyhow::Result<Option<String>> {
         Ok(redis::cmd("SET")
-            .arg(format!("{PREFIX}:kv:{key}"))
+            .arg(self.key(format!("kv:{key}")))
             .arg(roles)
             .arg("EX")
             .arg(86400)
@@ -26,7 +26,7 @@ impl Cache {
         );
         let mut call = script.prepare_invoke();
         for (key, ttl) in keys {
-            call.key(format!("{PREFIX}:cd:{key}"))
+            call.key(self.key(format!("cd:{key}")))
                 .arg(ttl.as_millis().max(1) as u64);
         }
         Ok(call.invoke_async(&mut self.conn()).await?)

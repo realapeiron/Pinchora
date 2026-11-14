@@ -15,7 +15,7 @@ use std::{
 
 use redis::AsyncCommands;
 
-use crate::{Cache, PREFIX};
+use crate::Cache;
 
 /// How long counts wait for a flush at most: well past a stopped bot's restart, short enough that
 /// Redis never fills up with them.
@@ -32,20 +32,20 @@ fn seal_nonce() -> String {
     format!("{time:x}-{random:x}-{:x}-{local:x}", std::process::id())
 }
 
-fn dirty() -> String {
-    format!("{PREFIX}:stats:dirty")
+fn dirty(prefix: &str) -> String {
+    format!("{prefix}:stats:dirty")
 }
 
-fn pending() -> String {
-    format!("{PREFIX}:stats:pending")
+fn pending(prefix: &str) -> String {
+    format!("{prefix}:stats:pending")
 }
 
-fn hash_prefix() -> String {
-    format!("{PREFIX}:stats:h:")
+fn hash_prefix(prefix: &str) -> String {
+    format!("{prefix}:stats:h:")
 }
 
-fn batch_prefix() -> String {
-    format!("{PREFIX}:stats:p:")
+fn batch_prefix(prefix: &str) -> String {
+    format!("{prefix}:stats:p:")
 }
 
 /// The counts of one server in one hour, sealed for a flush.
@@ -61,8 +61,8 @@ pub struct StatsBatch {
 
 impl StatsBatch {
     /// The server and hour a batch key names: `…:p:{guild}:{hour}:{seq}`.
-    fn parse(key: &str) -> Option<(u64, i64)> {
-        let mut parts = key.strip_prefix(&batch_prefix())?.split(':');
+    fn parse(key: &str, prefix: &str) -> Option<(u64, i64)> {
+        let mut parts = key.strip_prefix(&batch_prefix(prefix))?.split(':');
         Some((parts.next()?.parse().ok()?, parts.next()?.parse().ok()?))
     }
 }
@@ -72,7 +72,7 @@ impl Cache {
     pub async fn stats_claim_flush(&self) -> anyhow::Result<Option<String>> {
         let token = seal_nonce();
         let set: Option<String> = redis::cmd("SET")
-            .arg(format!("{PREFIX}:stats:flush-owner"))
+            .arg(self.key("stats:flush-owner"))
             .arg(&token)
             .arg("NX")
             .arg("EX")
@@ -86,7 +86,7 @@ impl Cache {
         const SCRIPT: &str =
             "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
         let _: i64 = redis::Script::new(SCRIPT)
-            .key(format!("{PREFIX}:stats:flush-owner"))
+            .key(self.key("stats:flush-owner"))
             .arg(token)
             .invoke_async(&mut self.conn())
             .await?;
@@ -97,7 +97,7 @@ impl Cache {
         const SCRIPT: &str =
             "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], 90) else return 0 end";
         let renewed: i64 = redis::Script::new(SCRIPT)
-            .key(format!("{PREFIX}:stats:flush-owner"))
+            .key(self.key("stats:flush-owner"))
             .arg(token)
             .invoke_async(&mut self.conn())
             .await?;
@@ -109,7 +109,7 @@ impl Cache {
             return Ok(());
         }
         let member = format!("{guild}:{hour}");
-        let key = format!("{}{member}", hash_prefix());
+        let key = format!("{}{member}", hash_prefix(&self.key_prefix));
         let mut pipe = redis::pipe();
         pipe.atomic();
         for (field, by) in fields {
@@ -117,7 +117,7 @@ impl Cache {
         }
         pipe.expire(&key, KEEP.as_secs() as i64)
             .ignore()
-            .sadd(dirty(), &member)
+            .sadd(dirty(&self.key_prefix), &member)
             .ignore();
         let _: () = pipe.query_async(&mut self.conn()).await?;
         Ok(())
@@ -142,12 +142,12 @@ impl Cache {
             return sealed
         "#;
         let sealed: usize = redis::Script::new(SCRIPT)
-            .key(dirty())
-            .key(pending())
-            .key(format!("{PREFIX}:stats:seq"))
+            .key(dirty(&self.key_prefix))
+            .key(pending(&self.key_prefix))
+            .key(self.key("stats:seq"))
             .arg(limit.max(1))
-            .arg(hash_prefix())
-            .arg(batch_prefix())
+            .arg(hash_prefix(&self.key_prefix))
+            .arg(batch_prefix(&self.key_prefix))
             .arg(KEEP.as_secs())
             .arg(seal_nonce())
             .invoke_async(&mut self.conn())
@@ -160,13 +160,13 @@ impl Cache {
     pub async fn stats_pending(&self, limit: usize) -> anyhow::Result<Vec<StatsBatch>> {
         let mut conn = self.conn();
         let keys: Vec<String> = conn
-            .srandmember_multiple(pending(), limit.clamp(1, 100_000) as isize)
+            .srandmember_multiple(pending(&self.key_prefix), limit.clamp(1, 100_000) as isize)
             .await?;
         let mut batches = Vec::with_capacity(keys.len());
         for key in keys {
             let fields: HashMap<String, i64> = conn.hgetall(&key).await?;
             let fields: Vec<(String, i64)> = fields.into_iter().collect();
-            match StatsBatch::parse(&key) {
+            match StatsBatch::parse(&key, &self.key_prefix) {
                 Some((guild, hour)) if !fields.is_empty() => batches.push(StatsBatch {
                     key,
                     guild,
@@ -174,7 +174,7 @@ impl Cache {
                     fields,
                 }),
                 _ => {
-                    let _: () = conn.srem(pending(), &key).await?;
+                    let _: () = conn.srem(pending(&self.key_prefix), &key).await?;
                 }
             }
         }
@@ -187,7 +187,7 @@ impl Cache {
             .atomic()
             .del(key)
             .ignore()
-            .srem(pending(), key)
+            .srem(pending(&self.key_prefix), key)
             .ignore()
             .query_async(&mut self.conn())
             .await?;
@@ -206,9 +206,9 @@ impl Cache {
             return 1
         "#;
         let _: i64 = redis::Script::new(SCRIPT)
-            .key(dirty())
-            .key(pending())
-            .arg(hash_prefix())
+            .key(dirty(&self.key_prefix))
+            .key(pending(&self.key_prefix))
+            .arg(hash_prefix(&self.key_prefix))
             .arg(format!("u:{user}"))
             .arg(format!("uv:{user}"))
             .invoke_async(&mut self.conn())
@@ -226,10 +226,13 @@ mod tests {
 
     #[test]
     fn batch_keys_name_their_server_and_hour() {
-        let key = format!("{}42:493000:7", batch_prefix());
-        assert_eq!(StatsBatch::parse(&key), Some((42, 493_000)));
-        assert_eq!(StatsBatch::parse("pinchora:stats:h:42:1"), None);
-        assert_eq!(StatsBatch::parse(&format!("{}x:1:1", batch_prefix())), None);
+        let key = format!("{}42:493000:7", batch_prefix(crate::PREFIX));
+        assert_eq!(StatsBatch::parse(&key, crate::PREFIX), Some((42, 493_000)));
+        assert_eq!(StatsBatch::parse("pinchora:stats:h:42:1", crate::PREFIX), None);
+        assert_eq!(
+            StatsBatch::parse(&format!("{}x:1:1", batch_prefix(crate::PREFIX)), crate::PREFIX),
+            None
+        );
     }
 
     #[test]

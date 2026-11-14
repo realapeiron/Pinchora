@@ -13,7 +13,8 @@ impl Cache {
         duplicate: Option<u64>,
     ) -> anyhow::Result<u32> {
         let key = format!(
-            "pinchora:am:{}:{guild}:{user}:{rule}",
+            "{}:am:{}:{guild}:{user}:{rule}",
+            self.key_prefix,
             if duplicate.is_some() { "dup" } else { "spam" }
         );
         let script = r#"

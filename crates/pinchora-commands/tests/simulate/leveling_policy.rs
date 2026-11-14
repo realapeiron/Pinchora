@@ -130,7 +130,7 @@ async fn message_cooldown_is_shared_by_pods_and_curve_changes_are_immediate() {
     let Some(sim) = Sim::new("leveling_cooldown_pod_a").await else {
         return;
     };
-    let Some(mut other) = Sim::new("leveling_cooldown_pod_b").await else {
+    let Some(mut other) = Sim::new_pod("leveling_cooldown_pod_b", "leveling_cooldown_pod_a").await else {
         return;
     };
     other.guild = sim.guild;

@@ -5,7 +5,7 @@ impl Cache {
     /// Persistent activation boundary shared across pods. Losing Redis fails closed at the next read.
     pub async fn antinuke_activation(&self, guild: u64, now_ms: i64, reset: bool) -> anyhow::Result<i64> {
         Ok(redis::Script::new("if ARGV[2]=='1' or redis.call('EXISTS',KEYS[1])==0 then redis.call('SET',KEYS[1],ARGV[1]) end; return redis.call('GET',KEYS[1])")
-            .key(format!("pinchora:an:activation:{guild}"))
+            .key(self.key(format!("an:activation:{guild}")))
             .arg(now_ms).arg(if reset { 1 } else { 0 })
             .invoke_async(&mut self.conn()).await?)
     }
@@ -51,7 +51,7 @@ impl Cache {
         return count
         "#;
         Ok(redis::Script::new(script)
-            .key(format!("pinchora:an:{guild}:{actor}:{kind}"))
+            .key(self.key(format!("an:{guild}:{actor}:{kind}")))
             .arg(now_ms)
             .arg(seconds)
             .arg(event.to_string())

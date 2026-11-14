@@ -488,8 +488,9 @@ async fn roblox_lease_release_is_awaited_and_preserves_a_replacement_owner() {
         .unwrap()
         .expect("release completed");
     // Simulate expiry and another pod replacing the owner before the old task finishes.
+    let redis_key = format!("{}:vf:lease:{key}", sim.app.cache.namespace());
     let _: () = redis::cmd("SET")
-        .arg(format!("pinchora:vf:lease:{key}"))
+        .arg(&redis_key)
         .arg("replacement")
         .arg("EX")
         .arg(180)
@@ -506,7 +507,7 @@ async fn roblox_lease_release_is_awaited_and_preserves_a_replacement_owner() {
             .is_none()
     );
     let _: () = redis::cmd("DEL")
-        .arg(format!("pinchora:vf:lease:{key}"))
+        .arg(&redis_key)
         .query_async(&mut sim.app.cache.conn())
         .await
         .unwrap();

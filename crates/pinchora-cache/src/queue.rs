@@ -13,13 +13,15 @@ use twilight_gateway_queue::{IDENTIFY_DELAY, Queue};
 pub struct RedisQueue {
     conn: ConnectionManager,
     max_concurrency: u16,
+    key_prefix: String,
 }
 
 impl RedisQueue {
-    pub fn new(conn: ConnectionManager, max_concurrency: u16) -> Self {
+    pub fn new(conn: ConnectionManager, max_concurrency: u16, key_prefix: String) -> Self {
         Self {
             conn,
             max_concurrency: max_concurrency.max(1),
+            key_prefix,
         }
     }
 }
@@ -36,7 +38,11 @@ impl Queue for RedisQueue {
     fn enqueue(&self, shard: u32) -> oneshot::Receiver<()> {
         let (tx, rx) = oneshot::channel();
         let mut conn = self.conn.clone();
-        let key = format!("pinchora:identify:{}", shard % u32::from(self.max_concurrency));
+        let key = format!(
+            "{}:identify:{}",
+            self.key_prefix,
+            shard % u32::from(self.max_concurrency)
+        );
         tokio::spawn(async move {
             while !tx.is_closed() {
                 let won: redis::RedisResult<Option<String>> = redis::cmd("SET")

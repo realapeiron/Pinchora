@@ -150,6 +150,15 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Shared Redis state across simulated pods.
+#[path = "simulate/multipod.rs"]
+mod multipod;
+// Isolation from another test's pet cooldown.
+#[path = "simulate/pet_isolation.rs"]
+mod pet_isolation;
+// Per-test Redis scopes and cleanup of earlier runs.
+#[path = "simulate/cache_scope.rs"]
+mod cache_scope;
 // Turkish for fishing, shops and stalls, reminders, pets and the card editors, one file per group.
 #[path = "simulate/turkish_fish.rs"]
 mod turkish_fish;
@@ -1358,8 +1367,21 @@ impl Sim {
         Self::with(name, |_| {}).await
     }
 
+    /// A second simulated pod of the same test shares its Redis keys and pub/sub channels.
+    async fn new_pod(name: &'static str, cache_group: &'static str) -> Option<Self> {
+        Self::with_cache_group(name, cache_group, |_| {}).await
+    }
+
     /// [`Sim::new`] with a last change to the [`App`] before it is shared, like a config switch.
     async fn with(name: &'static str, configure: impl FnOnce(&mut App)) -> Option<Self> {
+        Self::with_cache_group(name, name, configure).await
+    }
+
+    async fn with_cache_group(
+        name: &'static str,
+        cache_group: &'static str,
+        configure: impl FnOnce(&mut App),
+    ) -> Option<Self> {
         let (Ok(database), Ok(redis)) = (
             std::env::var("PINCHORA_TEST_DATABASE_URL"),
             std::env::var("PINCHORA_TEST_REDIS_URL"),
@@ -1379,7 +1401,9 @@ impl Sim {
             migration_started.elapsed()
         );
         TEST_STARTED.get_or_init(|| simulation_started(&db)).await;
-        let cache = Cache::connect(&redis).await.expect("connect to redis");
+        let cache = cache_scope::connect(&redis, cache_group)
+            .await
+            .expect("connect to redis");
 
         let calls = Calls::default();
         let state = Mock {
@@ -7905,7 +7929,12 @@ async fn voice_xp_pays_once_a_minute_to_members_with_company() {
     let Some(mut sim) = Sim::new("voice_xp_pays_once_a_minute_to_members_with_company").await else {
         return;
     };
-    let Some(mut restarted) = Sim::new("voice_xp_pays_once_a_minute_after_a_restart").await else {
+    let Some(mut restarted) = Sim::new_pod(
+        "voice_xp_pays_once_a_minute_after_a_restart",
+        "voice_xp_pays_once_a_minute_to_members_with_company",
+    )
+    .await
+    else {
         return;
     };
     let _turn = VOICE_TICKS.lock().await;
@@ -7913,16 +7942,7 @@ async fn voice_xp_pays_once_a_minute_to_members_with_company() {
     sim.app.shift_clock(chrono::Duration::days((unique() % 36_500) as i64));
     let admin = unique();
     let (lounge, den, quiet, afk, tavern) = (unique(), unique(), unique(), unique(), unique());
-    let (a, b, alone, idle, listener, robot, sleeper1, sleeper2) = (
-        unique(),
-        unique(),
-        unique(),
-        unique(),
-        unique(),
-        unique(),
-        unique(),
-        unique(),
-    );
+    let [a, b, alone, idle, listener, robot, sleeper1, sleeper2] = std::array::from_fn(|_| unique());
     let (booster_id, hush_id) = (unique(), unique());
     sim.guild_role(booster_id, "Booster", 2);
     sim.guild_role(hush_id, "Hushed", 2);
@@ -8326,24 +8346,14 @@ async fn one_pod_prunes_old_weekly_xp_per_hour() {
     let Some(sim) = Sim::new("one_pod_prunes_old_weekly_xp_per_hour").await else {
         return;
     };
-    let Some(other) = Sim::new("one_pod_prunes_old_weekly_xp_per_hour_other_pod").await else {
+    let Some(other) = Sim::new_pod(
+        "one_pod_prunes_old_weekly_xp_per_hour_other_pod",
+        "one_pod_prunes_old_weekly_xp_per_hour",
+    )
+    .await
+    else {
         return;
     };
-    // The hour locks live two hours in Redis, and this test sends its clocks to hours ahead: the ones
-    // earlier runs took would be found taken.
-    let mut redis = sim.app.cache.conn();
-    let taken: Vec<String> = redis::cmd("KEYS")
-        .arg("pinchora:once:weekly-prune:*")
-        .query_async(&mut redis)
-        .await
-        .expect("list the locks");
-    if !taken.is_empty() {
-        let _: i64 = redis::cmd("DEL")
-            .arg(&taken)
-            .query_async(&mut redis)
-            .await
-            .expect("forget the locks");
-    }
     let guild = sim.guild;
     let (old_user, recent_user, later_user) = (unique(), unique(), unique());
     let this_week = pinchora_core::progression::leveling::week_start(chrono::Utc::now());
@@ -8368,14 +8378,10 @@ async fn one_pod_prunes_old_weekly_xp_per_hour() {
     to_half_past(&other.app, unique() as i64 % 24);
     let ahead = sim.app.now() - other.app.now();
     other.app.shift_clock(ahead);
-    let first = loop {
-        if let Some(removed) = pinchora_commands::voice_prune(&sim.app).await.expect("prune") {
-            break removed;
-        }
-        // An earlier run took this hour.
-        sim.app.shift_clock(chrono::Duration::hours(1));
-        other.app.shift_clock(chrono::Duration::hours(1));
-    };
+    let first = pinchora_commands::voice_prune(&sim.app)
+        .await
+        .expect("prune")
+        .expect("this test's hour is unused");
     assert!(first >= 2, "both old rows go: {first}");
     assert_eq!(
         pinchora_commands::voice_prune(&other.app).await.expect("prune"),

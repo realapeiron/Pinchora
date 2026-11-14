@@ -22,6 +22,7 @@ pub struct Cache {
     /// For pub/sub, which needs a connection of its own.
     client: redis::Client,
     namespace: String,
+    key_prefix: String,
 }
 
 /// What a shard needs to resume its gateway session after a restart.
@@ -96,7 +97,19 @@ impl Cache {
             conn,
             client,
             namespace,
+            key_prefix: PREFIX.to_owned(),
         })
+    }
+
+    /// Give one test its own keys while keeping the same Redis database and production key layout.
+    pub async fn connect_isolated(url: &str, scope: &str) -> anyhow::Result<Self> {
+        let mut cache = Self::connect_scoped(url, scope).await?;
+        cache.key_prefix = cache.namespace.clone();
+        Ok(cache)
+    }
+
+    fn key(&self, suffix: impl std::fmt::Display) -> String {
+        format!("{}:{suffix}", self.key_prefix)
     }
 
     pub fn conn(&self) -> ConnectionManager {
@@ -111,7 +124,7 @@ impl Cache {
     /// Starts a cooldown unless one is running.
     /// Returns `None` when it started now, or the time left on the running one.
     pub async fn try_cooldown(&self, key: &str, ttl: Duration) -> anyhow::Result<Option<Duration>> {
-        let key = format!("{PREFIX}:cd:{key}");
+        let key = self.key(format!("cd:{key}"));
         let mut conn = self.conn();
         let set: Option<String> = redis::cmd("SET")
             .arg(&key)
@@ -130,13 +143,13 @@ impl Cache {
 
     /// Ends a cooldown started with [`Cache::try_cooldown`] early, for a step that turned out not to count.
     pub async fn release_cooldown(&self, key: &str) -> anyhow::Result<()> {
-        let _: () = self.conn().del(format!("{PREFIX}:cd:{key}")).await?;
+        let _: () = self.conn().del(self.key(format!("cd:{key}"))).await?;
         Ok(())
     }
 
     /// Reserves a cooldown for one request. A failing request can release only its own reservation.
     pub async fn try_reserve(&self, key: &str, token: &str, ttl: Duration) -> anyhow::Result<Option<Duration>> {
-        let key = format!("{PREFIX}:reserve:{key}");
+        let key = self.key(format!("reserve:{key}"));
         let mut conn = self.conn();
         let set: Option<String> = redis::cmd("SET")
             .arg(&key)
@@ -154,7 +167,7 @@ impl Cache {
     }
 
     pub async fn release_reservation(&self, key: &str, token: &str) -> anyhow::Result<bool> {
-        let key = format!("{PREFIX}:reserve:{key}");
+        let key = self.key(format!("reserve:{key}"));
         let deleted: i64 = redis::Script::new(
             "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
         )
@@ -169,7 +182,7 @@ impl Cache {
         let _: () = self
             .conn()
             .set_ex(
-                format!("{PREFIX}:session:{shard}"),
+                self.key(format!("session:{shard}")),
                 serde_json::to_string(session)?,
                 ttl.as_secs(),
             )
@@ -179,13 +192,13 @@ impl Cache {
 
     /// Returns and deletes the stored session, so it is only resumed once.
     pub async fn take_session(&self, shard: u32) -> anyhow::Result<Option<StoredSession>> {
-        let raw: Option<String> = self.conn().get_del(format!("{PREFIX}:session:{shard}")).await?;
+        let raw: Option<String> = self.conn().get_del(self.key(format!("session:{shard}"))).await?;
         Ok(raw.and_then(|r| serde_json::from_str(&r).ok()))
     }
 
     /// An identify queue shared by every gateway pod of this bot.
     pub fn identify_queue(&self, max_concurrency: u16) -> RedisQueue {
-        RedisQueue::new(self.conn(), max_concurrency)
+        RedisQueue::new(self.conn(), max_concurrency, self.key_prefix.clone())
     }
 }
 
@@ -194,7 +207,7 @@ impl Cache {
     pub async fn put(&self, key: &str, value: &str, ttl: Duration) -> anyhow::Result<()> {
         let _: () = self
             .conn()
-            .set_ex(format!("{PREFIX}:kv:{key}"), value, ttl.as_secs().max(1))
+            .set_ex(self.key(format!("kv:{key}")), value, ttl.as_secs().max(1))
             .await?;
         Ok(())
     }
@@ -204,7 +217,7 @@ impl Cache {
     /// not come back.
     pub async fn put_if_present(&self, key: &str, value: &str, ttl: Duration) -> anyhow::Result<bool> {
         let set: Option<String> = redis::cmd("SET")
-            .arg(format!("{PREFIX}:kv:{key}"))
+            .arg(self.key(format!("kv:{key}")))
             .arg(value)
             .arg("XX")
             .arg("EX")
@@ -224,7 +237,7 @@ impl Cache {
     ) -> anyhow::Result<bool> {
         let changed: i64 = redis::Script::new(
             "local old=redis.call('GET',KEYS[1]); if (ARGV[1]=='0' and old) or (ARGV[1]=='1' and old~=ARGV[2]) then return 0 end; redis.call('SET',KEYS[1],ARGV[3],'EX',ARGV[4]); return 1"
-        ).key(format!("{PREFIX}:kv:{key}"))
+        ).key(self.key(format!("kv:{key}")))
             .arg(if observed.is_some() { "1" } else { "0" }).arg(observed.unwrap_or_default())
             .arg(value).arg(ttl.as_secs().max(1)).invoke_async(&mut self.conn()).await?;
         Ok(changed == 1)
@@ -232,12 +245,12 @@ impl Cache {
 
     /// Reads and deletes a value stored with [`Cache::put`].
     pub async fn take(&self, key: &str) -> anyhow::Result<Option<String>> {
-        Ok(self.conn().get_del(format!("{PREFIX}:kv:{key}")).await?)
+        Ok(self.conn().get_del(self.key(format!("kv:{key}"))).await?)
     }
 
     /// Reads a value stored with [`Cache::put`] and leaves it there.
     pub async fn get(&self, key: &str) -> anyhow::Result<Option<String>> {
-        Ok(self.conn().get(format!("{PREFIX}:kv:{key}")).await?)
+        Ok(self.conn().get(self.key(format!("kv:{key}"))).await?)
     }
 
     /// Atomically consumes one observed use from the same value namespace read by `get`.
@@ -247,7 +260,7 @@ impl Cache {
             "local old=redis.call('GET',KEYS[1]); if not old then redis.call('SET',KEYS[1],ARGV[1],'EX',ARGV[2]); return 0 end; if tonumber(old)<tonumber(ARGV[1]) then redis.call('SET',KEYS[1],tonumber(old)+1,'EX',ARGV[2]); return 1 end; return 0",
         );
         let claimed: i32 = script
-            .key(format!("{PREFIX}:kv:{key}"))
+            .key(self.key(format!("kv:{key}")))
             .arg(observed)
             .arg(ttl.as_secs().max(1))
             .invoke_async(&mut self.conn())
@@ -259,14 +272,14 @@ impl Cache {
     pub async fn extend(&self, key: &str, ttl: Duration) -> anyhow::Result<bool> {
         let set: i64 = self
             .conn()
-            .expire(format!("{PREFIX}:kv:{key}"), ttl.as_secs().max(1) as i64)
+            .expire(self.key(format!("kv:{key}")), ttl.as_secs().max(1) as i64)
             .await?;
         Ok(set == 1)
     }
 
     /// Deletes a value stored with [`Cache::put`].
     pub async fn forget(&self, key: &str) -> anyhow::Result<()> {
-        let _: () = self.conn().del(format!("{PREFIX}:kv:{key}")).await?;
+        let _: () = self.conn().del(self.key(format!("kv:{key}"))).await?;
         Ok(())
     }
 }
@@ -280,7 +293,7 @@ impl Cache {
     /// Adds `by` to a counter that expires after `ttl`; returns the new value. Concurrent adds each see
     /// a different total, so a cap can be shared out exactly.
     pub async fn incr_by(&self, key: &str, by: i64, ttl: Duration) -> anyhow::Result<i64> {
-        let key = format!("{PREFIX}:n:{key}");
+        let key = self.key(format!("n:{key}"));
         let mut conn = self.conn();
         let (value, _): (i64, i64) = redis::pipe()
             .atomic()
@@ -292,14 +305,14 @@ impl Cache {
     }
 
     pub async fn counter(&self, key: &str) -> anyhow::Result<i64> {
-        let value: Option<i64> = self.conn().get(format!("{PREFIX}:n:{key}")).await?;
+        let value: Option<i64> = self.conn().get(self.key(format!("n:{key}"))).await?;
         Ok(value.unwrap_or(0))
     }
 
     /// True only the first time it is called for `key` within `ttl`.
     pub async fn once(&self, key: &str, ttl: Duration) -> anyhow::Result<bool> {
         let set: Option<String> = redis::cmd("SET")
-            .arg(format!("{PREFIX}:once:{key}"))
+            .arg(self.key(format!("once:{key}")))
             .arg(1)
             .arg("NX")
             .arg("EX")
@@ -313,7 +326,7 @@ impl Cache {
 impl Cache {
     /// Sets one field of a hash. The whole hash expires `ttl` after its last write.
     pub async fn map_set(&self, key: &str, field: &str, value: &str, ttl: Duration) -> anyhow::Result<()> {
-        let key = format!("{PREFIX}:h:{key}");
+        let key = self.key(format!("h:{key}"));
         let _: () = redis::pipe()
             .atomic()
             .hset(&key, field, value)
@@ -328,7 +341,7 @@ impl Cache {
     /// Replaces a whole hash with `entries` in one step; no entries deletes it. The hash expires `ttl`
     /// after this write.
     pub async fn map_replace(&self, key: &str, entries: &[(String, String)], ttl: Duration) -> anyhow::Result<()> {
-        let key = format!("{PREFIX}:h:{key}");
+        let key = self.key(format!("h:{key}"));
         let mut pipe = redis::pipe();
         pipe.atomic().del(&key).ignore();
         if !entries.is_empty() {
@@ -376,7 +389,7 @@ impl Cache {
             if written > 0 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2])) end
             return written
         "#;
-        let key = format!("{PREFIX}:h:{key}");
+        let key = self.key(format!("h:{key}"));
         let script = redis::Script::new(SCRIPT);
         let mut call = script.key(&key);
         call.arg(newer_than).arg(ttl.as_secs().max(1));
@@ -389,36 +402,36 @@ impl Cache {
 
     /// Removes one field of a hash.
     pub async fn map_remove(&self, key: &str, field: &str) -> anyhow::Result<()> {
-        let _: () = self.conn().hdel(format!("{PREFIX}:h:{key}"), field).await?;
+        let _: () = self.conn().hdel(self.key(format!("h:{key}")), field).await?;
         Ok(())
     }
 
     /// Every field and value of a hash; empty when there is none.
     pub async fn map_all(&self, key: &str) -> anyhow::Result<Vec<(String, String)>> {
-        let all: std::collections::HashMap<String, String> = self.conn().hgetall(format!("{PREFIX}:h:{key}")).await?;
+        let all: std::collections::HashMap<String, String> = self.conn().hgetall(self.key(format!("h:{key}"))).await?;
         Ok(all.into_iter().collect())
     }
 
     /// How many fields a hash has, without reading them; 0 when there is none.
     pub async fn map_len(&self, key: &str) -> anyhow::Result<usize> {
-        Ok(self.conn().hlen(format!("{PREFIX}:h:{key}")).await?)
+        Ok(self.conn().hlen(self.key(format!("h:{key}"))).await?)
     }
 
     /// Adds a member to a set.
     pub async fn set_add(&self, key: &str, member: &str) -> anyhow::Result<()> {
-        let _: () = self.conn().sadd(format!("{PREFIX}:s:{key}"), member).await?;
+        let _: () = self.conn().sadd(self.key(format!("s:{key}")), member).await?;
         Ok(())
     }
 
     /// Removes a member from a set.
     pub async fn set_remove(&self, key: &str, member: &str) -> anyhow::Result<()> {
-        let _: () = self.conn().srem(format!("{PREFIX}:s:{key}"), member).await?;
+        let _: () = self.conn().srem(self.key(format!("s:{key}")), member).await?;
         Ok(())
     }
 
     /// Every member of a set; empty when there is none.
     pub async fn set_members(&self, key: &str) -> anyhow::Result<Vec<String>> {
-        Ok(self.conn().smembers(format!("{PREFIX}:s:{key}")).await?)
+        Ok(self.conn().smembers(self.key(format!("s:{key}"))).await?)
     }
 }
 

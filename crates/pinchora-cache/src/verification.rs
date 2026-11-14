@@ -10,9 +10,9 @@ impl Cache {
           return 1
         "#;
         let result: i32 = redis::Script::new(script)
-            .key(format!("pinchora:cq:{guild}:{user}"))
-            .key(format!("pinchora:cq:attempts:{guild}:{user}"))
-            .key(format!("pinchora:cq:issue:{guild}:{user}"))
+            .key(self.key(format!("cq:{guild}:{user}")))
+            .key(self.key(format!("cq:attempts:{guild}:{user}")))
+            .key(self.key(format!("cq:issue:{guild}:{user}")))
             .arg(nonce)
             .arg(hash)
             .invoke_async(&mut self.conn())
@@ -35,9 +35,9 @@ impl Cache {
           return 0
         "#;
         Ok(redis::Script::new(script)
-            .key(format!("pinchora:cq:{guild}:{user}"))
-            .key(format!("pinchora:cq:attempts:{guild}:{user}"))
-            .key(format!("pinchora:cq:issue:{guild}:{user}"))
+            .key(self.key(format!("cq:{guild}:{user}")))
+            .key(self.key(format!("cq:attempts:{guild}:{user}")))
+            .key(self.key(format!("cq:issue:{guild}:{user}")))
             .arg(nonce)
             .arg(hash)
             .invoke_async(&mut self.conn())
@@ -48,7 +48,7 @@ impl Cache {
     /// A leave/rejoin invalidates old cards, while retaining the abuse cooldown.
     pub async fn captcha_clear(&self, guild: u64, user: u64) -> anyhow::Result<()> {
         let _: i32 = redis::cmd("DEL")
-            .arg(format!("pinchora:cq:{guild}:{user}"))
+            .arg(self.key(format!("cq:{guild}:{user}")))
             .query_async(&mut self.conn())
             .await?;
         Ok(())
@@ -65,7 +65,7 @@ impl Cache {
           return redis.call('ZCARD',KEYS[1])
         "#;
         Ok(redis::Script::new(script)
-            .key(format!("pinchora:raid:{guild}"))
+            .key(self.key(format!("raid:{guild}")))
             .arg(now_ms)
             .arg(seconds)
             .arg(user.to_string())
@@ -85,7 +85,7 @@ pub struct VerificationLease {
 }
 impl Cache {
     pub async fn verification_lease(&self, key: &str, owner: &str) -> anyhow::Result<Option<VerificationLease>> {
-        let key = format!("pinchora:vf:lease:{key}");
+        let key = self.key(format!("vf:lease:{key}"));
         let won: Option<String> = redis::cmd("SET")
             .arg(&key)
             .arg(owner)
@@ -176,7 +176,7 @@ impl Cache {
             return 1
         "#,
         )
-        .key(format!("pinchora:vf:rest:{application}"))
+        .key(self.key(format!("vf:rest:{application}")))
         .invoke_async(&mut self.conn())
         .await?;
         Ok(result == 1)
