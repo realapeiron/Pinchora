@@ -1,19 +1,18 @@
 import { t as deferredText } from "../../../i18n/dashboard";
 import { translate as spaTranslate } from "../../../i18n";
-import { type ReactNode, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
 
-import { Field, SwitchRow } from "../../../components/Field";
+import { Field } from "../../../components/Field";
 import { Panel } from "../../../components/Panel";
-import { ChannelPicker, ChannelTag, RolePicker, RoleTag } from "../../../components/DashboardPickers";
-import { PixelButton } from "../../../components/PixelButton";
-import { PixelToggle } from "../../../components/PixelToggle";
+import { ChannelPicker } from "../../../components/DashboardPickers";
 import { SaveBar } from "../../../components/SaveBar";
 import { Toast } from "../../../components/Toast";
-import { ApiError, type GuildInfo, type LogSettings, type Overview } from "../../../lib/api";
-import { isDiscordId } from "../../../lib/ids";
+import { ApiError, type LogSettings, type Overview } from "../../../lib/api";
 import { type LogDraft, logDraft, logsPatch } from "../api/moderation";
 import { useDiscord, useLogs } from "../../../lib/queries";
+import { LogCategories } from "./log/LogCategories";
+import { IgnoreLists } from "./log/IgnoreLists";
 import { SettingsPage } from "../../../components/PageHead";
 import { Loading, Problem } from "../../../components/States";
 
@@ -82,102 +81,21 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
         </Field>
       </Panel>
 
-      <Panel title={deferredText("WHAT IT REPORTS")}>
-        <p className="panel-lead muted">
-          {" "}
-          {deferredText("Entries marked")}{" "}
-          <span className="badge badge-dim">{spaTranslate("audit log")}</span>{" "}
-          {deferredText(
-            "come from Discord's audit log and say who did it; Pinchora needs the View Audit Log permission for them.",
-          )}{" "}
-        </p>
-        {fieldError("category_channels") && (
-          <p className="field-error" role="alert">
-            {fieldError("category_channels")}
-          </p>
-        )}
-        <div className={`log-matrix ${on ? "" : "is-muted"}`}>
-          {saved.categories.map((category) => (
-            <section key={category.key} className="log-category" aria-label={spaTranslate(category.label)}>
-              <header className="log-category-head">
-                <h3 className="setting-name">{spaTranslate(category.label)}</h3>
-                <ChannelPicker
-                  posting
-                  label={deferredText("Channel for {arg1}", { arg1: spaTranslate(category.label) })}
-                  info={discord.data}
-                  value={draft.category_channels[category.key] ?? null}
-                  onChange={(id) =>
-                    set({ category_channels: { ...draft.category_channels, [category.key]: id } })
-                  }
-                  none={deferredText("The log channel")}
-                />
-              </header>
-              <ul className="log-events">
-                {category.events.map((event) => (
-                  <li key={event.key} className="log-event">
-                    <span className="log-event-name">
-                      {spaTranslate(event.label)}
-                      {event.audit_log && (
-                        <span className="badge badge-dim">{spaTranslate("audit log")}</span>
-                      )}
-                    </span>
-                    <PixelToggle
-                      label={spaTranslate(event.label)}
-                      checked={draft.events[event.key] ?? false}
-                      onChange={(next) => set({ events: { ...draft.events, [event.key]: next } })}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-        {!on && (
-          <p className="notice">
-            {deferredText("Pick a log channel above; until then nothing is reported.")}
-          </p>
-        )}
-      </Panel>
-
-      <Panel title={deferredText("LEFT ALONE")}>
-        <p className="panel-lead muted">
-          {" "}
-          {deferredText(
-            "Nothing is logged about these members, members with these roles, or what happens in these channels (a category covers its channels, a channel its threads). Up to",
-          )}{" "}
-          {saved.max_ignored} {deferredText("of each.")}{" "}
-        </p>
-        <SwitchRow
-          title={spaTranslate("Bots")}
-          control={
-            <PixelToggle
-              label={deferredText("Leave bots alone")}
-              checked={draft.ignore_bots}
-              onChange={(bots) => set({ ignore_bots: bots })}
-            />
-          }
-        >
-          {" "}
-          {deferredText("Messages, joins and changes of bots stay out of the log.")}{" "}
-        </SwitchRow>
-        <IgnoreChannels
-          info={discord.data}
-          list={draft.ignored_channels}
-          onChange={(list) => set({ ignored_channels: list })}
-          error={fieldError("ignored_channels")}
-        />
-        <IgnoreRoles
-          info={discord.data}
-          list={draft.ignored_roles}
-          onChange={(list) => set({ ignored_roles: list })}
-          error={fieldError("ignored_roles")}
-        />
-        <IgnoreUsers
-          list={draft.ignored_users}
-          onChange={(list) => set({ ignored_users: list })}
-          error={fieldError("ignored_users")}
-        />
-      </Panel>
+      <LogCategories
+        categories={saved.categories}
+        draft={draft}
+        set={set}
+        info={discord.data}
+        on={on}
+        fieldError={fieldError}
+      />
+      <IgnoreLists
+        draft={draft}
+        set={set}
+        maxIgnored={saved.max_ignored}
+        info={discord.data}
+        fieldError={fieldError}
+      />
 
       <SaveBar
         count={count}
@@ -188,175 +106,5 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
       />
       <Toast message={toast} onDone={clearToast} />
     </>
-  );
-}
-
-function Chips({ children, empty }: { children: ReactNode[]; empty: string }) {
-  if (children.length === 0) return <p className="muted ignore-empty">{empty}</p>;
-  return <ul className="chips ignore-chips">{children}</ul>;
-}
-
-function RemoveChip({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button type="button" className="chip-remove" aria-label={label} onClick={onClick}>
-      ×
-    </button>
-  );
-}
-
-function IgnoreChannels({
-  info,
-  list,
-  onChange,
-  error,
-}: {
-  info: GuildInfo | undefined;
-  list: string[];
-  onChange: (list: string[]) => void;
-  error: string | null;
-}) {
-  const [pick, setPick] = useState<string | null>(null);
-  return (
-    <Field label={deferredText("Channels and categories")} htmlFor="ignore-channel" error={error}>
-      <div className="ignore-add">
-        <ChannelPicker
-          id="ignore-channel"
-          info={info}
-          value={pick}
-          onChange={setPick}
-          none={spaTranslate("Pick a channel")}
-          any
-        />
-        <PixelButton
-          variant="secondary"
-          disabled={!pick || list.includes(pick)}
-          onClick={() => {
-            if (pick) onChange([...list, pick]);
-            setPick(null);
-          }}
-        >
-          {" "}
-          {spaTranslate("Add")}{" "}
-        </PixelButton>
-      </div>
-      <Chips empty={deferredText("No channels.")}>
-        {list.map((id) => (
-          <li key={id} className="channel-chip">
-            <ChannelTag info={info} id={id} />
-            <RemoveChip
-              label={deferredText("Log this channel again")}
-              onClick={() => onChange(list.filter((x) => x !== id))}
-            />
-          </li>
-        ))}
-      </Chips>
-    </Field>
-  );
-}
-
-function IgnoreRoles({
-  info,
-  list,
-  onChange,
-  error,
-}: {
-  info: GuildInfo | undefined;
-  list: string[];
-  onChange: (list: string[]) => void;
-  error: string | null;
-}) {
-  const [pick, setPick] = useState<string | null>(null);
-  return (
-    <Field label={spaTranslate("Roles")} htmlFor="ignore-role" error={error}>
-      <div className="ignore-add">
-        <RolePicker
-          id="ignore-role"
-          info={info}
-          value={pick}
-          onChange={setPick}
-          none={spaTranslate("Pick a role")}
-        />
-        <PixelButton
-          variant="secondary"
-          disabled={!pick || list.includes(pick)}
-          onClick={() => {
-            if (pick) onChange([...list, pick]);
-            setPick(null);
-          }}
-        >
-          {" "}
-          {spaTranslate("Add")}{" "}
-        </PixelButton>
-      </div>
-      <Chips empty={deferredText("No roles.")}>
-        {list.map((id) => (
-          <li key={id} className="channel-chip">
-            <RoleTag info={info} id={id} />
-            <RemoveChip
-              label={deferredText("Log this role again")}
-              onClick={() => onChange(list.filter((x) => x !== id))}
-            />
-          </li>
-        ))}
-      </Chips>
-    </Field>
-  );
-}
-
-function IgnoreUsers({
-  list,
-  onChange,
-  error,
-}: {
-  list: string[];
-  onChange: (list: string[]) => void;
-  error: string | null;
-}) {
-  const [typed, setTyped] = useState("");
-  const id = typed.trim();
-  const valid = isDiscordId(id);
-  return (
-    <Field
-      label={spaTranslate("Members")}
-      htmlFor="ignore-user"
-      error={error}
-      hint={deferredText(
-        "Paste a member's user id (with Developer Mode on in Discord: right-click them, Copy User ID).",
-      )}
-    >
-      <div className="ignore-add">
-        <input
-          id="ignore-user"
-          className="pixel-input"
-          inputMode="numeric"
-          placeholder={deferredText("User id")}
-          value={typed}
-          onChange={(event) => setTyped(event.target.value)}
-          aria-invalid={(id !== "" && !valid) || undefined}
-        />
-        <PixelButton
-          variant="secondary"
-          disabled={!valid || list.includes(id)}
-          onClick={() => {
-            onChange([...list, id]);
-            setTyped("");
-          }}
-        >
-          {" "}
-          {spaTranslate("Add")}{" "}
-        </PixelButton>
-      </div>
-      <Chips empty={deferredText("No members.")}>
-        {list.map((user) => (
-          <li key={user} className="channel-chip">
-            <span className="channel-tag">{user}</span>
-            <RemoveChip
-              label={deferredText("Log this member again")}
-              onClick={() => onChange(list.filter((x) => x !== user))}
-            />
-          </li>
-        ))}
-      </Chips>
-    </Field>
   );
 }

@@ -67,3 +67,5 @@ export function useTagEditor<Def extends object>(
 
   return { draft, set, patch, changes, saving, problem, failure, save, reset };
 }
+
+export type TagEditor<Def extends object> = ReturnType<typeof useTagEditor<Def>>;
