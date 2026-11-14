@@ -28,9 +28,7 @@
     "crates/pinchora-web/tests/house_edit/mod.rs": 842,
     "crates/pinchora-web/tests/reef.rs": 1730,
     "crates/pinchora-web/tests/reef/multipod.rs": 1000,
-    "web/src/components/card/CardProperties.tsx": 856,
     "web/src/features/admin/pages/Utility.tsx": 809,
-    "web/src/features/admin/pages/WelcomeImage.tsx": 930,
     "web/src/features/community/pages/CommunityTools.tsx": 806,
     "web/src/styles/app.css": 2347,
     "web/src/styles/site.css": 1468
