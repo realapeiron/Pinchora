@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { translate as t } from "../../../../i18n";
 import { useDiscord } from "../../../../lib/queries";
-import { useModerationDesk, policyChanged, type ModPolicy, type QueueRow } from "../../api/moderationDesk";
+import { useModerationDesk, policyChanges, type ModPolicy, type QueueRow } from "../../api/moderationDesk";
 import { PixelButton } from "../../../../components/PixelButton";
+import { SaveBar } from "../../../../components/SaveBar";
 import { Problem } from "../../../../components/States";
 import { DeskBasics } from "./DeskBasics";
 import { CleanupRules } from "./CleanupRules";
@@ -31,21 +32,22 @@ export function Desk({
       <DeskBasics draft={draft} change={change} info={discord.data} />
       <CleanupRules draft={draft} change={change} info={discord.data} />
       <ConditionalRoles draft={draft} change={change} info={discord.data} />
-      {error && <Problem error={error} />}
-      <div className="save-bar">
-        <PixelButton
-          disabled={save.isPending || !policyChanged(saved, draft)}
-          onClick={() => save.mutate(draft)}
-        >
-          {t("Save changes")}
-        </PixelButton>{" "}
+      <div className="add-actions">
         <PixelButton variant="secondary" disabled={preview.isPending} onClick={() => preview.mutate(draft)}>
           {t("Validate policy")}
-        </PixelButton>{" "}
-        <PixelButton variant="ghost" onClick={() => setDraft(saved)}>
-          {t("Discard")}
         </PixelButton>
       </div>
+      {error && <Problem error={error} />}
+      <SaveBar
+        count={policyChanges(saved, draft)}
+        saving={save.isPending}
+        error={save.isError ? save.error.message : null}
+        onSave={() => save.mutate(draft)}
+        onReset={() => {
+          setDraft(saved);
+          save.reset();
+        }}
+      />
       {save.isSuccess && <p role="status">{t("Policy saved.")}</p>}
       {preview.isSuccess && <p role="status">{t("Policy checks passed.")}</p>}
       <ReviewDesk guild={guild} reports={reports} appeals={appeals} review={review} />

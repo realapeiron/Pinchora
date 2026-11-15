@@ -52,6 +52,8 @@ export function useModerationDesk(guild: string) {
   });
   return { query, save, preview, review };
 }
-export function policyChanged(a: ModPolicy, b: ModPolicy) {
-  return JSON.stringify(a) !== JSON.stringify(b);
+export function policyChanges(a: ModPolicy, b: ModPolicy) {
+  return (Object.keys(a) as (keyof ModPolicy)[]).filter(
+    (key) => JSON.stringify(a[key]) !== JSON.stringify(b[key]),
+  ).length;
 }
